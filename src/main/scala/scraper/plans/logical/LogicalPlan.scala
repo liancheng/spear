@@ -8,10 +8,14 @@ import scraper.reflection.schemaOf
 import scraper.types.StructType
 import scraper.{ LogicalPlanUnresolved, Row }
 
-trait LogicalPlan extends QueryPlan[LogicalPlan]
+trait LogicalPlan extends QueryPlan[LogicalPlan] {
+  def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
+}
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
   override def output: Seq[Attribute] = throw LogicalPlanUnresolved(this)
+
+  override def resolved: Boolean = false
 }
 
 trait LeafLogicalPlan extends LogicalPlan {

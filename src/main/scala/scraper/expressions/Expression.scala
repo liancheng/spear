@@ -55,4 +55,6 @@ trait UnevaluableExpression extends Expression {
 
 trait UnresolvedExpression extends Expression with UnevaluableExpression {
   override def dataType: DataType = throw ExpressionUnresolved(this)
+
+  override def resolved: Boolean = false
 }
