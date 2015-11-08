@@ -4,6 +4,8 @@ import scraper.expressions.{ Attribute, Expression }
 import scraper.trees.TreeNode
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
+  private type Rule = PartialFunction[Expression, Expression]
+
   def output: Seq[Attribute]
 
   def references: Seq[Attribute] = expressions.flatMap(_.references)
@@ -14,20 +16,35 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     case _                   => Nil
   }.toSeq
 
-  def withExpressions(newExpressions: Seq[Expression]): Plan = this
+  def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)
 
-  private def copyWithNewExpressionsIfNecessary(newExpressions: Seq[Expression]): Plan = {
-    if (this sameExpressions newExpressions) this
-    else withExpressions(newExpressions)
+  def transformExpressionsUp(rule: Rule): Plan = transformExpressions(rule, _ transformUp _)
+
+  protected def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
+    def applyRule(e: Expression): (Expression, Boolean) = {
+      val transformed = next(e, rule)
+      if (e sameOrEqual transformed) e -> false else transformed -> true
+    }
+
+    val (newArgs, argsChanged) = productIterator.map {
+      case e: Expression =>
+        applyRule(e)
+
+      case Some(e: Expression) =>
+        val (ruleApplied, changed) = applyRule(e)
+        Some(ruleApplied) -> changed
+
+      case arg: Traversable[_] =>
+        val (newElements, elementsChanged) = arg.map {
+          case e: Expression => applyRule(e)
+          case e             => e -> false
+        }.unzip
+        newElements -> (elementsChanged exists identity)
+
+      case arg: AnyRef =>
+        arg -> false
+    }.toSeq.unzip
+
+    if (argsChanged exists identity) makeCopy(newArgs) else this
   }
-
-  private def sameExpressions(newExpressions: Seq[Expression]): Boolean =
-    expressions.length == newExpressions.length &&
-      (expressions, newExpressions).zipped.forall(_ sameOrEqual _)
-
-  def transformExpressionsDown(pf: PartialFunction[Expression, Expression]): Plan =
-    copyWithNewExpressionsIfNecessary(expressions map (_ transformDown pf))
-
-  def transformExpressionsUp(pf: PartialFunction[Expression, Expression]): Plan =
-    copyWithNewExpressionsIfNecessary(expressions map (_ transformUp pf))
 }

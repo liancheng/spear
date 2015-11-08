@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.expressions.{ Attribute, Expression, NamedExpression, Predicate }
+import scraper.expressions.{ Attribute, Expression, NamedExpression }
 import scraper.plans.QueryPlan
 import scraper.reflection.schemaOf
 import scraper.types.StructType
@@ -48,24 +48,9 @@ object LocalRelation {
 
 case class Project(override val expressions: Seq[NamedExpression], child: LogicalPlan)
   extends UnaryLogicalPlan {
-
-  override def withExpressions(newExpressions: Seq[Expression]): Project =
-    this.copy(expressions = newExpressions.map {
-      case e: NamedExpression => e
-      case _ =>
-        throw new IllegalArgumentException("Project only accepts named expressions.")
-    })
-
   override def output: Seq[Attribute] = expressions.map(_.toAttribute)
 }
 
 case class Filter(predicate: Expression, child: LogicalPlan) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
-
-  override def withExpressions(newExpressions: Seq[Expression]): Filter = {
-    newExpressions match {
-      case Seq(newPredicate: Predicate) => this.copy(predicate = newPredicate)
-      case _                            => throw new IllegalArgumentException
-    }
-  }
 }
