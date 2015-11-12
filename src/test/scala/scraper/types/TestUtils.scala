@@ -1,6 +1,8 @@
 package scraper.types
 
 import org.scalatest.FunSuite
+import scraper.expressions.{ Alias, AttributeRef, ExpressionId }
+import scraper.plans.QueryPlan
 import scraper.trees.TreeNode
 import scraper.utils._
 
@@ -21,10 +23,28 @@ class TestUtils extends FunSuite {
     }
   }
 
-  private[scraper] def assertSideBySide[T <: TreeNode[T]](
+  private[scraper] def checkTree[T <: TreeNode[T]](
     expected: TreeNode[T],
     actual: TreeNode[T]
   ): Unit = {
     assertSideBySide(expected.prettyTree, actual.prettyTree)
+  }
+
+  private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
+    var normalizedId = -1L
+
+    plan.transformExpressionsDown {
+      case e: AttributeRef =>
+        normalizedId += 1
+        e.copy(expressionId = ExpressionId(normalizedId))
+
+      case e: Alias =>
+        normalizedId += 1
+        e.copy(expressionId = ExpressionId(normalizedId))
+    }
+  }
+
+  private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](expected: Plan, actual: Plan): Unit = {
+    checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
   }
 }

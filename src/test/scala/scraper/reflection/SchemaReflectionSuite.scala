@@ -4,14 +4,13 @@ import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 import scraper.reflection.SchemaReflectionSuite._
-import scraper.types.DataType._
 import scraper.types._
 
 class SchemaReflectionSuite extends TestUtils {
   private def testType[T: WeakTypeTag](kind: String)(expected: Schema): Unit = {
     val className = implicitly[WeakTypeTag[T]].tpe.toString
     test(s"schema inference - $kind - $className") {
-      assertSideBySide(
+      checkTree(
         StructType("inferred" -> expected),
         StructType("inferred" -> schemaOf[T])
       )

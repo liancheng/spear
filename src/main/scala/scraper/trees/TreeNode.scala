@@ -97,14 +97,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val pipe = "\u2502"
     val tee = "\u251c"
     val corner = "\u2514"
-    val bar = "\u2500"
+    val bar = "\u2574"
 
     val prefix = if (depth == 0) {
       Nil
     } else {
       isLastChild.init.map { isLast =>
-        if (isLast) " " * 4 else s" $pipe  "
-      } :+ (if (isLastChild.last) s" $corner$bar " else s" $tee$bar ")
+        if (isLast) " " * 2 else s" $pipe  "
+      } :+ (if (isLastChild.last) s"$corner$bar" else s" $tee$bar ")
     }
 
     val head = Seq(prefix.mkString + nodeDescription)

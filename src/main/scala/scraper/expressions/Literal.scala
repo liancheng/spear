@@ -7,9 +7,19 @@ case class Literal(value: Any, dataType: DataType) extends LeafExpression {
   override def foldable: Boolean = true
 
   override def evaluate(input: Row): Any = value
+
+  override def nodeDescription: String = s"($value: ${dataType.simpleName})"
 }
 
 object Literal {
+  val True: Literal = Literal(true, BooleanType)
+
+  val False: Literal = Literal(false, BooleanType)
+
+  val Zero: Literal = Literal(0, IntType)
+
+  val One: Literal = Literal(1, IntType)
+
   def apply(value: Any): Literal = {
     value match {
       case v: Int    => Literal(v, IntType)

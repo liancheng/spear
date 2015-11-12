@@ -60,7 +60,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private def select: Parser[LogicalPlan] = (
     SELECT ~> projections.?
     ~ (FROM ~> relations).?
-    ~ (WHERE ~> expression).? ^^ {
+    ~ (WHERE ~> predicate).? ^^ {
       case ps ~ r ~ f =>
         val base = r.getOrElse(SingleRowRelation)
         val withFilter = f.map(Filter(_, base)).getOrElse(base)
@@ -77,13 +77,13 @@ class Parser extends TokenParser[LogicalPlan] {
       case ps =>
         ps.zipWithIndex.map {
           case (e: NamedExpression, i) => e
-          case (e: Expression, i)      => Alias(s"col$i", e)()
+          case (e: Expression, i)      => Alias(s"col$i", e)
         }
     }
 
   private def projection: Parser[Expression] =
     expression ~ (AS.? ~> ident).? ^^ {
-      case e ~ Some(a) => Alias(a, e)()
+      case e ~ Some(a) => Alias(a, e)
       case e ~ _       => e
     }
 

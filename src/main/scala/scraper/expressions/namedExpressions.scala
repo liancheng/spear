@@ -2,6 +2,7 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
+import com.google.common.base.Objects
 import scraper.types.DataType
 import scraper.{ ExpressionUnresolved, ResolutionFailure, Row }
 
@@ -29,8 +30,7 @@ object NamedExpression {
 
 case class Alias(
   name: String,
-  child: Expression
-)(
+  child: Expression,
   override val expressionId: ExpressionId = NamedExpression.newExpressionId()
 ) extends NamedExpression with UnaryExpression {
 
@@ -39,6 +39,8 @@ case class Alias(
   override def evaluate(input: Row): Any = child.evaluate(input)
 
   override def toAttribute: Attribute = UnresolvedAttribute(name)
+
+  override def nodeDescription: String = s"(${child.nodeDescription} AS $name#${expressionId.id})"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
@@ -47,16 +49,29 @@ trait Attribute extends NamedExpression with LeafExpression {
   override def toAttribute: Attribute = this
 }
 
-case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression
+case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
+  override def nodeDescription: String = s"$name?"
+}
 
 case class AttributeRef(
   name: String,
   dataType: DataType,
-  nullable: Boolean
-)(
+  nullable: Boolean,
   override val expressionId: ExpressionId = NamedExpression.newExpressionId()
 ) extends Attribute with UnevaluableExpression {
-  override def nodeDescription: String = s"$name#${expressionId.id}: ${dataType.simpleName}"
+
+  override def equals(other: Any): Boolean = other match {
+    case that: AttributeRef =>
+      this.name == that.name && this.dataType == that.dataType && this.nullable == that.nullable
+    case _ =>
+      false
+  }
+
+  override def hashCode(): Int = {
+    Objects.hashCode(name, dataType, nullable: java.lang.Boolean)
+  }
+
+  override def nodeDescription: String = s"($name#${expressionId.id}: ${dataType.simpleName})"
 }
 
 case class BoundRef(ordinal: Int, dataType: DataType, nullable: Boolean)
@@ -69,12 +84,14 @@ case class BoundRef(ordinal: Int, dataType: DataType, nullable: Boolean)
   override def expressionId: ExpressionId = throw new UnsupportedOperationException
 
   override def evaluate(input: Row): Any = input(ordinal)
+
+  override def nodeDescription: String = name
 }
 
 object BoundRef {
   def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = {
     expression.transformUp {
-      case ref @ AttributeRef(_, dataType, nullable) =>
+      case ref @ AttributeRef(_, dataType, nullable, _) =>
         val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
         if (ordinal == -1) {
           throw ResolutionFailure(s"Failed to bind attribute reference $ref")

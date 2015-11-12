@@ -52,7 +52,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
 
   def fieldTypes: Seq[DataType] = fields.map(_.dataType)
 
-  def toAttributes: Seq[Attribute] = fields.map(f => AttributeRef(f.name, f.dataType, f.nullable)())
+  def toAttributes: Seq[Attribute] = fields.map(f => AttributeRef(f.name, f.dataType, f.nullable))
 
   override def size: Int = 1 + fieldTypes.map(_.size).sum
 

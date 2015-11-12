@@ -27,36 +27,36 @@ class DataTypeSuite extends TestUtils with Checkers {
   }
 
   test("ArrayType instantiation") {
-    assertSideBySide(
+    checkTree(
       ArrayType(IntType, elementNullable = true),
       ArrayType(IntType.?)
     )
 
-    assertSideBySide(
+    checkTree(
       ArrayType(IntType, elementNullable = false),
       ArrayType(IntType.!)
     )
   }
 
   test("MapType instantiation") {
-    assertSideBySide(
+    checkTree(
       MapType(IntType, StringType, valueNullable = true),
       MapType(IntType, StringType.?)
     )
 
-    assertSideBySide(
+    checkTree(
       MapType(IntType, StringType, valueNullable = false),
       MapType(IntType, StringType.!)
     )
   }
 
   test("StructType instantiation") {
-    assertSideBySide(
+    checkTree(
       StructType(StructField("f1", IntType, nullable = false) :: Nil),
       StructType('f1 -> IntType.!)
     )
 
-    assertSideBySide(
+    checkTree(
       StructType(Seq(
         StructField("f1", IntType, nullable = true),
         StructField("f2", DoubleType, nullable = false)
@@ -94,17 +94,17 @@ class DataTypeSuite extends TestUtils with Checkers {
     assertSideBySide(
       testSchema.prettyTree,
       """struct
-        | ├─ name: string
-        | ├─ age: int?
-        | ├─ gender: string?
-        | ├─ location: struct?
-        | │   ├─ latitude: double
-        | │   └─ longitude: double
-        | ├─ phone-numbers: array?
-        | │   └─ element: string
-        | └─ addresses: map?
-        |     ├─ key: string
-        |     └─ value: string
+        |├╴name: string
+        |├╴age: int?
+        |├╴gender: string?
+        |├╴location: struct?
+        |│ ├╴latitude: double
+        |│ └╴longitude: double
+        |├╴phone-numbers: array?
+        |│ └╴element: string
+        |└╴addresses: map?
+        |  ├╴key: string
+        |  └╴value: string
       """.stripMargin.trim
     )
   }

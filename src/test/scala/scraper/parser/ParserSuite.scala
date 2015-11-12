@@ -6,9 +6,9 @@ import scraper.types.{ IntType, TestUtils }
 
 class ParserSuite extends TestUtils {
   test("simple query") {
-    assertSideBySide(
+    checkPlan(
       new Parser().parse(" SELECT 1 AS a FROM t"),
-      Project(Alias("a", Literal(1, IntType))() :: Nil, UnresolvedRelation("t"))
+      Project(Alias("a", Literal(1, IntType)) :: Nil, UnresolvedRelation("t"))
     )
   }
 }

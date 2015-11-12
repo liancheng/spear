@@ -37,7 +37,7 @@ class TreeNodeSuite extends TestUtils with Checkers {
         ))
       ))
 
-    assertSideBySide(
+    checkTree(
       Node(5, Seq(
         Node(9, Seq(
           Node(4, Nil),
@@ -69,7 +69,7 @@ class TreeNodeSuite extends TestUtils with Checkers {
         ))
       ))
 
-    assertSideBySide(
+    checkTree(
       Node(22, Seq(
         Node(9, Seq(
           Node(4, Nil),

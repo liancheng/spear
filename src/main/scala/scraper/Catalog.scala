@@ -1,4 +1,0 @@
-package scraper
-
-class Catalog {
-}

@@ -1,6 +1,6 @@
 package scraper.plans
 
-import scraper.expressions.{ Attribute, Expression }
+import scraper.expressions.{ Predicate, Attribute, Expression }
 import scraper.trees.TreeNode
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
@@ -11,9 +11,9 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   def references: Seq[Attribute] = expressions.flatMap(_.references)
 
   def expressions: Seq[Expression] = productIterator.flatMap {
-    case element: Expression => Seq(element)
-    case element: Seq[_]     => element.collect { case e: Expression => e }
-    case _                   => Nil
+    case element: Expression     => Seq(element)
+    case element: Traversable[_] => element.collect { case e: Expression => e }
+    case _                       => Nil
   }.toSeq
 
   def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)

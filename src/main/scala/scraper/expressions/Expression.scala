@@ -18,6 +18,24 @@ trait Expression extends TreeNode[Expression] {
   def evaluate(input: Row): Any
 
   def evaluated: Any = evaluate(null)
+
+  protected def predicate: Predicate = this match { case e: Predicate => e }
+
+  def +(that: Expression): Expression = Add(this, that)
+
+  def -(that: Expression): Expression = Minus(this, that)
+
+  def *(that: Expression): Expression = Multiply(this, that)
+
+  def ===(that: Expression): EqualTo = EqualTo(this, that)
+
+  def <>(that: Expression): NotEqualTo = NotEqualTo(this, that)
+
+  def as(alias: String): Alias = Alias(alias, this)
+
+  def as(alias: Symbol): Alias = Alias(alias.name, this)
+
+  def cast(dataType: DataType): Cast = Cast(this, dataType)
 }
 
 trait LeafExpression extends Expression {
