@@ -84,7 +84,7 @@ package object types {
 
   implicit val arbMapType: Arbitrary[MapType] = Arbitrary(genMapType(defaultDataTypeDim))
 
-  def genStructType(implicit dim: DataTypeDim): Gen[StructType] = {
+  def genTupleType(implicit dim: DataTypeDim): Gen[TupleType] = {
     require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
     require(dim.maxSize >= 2, s"Max size too small: ${dim.maxSize}")
 
@@ -99,22 +99,22 @@ package object types {
 
       fieldSchemata <- listOfN(fieldNum, genFieldSchema)
     } yield {
-      StructType(fieldSchemata.zipWithIndex.map {
+      TupleType(fieldSchemata.zipWithIndex.map {
         case (schema, ordinal) =>
-          StructField(s"col$ordinal", schema)
+          TupleField(s"col$ordinal", schema)
       })
     }
   }
 
-  implicit val arbStructType: Arbitrary[StructType] = Arbitrary(genStructType(defaultDataTypeDim))
+  implicit val arbTupleType: Arbitrary[TupleType] = Arbitrary(genTupleType(defaultDataTypeDim))
 
   def genComplexType(implicit dim: DataTypeDim): Gen[ComplexType] = {
     require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
     require(dim.maxSize >= 2, s"Max size too small: ${dim.maxSize}")
 
     dim match {
-      case DataTypeDim(_, 2) => oneOf(genArrayType(dim), genStructType(dim))
-      case _                 => oneOf(genArrayType(dim), genStructType(dim), genMapType(dim))
+      case DataTypeDim(_, 2) => oneOf(genArrayType(dim), genTupleType(dim))
+      case _                 => oneOf(genArrayType(dim), genTupleType(dim), genMapType(dim))
     }
   }
 

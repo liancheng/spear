@@ -8,7 +8,7 @@ case class Literal(value: Any, dataType: DataType) extends LeafExpression {
 
   override def evaluate(input: Row): Any = value
 
-  override def nodeDescription: String = s"($value: ${dataType.simpleName})"
+  override def caption: String = s"($value: ${dataType.simpleName})"
 }
 
 object Literal {

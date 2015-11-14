@@ -1,5 +1,7 @@
 package scraper
 
+import java.io.PrintStream
+
 import scraper.expressions.{ NamedExpression, Predicate }
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.{ QueryExecution, logical }
@@ -16,28 +18,28 @@ class Dataset(val queryExecution: QueryExecution) {
 
   def where(condition: Predicate): Dataset = this filter condition
 
-  def explain(extended: Boolean): Unit = {
-    if (extended) {
-      println(
-        s"""# Logical plan
-           |${queryExecution.logicalPlan.prettyTree}
-           |
-           |# Analyzed plan
-           |${queryExecution.analyzedPlan.prettyTree}
-           |
-           |# Optimized plan
-           |${queryExecution.optimizedPlan.prettyTree}
-           |
-           |# Physical plan
-           |${queryExecution.physicalPlan.prettyTree}
-         """.stripMargin
-      )
-    } else {
-      println(
-        s"""# Physical plan
-           |${queryExecution.physicalPlan.prettyTree}
-         """.stripMargin
-      )
-    }
+  def explain(extended: Boolean): Unit = explain(System.out, extended)
+
+  def explain(out: PrintStream, extended: Boolean): Unit = if (extended) {
+    out.println(
+      s"""# Logical plan
+         |${queryExecution.logicalPlan.prettyTree}
+         |
+         |# Analyzed plan
+         |${queryExecution.analyzedPlan.prettyTree}
+         |
+         |# Optimized plan
+         |${queryExecution.optimizedPlan.prettyTree}
+         |
+         |# Physical plan
+         |${queryExecution.physicalPlan.prettyTree}
+       """.stripMargin
+    )
+  } else {
+    out.println(
+      s"""# Physical plan
+         |${queryExecution.physicalPlan.prettyTree}
+       """.stripMargin
+    )
   }
 }

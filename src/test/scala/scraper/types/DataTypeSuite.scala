@@ -50,18 +50,18 @@ class DataTypeSuite extends TestUtils with Checkers {
     )
   }
 
-  test("StructType instantiation") {
+  test("TupleType instantiation") {
     checkTree(
-      StructType(StructField("f1", IntType, nullable = false) :: Nil),
-      StructType('f1 -> IntType.!)
+      TupleType(TupleField("f1", IntType, nullable = false) :: Nil),
+      TupleType('f1 -> IntType.!)
     )
 
     checkTree(
-      StructType(Seq(
-        StructField("f1", IntType, nullable = true),
-        StructField("f2", DoubleType, nullable = false)
+      TupleType(Seq(
+        TupleField("f1", IntType, nullable = true),
+        TupleField("f2", DoubleType, nullable = false)
       )),
-      StructType(
+      TupleType(
         'f1 -> IntType.?,
         'f2 -> DoubleType.!
       )
@@ -69,11 +69,11 @@ class DataTypeSuite extends TestUtils with Checkers {
   }
 
   private val testSchema =
-    StructType(
+    TupleType(
       'name -> StringType.!,
       'age -> IntType.?,
       'gender -> StringType.?,
-      'location -> StructType(
+      'location -> TupleType(
         'latitude -> DoubleType.!,
         'longitude -> DoubleType.!
       ).?,
@@ -81,23 +81,22 @@ class DataTypeSuite extends TestUtils with Checkers {
       'addresses -> MapType(StringType, StringType.!).?
     )
 
-  test("StructType field types") {
+  test("TupleType field types") {
     assertResult(IntType :: DoubleType :: Nil) {
-      StructType(
+      TupleType(
         'f0 -> IntType.!,
         'f1 -> DoubleType.?
       ).fieldTypes
     }
   }
 
-  test("pretty tree string of a StructType") {
+  test("pretty tree string of a TupleType") {
     assertSideBySide(
-      testSchema.prettyTree,
-      """struct
+      """tuple
         |├╴name: string
         |├╴age: int?
         |├╴gender: string?
-        |├╴location: struct?
+        |├╴location: tuple?
         |│ ├╴latitude: double
         |│ └╴longitude: double
         |├╴phone-numbers: array?
@@ -105,7 +104,8 @@ class DataTypeSuite extends TestUtils with Checkers {
         |└╴addresses: map?
         |  ├╴key: string
         |  └╴value: string
-      """.stripMargin.trim
+      """.stripMargin.trim,
+      testSchema.prettyTree
     )
   }
 }

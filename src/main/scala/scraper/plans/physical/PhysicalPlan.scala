@@ -29,8 +29,8 @@ case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute
 
   override def iterator: Iterator[Row] = data
 
-  override def nodeDescription: String =
-    s"${getClass.getSimpleName} ${output.map(_.nodeDescription).mkString(", ")}"
+  override def caption: String =
+    s"${getClass.getSimpleName} ${output.map(_.caption).mkString(", ")}"
 }
 
 case class Project(override val expressions: Seq[NamedExpression], child: PhysicalPlan)
@@ -42,8 +42,8 @@ case class Project(override val expressions: Seq[NamedExpression], child: Physic
     new Row(expressions map (_ evaluate row))
   }
 
-  override def nodeDescription: String =
-    s"${getClass.getSimpleName} ${expressions.map(_.nodeDescription).mkString(", ")}"
+  override def caption: String =
+    s"${getClass.getSimpleName} ${expressions.map(_.caption).mkString(", ")}"
 }
 
 case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysicalPlan {
@@ -53,5 +53,5 @@ case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysic
     condition.evaluate(row).asInstanceOf[Boolean]
   }
 
-  override def nodeDescription: String = s"${getClass.getSimpleName} ${condition.nodeDescription}"
+  override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
 }

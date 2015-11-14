@@ -32,23 +32,23 @@ object MapType {
     MapType(keyType, valueSchema.dataType, valueSchema.nullable)
 }
 
-case class StructField(name: String, dataType: DataType, nullable: Boolean) {
-  /** Makes a nullable copy of this [[StructField]]. */
-  def ? : StructField = this.copy(nullable = true)
+case class TupleField(name: String, dataType: DataType, nullable: Boolean) {
+  /** Makes a nullable copy of this [[TupleField]]. */
+  def ? : TupleField = this.copy(nullable = true)
 
-  /** Makes a non-nullable copy of this [[StructField]]. */
-  def ! : StructField = this.copy(nullable = false)
+  /** Makes a non-nullable copy of this [[TupleField]]. */
+  def ! : TupleField = this.copy(nullable = false)
 }
 
-object StructField {
-  def apply(name: String, schema: Schema): StructField =
-    StructField(name, schema.dataType, schema.nullable)
+object TupleField {
+  def apply(name: String, schema: Schema): TupleField =
+    TupleField(name, schema.dataType, schema.nullable)
 }
 
-case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType {
-  def apply(fieldName: String): StructField = fields.find(_.name == fieldName).get
+case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
+  def apply(fieldName: String): TupleField = fields.find(_.name == fieldName).get
 
-  def apply(index: Int): StructField = fields(index)
+  def apply(index: Int): TupleField = fields(index)
 
   def fieldTypes: Seq[DataType] = fields.map(_.dataType)
 
@@ -59,9 +59,9 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
   override def depth: Int = 1 + fieldTypes.map(_.depth).max
 }
 
-object StructType {
-  def apply(first: StructField, rest: StructField*): StructType = StructType(first +: rest)
+object TupleType {
+  def apply(first: TupleField, rest: TupleField*): TupleType = TupleType(first +: rest)
 
-  def fromAttributes(attributes: Seq[AttributeRef]): StructType =
-    StructType(attributes.map(a => StructField(a.name, a.dataType, a.nullable)))
+  def fromAttributes(attributes: Seq[AttributeRef]): TupleType =
+    TupleType(attributes.map(a => TupleField(a.name, a.dataType, a.nullable)))
 }

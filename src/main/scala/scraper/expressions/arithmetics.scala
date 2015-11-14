@@ -14,7 +14,7 @@ case class Add(left: Expression, right: Expression)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
-  override def nodeDescription: String = s"(${left.nodeDescription} + ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} + ${right.caption})"
 }
 
 case class Minus(left: Expression, right: Expression)
@@ -25,7 +25,7 @@ case class Minus(left: Expression, right: Expression)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
-  override def nodeDescription: String = s"(${left.nodeDescription} - ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} - ${right.caption})"
 }
 
 case class Multiply(left: Expression, right: Expression)
@@ -36,5 +36,5 @@ case class Multiply(left: Expression, right: Expression)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
-  override def nodeDescription: String = s"(${left.nodeDescription} * ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} * ${right.caption})"
 }

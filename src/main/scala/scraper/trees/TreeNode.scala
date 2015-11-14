@@ -9,7 +9,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def children: Seq[Base]
 
   /**
-   * Returns whether this [[TreeNode]] and `that` point to the same reference or equal to each
+   * Returns whether this [[caption]] and `that` point to the same reference or equal to each
    * other.
    */
   def sameOrEqual(that: Base): Boolean = (this eq that) || this == that
@@ -91,7 +91,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def prettyTree: String = prettyTree(0, Nil) mkString "\n"
 
-  def nodeDescription: String = toString
+  def caption: String = toString
 
   private def prettyTree(depth: Int, isLastChild: Seq[Boolean]): Seq[String] = {
     val pipe = "\u2502"
@@ -103,11 +103,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       Nil
     } else {
       isLastChild.init.map { isLast =>
-        if (isLast) " " * 2 else s" $pipe  "
-      } :+ (if (isLastChild.last) s"$corner$bar" else s" $tee$bar ")
+        if (isLast) " " * 2 else s"$pipe "
+      } :+ (if (isLastChild.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    val head = Seq(prefix.mkString + nodeDescription)
+    val head = Seq(prefix.mkString + caption)
 
     if (children.isEmpty) {
       head

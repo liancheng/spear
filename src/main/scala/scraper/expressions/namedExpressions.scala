@@ -2,7 +2,6 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
-import com.google.common.base.Objects
 import scraper.types.DataType
 import scraper.{ ExpressionUnresolved, ResolutionFailure, Row }
 
@@ -40,7 +39,7 @@ case class Alias(
 
   override def toAttribute: Attribute = UnresolvedAttribute(name)
 
-  override def nodeDescription: String = s"(${child.nodeDescription} AS $name#${expressionId.id})"
+  override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
@@ -50,7 +49,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def nodeDescription: String = s"$name?"
+  override def caption: String = s"$name?"
 }
 
 case class AttributeRef(
@@ -60,24 +59,13 @@ case class AttributeRef(
   override val expressionId: ExpressionId = NamedExpression.newExpressionId()
 ) extends Attribute with UnevaluableExpression {
 
-  override def equals(other: Any): Boolean = other match {
-    case that: AttributeRef =>
-      this.name == that.name && this.dataType == that.dataType && this.nullable == that.nullable
-    case _ =>
-      false
-  }
-
-  override def hashCode(): Int = {
-    Objects.hashCode(name, dataType, nullable: java.lang.Boolean)
-  }
-
-  override def nodeDescription: String = s"($name#${expressionId.id}: ${dataType.simpleName})"
+  override def caption: String = s"($name#${expressionId.id}: ${dataType.simpleName})"
 }
 
 case class BoundRef(ordinal: Int, dataType: DataType, nullable: Boolean)
   extends NamedExpression with LeafExpression {
 
-  override val name: String = s"input[$ordinal]"
+  override val name: String = s"tuple[$ordinal]"
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 
@@ -85,7 +73,7 @@ case class BoundRef(ordinal: Int, dataType: DataType, nullable: Boolean)
 
   override def evaluate(input: Row): Any = input(ordinal)
 
-  override def nodeDescription: String = name
+  override def caption: String = name
 }
 
 object BoundRef {

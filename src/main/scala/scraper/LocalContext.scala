@@ -3,6 +3,7 @@ package scraper
 import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.LocalContext.LocalQueryExecution
+import scraper.expressions.NamedExpression
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{ Optimizer, QueryExecution, QueryPlanner, logical, physical }
@@ -10,6 +11,8 @@ import scraper.trees.RulesExecutor
 
 trait Context {
   def execute(logicalPlan: LogicalPlan): QueryExecution
+
+  def select(expressions: NamedExpression*): Dataset
 }
 
 class LocalContext extends Context {
@@ -19,6 +22,11 @@ class LocalContext extends Context {
   }
 
   def execute(logicalPlan: LogicalPlan): QueryExecution = new LocalQueryExecution(logicalPlan, this)
+
+  override def select(expressions: NamedExpression*): Dataset = {
+    val queryExecution = new LocalQueryExecution(logical.SingleRowRelation, this)
+    new Dataset(queryExecution)
+  }
 }
 
 object LocalContext {

@@ -23,7 +23,7 @@ case class And(left: Expression, right: Expression) extends Predicate with Binar
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
 
-  override def nodeDescription: String = s"(${left.nodeDescription} AND ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} AND ${right.caption})"
 }
 
 case class Or(left: Expression, right: Expression) extends Predicate with BinaryExpression {
@@ -31,23 +31,23 @@ case class Or(left: Expression, right: Expression) extends Predicate with Binary
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
   }
 
-  override def nodeDescription: String = s"(${left.nodeDescription} OR ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} OR ${right.caption})"
 }
 
 case class Not(child: Expression) extends UnaryPredicate {
   override def evaluate(input: Row): Any = !child.evaluate(input).asInstanceOf[Boolean]
 
-  override def nodeDescription: String = s"(NOT ${child.nodeDescription})"
+  override def caption: String = s"(NOT ${child.caption})"
 }
 
 case class EqualTo(left: Expression, right: Expression) extends Predicate with BinaryExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs == rhs
 
-  override def nodeDescription: String = s"(${left.nodeDescription} = ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} = ${right.caption})"
 }
 
 case class NotEqualTo(left: Expression, right: Expression) extends Predicate with BinaryExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs != rhs
 
-  override def nodeDescription: String = s"(${left.nodeDescription} <> ${right.nodeDescription})"
+  override def caption: String = s"(${left.caption} <> ${right.caption})"
 }

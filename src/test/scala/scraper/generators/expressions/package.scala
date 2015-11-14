@@ -62,9 +62,9 @@ package object expressions {
     } yield (keys zip values).toMap
   }
 
-  def genValueForStructType(dataType: StructType)(implicit dim: ValueDim): Gen[Row] = {
+  def genValueForTupleType(dataType: TupleType)(implicit dim: ValueDim): Gen[Row] = {
     val genFields = sequence(dataType.fields.map {
-      case StructField(_, fieldType, nullable) =>
+      case TupleField(_, fieldType, nullable) =>
         val genNonNullField = genValueForDataType(fieldType)(dim)
         if (nullable) option(genNonNullField).map(_.orNull)
         else genNonNullField
@@ -77,9 +77,9 @@ package object expressions {
 
   def genValueForComplexType(dataType: ComplexType)(implicit dim: ValueDim): Gen[Any] =
     dataType match {
-      case t: ArrayType  => genValueForArrayType(t)(dim)
-      case t: MapType    => genValueForMapType(t)(dim)
-      case t: StructType => genValueForStructType(t)(dim)
+      case t: ArrayType => genValueForArrayType(t)(dim)
+      case t: MapType   => genValueForMapType(t)(dim)
+      case t: TupleType => genValueForTupleType(t)(dim)
     }
 
   def genValueForDataType(dataType: DataType)(implicit dim: ValueDim): Gen[Any] = dataType match {

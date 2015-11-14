@@ -7,7 +7,7 @@ import org.scalatest.prop.Checkers
 import scraper.types.TestUtils
 
 case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
-  override def nodeDescription: String = s"Node($value)"
+  override def caption: String = s"Node($value)"
 }
 
 class TreeNodeSuite extends TestUtils with Checkers {
@@ -38,20 +38,20 @@ class TreeNodeSuite extends TestUtils with Checkers {
       ))
 
     checkTree(
-      Node(5, Seq(
-        Node(9, Seq(
+      Node(6, Seq(
+        Node(11, Seq(
           Node(4, Nil),
           Node(5, Nil)
         )),
-        Node(13, Seq(
+        Node(16, Seq(
           Node(6, Nil),
           Node(7, Nil)
         ))
       )),
 
       tree.transformDown {
-        case child @ Node(_, grandChildren) if grandChildren.nonEmpty =>
-          child.copy(value = grandChildren.map(_.value).sum)
+        case child @ Node(i, grandChildren) =>
+          child.copy(value = i + grandChildren.map(_.value).sum)
       }
     )
   }
@@ -70,20 +70,20 @@ class TreeNodeSuite extends TestUtils with Checkers {
       ))
 
     checkTree(
-      Node(22, Seq(
-        Node(9, Seq(
+      Node(28, Seq(
+        Node(11, Seq(
           Node(4, Nil),
           Node(5, Nil)
         )),
-        Node(13, Seq(
+        Node(16, Seq(
           Node(6, Nil),
           Node(7, Nil)
         ))
       )),
 
       tree.transformUp {
-        case child @ Node(_, grandChildren) if grandChildren.nonEmpty =>
-          child.copy(value = grandChildren.map(_.value).sum)
+        case child @ Node(i, grandChildren) =>
+          child.copy(value = i + grandChildren.map(_.value).sum)
       }
     )
   }

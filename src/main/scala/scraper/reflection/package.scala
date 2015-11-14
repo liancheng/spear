@@ -36,9 +36,9 @@ package object reflection {
       val fields = constructorParams.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
         val Schema(dataType, nullable) = schemaOf(paramType)
-        StructField(param.name.toString, dataType, nullable)
+        TupleField(param.name.toString, dataType, nullable)
       }
-      Schema(StructType(fields), nullable = true)
+      Schema(TupleType(fields), nullable = true)
   }
 
   private def schemaOfBoxedPrimitiveType: PartialFunction[Type, Schema] = {

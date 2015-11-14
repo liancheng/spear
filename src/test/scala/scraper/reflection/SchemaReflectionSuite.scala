@@ -11,8 +11,8 @@ class SchemaReflectionSuite extends TestUtils {
     val className = implicitly[WeakTypeTag[T]].tpe.toString
     test(s"schema inference - $kind - $className") {
       checkTree(
-        StructType("inferred" -> expected),
-        StructType("inferred" -> schemaOf[T])
+        TupleType("inferred" -> expected),
+        TupleType("inferred" -> schemaOf[T])
       )
     }
   }
@@ -29,8 +29,8 @@ class SchemaReflectionSuite extends TestUtils {
   private def testMapType[T: WeakTypeTag](expected: Schema) =
     testType[T]("map type")(expected)
 
-  private def testStructType[T: WeakTypeTag](expected: Schema) =
-    testType[T]("struct type")(expected)
+  private def testTupleType[T: WeakTypeTag](expected: Schema) =
+    testType[T]("tuple type")(expected)
 
   testUnboxedPrimitive[Boolean] { BooleanType.! }
   testUnboxedPrimitive[Byte] { ByteType.! }
@@ -90,58 +90,58 @@ class SchemaReflectionSuite extends TestUtils {
     MapType(IntType, ArrayType(DoubleType.!).?).?
   }
 
-  testStructType[(Int, Double)] {
-    StructType(
+  testTupleType[(Int, Double)] {
+    TupleType(
       '_1 -> IntType.!,
       '_2 -> DoubleType.!
     ).?
   }
 
-  testStructType[(Int, java.lang.Double)] {
-    StructType(
+  testTupleType[(Int, java.lang.Double)] {
+    TupleType(
       '_1 -> IntType.!,
       '_2 -> DoubleType.?
     ).?
   }
 
-  testStructType[(Int, String, Seq[Map[Int, String]])] {
-    StructType(
+  testTupleType[(Int, String, Seq[Map[Int, String]])] {
+    TupleType(
       '_1 -> IntType.!,
       '_2 -> StringType.?,
       '_3 -> ArrayType(MapType(IntType, StringType.?).?).?
     ).?
   }
 
-  testStructType[CaseClass1] {
-    StructType('f1 -> IntType.!).?
+  testTupleType[CaseClass1] {
+    TupleType('f1 -> IntType.!).?
   }
 
-  testStructType[CaseClass2] {
-    StructType(
+  testTupleType[CaseClass2] {
+    TupleType(
       'f1 -> IntType.!,
       'f2 -> DoubleType.?
     ).?
   }
 
-  testStructType[CaseClass3] {
-    StructType(
+  testTupleType[CaseClass3] {
+    TupleType(
       'f1 -> IntType.!,
       'f2 -> DoubleType.?
     ).?
   }
 
-  testStructType[CaseClass4] {
-    StructType(
+  testTupleType[CaseClass4] {
+    TupleType(
       'f1 -> IntType.!,
       'f2 -> StringType.?,
       'f3 -> MapType(IntType, StringType.?).?
     ).?
   }
 
-  testStructType[CaseClass5] {
-    StructType(
+  testTupleType[CaseClass5] {
+    TupleType(
       'f1 -> IntType.!,
-      'f2 -> StructType(
+      'f2 -> TupleType(
         'f1 -> IntType.!,
         'f2 -> StringType.?,
         'f3 -> MapType(IntType, StringType.?).?
@@ -149,10 +149,10 @@ class SchemaReflectionSuite extends TestUtils {
     ).?
   }
 
-  testStructType[CaseClass6] {
-    StructType(
+  testTupleType[CaseClass6] {
+    TupleType(
       'f1 -> IntType.!,
-      'f2 -> StructType(
+      'f2 -> TupleType(
         '_1 -> StringType.?,
         '_2 -> ArrayType(IntType.!).?
       ).?

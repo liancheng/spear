@@ -26,7 +26,7 @@ trait DataType {
    *  1. For a [[PrimitiveType]] `p`, `S(p) = 1`
    *  1. For an [[ArrayType]] `a`, `S(a) = 1 + S(a.elementType)`
    *  1. For a [[MapType]] `m`, `S(m) = 1 + S(m.keyType) + S(m.valueType)`
-   *  1. For a [[StructType]] `s`, `S(s) = 1 + sum(S(f) for f in s.fieldTypes)`
+   *  1. For a [[TupleType]] `s`, `S(s) = 1 + sum(S(f) for f in s.fieldTypes)`
    */
   def size: Int
 
@@ -38,7 +38,7 @@ trait DataType {
    *  1. For a [[PrimitiveType]] `p`, `D(p) = 1`
    *  1. For an [[ArrayType]] `a`, `D(a) = 1 + D(a.elementType)`
    *  1. For a [[MapType]] `m`, `D(m) = 1 + max(D(m.keyType), D(m.valueType))`
-   *  1. For a [[StructType]] `s`, `D(s) = 1 + max(D(f) for f in s.fieldTypes)`
+   *  1. For a [[TupleType]] `s`, `D(s) = 1 + max(D(f) for f in s.fieldTypes)`
    */
   def depth: Int
 }
@@ -66,7 +66,7 @@ object DataType {
    */
   implicit def `DataType->DataTypeNode`(dataType: DataType): DataTypeNode = dataType match {
     case t: PrimitiveType => PrimitiveTypeNode(t)
-    case t: StructType    => StructTypeNode(t)
+    case t: TupleType     => TupleTypeNode(t)
     case t: ArrayType     => ArrayTypeNode(t)
     case t: MapType       => MapTypeNode(t)
   }
@@ -74,34 +74,34 @@ object DataType {
   private[scraper] trait HasDataType { this: DataTypeNode =>
     def dataType: DataType
 
-    override def nodeDescription: String = dataType.simpleName
+    override def caption: String = dataType.simpleName
   }
 
   case class PrimitiveTypeNode(dataType: DataType) extends DataTypeNode with HasDataType {
     override def children: Seq[DataTypeNode] = Nil
   }
 
-  case class StructFieldNode(field: StructField) extends DataTypeNode {
+  case class TupleFieldNode(field: TupleField) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
-    override def nodeDescription: String =
+    override def caption: String =
       s"${field.name}: ${schemaString(field.dataType, field.nullable)}"
   }
 
-  case class StructTypeNode(dataType: StructType) extends DataTypeNode with HasDataType {
-    override def children: Seq[DataTypeNode] = dataType.fields.map(StructFieldNode)
+  case class TupleTypeNode(dataType: TupleType) extends DataTypeNode with HasDataType {
+    override def children: Seq[DataTypeNode] = dataType.fields.map(TupleFieldNode)
   }
 
   case class KeyTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.keyType.children
 
-    override def nodeDescription: String = s"key: ${mapType.keyType.simpleName}"
+    override def caption: String = s"key: ${mapType.keyType.simpleName}"
   }
 
   case class ValueTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.valueType.children
 
-    override def nodeDescription: String =
+    override def caption: String =
       s"value: ${schemaString(mapType.valueType, mapType.valueNullable)}"
   }
 
@@ -114,7 +114,7 @@ object DataType {
   case class ElementTypeNode(arrayType: ArrayType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = arrayType.elementType.children
 
-    override def nodeDescription: String =
+    override def caption: String =
       s"element: ${schemaString(arrayType.elementType, arrayType.elementNullable)}"
   }
 

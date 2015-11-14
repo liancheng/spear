@@ -33,7 +33,7 @@ class TestUtils extends FunSuite {
   private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
     var normalizedId = -1L
 
-    plan.transformExpressionsDown {
+    plan.transformExpressionsUp {
       case e: AttributeRef =>
         normalizedId += 1
         e.copy(expressionId = ExpressionId(normalizedId))
