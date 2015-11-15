@@ -1,5 +1,6 @@
 package scraper.types
 
+import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions.{ Attribute, AttributeRef }
 
 trait ComplexType extends DataType
@@ -52,7 +53,10 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
 
   def fieldTypes: Seq[DataType] = fields.map(_.dataType)
 
-  def toAttributes: Seq[Attribute] = fields.map(f => AttributeRef(f.name, f.dataType, f.nullable))
+  def toAttributes: Seq[Attribute] = fields.map {
+    field =>
+      AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
+  }
 
   override def size: Int = 1 + fieldTypes.map(_.size).sum
 

@@ -2,6 +2,7 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types.DataType
 import scraper.{ ExpressionUnresolved, ResolutionFailure, Row }
 
@@ -30,7 +31,7 @@ object NamedExpression {
 case class Alias(
   name: String,
   child: Expression,
-  override val expressionId: ExpressionId = NamedExpression.newExpressionId()
+  override val expressionId: ExpressionId = newExpressionId()
 ) extends NamedExpression with UnaryExpression {
 
   override def dataType: DataType = child.dataType
@@ -38,7 +39,7 @@ case class Alias(
   override def evaluate(input: Row): Any = child.evaluate(input)
 
   override val toAttribute: Attribute = if (child.resolved) {
-    AttributeRef(name, child.dataType, child.nullable)
+    AttributeRef(name, child.dataType, child.nullable, newExpressionId())
   } else {
     UnresolvedAttribute(name)
   }
@@ -60,7 +61,7 @@ case class AttributeRef(
   name: String,
   dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionId = NamedExpression.newExpressionId()
+  override val expressionId: ExpressionId
 ) extends Attribute with UnevaluableExpression {
 
   override def caption: String = s"($name#${expressionId.id}: ${dataType.simpleName})"

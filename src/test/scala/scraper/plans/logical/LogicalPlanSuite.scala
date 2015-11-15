@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scraper.expressions._
+import scraper.expressions.NamedExpression.newExpressionId
 import scraper.plans.logical.LogicalPlanSuite.{ FakeExpr, FakePlan }
 import scraper.types._
 import scraper.{ Analyzer, LoggingFunSuite, Row }
@@ -98,8 +99,11 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
     checkPlan(
       Project(
         Seq(
-          AttributeRef("b", StringType, nullable = true),
-          Alias("s", Add(AttributeRef("a", IntType, nullable = false), Literal(1)))
+          AttributeRef("b", StringType, nullable = true, newExpressionId()),
+          Alias(
+            "s",
+            Add(AttributeRef("a", IntType, nullable = false, newExpressionId()), Literal(1))
+          )
         ),
         relation
       ),

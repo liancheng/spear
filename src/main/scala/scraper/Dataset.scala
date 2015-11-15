@@ -22,28 +22,22 @@ class Dataset(val queryExecution: QueryExecution) {
 
   def toSeq: Seq[Row] = iterator.toSeq
 
-  def explain(extended: Boolean): Unit = explain(System.out, extended)
-
-  def explain(out: PrintStream, extended: Boolean): Unit = if (extended) {
-    out.println(
-      s"""# Logical plan
-         |${queryExecution.logicalPlan.prettyTree}
-         |
-         |# Analyzed plan
-         |${queryExecution.analyzedPlan.prettyTree}
-         |
-         |# Optimized plan
-         |${queryExecution.optimizedPlan.prettyTree}
-         |
-         |# Physical plan
-         |${queryExecution.physicalPlan.prettyTree}
-       """.stripMargin
-    )
+  def explanation(extended: Boolean): String = if (extended) {
+    s"""# Logical plan
+       |${queryExecution.logicalPlan.prettyTree}
+       |
+       |# Analyzed plan
+       |${queryExecution.analyzedPlan.prettyTree}
+       |
+       |# Optimized plan
+       |${queryExecution.optimizedPlan.prettyTree}
+       |
+       |# Physical plan
+       |${queryExecution.physicalPlan.prettyTree}
+     """.stripMargin
   } else {
-    out.println(
-      s"""# Physical plan
-         |${queryExecution.physicalPlan.prettyTree}
-       """.stripMargin
-    )
+    s"""# Physical plan
+       |${queryExecution.physicalPlan.prettyTree}
+     """.stripMargin
   }
 }

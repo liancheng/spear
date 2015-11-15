@@ -1,7 +1,7 @@
 package scraper.plans.physical
 
 import scraper.Row
-import scraper.expressions.{ Attribute, NamedExpression, Predicate }
+import scraper.expressions.{ BoundRef, Attribute, NamedExpression, Predicate }
 import scraper.plans.QueryPlan
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
@@ -39,7 +39,8 @@ case class Project(override val expressions: Seq[NamedExpression], child: Physic
   override val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
-    new Row(expressions map (_ evaluate row))
+    val boundProjections = expressions.map(BoundRef.bind(_, child.output))
+    new Row(boundProjections map (_ evaluate row))
   }
 
   override def caption: String =
@@ -49,8 +50,11 @@ case class Project(override val expressions: Seq[NamedExpression], child: Physic
 case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysicalPlan {
   override val output: Seq[Attribute] = child.output
 
-  override def iterator: Iterator[Row] = child.iterator.filter { row =>
-    condition.evaluate(row).asInstanceOf[Boolean]
+  override def iterator: Iterator[Row] = {
+    val boundCondition = BoundRef.bind(condition, child.output)
+    child.iterator.filter { row =>
+      boundCondition.evaluate(row).asInstanceOf[Boolean]
+    }
   }
 
   override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"

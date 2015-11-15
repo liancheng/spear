@@ -5,8 +5,6 @@ import scala.annotation.tailrec
 import scraper.utils.{ Logging, sideBySide }
 
 trait Rule[Base <: TreeNode[Base]] {
-  val name = getClass.getSimpleName.stripSuffix("$")
-
   def apply(tree: Base): Base
 }
 
@@ -40,7 +38,8 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
       rules.foldLeft(tree) {
         case (before, rule) =>
           val after = rule(before)
-          logTransformation(s"rule \'${rule.name}\'", before, after)
+          val ruleName = rule.getClass.getSimpleName.stripSuffix("$")
+          logTransformation(s"rule \'$ruleName\'", before, after)
           after
       }
     }

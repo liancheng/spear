@@ -1,6 +1,6 @@
 package scraper
 
-import scraper.expressions.UnresolvedAttribute
+import scraper.expressions.{ AttributeRef, UnresolvedAttribute }
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.{ Rule, RulesExecutor }
 
