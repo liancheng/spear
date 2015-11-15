@@ -8,13 +8,13 @@ import scraper.types.BooleanType
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[Batch] = Seq(
     Batch(
-      "normalization",
+      "Normalization",
       Seq(Normalization),
       Once
     ),
 
     Batch(
-      "optimizations",
+      "Optimizations",
       Seq(
         ConstantFolding,
         CastSimplification,

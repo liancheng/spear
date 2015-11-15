@@ -5,10 +5,11 @@ import scala.language.implicitConversions
 import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
+import scraper.LoggingFunSuite
 import scraper.generators._
 import scraper.generators.types._
 
-class DataTypeSuite extends TestUtils with Checkers {
+class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   // ScalaCheck pretty printing support for `DataType`
   private implicit def prettyDataType(dataType: DataType): Pretty = Pretty {
     _ => "\n" + dataType.prettyTree

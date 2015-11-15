@@ -1,6 +1,6 @@
 package scraper.plans
 
-import scraper.expressions.{ Attribute, Expression }
+import scraper.expressions.{ Predicate, Attribute, Expression }
 import scraper.trees.TreeNode
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
@@ -27,6 +27,9 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     }
 
     val (newArgs, argsChanged) = productIterator.map {
+      case e: Predicate =>
+        applyRule(e)
+
       case e: Expression =>
         applyRule(e)
 

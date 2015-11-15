@@ -31,7 +31,7 @@ trait UnaryLogicalPlan extends LogicalPlan {
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
 
 case object SingleRowRelation extends LeafLogicalPlan {
-  override def output: Seq[Attribute] = Nil
+  override val output: Seq[Attribute] = Nil
 }
 
 case class LocalRelation(data: Traversable[Row], schema: TupleType)
@@ -54,14 +54,14 @@ object LocalRelation {
 case class Project(override val expressions: Seq[NamedExpression], child: LogicalPlan)
   extends UnaryLogicalPlan {
 
-  override def output: Seq[Attribute] = expressions.map(_.toAttribute)
+  override val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def caption: String =
     s"${getClass.getSimpleName} ${expressions.map(_.caption).mkString(", ")}"
 }
 
 case class Filter(condition: Predicate, child: LogicalPlan) extends UnaryLogicalPlan {
-  override def output: Seq[Attribute] = child.output
+  override val output: Seq[Attribute] = child.output
 
   override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
 }

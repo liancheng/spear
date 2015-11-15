@@ -1,11 +1,11 @@
 package scraper.plans.logical
 
 import scraper.expressions._
-import scraper.plans.logical.LogicalPlanSuite.{ FakePlan, FakeExpr }
+import scraper.plans.logical.LogicalPlanSuite.{ FakeExpr, FakePlan }
 import scraper.types._
-import scraper.{ Analyzer, Row }
+import scraper.{ Analyzer, LoggingFunSuite, Row }
 
-class LogicalPlanSuite extends TestUtils {
+class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
   test("transformExpressionDown") {
     val plan = FakePlan(
       FakeExpr(1, Seq(

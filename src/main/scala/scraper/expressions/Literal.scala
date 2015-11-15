@@ -6,6 +6,8 @@ import scraper.types._
 case class Literal(value: Any, dataType: DataType) extends LeafExpression {
   override def foldable: Boolean = true
 
+  override def nullable: Boolean = value == null
+
   override def evaluate(input: Row): Any = value
 
   override def caption: String = s"($value: ${dataType.simpleName})"

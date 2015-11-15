@@ -6,7 +6,7 @@ import scraper.plans.QueryPlan
 import scraper.trees.TreeNode
 import scraper.utils._
 
-class TestUtils extends FunSuite {
+trait TestUtils { this: FunSuite =>
   private[scraper] def assertSideBySide(expected: String, actual: String): Unit = {
     if (expected != actual) {
       fail(sideBySide(

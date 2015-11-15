@@ -3,10 +3,11 @@ package scraper.reflection
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
+import scraper.LoggingFunSuite
 import scraper.reflection.SchemaReflectionSuite._
 import scraper.types._
 
-class SchemaReflectionSuite extends TestUtils {
+class SchemaReflectionSuite extends LoggingFunSuite with TestUtils {
   private def testType[T: WeakTypeTag](kind: String)(expected: Schema): Unit = {
     val className = implicitly[WeakTypeTag[T]].tpe.toString
     test(s"schema inference - $kind - $className") {

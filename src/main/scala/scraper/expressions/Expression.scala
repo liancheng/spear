@@ -7,6 +7,8 @@ import scraper.{ ExpressionUnevaluable, ExpressionUnresolved, Row }
 trait Expression extends TreeNode[Expression] {
   def foldable: Boolean = children.forall(_.foldable)
 
+  def nullable: Boolean = true
+
   def resolved: Boolean = children.forall(_.resolved)
 
   def references: Seq[Attribute] = children.flatMap(_.references)

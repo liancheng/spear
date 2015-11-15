@@ -31,7 +31,8 @@ object Build extends sbt.Build {
       scalaVersion := Dependencies.Versions.scala,
       scalacOptions ++= Seq("-unchecked", "-deprecation"),
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
-      fork := false
+      fork := false,
+      parallelExecution in Test := false
     )
 
   lazy val dependencySettings =

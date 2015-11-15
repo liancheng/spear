@@ -21,7 +21,7 @@ trait UnaryPhysicalPlan extends PhysicalPlan {
 case object SingleRowRelation extends LeafPhysicalPlan {
   override def iterator: Iterator[Row] = Iterator.single(Row())
 
-  override def output: Seq[Attribute] = Nil
+  override val output: Seq[Attribute] = Nil
 }
 
 case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute])
@@ -36,7 +36,7 @@ case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute
 case class Project(override val expressions: Seq[NamedExpression], child: PhysicalPlan)
   extends UnaryPhysicalPlan {
 
-  override def output: Seq[Attribute] = expressions.map(_.toAttribute)
+  override val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     new Row(expressions map (_ evaluate row))
@@ -47,7 +47,7 @@ case class Project(override val expressions: Seq[NamedExpression], child: Physic
 }
 
 case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysicalPlan {
-  override def output: Seq[Attribute] = child.output
+  override val output: Seq[Attribute] = child.output
 
   override def iterator: Iterator[Row] = child.iterator.filter { row =>
     condition.evaluate(row).asInstanceOf[Boolean]

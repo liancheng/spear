@@ -18,6 +18,10 @@ class Dataset(val queryExecution: QueryExecution) {
 
   def where(condition: Predicate): Dataset = this filter condition
 
+  def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
+
+  def toSeq: Seq[Row] = iterator.toSeq
+
   def explain(extended: Boolean): Unit = explain(System.out, extended)
 
   def explain(out: PrintStream, extended: Boolean): Unit = if (extended) {

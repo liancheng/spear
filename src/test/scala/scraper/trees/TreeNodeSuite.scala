@@ -4,13 +4,14 @@ import scala.collection.JavaConversions._
 
 import org.scalacheck.{ Arbitrary, Gen, Prop }
 import org.scalatest.prop.Checkers
+import scraper.LoggingFunSuite
 import scraper.types.TestUtils
 
 case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
   override def caption: String = s"Node($value)"
 }
 
-class TreeNodeSuite extends TestUtils with Checkers {
+class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   // A generator that generates trees with a max depth of 10 and a max fan-out of 2.
   private val genNode = {
     def gen(maxDepth: Int): Gen[Node] = for {

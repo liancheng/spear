@@ -37,7 +37,11 @@ case class Alias(
 
   override def evaluate(input: Row): Any = child.evaluate(input)
 
-  override def toAttribute: Attribute = UnresolvedAttribute(name)
+  override val toAttribute: Attribute = if (child.resolved) {
+    AttributeRef(name, child.dataType, child.nullable)
+  } else {
+    UnresolvedAttribute(name)
+  }
 
   override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
 }
@@ -55,14 +59,14 @@ case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNa
 case class AttributeRef(
   name: String,
   dataType: DataType,
-  nullable: Boolean,
+  override val nullable: Boolean,
   override val expressionId: ExpressionId = NamedExpression.newExpressionId()
 ) extends Attribute with UnevaluableExpression {
 
   override def caption: String = s"($name#${expressionId.id}: ${dataType.simpleName})"
 }
 
-case class BoundRef(ordinal: Int, dataType: DataType, nullable: Boolean)
+case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)
   extends NamedExpression with LeafExpression {
 
   override val name: String = s"tuple[$ordinal]"

@@ -2,7 +2,7 @@ package scraper
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.LocalContext.LocalQueryExecution
+import scraper.LocalContext.{ LocalQueryPlanner, LocalQueryExecution }
 import scraper.expressions.NamedExpression
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
@@ -10,12 +10,24 @@ import scraper.plans.{ Optimizer, QueryExecution, QueryPlanner, logical, physica
 import scraper.trees.RulesExecutor
 
 trait Context {
+  private[scraper] def analyzer: RulesExecutor[LogicalPlan]
+
+  private[scraper] def optimizer: RulesExecutor[LogicalPlan]
+
+  private[scraper] def planner: QueryPlanner[LogicalPlan, PhysicalPlan]
+
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
   def select(expressions: NamedExpression*): Dataset
 }
 
 class LocalContext extends Context {
+  private[scraper] override val analyzer = new Analyzer
+
+  private[scraper] override val optimizer = new Optimizer
+
+  private[scraper] override val planner = new LocalQueryPlanner
+
   def lift[T <: Product: WeakTypeTag](data: Traversable[T]): Dataset = {
     val queryExecution = new LocalQueryExecution(logical.LocalRelation(data), this)
     new Dataset(queryExecution)
@@ -31,14 +43,7 @@ class LocalContext extends Context {
 
 object LocalContext {
   class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
-    extends QueryExecution {
-
-    override protected def analyzer: RulesExecutor[LogicalPlan] = new Analyzer
-
-    override protected def optimizer: RulesExecutor[LogicalPlan] = new Optimizer
-
-    override protected def planner: QueryPlanner[LogicalPlan, PhysicalPlan] = new LocalQueryPlanner
-  }
+    extends QueryExecution
 
   class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
     override def strategies: Seq[Strategy] = Seq(

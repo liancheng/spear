@@ -1,8 +1,9 @@
 package scraper.parser
 
+import scraper.LoggingFunSuite
 import scraper.types.TestUtils
 
-class LexicalSuite extends TestUtils {
+class LexicalSuite extends LoggingFunSuite with TestUtils {
   val testLexical = new Lexical(Set("KW1", "KW2"))
 
   test("single token") {

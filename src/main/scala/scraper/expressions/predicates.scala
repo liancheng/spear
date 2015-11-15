@@ -15,8 +15,7 @@ trait Predicate extends Expression {
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression
 
-trait UnaryPredicate extends Predicate with UnaryExpression {
-}
+trait UnaryPredicate extends Predicate with UnaryExpression
 
 case class And(left: Expression, right: Expression) extends Predicate with BinaryExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = {
