@@ -57,7 +57,7 @@ case class Project(override val expressions: Seq[NamedExpression], child: Logica
   override val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def caption: String =
-    s"${getClass.getSimpleName} ${expressions.map(_.caption).mkString(", ")}"
+    s"${getClass.getSimpleName} ${expressions map (_.caption) mkString ", "}"
 }
 
 case class Filter(condition: Predicate, child: LogicalPlan) extends UnaryLogicalPlan {

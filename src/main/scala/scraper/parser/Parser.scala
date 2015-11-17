@@ -101,7 +101,8 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def notExpression: Parser[Predicate] = (
     NOT ~> comparison ^^ Not
-    | comparison ^^ identity
+    | comparison
+    | logicalLiteral
   )
 
   private def comparison: Parser[Predicate] = (
@@ -130,17 +131,16 @@ class Parser extends TokenParser[LogicalPlan] {
   )
 
   private def literal: Parser[Literal] = (
-    booleanLiteral
-    | numericLiteral
+    numericLiteral
     | stringLiteral
   )
 
   private def stringLiteral: Parser[Literal] =
     stringLit ^^ (Literal(_, StringType))
 
-  private def booleanLiteral: Parser[Literal] = (
-    TRUE ^^^ Literal(true, BooleanType)
-    | FALSE ^^^ Literal(false, BooleanType)
+  private def logicalLiteral: Parser[LogicalLiteral] = (
+    TRUE ^^^ Literal.True
+    | FALSE ^^^ Literal.False
   )
 
   private def sign: Parser[String] =
