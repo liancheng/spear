@@ -39,7 +39,7 @@ case class Alias(
   override def evaluate(input: Row): Any = child.evaluate(input)
 
   override val toAttribute: Attribute = if (child.resolved) {
-    AttributeRef(name, child.dataType, child.nullable, newExpressionId())
+    AttributeRef(name, child.dataType, child.nullable, expressionId)
   } else {
     UnresolvedAttribute(name)
   }
@@ -70,7 +70,7 @@ case class AttributeRef(
 case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)
   extends NamedExpression with LeafExpression {
 
-  override val name: String = s"tuple[$ordinal]"
+  override val name: String = s"input[$ordinal]"
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 

@@ -13,6 +13,15 @@ class Analyzer extends RulesExecutor[LogicalPlan] {
     )
   )
 
+  override def apply(tree: LogicalPlan): LogicalPlan = {
+    logTrace(
+      s"""Analyzing logical query plan:
+         |${tree.prettyTree}
+       """.stripMargin
+    )
+    super.apply(tree)
+  }
+
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan =
       tree.transformUp {

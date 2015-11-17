@@ -5,6 +5,7 @@ import scraper.expressions.{ Alias, AttributeRef, ExpressionId }
 import scraper.plans.QueryPlan
 import scraper.trees.TreeNode
 import scraper.utils._
+import scraper.{ DataFrame, Row }
 
 trait TestUtils { this: FunSuite =>
   private[scraper] def assertSideBySide(expected: String, actual: String): Unit = {
@@ -46,5 +47,37 @@ trait TestUtils { this: FunSuite =>
 
   private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](expected: Plan, actual: Plan): Unit = {
     checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
+  }
+
+  private[scraper] def checkDataFrame(ds: DataFrame, expected: Row): Unit =
+    checkDataFrame(ds, expected :: Nil)
+
+  private[scraper] def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Unit = {
+    val actual = ds.queryExecution.physicalPlan.iterator.toSeq
+    if (actual != expected) {
+      val explanation = ds.explanation(extended = true)
+
+      val answerDiff = sideBySide(
+        s"""Expected answer:
+           |${expected mkString "\n"}
+         """.stripMargin,
+
+        s"""Actual answer:
+           |${actual mkString "\n"}
+         """.stripMargin,
+
+        withHeader = true
+      )
+
+      fail(
+        s"""Unexpected row(s) detected:
+           |
+           |$answerDiff
+           |Query plan details:
+           |
+           |$explanation
+         """.stripMargin
+      )
+    }
   }
 }

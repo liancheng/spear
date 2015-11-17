@@ -1,5 +1,6 @@
 package scraper.plans
 
+import scraper.expressions.Literal.{ False, True }
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.{ Rule, RulesExecutor }
@@ -24,6 +25,15 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     )
   )
 
+  override def apply(tree: LogicalPlan): LogicalPlan = {
+    logTrace(
+      s"""Optimizing logical query plan:
+         |${tree.prettyTree}
+       """.stripMargin
+    )
+    super.apply(tree)
+  }
+
   object ConstantFolding extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.transformExpressionsUp {
       case e if e.foldable => Literal(e.evaluated)
@@ -38,14 +48,14 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
   object BooleanSimplification extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.transformExpressionsUp {
-      case Not(Literal(true, BooleanType))     => Literal(false)
-      case Not(Literal(false, BooleanType))    => Literal(true)
-      case Not(Not(child))                     => child
-      case Not(EqualTo(lhs, rhs))              => NotEqualTo(lhs, rhs)
-      case Not(NotEqualTo(lhs, rhs))           => EqualTo(lhs, rhs)
+      case Not(True)                 => False
+      case Not(False)                => True
+      case Not(Not(child))           => child
+      case Not(EqualTo(lhs, rhs))    => NotEqualTo(lhs, rhs)
+      case Not(NotEqualTo(lhs, rhs)) => EqualTo(lhs, rhs)
 
-      case And(e, Literal(false, BooleanType)) => Literal(false)
-      case Or(e, Literal(true, BooleanType))   => Literal(true)
+      case And(e, False)             => False
+      case Or(e, True)               => True
     }
   }
 

@@ -4,6 +4,7 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.LocalContext.{ LocalQueryPlanner, LocalQueryExecution }
 import scraper.expressions.NamedExpression
+import scraper.expressions.dsl._
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{ Optimizer, QueryExecution, QueryPlanner, logical, physical }
@@ -18,7 +19,7 @@ trait Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
-  def select(expressions: NamedExpression*): Dataset
+  def select(expressions: NamedExpression*): DataFrame
 }
 
 class LocalContext extends Context {
@@ -28,16 +29,25 @@ class LocalContext extends Context {
 
   private[scraper] override val planner = new LocalQueryPlanner
 
-  def lift[T <: Product: WeakTypeTag](data: Traversable[T]): Dataset = {
+  def lift[T <: Product: WeakTypeTag](data: Traversable[T]): DataFrame = {
     val queryExecution = new LocalQueryExecution(logical.LocalRelation(data), this)
-    new Dataset(queryExecution)
+    new DataFrame(queryExecution)
   }
+
+  def lift[T <: Product: WeakTypeTag](data: Traversable[T], columnNames: String*): DataFrame =
+    this lift data rename (columnNames: _*)
 
   def execute(logicalPlan: LogicalPlan): QueryExecution = new LocalQueryExecution(logicalPlan, this)
 
-  override def select(expressions: NamedExpression*): Dataset = {
+  override def select(expressions: NamedExpression*): DataFrame = {
     val queryExecution = new LocalQueryExecution(logical.SingleRowRelation, this)
-    new Dataset(queryExecution)
+    new DataFrame(queryExecution)
+  }
+
+  def range(end: Long): DataFrame = range(0, end)
+
+  def range(begin: Long, end: Long): DataFrame = {
+    this lift (begin until end map Tuple1.apply) select ('_1 as 'id)
   }
 }
 

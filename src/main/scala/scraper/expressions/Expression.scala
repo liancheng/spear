@@ -31,7 +31,9 @@ trait Expression extends TreeNode[Expression] {
 
   def ===(that: Expression): EqualTo = EqualTo(this, that)
 
-  def <>(that: Expression): NotEqualTo = NotEqualTo(this, that)
+  def =/=(that: Expression): NotEqualTo = NotEqualTo(this, that)
+
+  def <>(that: Expression): NotEqualTo = this =/= that
 
   def as(alias: String): Alias = Alias(alias, this)
 

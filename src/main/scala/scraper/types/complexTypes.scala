@@ -66,6 +66,6 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
 object TupleType {
   def apply(first: TupleField, rest: TupleField*): TupleType = TupleType(first +: rest)
 
-  def fromAttributes(attributes: Seq[AttributeRef]): TupleType =
+  def fromAttributes(attributes: Seq[Attribute]): TupleType =
     TupleType(attributes.map(a => TupleField(a.name, a.dataType, a.nullable)))
 }

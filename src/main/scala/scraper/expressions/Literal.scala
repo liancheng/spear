@@ -4,6 +4,12 @@ import scraper.Row
 import scraper.types._
 
 case class Literal(value: Any, dataType: DataType) extends LeafExpression {
+  assert(dataType != BooleanType, {
+    val logicalLiteralClass = classOf[LogicalLiteral].getSimpleName.stripSuffix("$")
+    val literalClass = classOf[Literal].getSimpleName.stripSuffix("$")
+    s"Please use $logicalLiteralClass instead of $literalClass"
+  })
+
   override def foldable: Boolean = true
 
   override def nullable: Boolean = value == null
@@ -13,10 +19,20 @@ case class Literal(value: Any, dataType: DataType) extends LeafExpression {
   override def caption: String = s"($value: ${dataType.simpleName})"
 }
 
-object Literal {
-  val True: Literal = Literal(true, BooleanType)
+case class LogicalLiteral(value: Boolean) extends LeafPredicate {
+  override def foldable: Boolean = true
 
-  val False: Literal = Literal(false, BooleanType)
+  override def nullable: Boolean = false
+
+  override def evaluate(input: Row): Any = value
+
+  override def caption: String = if (value) "TRUE" else "FALSE"
+}
+
+object Literal {
+  val True: LogicalLiteral = LogicalLiteral(true)
+
+  val False: LogicalLiteral = LogicalLiteral(false)
 
   val Zero: Literal = Literal(0, IntType)
 
