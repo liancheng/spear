@@ -60,6 +60,6 @@ package object reflection {
     case t if t <:< LongTpe    => LongType.!
     case t if t <:< FloatTpe   => FloatType.!
     case t if t <:< DoubleTpe  => DoubleType.!
-    case t if t <:< NullTpe    => NullType.!
+    case t if t <:< NullTpe    => NullType.?
   }
 }

@@ -127,6 +127,7 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
 
 object Cast {
   def implicitlyCastable(from: DataType, to: DataType): Boolean = (from, to) match {
+    case _ if from == to                            => true
     case (_, StringType)                            => true
     case (_: IntegralType, _: FractionalType)       => true
     case (IntType, LongType)                        => true

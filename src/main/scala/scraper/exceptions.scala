@@ -16,6 +16,6 @@ case class TypeCastError(from: DataType, to: DataType)
   extends RuntimeException(s"Cannot convert data type $from to $to")
 
 case class TypeCheckError(expression: Expression)
-  extends RuntimeException(s"Expression $expression doesn't type check")
+  extends RuntimeException(s"Expression ${expression.caption} doesn't type check")
 
 case class ResolutionFailure(message: String) extends RuntimeException(message)

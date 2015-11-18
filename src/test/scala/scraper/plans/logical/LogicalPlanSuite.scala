@@ -119,6 +119,10 @@ object LogicalPlanSuite {
     override def dataType: DataType = IntType
 
     override def evaluate(input: Row): Any = literal.evaluated
+
+    override def typeChecked: Boolean = true
+
+    override protected def casted: this.type = this
   }
 
   object FakeExpr {
