@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.{ ExpressionUnevaluable, ExpressionUnresolved, Row }
+import scraper.{ TypeCheckError, ExpressionUnevaluable, ExpressionUnresolved, Row }
 
 trait Expression extends TreeNode[Expression] {
   def foldable: Boolean = children.forall(_.foldable)
@@ -13,15 +13,24 @@ trait Expression extends TreeNode[Expression] {
 
   def references: Seq[Attribute] = children.flatMap(_.references)
 
-  def deterministic: Boolean = children.forall(_.deterministic)
-
   def dataType: DataType
 
   def evaluate(input: Row): Any
 
   def evaluated: Any = evaluate(null)
 
-  protected def predicate: Predicate = this match { case e: Predicate => e }
+  def childrenTypes: Seq[DataType] = children.map(_.dataType)
+
+  def typeChecked: Boolean
+
+  def childrenTypeChecked: Boolean = children.forall(_.typeChecked)
+
+  final def implicitlyCasted: this.type = whenTypeChecked(casted)
+
+  protected def casted: this.type
+
+  protected def whenTypeChecked[T](value: => T): T =
+    if (typeChecked) value else throw TypeCheckError(this)
 
   def +(that: Expression): Expression = Add(this, that)
 
@@ -44,12 +53,18 @@ trait Expression extends TreeNode[Expression] {
 
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
+
+  override def typeChecked: Boolean = true
+
+  override protected def casted: this.type = this
 }
 
 trait UnaryExpression extends Expression {
   def child: Expression
 
   override def children: Seq[Expression] = Seq(child)
+
+  override protected def casted: this.type = this
 }
 
 trait BinaryExpression extends Expression {

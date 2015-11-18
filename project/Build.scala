@@ -54,6 +54,7 @@ object Build extends sbt.Build {
       preferences := preferences.value
         .setPreference(DoubleIndentClassDeclaration, false)
         .setPreference(AlignSingleLineCaseStatements, true)
+        .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 80)
     )
 }
 

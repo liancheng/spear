@@ -4,25 +4,16 @@ import scraper.expressions.Literal.{ False, True }
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.{ Rule, RulesExecutor }
-import scraper.types.BooleanType
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[Batch] = Seq(
-    Batch(
-      "Normalization",
-      Seq(Normalization),
-      Once
-    ),
+    Batch("Normalization", Once, Seq(Normalization)),
 
-    Batch(
-      "Optimizations",
-      Seq(
-        ConstantFolding,
-        CastSimplification,
-        BooleanSimplification
-      ),
-      FixedPoint.Unlimited
-    )
+    Batch("Optimizations", FixedPoint.Unlimited, Seq(
+      ConstantFolding,
+      CastSimplification,
+      BooleanSimplification
+    ))
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
@@ -48,27 +39,28 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
   object BooleanSimplification extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.transformExpressionsUp {
-      case Not(True)                 => False
-      case Not(False)                => True
-      case Not(Not(child))           => child
-      case Not(EqualTo(lhs, rhs))    => NotEqualTo(lhs, rhs)
-      case Not(NotEqualTo(lhs, rhs)) => EqualTo(lhs, rhs)
-
-      case And(e, False)             => False
-      case Or(e, True)               => True
+      case Not(True)          => False
+      case Not(False)         => True
+      case Not(e: Not)        => e.child
+      case Not(e: EqualTo)    => NotEqualTo(e.left, e.right)
+      case Not(e: NotEqualTo) => EqualTo(e.left, e.right)
+      case And(_, False)      => False
+      case Or(_, True)        => True
     }
   }
 
   object Normalization extends Rule[LogicalPlan] {
     override def apply(plan: LogicalPlan): LogicalPlan = plan.transformExpressionsUp {
       case e @ And(_: Literal, _: Literal)        => e
-      case e @ Or(_: Literal, _: Literal)         => e
-      case e @ EqualTo(_: Literal, _: Literal)    => e
-      case e @ NotEqualTo(_: Literal, _: Literal) => e
-
       case And(lhs: Literal, rhs)                 => And(rhs, lhs)
+
+      case e @ Or(_: Literal, _: Literal)         => e
       case Or(lhs: Literal, rhs)                  => Or(rhs, lhs)
+
+      case e @ EqualTo(_: Literal, _: Literal)    => e
       case EqualTo(lhs: Literal, rhs)             => EqualTo(rhs, lhs)
+
+      case e @ NotEqualTo(_: Literal, _: Literal) => e
       case NotEqualTo(lhs: Literal, rhs)          => NotEqualTo(rhs, lhs)
     }
   }

@@ -8,6 +8,7 @@ import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
 import scraper.ParsingError
+import scraper.expressions.Literal.{ False, True }
 import scraper.expressions._
 import scraper.plans.logical._
 import scraper.types._
@@ -120,6 +121,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private def productExpression: Parser[Expression] =
     baseExpression * (
       "*" ^^^ Multiply
+      | "/" ^^^ Divide
     )
 
   private def baseExpression: Parser[Expression] =
@@ -139,8 +141,8 @@ class Parser extends TokenParser[LogicalPlan] {
     stringLit ^^ (Literal(_, StringType))
 
   private def logicalLiteral: Parser[LogicalLiteral] = (
-    TRUE ^^^ Literal.True
-    | FALSE ^^^ Literal.False
+    TRUE ^^^ True
+    | FALSE ^^^ False
   )
 
   private def sign: Parser[String] =

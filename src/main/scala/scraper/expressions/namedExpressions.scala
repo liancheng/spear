@@ -45,6 +45,8 @@ case class Alias(
   }
 
   override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
+
+  override def typeChecked: Boolean = child.typeChecked
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

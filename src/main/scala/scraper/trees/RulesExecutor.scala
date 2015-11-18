@@ -27,8 +27,8 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
 
   case class Batch(
     name: String,
-    rules: Seq[Rule[Base]],
-    condition: EndCondition
+    condition: EndCondition,
+    rules: Seq[Rule[Base]]
   )
 
   def batches: Seq[Batch]

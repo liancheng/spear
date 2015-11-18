@@ -24,7 +24,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     rule applyOrElse (childrenTransformed, identity[Base])
   }
 
-  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
+  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): this.type = {
     // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
     // equivalent to the original one
     def applyRule(tree: Base): (Base, Boolean) = {
@@ -54,11 +54,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     if (argsChanged exists identity) makeCopy(newArgs) else this
   }
 
-  protected def makeCopy(args: Seq[AnyRef]): Base = {
+  protected def makeCopy(args: Seq[AnyRef]): this.type = {
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
-    defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
+    defaultConstructor.newInstance(args: _*).asInstanceOf[this.type]
   }
 
   def collect[T](f: PartialFunction[Base, T]): Seq[T] = {

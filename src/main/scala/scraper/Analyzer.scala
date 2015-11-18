@@ -1,16 +1,18 @@
 package scraper
 
-import scraper.expressions.{ AttributeRef, UnresolvedAttribute }
+import scraper.expressions.UnresolvedAttribute
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.{ Rule, RulesExecutor }
 
 class Analyzer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[Batch] = Seq(
-    Batch(
-      "Resolution",
-      Seq(ResolveReferences),
-      FixedPoint.Unlimited
-    )
+    Batch("Resolution", FixedPoint.Unlimited, Seq(
+      ResolveReferences
+    )),
+
+    Batch("Type check", FixedPoint.Unlimited, Seq(
+      TypeCheck
+    ))
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
@@ -36,5 +38,15 @@ class Analyzer extends RulesExecutor[LogicalPlan] {
               }
           }
       }
+  }
+
+  object TypeCheck extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree.transformUp {
+      case plan =>
+        plan.transformExpressionsUp {
+          case e if e.typeChecked => e.implicitlyCasted
+          case e                  => throw TypeCheckError(e)
+        }
+    }
   }
 }
