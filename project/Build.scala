@@ -10,7 +10,7 @@ import sbt._
 import scoverage.ScoverageSbtPlugin
 
 object Build extends sbt.Build {
-  lazy val parquetCompat =
+  lazy val scraper =
     Project("scraper", file("."))
       // For packaging
       .enablePlugins(JavaAppPackaging)
