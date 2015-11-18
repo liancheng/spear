@@ -34,6 +34,8 @@ case class Alias(
   override val expressionId: ExpressionId = newExpressionId()
 ) extends NamedExpression with UnaryExpression {
 
+  override def foldable: Boolean = false
+
   override def dataType: DataType = child.dataType
 
   override def evaluate(input: Row): Any = child.evaluate(input)
@@ -56,7 +58,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def caption: String = s"$name?"
+  override def caption: String = s"`$name`?"
 }
 
 case class AttributeRef(
@@ -66,7 +68,7 @@ case class AttributeRef(
   override val expressionId: ExpressionId
 ) extends Attribute with UnevaluableExpression {
 
-  override def caption: String = s"($name#${expressionId.id}: ${dataType.simpleName})"
+  override def caption: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
 }
 
 case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)
@@ -86,12 +88,12 @@ case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boo
 object BoundRef {
   def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = {
     expression.transformUp {
-      case ref @ AttributeRef(_, dataType, nullable, _) =>
+      case ref: AttributeRef =>
         val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
         if (ordinal == -1) {
           throw ResolutionFailure(s"Failed to bind attribute reference $ref")
         } else {
-          BoundRef(ordinal, dataType, nullable)
+          BoundRef(ordinal, ref.dataType, ref.nullable)
         }
     }.asInstanceOf[A]
   }

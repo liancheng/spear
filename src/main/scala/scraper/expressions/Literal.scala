@@ -16,7 +16,7 @@ case class Literal(value: Any, dataType: DataType) extends LeafExpression {
 
   override def evaluate(input: Row): Any = value
 
-  override def caption: String = s"($value: ${dataType.simpleName})"
+  override def caption: String = s"$value: ${dataType.simpleName}"
 }
 
 case class LogicalLiteral(value: Boolean) extends LeafPredicate {
@@ -40,7 +40,11 @@ object Literal {
 
   def apply(value: Any): Literal = {
     value match {
+      case v: Byte   => Literal(v, ByteType)
+      case v: Short  => Literal(v, ShortType)
       case v: Int    => Literal(v, IntType)
+      case v: Long   => Literal(v, LongType)
+      case v: Float  => Literal(v, FloatType)
       case v: Double => Literal(v, DoubleType)
       case v: String => Literal(v, StringType)
       case null      => Literal(null, NullType)

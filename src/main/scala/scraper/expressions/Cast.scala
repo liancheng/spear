@@ -9,7 +9,14 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
 
   override def dataType: DataType = toType
 
+  override def caption: String = s"CAST(${child.caption} AS ${toType.simpleName})"
+
   private def fromType = fromValue.dataType
+
+  override def evaluate(input: Row): Any = cast(fromValue evaluate input)
+
+  override def typeChecked: Boolean =
+    child.typeChecked && explicitlyCastable(child.dataType, toType)
 
   private def cast: Any => Any = fromType match {
     case ByteType   => fromByte(toType)
@@ -118,11 +125,6 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
       case _          => throw TypeCastError(fromType, to)
     }
   }
-
-  override def evaluate(input: Row): Any = cast(fromValue.evaluate(input))
-
-  override def typeChecked: Boolean =
-    child.typeChecked && explicitlyCastable(child.dataType, toType)
 }
 
 object Cast {

@@ -7,15 +7,15 @@ import scraper.types.TestUtils
 class LocalContextSuite extends LoggingFunSuite with TestUtils {
   private val context = new LocalContext
 
-  test("foo") {
+  test("local data") {
     val data = Seq(1 -> "a", 2 -> "b")
     checkDataFrame(
-      context lift data rename ("i", "s") where 'i =/= lit(1) + 1 select ('s, 'i),
+      context lift data rename ("i", "s") where 'i =/= lit(1: Byte) + 1 select ('s, 'i),
       Row("a", 1)
     )
   }
 
-  test("bar") {
+  test("single row relation") {
     checkDataFrame(context select (1 as 'a) select 'a, Row(1))
   }
 }
