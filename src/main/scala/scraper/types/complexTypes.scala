@@ -8,11 +8,7 @@ trait ComplexType extends DataType
 case class ArrayType(
   elementType: DataType,
   elementNullable: Boolean
-) extends ComplexType {
-  override def size: Int = 1 + elementType.size
-
-  override def depth: Int = 1 + elementType.depth
-}
+) extends ComplexType
 
 object ArrayType {
   def apply(schema: Schema): ArrayType = ArrayType(schema.dataType, schema.nullable)
@@ -22,11 +18,7 @@ case class MapType(
   keyType: DataType,
   valueType: DataType,
   valueNullable: Boolean
-) extends ComplexType {
-  override def size: Int = 2 + valueType.size
-
-  override def depth: Int = 1 + (keyType.depth max valueType.depth)
-}
+) extends ComplexType
 
 object MapType {
   def apply(keyType: DataType, valueSchema: Schema): MapType =
@@ -57,10 +49,6 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
     field =>
       AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
   }
-
-  override def size: Int = 1 + fieldTypes.map(_.size).sum
-
-  override def depth: Int = 1 + fieldTypes.map(_.depth).max
 }
 
 object TupleType {

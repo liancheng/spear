@@ -8,11 +8,11 @@ class LexicalSuite extends LoggingFunSuite with TestUtils {
 
   test("single token") {
     assertResult(testLexical.Keyword("KW1")) {
-      new testLexical.Scanner(" KW1").first
+      new testLexical.Scanner("KW1").first
     }
 
     assertResult(testLexical.Identifier("id")) {
-      new testLexical.Scanner(" id").first
+      new testLexical.Scanner("id").first
     }
   }
 }

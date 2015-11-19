@@ -4,7 +4,7 @@ import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.plans.logical.LogicalPlanSuite.{ FakeExpr, FakePlan }
 import scraper.types._
-import scraper.{ Analyzer, LoggingFunSuite, Row }
+import scraper.{ LocalCatalog, Analyzer, LoggingFunSuite, Row }
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
   test("transformExpressionDown") {
@@ -107,7 +107,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
         ),
         relation
       ),
-      new Analyzer().apply(project)
+      new Analyzer(new LocalCatalog).apply(project)
     )
   }
 }

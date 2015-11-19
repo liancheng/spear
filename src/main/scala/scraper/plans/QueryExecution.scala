@@ -10,9 +10,9 @@ trait QueryExecution {
 
   def logicalPlan: LogicalPlan
 
-  lazy val analyzedPlan: LogicalPlan = context.analyzer(logicalPlan)
+  lazy val analyzedPlan: LogicalPlan = context analyze logicalPlan
 
-  lazy val optimizedPlan: LogicalPlan = context.optimizer(analyzedPlan)
+  lazy val optimizedPlan: LogicalPlan = context optimize analyzedPlan
 
-  lazy val physicalPlan: PhysicalPlan = context.planner.plan(optimizedPlan)
+  lazy val physicalPlan: PhysicalPlan = context plan optimizedPlan
 }

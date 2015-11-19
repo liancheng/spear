@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.expressions.{ Predicate, Attribute, Expression, NamedExpression }
+import scraper.expressions.{ Attribute, NamedExpression, Predicate }
 import scraper.plans.QueryPlan
 import scraper.reflection.schemaOf
 import scraper.types.TupleType
@@ -54,14 +54,14 @@ object LocalRelation {
 case class Project(override val expressions: Seq[NamedExpression], child: LogicalPlan)
   extends UnaryLogicalPlan {
 
-  override val output: Seq[Attribute] = expressions.map(_.toAttribute)
+  override lazy val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def caption: String =
     s"${getClass.getSimpleName} ${expressions map (_.caption) mkString ", "}"
 }
 
 case class Filter(condition: Predicate, child: LogicalPlan) extends UnaryLogicalPlan {
-  override val output: Seq[Attribute] = child.output
+  override lazy val output: Seq[Attribute] = child.output
 
   override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
 }

@@ -73,6 +73,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     buffer.toSeq
   }
 
+  /** Returns `true` if `f` is `true` for all nodes in this tree. */
   def forall(f: Base => Boolean): Boolean = {
     transformDown {
       case node if f(node) => node
@@ -81,6 +82,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     true
   }
 
+  /** Returns `true` if `f` is `true` for at least one node in this tree. */
   def exists(f: Base => Boolean): Boolean = {
     transformDown {
       case node if f(node) => return true
@@ -100,7 +102,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val bar = "\u2574"
 
     val prefix = if (depth == 0) {
-      Nil
+      Seq.empty
     } else {
       isLastChild.init.map { isLast =>
         if (isLast) " " * 2 else s"$pipe "
@@ -117,4 +119,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       head ++ body ++ last
     }
   }
+
+  def depth: Int = (children map (_.depth) foldLeft 1) { _ max _ }
+
+  def size: Int = (children map (_.size) foldLeft 1) { _ + _ }
 }

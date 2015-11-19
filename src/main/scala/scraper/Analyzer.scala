@@ -1,16 +1,17 @@
 package scraper
 
 import scraper.expressions.UnresolvedAttribute
-import scraper.plans.logical.LogicalPlan
+import scraper.plans.logical.{ UnresolvedRelation, LogicalPlan }
 import scraper.trees.{ Rule, RulesExecutor }
 
-class Analyzer extends RulesExecutor[LogicalPlan] {
+class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[Batch] = Seq(
     Batch("Resolution", FixedPoint.Unlimited, Seq(
+      ResolveRelations,
       ResolveReferences
     )),
 
-    Batch("Type check", FixedPoint.Unlimited, Seq(
+    Batch("Type checking", FixedPoint.Unlimited, Seq(
       ImplicitCasts
     ))
   )
@@ -18,6 +19,7 @@ class Analyzer extends RulesExecutor[LogicalPlan] {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logTrace(
       s"""Analyzing logical query plan:
+         |
          |${tree.prettyTree}
        """.stripMargin
     )
@@ -26,7 +28,7 @@ class Analyzer extends RulesExecutor[LogicalPlan] {
 
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree.transformUp {
-      case plan =>
+      case plan if !plan.resolved =>
         plan.transformExpressionsUp {
           case UnresolvedAttribute(name) =>
             val candidates = plan.children.flatten(_.output).filter(_.name == name)
@@ -36,6 +38,12 @@ class Analyzer extends RulesExecutor[LogicalPlan] {
               case _              => throw ResolutionFailure(s"Ambiguous attribute $name")
             }
         }
+    }
+  }
+
+  object ResolveRelations extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree.transformUp {
+      case UnresolvedRelation(name) => catalog.lookupRelation(name)
     }
   }
 

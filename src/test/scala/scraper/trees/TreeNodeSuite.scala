@@ -2,7 +2,7 @@ package scraper.trees
 
 import scala.collection.JavaConversions._
 
-import org.scalacheck.{ Arbitrary, Gen, Prop }
+import org.scalacheck.{ Gen, Prop }
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
 import scraper.types.TestUtils
@@ -22,8 +22,6 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
     gen(maxDepth = 10)
   }
-
-  implicit val arbNode = Arbitrary(genNode)
 
   test("transformDown") {
     val tree =
@@ -90,7 +88,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("collect") {
-    check(Prop.forAll { tree: Node =>
+    check(Prop.forAll(genNode) { tree: Node =>
       val evenNodes = tree.collect { case node @ Node(i, _) if i % 2 == 0 => node }.toSet
       val oddNodes = tree.collect { case node @ Node(i, _) if i % 2 == 1 => node }.toSet
       val allNodes = tree.collect { case node => node }.toSet

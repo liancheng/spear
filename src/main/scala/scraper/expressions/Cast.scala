@@ -31,13 +31,13 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
   private def fromByte(to: DataType): Any => Any = {
     val asByte = (_: Any).asInstanceOf[Byte]
     to match {
+      case ByteType   => identity
       case ShortType  => asByte andThen (_.toShort)
       case IntType    => asByte andThen (_.toInt)
       case LongType   => asByte andThen (_.toLong)
       case FloatType  => asByte andThen (_.toFloat)
       case DoubleType => asByte andThen (_.toDouble)
       case StringType => (_: Any).toString
-      case ByteType   => identity
       case _          => throw TypeCastError(fromType, to)
     }
   }
@@ -46,12 +46,12 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
     val asShort = (_: Any).asInstanceOf[Short]
     to match {
       case ByteType   => asShort andThen (_.toByte)
+      case ShortType  => identity
       case IntType    => asShort andThen (_.toInt)
       case LongType   => asShort andThen (_.toLong)
       case FloatType  => asShort andThen (_.toFloat)
       case DoubleType => asShort andThen (_.toDouble)
       case StringType => _.toString
-      case ShortType  => identity
       case _          => throw TypeCastError(fromType, to)
     }
   }
@@ -61,11 +61,11 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
     to match {
       case ByteType   => asInt andThen (_.toByte)
       case ShortType  => asInt andThen (_.toShort)
+      case IntType    => identity
       case LongType   => asInt andThen (_.toLong)
       case FloatType  => asInt andThen (_.toFloat)
       case DoubleType => asInt andThen (_.toDouble)
       case StringType => _.toString
-      case IntType    => identity
       case _          => throw TypeCastError(fromType, to)
     }
   }
@@ -76,10 +76,10 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
       case ByteType   => asLong andThen (_.toByte)
       case ShortType  => asLong andThen (_.toShort)
       case IntType    => asLong andThen (_.toInt)
+      case LongType   => identity
       case FloatType  => asLong andThen (_.toFloat)
       case DoubleType => asLong andThen (_.toDouble)
       case StringType => _.toString
-      case LongType   => identity
       case _          => throw TypeCastError(fromType, to)
     }
   }
@@ -91,9 +91,9 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
       case ShortType  => asFloat andThen (_.toShort)
       case IntType    => asFloat andThen (_.toInt)
       case LongType   => asFloat andThen (_.toLong)
+      case FloatType  => identity
       case DoubleType => asFloat andThen (_.toDouble)
       case StringType => _.toString
-      case FloatType  => identity
       case _          => throw TypeCastError(fromType, to)
     }
   }
@@ -106,8 +106,8 @@ case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression
       case IntType    => asDouble andThen (_.toInt)
       case LongType   => asDouble andThen (_.toFloat)
       case FloatType  => asDouble andThen (_.toFloat)
-      case StringType => _.toString
       case DoubleType => identity
+      case StringType => _.toString
       case _          => throw TypeCastError(fromType, to)
     }
   }

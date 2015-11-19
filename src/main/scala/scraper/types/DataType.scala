@@ -16,37 +16,12 @@ trait DataType {
 
   /** A brief name of this [[DataType]]. */
   def simpleName: String =
-    this.getClass.getSimpleName.stripSuffix("$").stripSuffix("Type").toLowerCase
-
-  /**
-   * Size of this [[DataType]].
-   *
-   * The size of a [[DataType]] `S(t)` is defined as:
-   *
-   *  1. For a [[PrimitiveType]] `p`, `S(p) = 1`
-   *  1. For an [[ArrayType]] `a`, `S(a) = 1 + S(a.elementType)`
-   *  1. For a [[MapType]] `m`, `S(m) = 1 + S(m.keyType) + S(m.valueType)`
-   *  1. For a [[TupleType]] `s`, `S(s) = 1 + sum(S(f) for f in s.fieldTypes)`
-   */
-  def size: Int
-
-  /**
-   * Depth of this [[DataType]].
-   *
-   * The depth of a [[DataType]] `D(t)` is defined as:
-   *
-   *  1. For a [[PrimitiveType]] `p`, `D(p) = 1`
-   *  1. For an [[ArrayType]] `a`, `D(a) = 1 + D(a.elementType)`
-   *  1. For a [[MapType]] `m`, `D(m) = 1 + max(D(m.keyType), D(m.valueType))`
-   *  1. For a [[TupleType]] `s`, `D(s) = 1 + max(D(f) for f in s.fieldTypes)`
-   */
-  def depth: Int
+    (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
 }
 
 case class Schema(dataType: DataType, nullable: Boolean)
 
 object DataType {
-
   /**
    * A trait for wrapping [[DataType]]s into [[scraper.trees.TreeNode TreeNode]]s, so that we can
    * easily apply recursive transformations to a nested [[DataType]].
@@ -126,8 +101,6 @@ object DataType {
 trait PrimitiveType extends DataType {
   type InternalType
   val ordering: Ordering[InternalType]
-  override def size: Int = 1
-  override def depth: Int = 1
 }
 
 case object NullType extends PrimitiveType {

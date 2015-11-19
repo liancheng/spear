@@ -1,33 +1,54 @@
 package scraper
 
+import scala.collection.mutable
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.LocalContext.{ LocalQueryPlanner, LocalQueryExecution }
 import scraper.expressions.NamedExpression
 import scraper.expressions.dsl._
-import scraper.plans.logical.{ Project, LogicalPlan }
+import scraper.parser.Parser
+import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
-import scraper.plans.{ Optimizer, QueryExecution, QueryPlanner, logical, physical }
+import scraper.plans.{ Optimizer, QueryPlanner, logical, physical }
 import scraper.trees.RulesExecutor
 
+trait Catalog {
+  def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
+
+  def lookupRelation(tableName: String): LogicalPlan
+}
+
 trait Context {
-  private[scraper] def analyzer: RulesExecutor[LogicalPlan]
+  type QueryExecution <: plans.QueryExecution
 
-  private[scraper] def optimizer: RulesExecutor[LogicalPlan]
+  type Catalog <: scraper.Catalog
 
-  private[scraper] def planner: QueryPlanner[LogicalPlan, PhysicalPlan]
+  private[scraper] def catalog: Catalog
+
+  private[scraper] def analyze: RulesExecutor[LogicalPlan]
+
+  private[scraper] def optimize: RulesExecutor[LogicalPlan]
+
+  private[scraper] def plan: QueryPlanner[LogicalPlan, PhysicalPlan]
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
   def select(expressions: NamedExpression*): DataFrame
+
+  def q(query: String): DataFrame
 }
 
 class LocalContext extends Context {
-  private[scraper] override val analyzer = new Analyzer
+  type QueryExecution = LocalQueryExecution
 
-  private[scraper] override val optimizer = new Optimizer
+  override type Catalog = LocalCatalog
 
-  private[scraper] override val planner = new LocalQueryPlanner
+  override private[scraper] val catalog: Catalog = new LocalCatalog
+
+  override private[scraper] val analyze = new Analyzer(catalog)
+
+  override private[scraper] val optimize = new Optimizer
+
+  override private[scraper] val plan = new LocalQueryPlanner
 
   def lift[T <: Product: WeakTypeTag](data: Traversable[T]): DataFrame = {
     val queryExecution = new LocalQueryExecution(logical.LocalRelation(data), this)
@@ -39,44 +60,50 @@ class LocalContext extends Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution = new LocalQueryExecution(logicalPlan, this)
 
-  override def select(expressions: NamedExpression*): DataFrame = {
-    val project = logical.Project(expressions, logical.SingleRowRelation)
-    val queryExecution = new LocalQueryExecution(project, this)
-    new DataFrame(queryExecution)
-  }
+  override def select(expressions: NamedExpression*): DataFrame =
+    new DataFrame(logical.Project(expressions, logical.SingleRowRelation), this)
 
   def range(end: Long): DataFrame = range(0, end)
 
   def range(begin: Long, end: Long): DataFrame = {
     this lift (begin until end map Tuple1.apply) select ('_1 as 'id)
   }
+
+  override def q(query: String): DataFrame = new DataFrame(new Parser().parse(query), this)
 }
 
-object LocalContext {
-  class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
-    extends QueryExecution
+class LocalCatalog extends Catalog {
+  private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
 
-  class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
-    override def strategies: Seq[Strategy] = Seq(
-      BasicOperators
-    )
+  override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
+    tables(tableName) = analyzedPlan
 
-    object BasicOperators extends Strategy {
-      override def apply(logicalPlan: LogicalPlan): Seq[PhysicalPlan] = logicalPlan match {
-        case logical.Project(projectList, child) =>
-          physical.Project(projectList, planLater(child)) :: Nil
+  override def lookupRelation(tableName: String): LogicalPlan = tables(tableName)
+}
 
-        case logical.Filter(predicate, child) =>
-          physical.Filter(predicate, planLater(child)) :: Nil
+class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
+  extends plans.QueryExecution
 
-        case plan @ logical.LocalRelation(data, schema) =>
-          physical.LocalRelation(data.toIterator, plan.output) :: Nil
+class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
+  override def strategies: Seq[Strategy] = Seq(
+    BasicOperators
+  )
 
-        case plan @ logical.SingleRowRelation =>
-          physical.SingleRowRelation :: Nil
+  object BasicOperators extends Strategy {
+    override def apply(logicalPlan: LogicalPlan): Seq[PhysicalPlan] = logicalPlan match {
+      case logical.Project(projectList, child) =>
+        physical.Project(projectList, planLater(child)) :: Nil
 
-        case _ => Nil
-      }
+      case logical.Filter(predicate, child) =>
+        physical.Filter(predicate, planLater(child)) :: Nil
+
+      case plan @ logical.LocalRelation(data, schema) =>
+        physical.LocalRelation(data.toIterator, plan.output) :: Nil
+
+      case plan @ logical.SingleRowRelation =>
+        physical.SingleRowRelation :: Nil
+
+      case _ => Nil
     }
   }
 }

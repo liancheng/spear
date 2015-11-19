@@ -77,7 +77,7 @@ class Parser extends TokenParser[LogicalPlan] {
     rep1sep(projection, ",") ^^ {
       case ps =>
         ps.zipWithIndex.map {
-          case (e: NamedExpression, i) => e
+          case (e: NamedExpression, _) => e
           case (e: Expression, i)      => Alias(s"col$i", e)
         }
     }
@@ -108,8 +108,8 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def comparison: Parser[Predicate] = (
     termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => EqualTo(e1, e2) }
-    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => Not(EqualTo(e1, e2)) }
-    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => Not(EqualTo(e1, e2)) }
+    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEqualTo(e1, e2) }
+    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEqualTo(e1, e2) }
   )
 
   private def termExpression: Parser[Expression] =
@@ -129,6 +129,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def primary: Parser[Expression] = (
     literal
+    | ident ^^ UnresolvedAttribute
     | "(" ~> expression <~ ")"
   )
 
@@ -170,8 +171,17 @@ class Parser extends TokenParser[LogicalPlan] {
 
 class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
   delimiters ++= Set(
-    "*", "+", "-", "<", "=", "<>", "!=", "<=", ">=", ">", "/", "(", ")", ",",
-    ";", "%", ":", "[", "]", ".", "&", "|", "^", "~", "<=>"
+    // Arithmetic operators
+    "*", "+", "-", "/", "%",
+
+    // Comparison operators
+    "<", ">", "<=", ">=", "=", "<>", "!=", "<=>",
+
+    // Bitwise operators
+    "&", "|", "^", "~",
+
+    // Other punctuations
+    "(", ")", "[", "]", ",", ";", ":", "."
   )
 
   reserved ++= keywords
@@ -232,5 +242,5 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
     // Illegal inputs
     | '/' ~ '*' ~ failure("unclosed multi-line comment")
-  )
+  ).*
 }

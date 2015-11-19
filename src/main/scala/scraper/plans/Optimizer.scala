@@ -19,6 +19,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logTrace(
       s"""Optimizing logical query plan:
+         |
          |${tree.prettyTree}
        """.stripMargin
     )

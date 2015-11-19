@@ -7,14 +7,19 @@ import scraper.plans.{ QueryExecution, logical }
 import scraper.types.TupleType
 
 class DataFrame(val queryExecution: QueryExecution) {
-  private def context: Context = queryExecution.context
+  def this(logicalPlan: LogicalPlan, context: Context) = this(context execute logicalPlan)
+
+  def context: Context = queryExecution.context
 
   private def build(f: LogicalPlan => LogicalPlan): DataFrame =
-    new DataFrame(context.execute(f(queryExecution.logicalPlan)))
+    new DataFrame(f(queryExecution.logicalPlan), context)
 
-  lazy val schema: TupleType = TupleType.fromAttributes(queryExecution.analyzedPlan.output)
+  lazy val schema: TupleType = TupleType fromAttributes queryExecution.analyzedPlan.output
 
-  def select(expressions: NamedExpression*): DataFrame = build(logical.Project(expressions, _))
+  def select(first: NamedExpression, rest: NamedExpression*): DataFrame =
+    this select (first +: rest)
+
+  def select(expressions: Seq[NamedExpression]): DataFrame = build(logical.Project(expressions, _))
 
   def filter(condition: Predicate): DataFrame = build(logical.Filter(condition, _))
 
@@ -24,10 +29,13 @@ class DataFrame(val queryExecution: QueryExecution) {
     assert(newNames.length == schema.fields.length)
     val oldNames = schema.fields map (_.name)
     val aliases = (oldNames, newNames).zipped map { Symbol(_) as _ }
-    this select (aliases: _*)
+    this select aliases
   }
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
+
+  def registerAsTable(tableName: String): Unit =
+    context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
   def toSeq: Seq[Row] = iterator.toSeq
 
