@@ -1,5 +1,6 @@
 import scalariform.formatter.preferences._
 
+import scalariform.formatter.preferences.PreferencesImporterExporter
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
 import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
@@ -51,10 +52,7 @@ object Build extends sbt.Build {
 
   lazy val scalariformSettings =
     SbtScalariform.scalariformSettings ++ Seq(
-      preferences := preferences.value
-        .setPreference(DoubleIndentClassDeclaration, false)
-        .setPreference(AlignSingleLineCaseStatements, true)
-        .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 80)
+      preferences := PreferencesImporterExporter.loadPreferences("scalariform.properties")
     )
 }
 
