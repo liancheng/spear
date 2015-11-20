@@ -4,16 +4,16 @@ import scraper.expressions.Cast.explicitlyCastable
 import scraper.types._
 import scraper.{ Row, TypeCastError }
 
-case class Cast(fromValue: Expression, toType: DataType) extends UnaryExpression {
-  override def child: Expression = fromValue
+case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
+  override def child: Expression = fromExpression
 
   override def dataType: DataType = toType
 
   override def caption: String = s"CAST(${child.caption} AS ${toType.simpleName})"
 
-  private def fromType = fromValue.dataType
+  private def fromType = fromExpression.dataType
 
-  override def evaluate(input: Row): Any = cast(fromValue evaluate input)
+  override def evaluate(input: Row): Any = cast(fromExpression evaluate input)
 
   override def typeChecked: Boolean =
     child.typeChecked && explicitlyCastable(child.dataType, toType)

@@ -6,7 +6,7 @@ import scala.reflect.runtime.universe.WeakTypeTag
 import scraper.expressions.NamedExpression
 import scraper.expressions.dsl._
 import scraper.parser.Parser
-import scraper.plans.logical.LogicalPlan
+import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{ Optimizer, QueryPlanner, logical, physical }
 import scraper.trees.RulesExecutor
@@ -61,7 +61,7 @@ class LocalContext extends Context {
   def execute(logicalPlan: LogicalPlan): QueryExecution = new LocalQueryExecution(logicalPlan, this)
 
   override def select(expressions: NamedExpression*): DataFrame =
-    new DataFrame(logical.Project(expressions, logical.SingleRowRelation), this)
+    new DataFrame(logical.Project(logical.SingleRowRelation, expressions), this)
 
   def range(end: Long): DataFrame = range(0, end)
 
@@ -91,16 +91,16 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
 
   object BasicOperators extends Strategy {
     override def apply(logicalPlan: LogicalPlan): Seq[PhysicalPlan] = logicalPlan match {
-      case logical.Project(projectList, child) =>
+      case child Project projectList =>
         physical.Project(projectList, planLater(child)) :: Nil
 
-      case logical.Filter(predicate, child) =>
+      case child Filter predicate =>
         physical.Filter(predicate, planLater(child)) :: Nil
 
-      case plan @ logical.LocalRelation(data, schema) =>
+      case plan @ LocalRelation(data, _) =>
         physical.LocalRelation(data.toIterator, plan.output) :: Nil
 
-      case plan @ logical.SingleRowRelation =>
+      case SingleRowRelation =>
         physical.SingleRowRelation :: Nil
 
       case _ => Nil

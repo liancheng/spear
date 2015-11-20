@@ -1,8 +1,7 @@
-package scraper.plans
+package scraper.plans.logical
 
-import scraper.expressions.Predicate.splitConjunction
+import scraper.expressions.Predicate._
 import scraper.expressions._
-import scraper.plans.logical.{ UnaryLogicalPlan, Filter, LogicalPlan, Project }
 
 package object patterns {
   /**
@@ -32,17 +31,17 @@ package object patterns {
 
     private def collectProjectsAndFilters(plan: LogicalPlan): IntermediateResult = plan match {
       case unary: UnaryLogicalPlan =>
-        val (maybeChildProjectList, predicates, grandChild) = collectProjectsAndFilters(unary.child)
-        val aliases = collectAliases(maybeChildProjectList.toSeq.flatten)
+        val (maybeChildProjections, predicates, grandChild) = collectProjectsAndFilters(unary.child)
+        val aliases = collectAliases(maybeChildProjections.toSeq.flatten)
 
         plan match {
-          case Project(projectList, _) =>
-            val reducedProjectList = projectList map reduceAliases[NamedExpression](aliases)
+          case _ Project projections =>
+            val reducedProjectList = projections map reduceAliases[NamedExpression](aliases)
             (Some(reducedProjectList), predicates, grandChild)
 
-          case Filter(condition, _) =>
+          case _ Filter condition =>
             val reducedCondition = reduceAliases[Predicate](aliases)(condition)
-            (maybeChildProjectList, predicates ++ splitConjunction(reducedCondition), grandChild)
+            (maybeChildProjections, predicates ++ splitConjunction(reducedCondition), grandChild)
 
           case other =>
             (None, Nil, other)
@@ -58,7 +57,7 @@ package object patterns {
      * @param aliases A map from all known aliases to corresponding aliased expressions.
      * @param expression The target expression.
      */
-    private def reduceAliases[T <: Expression](aliases: AliasMap)(expression: Expression): T =
+    def reduceAliases[T <: Expression](aliases: AliasMap)(expression: Expression): T =
       expression.transformUp {
         // Alias substitution. E.g., it reduces
         //
@@ -85,7 +84,7 @@ package object patterns {
           Alias(name, aliases(ref), id)
       }.asInstanceOf[T]
 
-    private def collectAliases(projectList: Seq[NamedExpression]): AliasMap =
+    def collectAliases(projectList: Seq[NamedExpression]): AliasMap =
       projectList.collect { case a: Alias => a.toAttribute -> a.child }.toMap
   }
 }

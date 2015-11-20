@@ -9,20 +9,24 @@ trait Predicate extends Expression {
 
   def &&(that: Predicate): And = And(this, that)
 
+  def and(that: Predicate): And = this && that
+
   def ||(that: Predicate): Or = Or(this, that)
 
-  def unary_!(that: Predicate): Not = Not(this)
+  def or(that: Predicate): Or = this || that
+
+  def unary_! : Not = Not(this)
 }
 
 object Predicate {
   private[scraper] def splitConjunction(predicate: Predicate): Seq[Predicate] = predicate match {
-    case And(left, right) => splitConjunction(left) ++ splitConjunction(right)
-    case _                => predicate :: Nil
+    case left And right => splitConjunction(left) ++ splitConjunction(right)
+    case _              => predicate :: Nil
   }
 
   private[scraper] def splitDisjunction(predicate: Predicate): Seq[Predicate] = predicate match {
-    case Or(left, right) => splitDisjunction(left) ++ splitDisjunction(right)
-    case _               => predicate :: Nil
+    case left Or right => splitDisjunction(left) ++ splitDisjunction(right)
+    case _             => predicate :: Nil
   }
 }
 

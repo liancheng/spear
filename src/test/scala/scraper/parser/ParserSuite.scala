@@ -9,7 +9,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   test("simple query") {
     checkPlan(
       new Parser().parse(" SELECT 1 AS a FROM t"),
-      Project(Alias("a", Literal(1, IntType)) :: Nil, UnresolvedRelation("t"))
+      Project(UnresolvedRelation("t"), Alias("a", Literal(1, IntType)) :: Nil)
     )
   }
 }

@@ -64,8 +64,8 @@ class Parser extends TokenParser[LogicalPlan] {
     ~ (WHERE ~> predicate).? ^^ {
       case ps ~ r ~ f =>
         val base = r.getOrElse(SingleRowRelation)
-        val withFilter = f.map(Filter(_, base)).getOrElse(base)
-        val withProjections = ps.map(Project(_, withFilter)).getOrElse(withFilter)
+        val withFilter = f.map(Filter(base, _)).getOrElse(base)
+        val withProjections = ps.map(Project(withFilter, _)).getOrElse(withFilter)
         withProjections
     }
   )

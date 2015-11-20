@@ -86,6 +86,10 @@ trait BinaryExpression extends Expression {
   }
 }
 
+object BinaryExpression {
+  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = Some((e.left, e.right))
+}
+
 trait UnevaluableExpression extends Expression {
   override def evaluate(input: Row): Any = throw ExpressionUnevaluable(this)
 }

@@ -54,7 +54,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     if (argsChanged exists identity) makeCopy(newArgs) else this
   }
 
-  protected def makeCopy(args: Seq[AnyRef]): this.type = {
+  private[scraper] def makeCopy(args: Seq[AnyRef]): this.type = {
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)

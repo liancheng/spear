@@ -19,9 +19,9 @@ class DataFrame(val queryExecution: QueryExecution) {
   def select(first: NamedExpression, rest: NamedExpression*): DataFrame =
     this select (first +: rest)
 
-  def select(expressions: Seq[NamedExpression]): DataFrame = build(logical.Project(expressions, _))
+  def select(expressions: Seq[NamedExpression]): DataFrame = build(logical.Project(_, expressions))
 
-  def filter(condition: Predicate): DataFrame = build(logical.Filter(condition, _))
+  def filter(condition: Predicate): DataFrame = build(logical.Filter(_, condition))
 
   def where(condition: Predicate): DataFrame = this filter condition
 

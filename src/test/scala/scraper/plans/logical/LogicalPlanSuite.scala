@@ -87,26 +87,19 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
       )
     )
 
-    val project =
-      Project(
-        Seq(
-          UnresolvedAttribute("b"),
-          Alias("s", Add(UnresolvedAttribute("a"), Literal(1)))
-        ),
-        relation
-      )
+    val project = Project(relation, Seq(
+      UnresolvedAttribute("b"),
+      Alias("s", Add(UnresolvedAttribute("a"), Literal(1)))
+    ))
 
     checkPlan(
-      Project(
-        Seq(
-          AttributeRef("b", StringType, nullable = true, newExpressionId()),
-          Alias(
-            "s",
-            Add(AttributeRef("a", IntType, nullable = false, newExpressionId()), Literal(1))
-          )
-        ),
-        relation
-      ),
+      Project(relation, Seq(
+        AttributeRef("b", StringType, nullable = true, newExpressionId()),
+        Alias(
+          "s",
+          Add(AttributeRef("a", IntType, nullable = false, newExpressionId()), Literal(1))
+        )
+      )),
       new Analyzer(new LocalCatalog).apply(project)
     )
   }
