@@ -1,8 +1,8 @@
 package scraper.generators
 
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen.{ choose, const, listOfN, oneOf }
-import org.scalacheck.{ Arbitrary, Gen }
+import org.scalacheck.Gen.{choose, const, listOfN, oneOf}
+import org.scalacheck.{Arbitrary, Gen}
 import scraper.types._
 
 package object types {

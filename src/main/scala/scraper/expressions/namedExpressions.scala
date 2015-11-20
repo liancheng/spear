@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types.DataType
-import scraper.{ ExpressionUnresolved, ResolutionFailure, Row }
+import scraper.{ExpressionUnresolved, ResolutionFailure, Row}
 
 case class ExpressionId(id: Long)
 

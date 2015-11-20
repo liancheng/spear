@@ -1,7 +1,7 @@
 package scraper.types
 
 import scraper.expressions.NamedExpression.newExpressionId
-import scraper.expressions.{ Attribute, AttributeRef }
+import scraper.expressions.{Attribute, AttributeRef}
 
 trait ComplexType extends DataType
 

@@ -3,7 +3,7 @@ package scraper.expressions
 import org.scalacheck.Prop
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
-import scraper.types.{ BooleanType, TestUtils }
+import scraper.types.{BooleanType, TestUtils}
 
 class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("and") {

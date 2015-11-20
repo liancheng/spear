@@ -1,9 +1,9 @@
 package scraper
 
 import scraper.expressions.dsl._
-import scraper.expressions.{ NamedExpression, Predicate }
+import scraper.expressions.{NamedExpression, Predicate}
 import scraper.plans.logical.LogicalPlan
-import scraper.plans.{ QueryExecution, logical }
+import scraper.plans.{QueryExecution, logical}
 import scraper.types.TupleType
 
 class DataFrame(val queryExecution: QueryExecution) {

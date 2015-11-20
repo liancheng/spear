@@ -1,11 +1,11 @@
 package scraper.types
 
 import org.scalatest.FunSuite
-import scraper.expressions.{ Alias, AttributeRef, ExpressionId }
+import scraper.expressions.{Alias, AttributeRef, ExpressionId}
 import scraper.plans.QueryPlan
 import scraper.trees.TreeNode
 import scraper.utils._
-import scraper.{ DataFrame, Row }
+import scraper.{DataFrame, Row}
 
 trait TestUtils { this: FunSuite =>
   private[scraper] def assertSideBySide(expected: String, actual: String): Unit = {

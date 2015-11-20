@@ -1,7 +1,7 @@
 package scraper.plans.physical
 
 import scraper.Row
-import scraper.expressions.{ BoundRef, Attribute, NamedExpression, Predicate }
+import scraper.expressions.{BoundRef, Attribute, NamedExpression, Predicate}
 import scraper.plans.QueryPlan
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {

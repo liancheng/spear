@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.{ TypeCheckError, ExpressionUnevaluable, ExpressionUnresolved, Row }
+import scraper.{TypeCheckError, ExpressionUnevaluable, ExpressionUnresolved, Row}
 
 trait Expression extends TreeNode[Expression] {
   def foldable: Boolean = children.forall(_.foldable)

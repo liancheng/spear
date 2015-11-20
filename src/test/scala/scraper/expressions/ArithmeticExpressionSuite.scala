@@ -3,7 +3,7 @@ package scraper.expressions
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
-import scraper.types.{ IntType, TestUtils }
+import scraper.types.{IntType, TestUtils}
 
 class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("add") {

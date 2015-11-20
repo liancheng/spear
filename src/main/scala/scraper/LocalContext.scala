@@ -8,7 +8,7 @@ import scraper.expressions.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
-import scraper.plans.{ Optimizer, QueryPlanner, logical, physical }
+import scraper.plans.{Optimizer, QueryPlanner, logical, physical}
 import scraper.trees.RulesExecutor
 
 trait Catalog {

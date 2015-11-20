@@ -1,6 +1,6 @@
 package scraper.plans
 
-import scraper.expressions.{ Predicate, Attribute, Expression }
+import scraper.expressions.{Predicate, Attribute, Expression}
 import scraper.trees.TreeNode
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>

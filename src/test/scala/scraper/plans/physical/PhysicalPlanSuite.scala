@@ -1,8 +1,8 @@
 package scraper.plans.physical
 
-import scraper.expressions.{ Alias, Literal }
+import scraper.expressions.{Alias, Literal}
 import scraper.types.TestUtils
-import scraper.{ LoggingFunSuite, Row }
+import scraper.{LoggingFunSuite, Row}
 
 class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   def checkPhysicalPlan(plan: PhysicalPlan, expected: Traversable[Row]): Unit = {

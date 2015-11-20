@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scraper.expressions.Cast.explicitlyCastable
 import scraper.types._
-import scraper.{ Row, TypeCastError }
+import scraper.{Row, TypeCastError}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression

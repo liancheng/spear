@@ -1,6 +1,6 @@
 package scraper.trees
 
-import scala.collection.{ Traversable, mutable }
+import scala.collection.{Traversable, mutable}
 import scala.languageFeature.reflectiveCalls
 
 trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>

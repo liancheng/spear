@@ -2,9 +2,9 @@ package scraper.plans.logical
 
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionId
-import scraper.plans.logical.LogicalPlanSuite.{ FakeExpr, FakePlan }
+import scraper.plans.logical.LogicalPlanSuite.{FakeExpr, FakePlan}
 import scraper.types._
-import scraper.{ LocalCatalog, Analyzer, LoggingFunSuite, Row }
+import scraper.{LocalCatalog, Analyzer, LoggingFunSuite, Row}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
   test("transformExpressionDown") {

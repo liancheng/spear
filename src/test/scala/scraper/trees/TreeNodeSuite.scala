@@ -2,7 +2,7 @@ package scraper.trees
 
 import scala.collection.JavaConversions._
 
-import org.scalacheck.{ Gen, Prop }
+import org.scalacheck.{Gen, Prop}
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
 import scraper.types.TestUtils

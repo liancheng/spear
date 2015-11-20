@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scraper.Row
 import scraper.expressions.Cast.implicitlyCastable
-import scraper.types.{ BooleanType, DataType }
+import scraper.types.{BooleanType, DataType}
 
 trait Predicate extends Expression {
   override def dataType: DataType = BooleanType

@@ -8,7 +8,7 @@ import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
 import scraper.ParsingError
-import scraper.expressions.Literal.{ False, True }
+import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.plans.logical._
 import scraper.types._

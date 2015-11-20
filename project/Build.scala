@@ -1,10 +1,8 @@
-import scalariform.formatter.preferences._
-
 import scalariform.formatter.preferences.PreferencesImporterExporter
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
 import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
-import net.virtualvoid.sbt.graph.{ Plugin => SbtDependencyGraph }
+import net.virtualvoid.sbt.graph.{Plugin => SbtDependencyGraph}
 import pl.project13.scala.sbt.JmhPlugin
 import sbt.Keys._
 import sbt._

@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.expressions.Cast.implicitlyCastable
-import scraper.types.{ DataType, NumericType }
+import scraper.types.{DataType, NumericType}
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]]

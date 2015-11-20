@@ -4,7 +4,7 @@ import scala.collection.JavaConverters._
 
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
-import org.scalacheck.Gen.{ choose, listOfN, option, sequence }
+import org.scalacheck.Gen.{choose, listOfN, option, sequence}
 import scraper.Row
 import scraper.types._
 

@@ -1,8 +1,8 @@
 package scraper
 
 import scraper.expressions.UnresolvedAttribute
-import scraper.plans.logical.{ UnresolvedRelation, LogicalPlan }
-import scraper.trees.{ Rule, RulesExecutor }
+import scraper.plans.logical.{UnresolvedRelation, LogicalPlan}
+import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[Batch] = Seq(

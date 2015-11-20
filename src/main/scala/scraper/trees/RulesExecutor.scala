@@ -2,7 +2,7 @@ package scraper.trees
 
 import scala.annotation.tailrec
 
-import scraper.utils.{ Logging, sideBySide }
+import scraper.utils.{Logging, sideBySide}
 
 trait Rule[Base <: TreeNode[Base]] {
   def apply(tree: Base): Base

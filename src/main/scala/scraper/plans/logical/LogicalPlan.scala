@@ -2,11 +2,11 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.expressions.{ Attribute, Expression, NamedExpression, Predicate }
+import scraper.expressions.{Attribute, Expression, NamedExpression, Predicate}
 import scraper.plans.QueryPlan
 import scraper.reflection.schemaOf
 import scraper.types.TupleType
-import scraper.{ LogicalPlanUnresolved, Row }
+import scraper.{LogicalPlanUnresolved, Row}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
