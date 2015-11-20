@@ -15,8 +15,6 @@ package object patterns {
   private[scraper] object PhysicalOperation {
     private type Result = (Seq[NamedExpression], Seq[Predicate], LogicalPlan)
 
-    private type AliasMap = Map[Attribute, Expression]
-
     private type IntermediateResult = (Option[Seq[NamedExpression]], Seq[Predicate], LogicalPlan)
 
     def unapply(plan: LogicalPlan): Option[Result] = {
@@ -57,7 +55,7 @@ package object patterns {
      * @param aliases A map from all known aliases to corresponding aliased expressions.
      * @param expression The target expression.
      */
-    def reduceAliases[T <: Expression](aliases: AliasMap, expression: T): T =
+    def reduceAliases[T <: Expression](aliases: Map[Attribute, Expression], expression: T): T =
       expression.transformUp {
         // Alias substitution. E.g., it reduces
         //
@@ -84,7 +82,7 @@ package object patterns {
           Alias(name, aliases(ref), id)
       }.asInstanceOf[T]
 
-    def collectAliases(projectList: Seq[NamedExpression]): AliasMap =
+    def collectAliases(projectList: Seq[NamedExpression]): Map[Attribute, Expression] =
       projectList.collect { case a: Alias => a.toAttribute -> a.child }.toMap
   }
 }

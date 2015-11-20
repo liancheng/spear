@@ -46,7 +46,7 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
   override val output: Seq[Attribute] = schema.toAttributes
 
   override def caption: String =
-    s"${getClass.getSimpleName} ${output.map(_.caption).mkString(", ")}"
+    s"${getClass.getSimpleName} ${output map (_.caption) mkString ", "}"
 }
 
 object LocalRelation {
@@ -62,7 +62,7 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
 
   override def expressions: Seq[Expression] = projections
 
-  override lazy val output: Seq[Attribute] = projections.map(_.toAttribute)
+  override lazy val output: Seq[Attribute] = projections map (_.toAttribute)
 
   override def caption: String =
     s"${getClass.getSimpleName} ${projections map (_.caption) mkString ", "}"
