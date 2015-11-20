@@ -10,6 +10,12 @@ import scraper.{LogicalPlanUnresolved, Row}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
+
+  def select(projections: Seq[NamedExpression]): LogicalPlan = Project(this, projections)
+
+  def select(first: NamedExpression, rest: NamedExpression*): LogicalPlan = select(first +: rest)
+
+  def filter(condition: Predicate): LogicalPlan = Filter(this, condition)
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {

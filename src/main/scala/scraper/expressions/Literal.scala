@@ -3,30 +3,22 @@ package scraper.expressions
 import scraper.Row
 import scraper.types._
 
-case class Literal(value: Any, dataType: DataType) extends LeafExpression {
+trait LiteralExpression extends LeafExpression {
+  override def foldable: Boolean = true
+}
+
+case class Literal(value: Any, dataType: DataType) extends LiteralExpression {
   assert(dataType != BooleanType, {
     val logicalLiteralClass = classOf[LogicalLiteral].getSimpleName.stripSuffix("$")
     val literalClass = classOf[Literal].getSimpleName.stripSuffix("$")
     s"Please use $logicalLiteralClass instead of $literalClass"
   })
 
-  override def foldable: Boolean = true
-
   override def nullable: Boolean = value == null
 
   override def evaluate(input: Row): Any = value
 
   override def caption: String = s"$value: ${dataType.simpleName}"
-}
-
-case class LogicalLiteral(value: Boolean) extends LeafPredicate {
-  override def foldable: Boolean = true
-
-  override def nullable: Boolean = false
-
-  override def evaluate(input: Row): Any = value
-
-  override def caption: String = if (value) "TRUE" else "FALSE"
 }
 
 object Literal {
@@ -52,4 +44,14 @@ object Literal {
         throw new UnsupportedOperationException(s"Unsupported literal type ${v.getClass} $v")
     }
   }
+}
+
+case class LogicalLiteral(value: Boolean) extends LiteralExpression with LeafPredicate {
+  override def dataType: DataType = BooleanType
+
+  override def nullable: Boolean = false
+
+  override def evaluate(input: Row): Any = value
+
+  override def caption: String = if (value) "TRUE" else "FALSE"
 }

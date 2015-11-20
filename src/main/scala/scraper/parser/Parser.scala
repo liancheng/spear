@@ -107,9 +107,9 @@ class Parser extends TokenParser[LogicalPlan] {
   )
 
   private def comparison: Parser[Predicate] = (
-    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => EqualTo(e1, e2) }
-    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEqualTo(e1, e2) }
-    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEqualTo(e1, e2) }
+    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
+    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
+    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
   )
 
   private def termExpression: Parser[Expression] =

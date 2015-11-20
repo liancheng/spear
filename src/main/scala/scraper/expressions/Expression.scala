@@ -38,11 +38,11 @@ trait Expression extends TreeNode[Expression] {
 
   def *(that: Expression): Expression = Multiply(this, that)
 
-  def ===(that: Expression): EqualTo = EqualTo(this, that)
+  def ===(that: Expression): Eq = Eq(this, that)
 
-  def =/=(that: Expression): NotEqualTo = NotEqualTo(this, that)
+  def =/=(that: Expression): NotEq = NotEq(this, that)
 
-  def <>(that: Expression): NotEqualTo = this =/= that
+  def <>(that: Expression): NotEq = this =/= that
 
   def as(alias: String): Alias = Alias(alias, this)
 

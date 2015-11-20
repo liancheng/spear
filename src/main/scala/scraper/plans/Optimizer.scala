@@ -4,21 +4,23 @@ import scraper.Analyzer
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.expressions.functions._
+import scraper.plans.Optimizer._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
 import scraper.plans.logical.{Filter, LogicalPlan, Project}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
-  override def batches: Seq[Batch] = Seq(
-    Batch("Optimizations", FixedPoint.Unlimited, Seq(
+  override def batches: Seq[RuleBatch] = Seq(
+    RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
       FoldConstants,
       FoldLogicalPredicates,
       ReduceNegations,
-      NNFConversion,
       CNFConversion,
+      CombineFilters,
       SimplifyCasts,
       ReduceProjects,
-      ReduceAliases
+      ReduceAliases,
+      PushFiltersThroughProjects
     ))
   )
 
@@ -40,7 +42,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
     super.apply(tree)
   }
+}
 
+object Optimizer {
   /**
    * This rule finds all foldable expressions and evaluate them to literals.
    */
@@ -76,9 +80,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case Not(Not(child))         => child
-          case Not(lhs EqualTo rhs)    => lhs =/= rhs
-          case Not(lhs NotEqualTo rhs) => lhs === rhs
+          case Not(Not(child))    => child
+          case Not(lhs Eq rhs)    => lhs =/= rhs
+          case Not(lhs NotEq rhs) => lhs === rhs
         }
     }
   }
@@ -102,14 +106,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
    */
   object ReduceProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case grandChild Project innerProjections Project outerProjections =>
-        val collapsedProjections = {
-          val childAliases = collectAliases(innerProjections)
-          val aliasReducer = reduceAliases[NamedExpression](childAliases) _
-          outerProjections map aliasReducer
-        }
-
-        Project(grandChild, collapsedProjections)
+      case plan Project innerProjections Project outerProjections =>
+        val aliases = collectAliases(innerProjections)
+        plan select (outerProjections map (reduceAliases(aliases, _)))
     }
   }
 
@@ -126,29 +125,11 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule converts a predicate to NNF (Negation Normal Form) using De Morgan's law.  NNF is
-   * useful for converting the predicate one step further into CNF (Conjunctive Normal Form).
+   * This rule converts a predicate to CNF (Conjunctive Normal Form).
    *
    * Since we don't support existential/universal quantifiers or implications, this rule simply
-   * pushes negations inwards by applying De Morgan's law.
-   *
-   * @see https://en.wikipedia.org/wiki/Negation_normal_form
-   */
-  object NNFConversion extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan: Filter =>
-        plan transformExpressionsUp {
-          case Not(lhs Or rhs)  => !lhs && !rhs
-          case Not(lhs And rhs) => !lhs || !rhs
-        }
-    }
-  }
-
-  /**
-   * This rule converts a predicate in NNF (Negation Normal Form) to CNF (Conjunctive Normal Form).
-   *
-   * Since we don't support existential/universal quantifiers or implications, this rule simply
-   * distributes [[Or]]s inwards over [[And]]s.
+   * pushes negations inwards by applying De Morgan's law and distributes [[Or]]s inwards over
+   * [[And]]s.
    *
    * @see https://en.wikipedia.org/wiki/Conjunctive_normal_form
    */
@@ -156,9 +137,31 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan: Filter =>
         plan transformExpressionsUp {
+          case Not(lhs Or rhs)                => !lhs && !rhs
+          case Not(lhs And rhs)               => !lhs || !rhs
           case (innerLhs And innerRhs) Or rhs => (innerLhs || rhs) && (innerRhs || rhs)
           case lhs Or (innerLhs And innerRhs) => (innerLhs || lhs) && (innerRhs || lhs)
         }
+    }
+  }
+
+  /**
+   * This rule combines adjacent [[Filter]]s into a single [[Filter]].
+   */
+  object CombineFilters extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan Filter innerCondition Filter outerCondition =>
+        plan filter innerCondition && outerCondition
+    }
+  }
+
+  /**
+   * This rule pushes [[Filter]] predicates beneath [[Project]]s.
+   */
+  object PushFiltersThroughProjects extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan Project projections Filter condition =>
+        plan filter reduceAliases(collectAliases(projections), condition) select projections
     }
   }
 }

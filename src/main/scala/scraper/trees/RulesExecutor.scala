@@ -25,15 +25,15 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
     val Unlimited = FixedPoint(-1)
   }
 
-  case class Batch(
+  case class RuleBatch(
     name: String,
     condition: EndCondition,
     rules: Seq[Rule[Base]]
   )
 
-  def batches: Seq[Batch]
+  def batches: Seq[RuleBatch]
 
-  private def executeBatch(tree: Base, batch: Batch): Base = {
+  private def executeBatch(tree: Base, batch: RuleBatch): Base = {
     def executeRules(rules: Seq[Rule[Base]], tree: Base) = {
       rules.foldLeft(tree) {
         case (before, rule) =>

@@ -25,8 +25,8 @@ package object patterns {
         s"Pattern $patternName is only available for resolved logical plans."
       })
 
-      val (maybeProjectList, predicates, child) = collectProjectsAndFilters(plan)
-      Some(maybeProjectList getOrElse plan.output, predicates, child)
+      val (maybeProjections, predicates, child) = collectProjectsAndFilters(plan)
+      Some(maybeProjections getOrElse plan.output, predicates, child)
     }
 
     private def collectProjectsAndFilters(plan: LogicalPlan): IntermediateResult = plan match {
@@ -36,11 +36,11 @@ package object patterns {
 
         plan match {
           case _ Project projections =>
-            val reducedProjectList = projections map reduceAliases[NamedExpression](aliases)
-            (Some(reducedProjectList), predicates, grandChild)
+            val aliasesReducedProjections = projections map (reduceAliases(aliases, _))
+            (Some(aliasesReducedProjections), predicates, grandChild)
 
           case _ Filter condition =>
-            val reducedCondition = reduceAliases[Predicate](aliases)(condition)
+            val reducedCondition = reduceAliases(aliases, condition)
             (maybeChildProjections, predicates ++ splitConjunction(reducedCondition), grandChild)
 
           case other =>
@@ -52,12 +52,12 @@ package object patterns {
     }
 
     /**
-     * Finds reducible [[Alias aliases]] appeared in `expressions`, and inlines/substitutes them.
+     * Finds reducible [[Alias]]es appeared in `expressions`, and inlines/substitutes them.
      *
      * @param aliases A map from all known aliases to corresponding aliased expressions.
      * @param expression The target expression.
      */
-    def reduceAliases[T <: Expression](aliases: AliasMap)(expression: Expression): T =
+    def reduceAliases[T <: Expression](aliases: AliasMap, expression: T): T =
       expression.transformUp {
         // Alias substitution. E.g., it reduces
         //

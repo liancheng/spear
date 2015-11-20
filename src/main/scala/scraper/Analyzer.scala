@@ -5,13 +5,13 @@ import scraper.plans.logical.{UnresolvedRelation, LogicalPlan}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  override def batches: Seq[Batch] = Seq(
-    Batch("Resolution", FixedPoint.Unlimited, Seq(
+  override def batches: Seq[RuleBatch] = Seq(
+    RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ResolveRelations,
       ResolveReferences
     )),
 
-    Batch("Type checking", FixedPoint.Unlimited, Seq(
+    RuleBatch("Type checking", FixedPoint.Unlimited, Seq(
       ImplicitCasts
     ))
   )

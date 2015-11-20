@@ -1,4 +1,5 @@
 import scalariform.formatter.preferences.PreferencesImporterExporter
+
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
 import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
