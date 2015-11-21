@@ -1,8 +1,8 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.{explicitlyCastable, falseStrings, trueStrings}
+import scraper.Row
+import scraper.expressions.Cast.convertible
 import scraper.types._
-import scraper.{Row, TypeCastError}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression
@@ -13,147 +13,121 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
 
   private def fromType = fromExpression.dataType
 
-  override def evaluate(input: Row): Any = cast(fromExpression evaluate input)
+  override def evaluate(input: Row): Any =
+    Cast.buildCast(fromType)(toType)(fromExpression evaluate input)
 
   override def typeChecked: Boolean =
-    child.typeChecked && explicitlyCastable(child.dataType, toType)
-
-  private def cast: Any => Any = fromType match {
-    case ByteType   => fromByte(toType)
-    case ShortType  => fromShort(toType)
-    case IntType    => fromInt(toType)
-    case LongType   => fromLong(toType)
-    case FloatType  => fromFloat(toType)
-    case DoubleType => fromDouble(toType)
-    case StringType => fromString(toType)
-  }
-
-  private def fromByte(to: DataType): Any => Any = {
-    val asByte = (_: Any).asInstanceOf[Byte]
-    to match {
-      case ByteType   => identity
-      case ShortType  => asByte andThen (_.toShort)
-      case IntType    => asByte andThen (_.toInt)
-      case LongType   => asByte andThen (_.toLong)
-      case FloatType  => asByte andThen (_.toFloat)
-      case DoubleType => asByte andThen (_.toDouble)
-      case StringType => (_: Any).toString
-      case _          => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromShort(to: DataType): Any => Any = {
-    val asShort = (_: Any).asInstanceOf[Short]
-    to match {
-      case ByteType   => asShort andThen (_.toByte)
-      case ShortType  => identity
-      case IntType    => asShort andThen (_.toInt)
-      case LongType   => asShort andThen (_.toLong)
-      case FloatType  => asShort andThen (_.toFloat)
-      case DoubleType => asShort andThen (_.toDouble)
-      case StringType => _.toString
-      case _          => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromInt(to: DataType): Any => Any = {
-    val asInt = (_: Any).asInstanceOf[Int]
-    to match {
-      case BooleanType => asInt andThen (_ != 0)
-      case ByteType    => asInt andThen (_.toByte)
-      case ShortType   => asInt andThen (_.toShort)
-      case IntType     => identity
-      case LongType    => asInt andThen (_.toLong)
-      case FloatType   => asInt andThen (_.toFloat)
-      case DoubleType  => asInt andThen (_.toDouble)
-      case StringType  => _.toString
-      case _           => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromLong(to: DataType): Any => Any = {
-    val asLong = (_: Any) match { case v: Long => v }
-    to match {
-      case ByteType   => asLong andThen (_.toByte)
-      case ShortType  => asLong andThen (_.toShort)
-      case IntType    => asLong andThen (_.toInt)
-      case LongType   => identity
-      case FloatType  => asLong andThen (_.toFloat)
-      case DoubleType => asLong andThen (_.toDouble)
-      case StringType => _.toString
-      case _          => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromFloat(to: DataType): Any => Any = {
-    val asFloat = (_: Any).asInstanceOf[Float]
-    to match {
-      case ByteType   => asFloat andThen (_.toByte)
-      case ShortType  => asFloat andThen (_.toShort)
-      case IntType    => asFloat andThen (_.toInt)
-      case LongType   => asFloat andThen (_.toLong)
-      case FloatType  => identity
-      case DoubleType => asFloat andThen (_.toDouble)
-      case StringType => _.toString
-      case _          => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromDouble(to: DataType): Any => Any = {
-    val asDouble = (_: Any).asInstanceOf[Double]
-    to match {
-      case ByteType   => asDouble andThen (_.toByte)
-      case ShortType  => asDouble andThen (_.toShort)
-      case IntType    => asDouble andThen (_.toInt)
-      case LongType   => asDouble andThen (_.toFloat)
-      case FloatType  => asDouble andThen (_.toFloat)
-      case DoubleType => identity
-      case StringType => _.toString
-      case _          => throw TypeCastError(fromType, to)
-    }
-  }
-
-  private def fromString(to: DataType): Any => Any = {
-    val asString = (_: Any).asInstanceOf[String]
-
-    val toBoolean = (_: String) match {
-      case text if trueStrings contains text  => true
-      case text if falseStrings contains text => false
-      case _                                  => throw TypeCastError(fromType, to)
-    }
-
-    to match {
-      case BooleanType => asString andThen toBoolean
-      case ByteType    => asString andThen java.lang.Byte.valueOf
-      case ShortType   => asString andThen java.lang.Short.valueOf
-      case IntType     => asString andThen java.lang.Integer.valueOf
-      case LongType    => asString andThen java.lang.Long.valueOf
-      case FloatType   => asString andThen java.lang.Float.valueOf
-      case DoubleType  => asString andThen java.lang.Double.valueOf
-      case StringType  => identity
-      case _           => throw TypeCastError(fromType, to)
-    }
-  }
+    child.typeChecked && convertible(child.dataType, toType)
 }
 
 object Cast {
-  private val trueStrings = Set("y", "yes", "on", "t", "true")
-  private val falseStrings = Set("n", "no", "off", "f", "false")
+  private type CastBuilder = PartialFunction[DataType, Any => Any]
 
-  def implicitlyCastable(from: DataType, to: DataType): Boolean = (from, to) match {
-    case _ if from == to                            => true
-    case (_, StringType)                            => true
-    case (_: IntegralType, _: FractionalType)       => true
-    case (IntType, LongType)                        => true
-    case (ByteType, ShortType | IntType | LongType) => true
-    case (ShortType, IntType | LongType)            => true
-    case (FloatType, DoubleType)                    => true
-    case _                                          => false
+  private val asByte = (_: Any) match { case v: Byte => v }
+  private val asShort = (_: Any) match { case v: Short => v }
+  private val asInt = (_: Any) match { case v: Int => v }
+  private val asLong = (_: Any) match { case v: Long => v }
+  private val asFloat = (_: Any) match { case v: Float => v }
+  private val asDouble = (_: Any) match { case v: Double => v }
+
+  private val implicitlyFromByte: CastBuilder = {
+    case ByteType   => identity
+    case ShortType  => asByte andThen (_.toShort)
+    case IntType    => asByte andThen (_.toInt)
+    case LongType   => asByte andThen (_.toLong)
+    case FloatType  => asByte andThen (_.toFloat)
+    case DoubleType => asByte andThen (_.toDouble)
+    case StringType => _.toString
   }
 
-  def explicitlyCastable(from: DataType, to: DataType): Boolean = (from, to) match {
-    case _ if implicitlyCastable(from, to) => true
-    case (_: NumericType, _: NumericType)  => true
-    case _                                 => false
+  private val fromByte: CastBuilder = implicitlyFromByte
+
+  private val implicitlyFromShort: CastBuilder = {
+    case ShortType  => identity
+    case IntType    => asShort andThen (_.toInt)
+    case LongType   => asShort andThen (_.toLong)
+    case FloatType  => asShort andThen (_.toFloat)
+    case DoubleType => asShort andThen (_.toDouble)
+    case StringType => _.toString
   }
+
+  private val fromShort: CastBuilder = implicitlyFromShort orElse {
+    case ByteType => asShort andThen (_.toByte)
+  }
+
+  private val implicitlyFromInt: CastBuilder = {
+    case IntType    => identity
+    case LongType   => asInt andThen (_.toLong)
+    case FloatType  => asInt andThen (_.toFloat)
+    case DoubleType => asInt andThen (_.toDouble)
+    case StringType => _.toString
+  }
+
+  private val fromInt: CastBuilder = implicitlyFromInt orElse {
+    case ByteType  => asInt andThen (_.toByte)
+    case ShortType => asInt andThen (_.toShort)
+  }
+
+  private val implicitlyFromLong: CastBuilder = {
+    case LongType   => identity
+    case FloatType  => asLong andThen (_.toFloat)
+    case DoubleType => asLong andThen (_.toDouble)
+    case StringType => _.toString
+  }
+
+  private val fromLong: CastBuilder = implicitlyFromLong orElse {
+    case ByteType  => asLong andThen (_.toByte)
+    case ShortType => asLong andThen (_.toShort)
+    case IntType   => asLong andThen (_.toInt)
+  }
+
+  private val implicitlyFromFloat: CastBuilder = {
+    case FloatType  => identity
+    case DoubleType => asFloat andThen (_.toDouble)
+    case StringType => _.toString
+  }
+
+  private val fromFloat: CastBuilder = implicitlyFromFloat orElse {
+    case ByteType  => asFloat andThen (_.toByte)
+    case ShortType => asFloat andThen (_.toShort)
+    case IntType   => asFloat andThen (_.toInt)
+    case LongType  => asFloat andThen (_.toLong)
+  }
+
+  private val implicitlyFromDouble: CastBuilder = {
+    case DoubleType => identity
+    case StringType => _.toString
+  }
+
+  private val fromDouble: CastBuilder = implicitlyFromFloat orElse {
+    case ByteType  => asDouble andThen (_.toByte)
+    case ShortType => asDouble andThen (_.toShort)
+    case IntType   => asDouble andThen (_.toInt)
+    case LongType  => asDouble andThen (_.toLong)
+    case FloatType => asDouble andThen (_.toFloat)
+  }
+
+  private def buildImplicitCast(from: DataType): CastBuilder = from match {
+    case ByteType   => implicitlyFromByte
+    case ShortType  => implicitlyFromShort
+    case IntType    => implicitlyFromInt
+    case LongType   => implicitlyFromLong
+    case FloatType  => implicitlyFromFloat
+    case DoubleType => implicitlyFromDouble
+  }
+
+  private def buildCast(from: DataType): CastBuilder = from match {
+    case ByteType   => fromByte
+    case ShortType  => fromShort
+    case IntType    => fromInt
+    case LongType   => fromLong
+    case FloatType  => fromFloat
+    case DoubleType => fromDouble
+  }
+
+  def implicitlyConvertible(from: DataType, to: DataType): Boolean =
+    buildImplicitCast(from) isDefinedAt to
+
+  def convertible(from: DataType, to: DataType): Boolean =
+    buildCast(from) isDefinedAt to
 }

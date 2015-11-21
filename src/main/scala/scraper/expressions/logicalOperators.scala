@@ -1,12 +1,12 @@
 package scraper.expressions
 
 import scraper.Row
-import scraper.expressions.Cast.implicitlyCastable
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.types.BooleanType
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
   override def typeChecked: Boolean =
-    childrenTypeChecked && childrenTypes.forall(implicitlyCastable(_, BooleanType))
+    childrenTypeChecked && childrenTypes.forall(implicitlyConvertible(_, BooleanType))
 
   override protected def casted: this.type = (left.dataType, right.dataType) match {
     case (BooleanType, BooleanType) => this
@@ -37,10 +37,10 @@ case class Not(child: Predicate) extends UnaryPredicate {
   override def caption: String = s"(NOT ${child.caption})"
 
   override def typeChecked: Boolean =
-    child.typeChecked && implicitlyCastable(child.dataType, BooleanType)
+    child.typeChecked && implicitlyConvertible(child.dataType, BooleanType)
 
   override protected def casted: this.type = child.dataType match {
-    case BooleanType                             => this
-    case t if implicitlyCastable(t, BooleanType) => makeCopy(Cast(child, BooleanType) :: Nil)
+    case BooleanType                                => this
+    case t if implicitlyConvertible(t, BooleanType) => makeCopy(Cast(child, BooleanType) :: Nil)
   }
 }

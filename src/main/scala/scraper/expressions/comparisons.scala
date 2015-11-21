@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.implicitlyCastable
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.types.PrimitiveType
 
 trait BinaryComparison extends Predicate with BinaryExpression {
@@ -9,18 +9,18 @@ trait BinaryComparison extends Predicate with BinaryExpression {
   })
 
   override def typeChecked: Boolean = childrenTypeChecked && (
-    implicitlyCastable(left.dataType, right.dataType) ||
-    implicitlyCastable(right.dataType, left.dataType)
+    implicitlyConvertible(left.dataType, right.dataType) ||
+    implicitlyConvertible(right.dataType, left.dataType)
   )
 
   override protected def casted: this.type = (left.dataType, right.dataType) match {
     case (lhsType, rhsType) if lhsType == rhsType =>
       this
 
-    case (lhsType, rhsType) if implicitlyCastable(lhsType, rhsType) =>
+    case (lhsType, rhsType) if implicitlyConvertible(lhsType, rhsType) =>
       makeCopy(Cast(left, rhsType) :: right :: Nil)
 
-    case (lhsType, rhsType) if implicitlyCastable(rhsType, lhsType) =>
+    case (lhsType, rhsType) if implicitlyConvertible(rhsType, lhsType) =>
       makeCopy(left :: Cast(right, lhsType) :: Nil)
   }
 }

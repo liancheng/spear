@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.implicitlyCastable
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.types.{DataType, NumericType}
 
 trait ArithmeticExpression extends Expression {
@@ -15,10 +15,10 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
     case _ if left.dataType == right.dataType =>
       this
 
-    case (lhsType, rhsType) if implicitlyCastable(lhsType, rhsType) =>
+    case (lhsType, rhsType) if implicitlyConvertible(lhsType, rhsType) =>
       makeCopy(Cast(left, rhsType) :: right :: Nil)
 
-    case (lhsType, rhsType) if implicitlyCastable(rhsType, lhsType) =>
+    case (lhsType, rhsType) if implicitlyConvertible(rhsType, lhsType) =>
       makeCopy(left :: Cast(right, lhsType) :: Nil)
   }
 }

@@ -1,7 +1,7 @@
 package scraper.plans.physical
 
 import scraper.Row
-import scraper.expressions.{BoundRef, Attribute, NamedExpression, Predicate}
+import scraper.expressions.{Attribute, BoundRef, NamedExpression, Predicate}
 import scraper.plans.QueryPlan
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
@@ -19,7 +19,7 @@ trait UnaryPhysicalPlan extends PhysicalPlan {
 }
 
 case object SingleRowRelation extends LeafPhysicalPlan {
-  override def iterator: Iterator[Row] = Iterator.single(Row())
+  override def iterator: Iterator[Row] = Iterator.single(Row.empty)
 
   override val output: Seq[Attribute] = Nil
 }
