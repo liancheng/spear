@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.{TypeCheckError, ExpressionUnevaluable, ExpressionUnresolved, Row}
+import scraper.{ ExpressionUnevaluable, ExpressionUnresolved, Row, TypeCheckError }
 
 trait Expression extends TreeNode[Expression] {
   def foldable: Boolean = children.forall(_.foldable)
@@ -42,8 +42,10 @@ trait Expression extends TreeNode[Expression] {
 
   def !==(that: Expression): NotEq = NotEq(this, that)
 
+  /** Equivalent to [[===]].  Useful for avoiding name collision with ScalaTest. */
   def =:=(that: Expression): Eq = this === that
 
+  /** Equivalent to [[!==]].  Useful for avoiding name collision with ScalaTest. */
   def =/=(that: Expression): NotEq = this !== that
 
   def as(alias: String): Alias = Alias(alias, this)

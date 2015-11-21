@@ -11,5 +11,5 @@ class Row(values: Seq[Any]) extends Seq[Any] {
 object Row {
   val empty = new Row(Nil)
 
-  def apply(values: Any*): Row = new Row(values)
+  def apply(first: Any, rest: Any*): Row = new Row(first +: rest)
 }

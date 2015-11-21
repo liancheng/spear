@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.explicitlyCastable
+import scraper.expressions.Cast.{explicitlyCastable, falseStrings, trueStrings}
 import scraper.types._
 import scraper.{Row, TypeCastError}
 
@@ -59,14 +59,15 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
   private def fromInt(to: DataType): Any => Any = {
     val asInt = (_: Any).asInstanceOf[Int]
     to match {
-      case ByteType   => asInt andThen (_.toByte)
-      case ShortType  => asInt andThen (_.toShort)
-      case IntType    => identity
-      case LongType   => asInt andThen (_.toLong)
-      case FloatType  => asInt andThen (_.toFloat)
-      case DoubleType => asInt andThen (_.toDouble)
-      case StringType => _.toString
-      case _          => throw TypeCastError(fromType, to)
+      case BooleanType => asInt andThen (_ != 0)
+      case ByteType    => asInt andThen (_.toByte)
+      case ShortType   => asInt andThen (_.toShort)
+      case IntType     => identity
+      case LongType    => asInt andThen (_.toLong)
+      case FloatType   => asInt andThen (_.toFloat)
+      case DoubleType  => asInt andThen (_.toDouble)
+      case StringType  => _.toString
+      case _           => throw TypeCastError(fromType, to)
     }
   }
 
@@ -114,20 +115,31 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
 
   private def fromString(to: DataType): Any => Any = {
     val asString = (_: Any).asInstanceOf[String]
+
+    val toBoolean = (_: String) match {
+      case text if trueStrings contains text  => true
+      case text if falseStrings contains text => false
+      case _                                  => throw TypeCastError(fromType, to)
+    }
+
     to match {
-      case ByteType   => asString andThen java.lang.Byte.valueOf
-      case ShortType  => asString andThen java.lang.Short.valueOf
-      case IntType    => asString andThen java.lang.Integer.valueOf
-      case LongType   => asString andThen java.lang.Long.valueOf
-      case FloatType  => asString andThen java.lang.Float.valueOf
-      case DoubleType => asString andThen java.lang.Double.valueOf
-      case StringType => identity
-      case _          => throw TypeCastError(fromType, to)
+      case BooleanType => asString andThen toBoolean
+      case ByteType    => asString andThen java.lang.Byte.valueOf
+      case ShortType   => asString andThen java.lang.Short.valueOf
+      case IntType     => asString andThen java.lang.Integer.valueOf
+      case LongType    => asString andThen java.lang.Long.valueOf
+      case FloatType   => asString andThen java.lang.Float.valueOf
+      case DoubleType  => asString andThen java.lang.Double.valueOf
+      case StringType  => identity
+      case _           => throw TypeCastError(fromType, to)
     }
   }
 }
 
 object Cast {
+  private val trueStrings = Set("y", "yes", "on", "t", "true")
+  private val falseStrings = Set("n", "no", "off", "f", "false")
+
   def implicitlyCastable(from: DataType, to: DataType): Boolean = (from, to) match {
     case _ if from == to                            => true
     case (_, StringType)                            => true
