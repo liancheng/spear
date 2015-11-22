@@ -1,17 +1,17 @@
 package scraper.expressions
 
+import scala.util.Try
+
 import scraper.Row
-import scraper.expressions.Cast.implicitlyConvertible
-import scraper.types.BooleanType
+import scraper.expressions.Cast.promoteDataTypes
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
-  override def typeChecked: Boolean =
-    childrenTypeChecked && childrenTypes.forall(implicitlyConvertible(_, BooleanType))
-
-  override protected def casted: this.type = (left.dataType, right.dataType) match {
-    case (BooleanType, BooleanType) => this
-    case (t, BooleanType)           => makeCopy(Cast(left, BooleanType) :: right :: Nil)
-    case (BooleanType, t)           => makeCopy(left :: Cast(right, BooleanType) :: Nil)
+  override lazy val strictlyTyped: Try[this.type] = {
+    for {
+      Predicate(lhs) <- left.strictlyTyped
+      Predicate(rhs) <- right.strictlyTyped
+      (e1, e2) <- promoteDataTypes(lhs, rhs)
+    } yield makeCopy(e1 :: e2 :: Nil)
   }
 }
 
@@ -36,11 +36,7 @@ case class Not(child: Predicate) extends UnaryPredicate {
 
   override def caption: String = s"(NOT ${child.caption})"
 
-  override def typeChecked: Boolean =
-    child.typeChecked && implicitlyConvertible(child.dataType, BooleanType)
-
-  override protected def casted: this.type = child.dataType match {
-    case BooleanType                                => this
-    case t if implicitlyConvertible(t, BooleanType) => makeCopy(Cast(child, BooleanType) :: Nil)
-  }
+  override lazy val strictlyTyped: Try[this.type] = for {
+    Predicate(e) <- child.strictlyTyped
+  } yield makeCopy(e :: Nil)
 }

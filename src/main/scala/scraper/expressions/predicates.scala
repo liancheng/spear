@@ -26,6 +26,11 @@ object Predicate {
     case left Or right => splitDisjunction(left) ++ splitDisjunction(right)
     case _             => predicate :: Nil
   }
+
+  def unapply(e: Expression): Option[Predicate] = e match {
+    case e: Predicate => Some(e)
+    case _            => None
+  }
 }
 
 trait UnaryPredicate extends Predicate with UnaryExpression

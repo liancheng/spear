@@ -1,7 +1,7 @@
 package scraper.plans.physical
 
 import scraper.Row
-import scraper.expressions.{Attribute, BoundRef, NamedExpression, Predicate}
+import scraper.expressions._
 import scraper.plans.QueryPlan
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
@@ -58,4 +58,12 @@ case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysic
   }
 
   override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
+}
+
+case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPlan {
+  override lazy val output: Seq[Attribute] = child.output
+
+  override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
+
+  override def caption: String = s"${getClass.getSimpleName} ${limit.caption}"
 }

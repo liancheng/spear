@@ -1,28 +1,20 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.implicitlyConvertible
+import scala.util.Try
+
+import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.PrimitiveType
 
 trait BinaryComparison extends Predicate with BinaryExpression {
-  protected lazy val ordering: Ordering[Any] = whenTypeChecked(left.dataType match {
+  protected lazy val ordering: Ordering[Any] = whenStrictlyTyped(left.dataType match {
     case t: PrimitiveType => t.ordering.asInstanceOf[Ordering[Any]]
   })
 
-  override def typeChecked: Boolean = childrenTypeChecked && (
-    implicitlyConvertible(left.dataType, right.dataType) ||
-    implicitlyConvertible(right.dataType, left.dataType)
-  )
-
-  override protected def casted: this.type = (left.dataType, right.dataType) match {
-    case (lhsType, rhsType) if lhsType == rhsType =>
-      this
-
-    case (lhsType, rhsType) if implicitlyConvertible(lhsType, rhsType) =>
-      makeCopy(Cast(left, rhsType) :: right :: Nil)
-
-    case (lhsType, rhsType) if implicitlyConvertible(rhsType, lhsType) =>
-      makeCopy(left :: Cast(right, lhsType) :: Nil)
-  }
+  override lazy val strictlyTyped: Try[this.type] = for {
+    lhs <- left.strictlyTyped if lhs.dataType.isInstanceOf[PrimitiveType]
+    rhs <- right.strictlyTyped if rhs.dataType.isInstanceOf[PrimitiveType]
+    (e1, e2) <- promoteDataTypes(lhs, rhs)
+  } yield makeCopy(e1 :: e2 :: Nil)
 }
 
 case class Eq(left: Expression, right: Expression) extends BinaryComparison {

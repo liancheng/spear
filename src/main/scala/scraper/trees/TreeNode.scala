@@ -58,7 +58,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
-    defaultConstructor.newInstance(args: _*).asInstanceOf[this.type]
+    try {
+      defaultConstructor.newInstance(args: _*).asInstanceOf[this.type]
+    } catch {
+      case cause: IllegalArgumentException =>
+        throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
+    }
   }
 
   def collect[T](f: PartialFunction[Base, T]): Seq[T] = {

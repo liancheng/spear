@@ -1,5 +1,7 @@
 package scraper.plans.logical
 
+import scala.util.{Success, Try}
+
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.plans.logical.LogicalPlanSuite.{FakeExpr, FakePlan}
@@ -113,9 +115,7 @@ object LogicalPlanSuite {
 
     override def evaluate(input: Row): Any = literal.evaluated
 
-    override def typeChecked: Boolean = true
-
-    override protected def casted: this.type = this
+    override lazy val strictlyTyped: Try[this.type] = Success(this)
   }
 
   object FakeExpr {

@@ -2,7 +2,8 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.expressions.{Attribute, Expression, NamedExpression, Predicate}
+import scraper.expressions._
+import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.schemaOf
 import scraper.types.TupleType
@@ -16,6 +17,10 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def select(first: NamedExpression, rest: NamedExpression*): LogicalPlan = select(first +: rest)
 
   def filter(condition: Predicate): LogicalPlan = Filter(this, condition)
+
+  def limit(n: Expression): LogicalPlan = Limit(this, n)
+
+  def limit(n: Int): LogicalPlan = this limit lit(n)
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
@@ -72,4 +77,10 @@ case class Filter(child: LogicalPlan, condition: Predicate) extends UnaryLogical
   override lazy val output: Seq[Attribute] = child.output
 
   override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
+}
+
+case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
+  override lazy val output: Seq[Attribute] = child.output
+
+  override def caption: String = s"${getClass.getSimpleName} ${limit.caption}"
 }

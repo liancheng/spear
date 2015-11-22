@@ -1,7 +1,16 @@
 package scraper.types
 
+import scraper.expressions.Expression
+
 trait NumericType extends PrimitiveType {
   val numeric: Numeric[InternalType]
+}
+
+object NumericType {
+  def unapply(e: Expression): Option[Expression] = e.dataType match {
+    case _: NumericType => Some(e)
+    case _              => None
+  }
 }
 
 trait IntegralType extends NumericType {

@@ -1,6 +1,8 @@
 package scraper.expressions
 
-import scraper.expressions.Cast.implicitlyConvertible
+import scala.util.Try
+
+import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.{DataType, NumericType}
 
 trait ArithmeticExpression extends Expression {
@@ -8,23 +10,15 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
-  override def typeChecked: Boolean =
-    childrenTypeChecked && childrenTypes.forall(_.isInstanceOf[NumericType])
-
-  override protected def casted: this.type = (left.dataType, right.dataType) match {
-    case _ if left.dataType == right.dataType =>
-      this
-
-    case (lhsType, rhsType) if implicitlyConvertible(lhsType, rhsType) =>
-      makeCopy(Cast(left, rhsType) :: right :: Nil)
-
-    case (lhsType, rhsType) if implicitlyConvertible(rhsType, lhsType) =>
-      makeCopy(left :: Cast(right, lhsType) :: Nil)
-  }
+  override lazy val strictlyTyped: Try[this.type] = for {
+    NumericType(lhs) <- left.strictlyTyped
+    NumericType(rhs) <- right.strictlyTyped
+    (e1, e2) <- promoteDataTypes(lhs, rhs)
+  } yield makeCopy(e1 :: e2 :: Nil)
 }
 
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenTypeChecked(left.dataType)
+  override def dataType: DataType = whenStrictlyTyped(left.dataType)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
@@ -32,7 +26,7 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpr
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenTypeChecked(left.dataType)
+  override def dataType: DataType = whenStrictlyTyped(left.dataType)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
@@ -40,7 +34,7 @@ case class Minus(left: Expression, right: Expression) extends BinaryArithmeticEx
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenTypeChecked(left.dataType)
+  override def dataType: DataType = whenStrictlyTyped(left.dataType)
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 

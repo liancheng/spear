@@ -22,10 +22,6 @@ case class Literal(value: Any, dataType: DataType) extends LiteralExpression {
 }
 
 object Literal {
-  val True: LogicalLiteral = LogicalLiteral(true)
-
-  val False: LogicalLiteral = LogicalLiteral(false)
-
   val Zero: Literal = Literal(0, IntType)
 
   val One: Literal = Literal(1, IntType)
@@ -54,4 +50,10 @@ case class LogicalLiteral(value: Boolean) extends LiteralExpression with LeafPre
   override def evaluate(input: Row): Any = value
 
   override def caption: String = if (value) "TRUE" else "FALSE"
+}
+
+object LogicalLiteral {
+  val True: LogicalLiteral = LogicalLiteral(true)
+
+  val False: LogicalLiteral = LogicalLiteral(false)
 }

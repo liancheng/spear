@@ -2,6 +2,8 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.util.Try
+
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types.DataType
 import scraper.{ExpressionUnresolved, ResolutionFailure, Row}
@@ -48,7 +50,9 @@ case class Alias(
 
   override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
 
-  override def typeChecked: Boolean = child.typeChecked
+  override lazy val strictlyTyped: Try[this.type] = for {
+    e <- child.strictlyTyped
+  } yield makeCopy(name :: (e: AnyRef) :: expressionId :: Nil)
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

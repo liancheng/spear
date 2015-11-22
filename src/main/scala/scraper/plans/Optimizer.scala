@@ -1,12 +1,12 @@
 package scraper.plans
 
 import scraper.Analyzer
-import scraper.expressions.Literal.{False, True}
+import scraper.expressions.LogicalLiteral.{False, True}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
-import scraper.plans.logical.{Filter, LogicalPlan, Project}
+import scraper.plans.logical.{Filter, Limit, LogicalPlan, Project}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
@@ -162,6 +162,16 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projections Filter condition =>
         plan filter reduceAliases(collectAliases(projections), condition) select projections
+    }
+  }
+
+  object PruneColumns extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan Project projections if projections == plan.output =>
+        plan
+
+      case plan Limit n Project projections =>
+        plan select projections limit n
     }
   }
 }

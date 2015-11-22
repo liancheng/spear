@@ -34,8 +34,7 @@ package object patterns {
 
         plan match {
           case _ Project projections =>
-            val aliasesReducedProjections = projections map (reduceAliases(aliases, _))
-            (Some(aliasesReducedProjections), predicates, grandChild)
+            (Some(projections map (reduceAliases(aliases, _))), predicates, grandChild)
 
           case _ Filter condition =>
             val reducedCondition = reduceAliases(aliases, condition)

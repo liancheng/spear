@@ -2,6 +2,7 @@ package scraper.types
 
 import scala.language.implicitConversions
 
+import scraper.expressions.Expression
 import scraper.trees.TreeNode
 
 trait DataType {
@@ -15,8 +16,12 @@ trait DataType {
   def prettyTree: String = DataType.`DataType->DataTypeNode`(this).prettyTree
 
   /** A brief name of this [[DataType]]. */
-  def simpleName: String =
-    (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
+  def simpleName: String = (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
+
+  def unapply(e: Expression): Option[Expression] = e match {
+    case _ if e.dataType == this => Some(e)
+    case _                       => None
+  }
 }
 
 case class Schema(dataType: DataType, nullable: Boolean)

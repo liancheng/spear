@@ -1,8 +1,9 @@
 package scraper.expressions
 
-import scraper.Row
-import scraper.expressions.Cast.convertible
+import scala.util.{Failure, Success, Try}
+
 import scraper.types._
+import scraper.{Row, TypeCastError}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression
@@ -16,8 +17,9 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
   override def evaluate(input: Row): Any =
     Cast.buildCast(fromType)(toType)(fromExpression evaluate input)
 
-  override def typeChecked: Boolean =
-    child.typeChecked && convertible(child.dataType, toType)
+  override lazy val strictlyTyped: Try[this.type] = for {
+    e <- child.strictlyTyped
+  } yield makeCopy(e :: toType :: Nil)
 }
 
 object Cast {
@@ -31,7 +33,6 @@ object Cast {
   private val asDouble = (_: Any) match { case v: Double => v }
 
   private val implicitlyFromByte: CastBuilder = {
-    case ByteType   => identity
     case ShortType  => asByte andThen (_.toShort)
     case IntType    => asByte andThen (_.toInt)
     case LongType   => asByte andThen (_.toLong)
@@ -43,7 +44,6 @@ object Cast {
   private val fromByte: CastBuilder = implicitlyFromByte
 
   private val implicitlyFromShort: CastBuilder = {
-    case ShortType  => identity
     case IntType    => asShort andThen (_.toInt)
     case LongType   => asShort andThen (_.toLong)
     case FloatType  => asShort andThen (_.toFloat)
@@ -56,7 +56,6 @@ object Cast {
   }
 
   private val implicitlyFromInt: CastBuilder = {
-    case IntType    => identity
     case LongType   => asInt andThen (_.toLong)
     case FloatType  => asInt andThen (_.toFloat)
     case DoubleType => asInt andThen (_.toDouble)
@@ -69,7 +68,6 @@ object Cast {
   }
 
   private val implicitlyFromLong: CastBuilder = {
-    case LongType   => identity
     case FloatType  => asLong andThen (_.toFloat)
     case DoubleType => asLong andThen (_.toDouble)
     case StringType => _.toString
@@ -82,7 +80,6 @@ object Cast {
   }
 
   private val implicitlyFromFloat: CastBuilder = {
-    case FloatType  => identity
     case DoubleType => asFloat andThen (_.toDouble)
     case StringType => _.toString
   }
@@ -95,7 +92,6 @@ object Cast {
   }
 
   private val implicitlyFromDouble: CastBuilder = {
-    case DoubleType => identity
     case StringType => _.toString
   }
 
@@ -125,9 +121,18 @@ object Cast {
     case DoubleType => fromDouble
   }
 
-  def implicitlyConvertible(from: DataType, to: DataType): Boolean =
-    buildImplicitCast(from) isDefinedAt to
+  def implicitlyConvertible(x: DataType, y: DataType): Boolean = buildImplicitCast(x) isDefinedAt y
 
-  def convertible(from: DataType, to: DataType): Boolean =
-    buildCast(from) isDefinedAt to
+  def convertible(x: DataType, y: DataType): Boolean = buildCast(x) isDefinedAt y
+
+  def implicitlyCompatible(x: DataType, y: DataType): Boolean =
+    x == y || implicitlyConvertible(x, y) || implicitlyConvertible(y, x)
+
+  def promoteDataTypes(e1: Expression, e2: Expression): Try[(Expression, Expression)] =
+    (e1.dataType, e2.dataType) match {
+      case (t1, t2) if t1 == t2                      => Success((e1, e2))
+      case (t1, t2) if implicitlyConvertible(t1, t2) => Success((Cast(e1, t2), e2))
+      case (t1, t2) if implicitlyConvertible(t2, t1) => Success((e1, Cast(e2, t1)))
+      case (t1, t2)                                  => Failure(TypeCastError(t1, t2))
+    }
 }

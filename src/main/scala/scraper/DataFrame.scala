@@ -1,7 +1,8 @@
 package scraper
 
 import scraper.expressions.dsl._
-import scraper.expressions.{NamedExpression, Predicate}
+import scraper.expressions.functions._
+import scraper.expressions.{Expression, NamedExpression, Predicate}
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.{QueryExecution, logical}
 import scraper.types.TupleType
@@ -16,6 +17,13 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   lazy val schema: TupleType = TupleType fromAttributes queryExecution.analyzedPlan.output
 
+  def rename(newNames: String*): DataFrame = {
+    assert(newNames.length == schema.fields.length)
+    val oldNames = schema.fields map (_.name)
+    val aliases = (oldNames, newNames).zipped map { Symbol(_) as _ }
+    this select aliases
+  }
+
   def select(first: NamedExpression, rest: NamedExpression*): DataFrame =
     this select (first +: rest)
 
@@ -25,12 +33,9 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def where(condition: Predicate): DataFrame = this filter condition
 
-  def rename(newNames: String*): DataFrame = {
-    assert(newNames.length == schema.fields.length)
-    val oldNames = schema.fields map (_.name)
-    val aliases = (oldNames, newNames).zipped map { Symbol(_) as _ }
-    this select aliases
-  }
+  def limit(n: Expression): DataFrame = build(logical.Limit(_, n))
+
+  def limit(n: Int): DataFrame = this limit lit(n)
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
