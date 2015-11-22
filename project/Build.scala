@@ -32,7 +32,14 @@ object Build extends sbt.Build {
       scalacOptions ++= Seq("-unchecked", "-deprecation"),
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
       fork := false,
-      parallelExecution in Test := false
+      parallelExecution in Test := false,
+      initialCommands in console :=
+        """import scraper.LocalContext
+          |import scraper.expressions.dsl._
+          |import scraper.expressions.functions._
+          |
+          |val context = new LocalContext
+        """.stripMargin
     )
 
   lazy val dependencySettings =
