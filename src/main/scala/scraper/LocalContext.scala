@@ -97,8 +97,11 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case child Filter predicate =>
         physical.Filter(predicate, planLater(child)) :: Nil
 
-      case plan @ LocalRelation(data, _) =>
-        physical.LocalRelation(data.toIterator, plan.output) :: Nil
+      case child Limit n =>
+        physical.Limit(planLater(child), n) :: Nil
+
+      case relation @ LocalRelation(data, _) =>
+        physical.LocalRelation(data.toIterator, relation.output) :: Nil
 
       case SingleRowRelation =>
         physical.SingleRowRelation :: Nil
