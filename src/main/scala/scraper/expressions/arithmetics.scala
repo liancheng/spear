@@ -10,7 +10,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
-  override lazy val strictlyTyped: Try[this.type] = for {
+  override lazy val strictlyTyped: Try[Expression] = for {
     NumericType(lhs) <- left.strictlyTyped
     NumericType(rhs) <- right.strictlyTyped
     (e1, e2) <- promoteDataTypes(lhs, rhs)

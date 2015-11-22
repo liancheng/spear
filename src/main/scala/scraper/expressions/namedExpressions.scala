@@ -50,9 +50,9 @@ case class Alias(
 
   override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
 
-  override lazy val strictlyTyped: Try[this.type] = for {
+  override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped
-  } yield makeCopy(name :: (e: AnyRef) :: expressionId :: Nil)
+  } yield copy(child = e)
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

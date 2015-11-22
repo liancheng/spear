@@ -108,6 +108,13 @@ trait PrimitiveType extends DataType {
   val ordering: Ordering[InternalType]
 }
 
+object PrimitiveType {
+  def unapply(e: Expression): Option[Expression] = e.dataType match {
+    case _: PrimitiveType => Some(e)
+    case _                => None
+  }
+}
+
 case object NullType extends PrimitiveType {
   override type InternalType = Null
   override val ordering: Ordering[Null] = implicitly[Ordering[Null]]

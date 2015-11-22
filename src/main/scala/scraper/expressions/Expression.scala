@@ -23,7 +23,7 @@ trait Expression extends TreeNode[Expression] {
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
 
-  def strictlyTyped: Try[this.type]
+  def strictlyTyped: Try[Expression]
 
   protected def whenStrictlyTyped[T](value: => T): T = (
     for (e <- strictlyTyped if e sameOrEqual this) yield value

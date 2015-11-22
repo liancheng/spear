@@ -89,7 +89,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
         s"""Applied $transformation
            |
            |$diff
-           |""".stripMargin.trim + "\n"
+           |""".stripMargin
       }
     }
   }

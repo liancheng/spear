@@ -17,9 +17,9 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
   override def evaluate(input: Row): Any =
     Cast.buildCast(fromType)(toType)(fromExpression evaluate input)
 
-  override lazy val strictlyTyped: Try[this.type] = for {
+  override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped
-  } yield makeCopy(e :: toType :: Nil)
+  } yield copy(fromExpression = e)
 }
 
 object Cast {

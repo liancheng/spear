@@ -10,9 +10,9 @@ trait BinaryComparison extends Predicate with BinaryExpression {
     case t: PrimitiveType => t.ordering.asInstanceOf[Ordering[Any]]
   })
 
-  override lazy val strictlyTyped: Try[this.type] = for {
-    lhs <- left.strictlyTyped if lhs.dataType.isInstanceOf[PrimitiveType]
-    rhs <- right.strictlyTyped if rhs.dataType.isInstanceOf[PrimitiveType]
+  override lazy val strictlyTyped: Try[Expression] = for {
+    PrimitiveType(lhs) <- left.strictlyTyped
+    PrimitiveType(rhs) <- right.strictlyTyped
     (e1, e2) <- promoteDataTypes(lhs, rhs)
   } yield makeCopy(e1 :: e2 :: Nil)
 }

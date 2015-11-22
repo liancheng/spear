@@ -24,7 +24,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     rule applyOrElse (childrenTransformed, identity[Base])
   }
 
-  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): this.type = {
+  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
     // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
     // equivalent to the original one
     def applyRule(tree: Base): (Base, Boolean) = {
@@ -54,12 +54,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     if (argsChanged exists identity) makeCopy(newArgs) else this
   }
 
-  private[scraper] def makeCopy(args: Seq[AnyRef]): this.type = {
+  private[scraper] def makeCopy(args: Seq[AnyRef]): Base = {
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
     try {
-      defaultConstructor.newInstance(args: _*).asInstanceOf[this.type]
+      defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
     } catch {
       case cause: IllegalArgumentException =>
         throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)

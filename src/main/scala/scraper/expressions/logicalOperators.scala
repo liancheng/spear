@@ -6,7 +6,7 @@ import scraper.Row
 import scraper.expressions.Cast.promoteDataTypes
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
-  override lazy val strictlyTyped: Try[this.type] = {
+  override lazy val strictlyTyped: Try[Expression] = {
     for {
       Predicate(lhs) <- left.strictlyTyped
       Predicate(rhs) <- right.strictlyTyped
@@ -36,7 +36,7 @@ case class Not(child: Predicate) extends UnaryPredicate {
 
   override def caption: String = s"(NOT ${child.caption})"
 
-  override lazy val strictlyTyped: Try[this.type] = for {
+  override lazy val strictlyTyped: Try[Expression] = for {
     Predicate(e) <- child.strictlyTyped
-  } yield makeCopy(e :: Nil)
+  } yield copy(child = e)
 }
