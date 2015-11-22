@@ -29,11 +29,19 @@ trait Expression extends TreeNode[Expression] {
     for (e <- strictlyTyped if e sameOrEqual this) yield value
   ).get
 
-  def +(that: Expression): Expression = Add(this, that)
+  def +(that: Expression): Add = Add(this, that)
 
-  def -(that: Expression): Expression = Minus(this, that)
+  def -(that: Expression): Minus = Minus(this, that)
 
-  def *(that: Expression): Expression = Multiply(this, that)
+  def *(that: Expression): Multiply = Multiply(this, that)
+
+  def >(that: Expression): Gt = Gt(this, that)
+
+  def <(that: Expression): Lt = Lt(this, that)
+
+  def >=(that: Expression): GtEq = GtEq(this, that)
+
+  def <=(that: Expression): LtEq = LtEq(this, that)
 
   def ===(that: Expression): Eq = Eq(this, that)
 
