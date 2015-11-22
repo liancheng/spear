@@ -30,14 +30,14 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       s"""Logical query plan not resolved yet:
          |
          |${tree.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
 
     logTrace(
       s"""Optimizing logical query plan:
          |
          |${tree.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
 
     super.apply(tree)

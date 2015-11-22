@@ -23,7 +23,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       s"""Analyzing logical query plan:
          |
          |${tree.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
     super.apply(tree)
   }

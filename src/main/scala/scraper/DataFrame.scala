@@ -44,7 +44,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def toSeq: Seq[Row] = iterator.toSeq
 
-  def explanation(extended: Boolean): String = if (extended) {
+  def explain(extended: Boolean): String = if (extended) {
     s"""# Logical plan
        |${queryExecution.logicalPlan.prettyTree}
        |
@@ -56,10 +56,10 @@ class DataFrame(val queryExecution: QueryExecution) {
        |
        |# Physical plan
        |${queryExecution.physicalPlan.prettyTree}
-     """.stripMargin
+       |""".stripMargin
   } else {
     s"""# Physical plan
        |${queryExecution.physicalPlan.prettyTree}
-     """.stripMargin
+       |""".stripMargin
   }
 }

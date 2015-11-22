@@ -13,11 +13,11 @@ trait TestUtils { this: FunSuite =>
       fail(sideBySide(
         s"""Expected
            |$expected
-         """.stripMargin,
+           |""".stripMargin,
 
         s"""Actual
            |$actual
-         """.stripMargin,
+           |""".stripMargin,
 
         withHeader = true
       ))
@@ -55,16 +55,16 @@ trait TestUtils { this: FunSuite =>
   private[scraper] def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Unit = {
     val actual = ds.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
-      val explanation = ds.explanation(extended = true)
+      val explanation = ds.explain(extended = true)
 
       val answerDiff = sideBySide(
         s"""Expected answer:
            |${expected mkString "\n"}
-         """.stripMargin,
+           |""".stripMargin,
 
         s"""Actual answer:
            |${actual mkString "\n"}
-         """.stripMargin,
+           |""".stripMargin,
 
         withHeader = true
       )
@@ -76,7 +76,7 @@ trait TestUtils { this: FunSuite =>
            |Query plan details:
            |
            |$explanation
-         """.stripMargin
+           |""".stripMargin
       )
     }
   }

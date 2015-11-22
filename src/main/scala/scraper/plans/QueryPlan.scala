@@ -48,6 +48,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         arg -> false
     }.toSeq.unzip
 
-    if (argsChanged exists identity) makeCopy(newArgs) else this
+    if (argsChanged exists identity) makeCopy(newArgs).asInstanceOf[Plan] else this
   }
 }

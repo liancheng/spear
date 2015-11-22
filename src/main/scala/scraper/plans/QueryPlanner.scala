@@ -22,7 +22,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: QueryPlan[Physical
       s"""Failed to compile logical query plan
          |
          |${logicalPlan.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
 
     physicalPlans.head
@@ -33,7 +33,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: QueryPlan[Physical
       s"""Planning logical query plan:
          |
          |${logicalPlan.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
 
     val physicalPlan = plan(logicalPlan)
@@ -46,7 +46,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: QueryPlan[Physical
          |to physical query plan
          |
          |${physicalPlan.prettyTree}
-       """.stripMargin
+         |""".stripMargin
     )
 
     physicalPlan

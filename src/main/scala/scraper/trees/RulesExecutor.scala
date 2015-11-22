@@ -77,11 +77,11 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
         val diff = sideBySide(
           s"""Before $transformation
              |${before.prettyTree}
-           """.stripMargin,
+             |""".stripMargin,
 
           s"""After $transformation
              |${after.prettyTree}
-           """.stripMargin,
+             |""".stripMargin,
 
           withHeader = true
         )
@@ -89,7 +89,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
         s"""Applied $transformation
            |
            |$diff
-         """.stripMargin.trim + "\n"
+           |""".stripMargin.trim + "\n"
       }
     }
   }

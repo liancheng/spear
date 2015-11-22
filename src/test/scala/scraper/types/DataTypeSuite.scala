@@ -105,7 +105,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
         |└╴addresses: map?
         |  ├╴key: string
         |  └╴value: string
-      """.stripMargin.trim,
+        |""".stripMargin.trim,
       testSchema.prettyTree
     )
   }
