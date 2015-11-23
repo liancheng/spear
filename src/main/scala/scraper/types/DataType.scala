@@ -54,7 +54,7 @@ object DataType {
   private[scraper] trait HasDataType { this: DataTypeNode =>
     def dataType: DataType
 
-    override def caption: String = dataType.simpleName
+    override def nodeCaption: String = dataType.simpleName
   }
 
   case class PrimitiveTypeNode(dataType: DataType) extends DataTypeNode with HasDataType {
@@ -64,7 +64,7 @@ object DataType {
   case class TupleFieldNode(field: TupleField) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
-    override def caption: String =
+    override def nodeCaption: String =
       s"${field.name}: ${schemaString(field.dataType, field.nullable)}"
   }
 
@@ -75,13 +75,13 @@ object DataType {
   case class KeyTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.keyType.children
 
-    override def caption: String = s"key: ${mapType.keyType.simpleName}"
+    override def nodeCaption: String = s"key: ${mapType.keyType.simpleName}"
   }
 
   case class ValueTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.valueType.children
 
-    override def caption: String =
+    override def nodeCaption: String =
       s"value: ${schemaString(mapType.valueType, mapType.valueNullable)}"
   }
 
@@ -94,7 +94,7 @@ object DataType {
   case class ElementTypeNode(arrayType: ArrayType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = arrayType.elementType.children
 
-    override def caption: String =
+    override def nodeCaption: String =
       s"element: ${schemaString(arrayType.elementType, arrayType.elementNullable)}"
   }
 

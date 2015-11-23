@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
+import scala.util.Try
 
 import scraper.expressions._
 import scraper.expressions.functions._
@@ -11,6 +12,12 @@ import scraper.{LogicalPlanUnresolved, Row}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
+
+  def strictlyTyped: Try[LogicalPlan] = Try {
+    this transformExpressionsDown {
+      case e => e.strictlyTyped.get
+    }
+  }
 
   def select(projections: Seq[NamedExpression]): LogicalPlan = Project(this, projections)
 
@@ -50,8 +57,8 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
 
   override val output: Seq[Attribute] = schema.toAttributes
 
-  override def caption: String =
-    s"${getClass.getSimpleName} ${output map (_.caption) mkString ", "}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${output map (_.nodeCaption) mkString ", "}"
 }
 
 object LocalRelation {
@@ -69,18 +76,24 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projections map (_.toAttribute)
 
-  override def caption: String =
-    s"${getClass.getSimpleName} ${projections map (_.caption) mkString ", "}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${projections map (_.nodeCaption) mkString ", "}"
 }
 
 case class Filter(child: LogicalPlan, condition: Predicate) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${condition.nodeCaption}"
 }
 
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override def caption: String = s"${getClass.getSimpleName} ${limit.caption}"
+  override lazy val strictlyTyped: Try[LogicalPlan] = for {
+    n <- limit.strictlyTyped if n.foldable
+  } yield if (n sameOrEqual limit) this else copy(limit = n)
+
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${limit.nodeCaption}"
 }

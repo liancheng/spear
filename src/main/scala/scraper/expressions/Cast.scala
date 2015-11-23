@@ -10,7 +10,8 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
 
   override def dataType: DataType = toType
 
-  override def caption: String = s"CAST(${child.caption} AS ${toType.simpleName})"
+  override def nodeCaption: String =
+    s"CAST(${child.nodeCaption} AS ${toType.simpleName})"
 
   private def fromType = fromExpression.dataType
 
@@ -19,7 +20,7 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
 
   override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped
-  } yield copy(fromExpression = e)
+  } yield if (e sameOrEqual child) this else copy(fromExpression = e)
 }
 
 object Cast {
@@ -121,8 +122,13 @@ object Cast {
     case DoubleType => fromDouble
   }
 
+  /** Whether [[DataType]] `x` can be converted to [[DataType]] `y` implicitly. */
   def implicitlyConvertible(x: DataType, y: DataType): Boolean = buildImplicitCast(x) isDefinedAt y
 
+  /**
+   * Whether [[DataType]] `x` can be converted to [[DataType]] `y`, either implicitly or
+   * explicitly.
+   */
   def convertible(x: DataType, y: DataType): Boolean = buildCast(x) isDefinedAt y
 
   def implicitlyCompatible(x: DataType, y: DataType): Boolean =

@@ -11,7 +11,7 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("project") {
     checkPhysicalPlan(
-      Project(Alias("a", Literal(1)) :: Nil, SingleRowRelation),
+      Project(SingleRowRelation, Alias("a", Literal(1)) :: Nil),
       Seq(Row(1))
     )
   }

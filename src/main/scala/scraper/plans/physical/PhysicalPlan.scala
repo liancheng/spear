@@ -29,11 +29,11 @@ case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute
 
   override def iterator: Iterator[Row] = data
 
-  override def caption: String =
-    s"${getClass.getSimpleName} ${output.map(_.caption).mkString(", ")}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${output.map(_.nodeCaption).mkString(", ")}"
 }
 
-case class Project(override val expressions: Seq[NamedExpression], child: PhysicalPlan)
+case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
   extends UnaryPhysicalPlan {
 
   override val output: Seq[Attribute] = expressions.map(_.toAttribute)
@@ -43,11 +43,11 @@ case class Project(override val expressions: Seq[NamedExpression], child: Physic
     new Row(boundProjections map (_ evaluate row))
   }
 
-  override def caption: String =
-    s"${getClass.getSimpleName} ${expressions.map(_.caption).mkString(", ")}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${expressions.map(_.nodeCaption).mkString(", ")}"
 }
 
-case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysicalPlan {
+case class Filter(child: PhysicalPlan, condition: Predicate) extends UnaryPhysicalPlan {
   override val output: Seq[Attribute] = child.output
 
   override def iterator: Iterator[Row] = {
@@ -57,7 +57,8 @@ case class Filter(condition: Predicate, child: PhysicalPlan) extends UnaryPhysic
     }
   }
 
-  override def caption: String = s"${getClass.getSimpleName} ${condition.caption}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${condition.nodeCaption}"
 }
 
 case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPlan {
@@ -65,5 +66,6 @@ case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPl
 
   override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
 
-  override def caption: String = s"${getClass.getSimpleName} ${limit.caption}"
+  override def nodeCaption: String =
+    s"${getClass.getSimpleName} ${limit.nodeCaption}"
 }

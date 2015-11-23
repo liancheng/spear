@@ -48,11 +48,12 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def caption: String = s"(${child.caption} AS $name#${expressionId.id})"
+  override def nodeCaption: String =
+    s"(${child.nodeCaption} AS $name#${expressionId.id})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped
-  } yield copy(child = e)
+  } yield if (e sameOrEqual child) this else copy(child = e)
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
@@ -62,7 +63,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def caption: String = s"`$name`?"
+  override def nodeCaption: String = s"`$name`?"
 }
 
 case class AttributeRef(
@@ -72,7 +73,7 @@ case class AttributeRef(
   override val expressionId: ExpressionId
 ) extends Attribute with UnevaluableExpression {
 
-  override def caption: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
+  override def nodeCaption: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
 }
 
 case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)
@@ -86,7 +87,7 @@ case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boo
 
   override def evaluate(input: Row): Any = input(ordinal)
 
-  override def caption: String = name
+  override def nodeCaption: String = name
 }
 
 object BoundRef {

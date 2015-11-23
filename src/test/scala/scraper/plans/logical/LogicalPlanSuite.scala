@@ -109,7 +109,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
 
 object LogicalPlanSuite {
   case class FakeExpr(literal: Literal, children: Seq[FakeExpr]) extends Expression {
-    override def caption: String = s"${getClass.getSimpleName} ${literal.caption}"
+    override def nodeCaption: String = s"${getClass.getSimpleName} ${literal.nodeCaption}"
 
     override def dataType: DataType = IntType
 
@@ -125,6 +125,6 @@ object LogicalPlanSuite {
   case class FakePlan(expression: Expression) extends LeafLogicalPlan {
     override def output: Seq[Attribute] = Nil
 
-    override def caption: String = s"${getClass.getSimpleName} ${expression.caption}"
+    override def nodeCaption: String = s"${getClass.getSimpleName} ${expression.nodeCaption}"
   }
 }

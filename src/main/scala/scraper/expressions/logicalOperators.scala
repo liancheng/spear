@@ -7,13 +7,12 @@ import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.DataType
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = {
-    for {
-      Predicate(lhs) <- left.strictlyTyped
-      Predicate(rhs) <- right.strictlyTyped
-      (e1, e2) <- promoteDataTypes(lhs, rhs)
-    } yield makeCopy(e1 :: e2 :: Nil)
-  }
+  override lazy val strictlyTyped: Try[Expression] = for {
+    Predicate(lhs) <- left.strictlyTyped
+    Predicate(rhs) <- right.strictlyTyped
+    (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
+    newChildren = promotedLhs :: promotedRhs :: Nil
+  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
 }
 
 case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
@@ -21,21 +20,22 @@ case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
 
-  override def caption: String = s"(${left.caption} AND ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} AND ${right.nodeCaption})"
 }
 
 case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
-  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = {
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
-  }
 
-  override def caption: String = s"(${left.caption} OR ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} OR ${right.nodeCaption})"
 }
 
 case class Not(child: Predicate) extends UnaryPredicate {
   override def evaluate(input: Row): Any = !child.evaluate(input).asInstanceOf[Boolean]
 
-  override def caption: String = s"(NOT ${child.caption})"
+  override def nodeCaption: String = s"(NOT ${child.nodeCaption})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
     Predicate(e) <- child.strictlyTyped
@@ -47,12 +47,20 @@ case class If(condition: Predicate, trueValue: Expression, falseValue: Expressio
 
   override def dataType: DataType = whenStrictlyTyped(trueValue.dataType)
 
-  override def strictlyTyped: Try[Expression] = for {
+  override def children: Seq[Expression] = Seq(condition, trueValue, falseValue)
+
+  override def nodeCaption: String =
+    s"if (${condition.nodeCaption}) " +
+      s"${trueValue.nodeCaption} else " +
+      s"${falseValue.nodeCaption}"
+
+  override lazy val strictlyTyped: Try[Expression] = for {
     Predicate(c) <- condition.strictlyTyped
     t <- trueValue.strictlyTyped
     f <- falseValue.strictlyTyped
     (promotedT, promotedF) <- promoteDataTypes(t, f)
-  } yield If(c, promotedT, promotedF)
+    newChildren = c :: promotedT :: promotedF :: Nil
+  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
 
   override def evaluate(input: Row): Any =
     if (condition.evaluate(input).asInstanceOf[Boolean]) {
@@ -60,6 +68,4 @@ case class If(condition: Predicate, trueValue: Expression, falseValue: Expressio
     } else {
       falseValue.evaluate(input)
     }
-
-  override def children: Seq[Expression] = Seq(condition, trueValue, falseValue)
 }

@@ -24,10 +24,15 @@ class DataFrame(val queryExecution: QueryExecution) {
     this select aliases
   }
 
-  def select(first: NamedExpression, rest: NamedExpression*): DataFrame =
+  def select(first: Expression, rest: Expression*): DataFrame =
     this select (first +: rest)
 
-  def select(expressions: Seq[NamedExpression]): DataFrame = build(logical.Project(_, expressions))
+  def select(expressions: Seq[Expression]): DataFrame = build(
+    logical.Project(_, expressions map {
+      case e: NamedExpression => e
+      case e                  => e as e.nodeCaption
+    })
+  )
 
   def filter(condition: Predicate): DataFrame = build(logical.Filter(_, condition))
 

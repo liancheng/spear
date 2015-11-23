@@ -8,9 +8,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def children: Seq[Base]
 
+  protected def sameChildren(newChildren: Seq[Base]): Boolean =
+    (newChildren, children).zipped forall (_ sameOrEqual _)
+
   /**
-   * Returns whether this [[caption]] and `that` point to the same reference or equal to each
-   * other.
+   * Returns whether this [[nodeCaption]] and `that` point to the same reference or equal
+   * to each other.
    */
   def sameOrEqual(that: Base): Boolean = (this eq that) || this == that
 
@@ -54,7 +57,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     if (argsChanged exists identity) makeCopy(newArgs) else this
   }
 
-  private[scraper] def makeCopy(args: Seq[AnyRef]): Base = {
+  protected def makeCopy(args: Seq[AnyRef]): Base = {
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
@@ -98,7 +101,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def prettyTree: String = prettyTree(0, Nil) mkString "\n"
 
-  def caption: String = toString
+  def nodeCaption: String = toString
 
   private def prettyTree(depth: Int, isLastChild: Seq[Boolean]): Seq[String] = {
     val pipe = "\u2502"
@@ -114,7 +117,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       } :+ (if (isLastChild.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    val head = Seq(prefix.mkString + caption)
+    val head = Seq(prefix.mkString + nodeCaption)
 
     if (children.isEmpty) {
       head

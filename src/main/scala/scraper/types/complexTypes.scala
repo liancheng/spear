@@ -49,6 +49,14 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
     field =>
       AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
   }
+
+  def rename(fieldNames: String*): TupleType = {
+    assert(fieldNames.length == fields.length)
+    TupleType(fields zip fieldNames map {
+      case (field, name) =>
+        field.copy(name = name)
+    })
+  }
 }
 
 object TupleType {

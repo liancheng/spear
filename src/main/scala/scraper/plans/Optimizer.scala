@@ -20,7 +20,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       SimplifyCasts,
       ReduceProjects,
       ReduceAliases,
-      PushFiltersThroughProjects
+      PushFiltersThroughProjects,
+      ReduceLimits,
+      PushCastsThroughAliases
     ))
   )
 
@@ -178,6 +180,16 @@ object Optimizer {
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => Limit(plan, If(n < m, n, m))
+    }
+  }
+
+  object PushCastsThroughAliases extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan =>
+        plan transformExpressionsUp {
+          case (alias: Alias) Cast toType =>
+            alias.copy(child = Cast(alias.child, toType))
+        }
     }
   }
 }

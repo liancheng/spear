@@ -1,7 +1,5 @@
 package scraper
 
-import scala.util.Success
-
 import scraper.expressions.UnresolvedAttribute
 import scraper.plans.logical.{Limit, LogicalPlan, UnresolvedRelation}
 import scraper.trees.{Rule, RulesExecutor}
@@ -14,7 +12,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )),
 
     RuleBatch("Type checking", FixedPoint.Unlimited, Seq(
-      ImplicitCasts
+      ApplyImplicitCasts
     ))
   )
 
@@ -57,12 +55,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
-  object ImplicitCasts extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case plan =>
-        plan transformExpressionsUp {
-          case e => e.strictlyTyped.get
-        }
-    }
+  object ApplyImplicitCasts extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree.strictlyTyped.get
   }
 }

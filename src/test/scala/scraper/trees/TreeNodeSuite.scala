@@ -8,7 +8,7 @@ import scraper.LoggingFunSuite
 import scraper.types.TestUtils
 
 case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
-  override def caption: String = s"Node($value)"
+  override def nodeCaption: String = s"Node($value)"
 }
 
 class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {

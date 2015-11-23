@@ -1,6 +1,6 @@
 package scraper.plans
 
-import scraper.expressions.{Predicate, Attribute, Expression}
+import scraper.expressions.{Attribute, Expression, Predicate}
 import scraper.trees.TreeNode
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
@@ -48,6 +48,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         arg -> false
     }.toSeq.unzip
 
-    if (argsChanged exists identity) makeCopy(newArgs).asInstanceOf[Plan] else this
+    if (argsChanged exists identity) makeCopy(newArgs) else this
   }
 }

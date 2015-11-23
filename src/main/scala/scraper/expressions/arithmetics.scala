@@ -13,8 +13,9 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
   override lazy val strictlyTyped: Try[Expression] = for {
     NumericType(lhs) <- left.strictlyTyped
     NumericType(rhs) <- right.strictlyTyped
-    (e1, e2) <- promoteDataTypes(lhs, rhs)
-  } yield makeCopy(e1 :: e2 :: Nil)
+    (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
+    newChildren = promotedLhs :: promotedRhs :: Nil
+  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
 }
 
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -22,7 +23,8 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpr
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
-  override def caption: String = s"(${left.caption} + ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} + ${right.nodeCaption})"
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -30,7 +32,8 @@ case class Minus(left: Expression, right: Expression) extends BinaryArithmeticEx
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
-  override def caption: String = s"(${left.caption} - ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} - ${right.nodeCaption})"
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -38,7 +41,8 @@ case class Multiply(left: Expression, right: Expression) extends BinaryArithmeti
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
-  override def caption: String = s"(${left.caption} * ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} * ${right.nodeCaption})"
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -46,5 +50,6 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ???
 
-  override def caption: String = s"(${left.caption} / ${right.caption})"
+  override def nodeCaption: String =
+    s"(${left.nodeCaption} / ${right.nodeCaption})"
 }
