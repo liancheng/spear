@@ -6,7 +6,7 @@ import scala.util.Try
 
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types.DataType
-import scraper.{ExpressionUnresolved, ResolutionFailure, Row}
+import scraper.{ExpressionUnresolvedException, ResolutionFailureException, Row}
 
 case class ExpressionId(id: Long)
 
@@ -19,7 +19,7 @@ trait NamedExpression extends Expression {
 }
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
-  override def expressionId: ExpressionId = throw ExpressionUnresolved(this)
+  override def expressionId: ExpressionId = throw ExpressionUnresolvedException(this)
 }
 
 object NamedExpression {
@@ -96,7 +96,10 @@ object BoundRef {
       case ref: AttributeRef =>
         val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
         if (ordinal == -1) {
-          throw ResolutionFailure(s"Failed to bind attribute reference $ref")
+          throw ResolutionFailureException({
+            val inputAttributes = input.map(_.nodeCaption).mkString(", ")
+            s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
+          })
         } else {
           BoundRef(ordinal, ref.dataType, ref.nullable)
         }

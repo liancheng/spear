@@ -4,7 +4,7 @@ import scala.util.{Success, Try}
 
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.{ExpressionUnevaluable, ExpressionUnresolved, Row}
+import scraper.{TypeCheckException, ExpressionUnevaluableException, ExpressionUnresolvedException, Row}
 
 trait Expression extends TreeNode[Expression] {
   def foldable: Boolean = children.forall(_.foldable)
@@ -26,7 +26,10 @@ trait Expression extends TreeNode[Expression] {
   def strictlyTyped: Try[Expression]
 
   protected def whenStrictlyTyped[T](value: => T): T = (
-    for (e <- strictlyTyped if e sameOrEqual this) yield value
+    strictlyTyped map {
+      case e if e sameOrEqual this => value
+      case _                       => throw TypeCheckException(this, None)
+    }
   ).get
 
   def +(that: Expression): Add = Add(this, that)
@@ -96,11 +99,11 @@ object BinaryExpression {
 }
 
 trait UnevaluableExpression extends Expression {
-  override def evaluate(input: Row): Any = throw ExpressionUnevaluable(this)
+  override def evaluate(input: Row): Any = throw ExpressionUnevaluableException(this)
 }
 
 trait UnresolvedExpression extends Expression with UnevaluableExpression {
-  override def dataType: DataType = throw ExpressionUnresolved(this)
+  override def dataType: DataType = throw ExpressionUnresolvedException(this)
 
   override def resolved: Boolean = false
 }

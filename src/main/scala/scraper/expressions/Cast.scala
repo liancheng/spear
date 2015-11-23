@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.{Failure, Success, Try}
 
 import scraper.types._
-import scraper.{Row, TypeCastError}
+import scraper.{TypeCheckException, Row, TypeCastException}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression
@@ -18,9 +18,17 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
   override def evaluate(input: Row): Any =
     Cast.buildCast(fromType)(toType)(fromExpression evaluate input)
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    e <- child.strictlyTyped
-  } yield if (e sameOrEqual child) this else copy(fromExpression = e)
+  override lazy val strictlyTyped: Try[Expression] = {
+    val strictChild = child.strictlyTyped.recover {
+      case cause: Throwable =>
+        throw TypeCheckException(child, Some(cause))
+    }
+
+    strictChild map {
+      case e if e sameOrEqual child => this
+      case e                        => copy(fromExpression = e)
+    }
+  }
 }
 
 object Cast {
@@ -139,6 +147,6 @@ object Cast {
       case (t1, t2) if t1 == t2                      => Success((e1, e2))
       case (t1, t2) if implicitlyConvertible(t1, t2) => Success((Cast(e1, t2), e2))
       case (t1, t2) if implicitlyConvertible(t2, t1) => Success((e1, Cast(e2, t1)))
-      case (t1, t2)                                  => Failure(TypeCastError(t1, t2))
+      case (t1, t2)                                  => Failure(TypeCastException(t1, t2))
     }
 }

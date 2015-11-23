@@ -7,7 +7,7 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
-import scraper.ParsingError
+import scraper.ParsingException
 import scraper.expressions.LogicalLiteral.{False, True}
 import scraper.expressions._
 import scraper.plans.logical._
@@ -35,7 +35,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
   def parse(input: String): T = synchronized {
     phrase(start)(new lexical.Scanner(input)) match {
       case Success(plan, _) => plan
-      case failureOrError   => throw ParsingError(failureOrError.toString)
+      case failureOrError   => throw ParsingException(failureOrError.toString)
     }
   }
 

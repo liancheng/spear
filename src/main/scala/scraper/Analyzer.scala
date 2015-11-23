@@ -31,11 +31,31 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case plan if !plan.resolved =>
         plan transformExpressionsUp {
           case UnresolvedAttribute(name) =>
+            def reportResolutionFailure(message: String): Nothing = {
+              throw ResolutionFailureException(
+                s"""Failed to resolve attribute $name in logical query plan:
+                   |
+                   |${plan.prettyTree}
+                   |
+                   |$message
+                   |""".stripMargin
+              )
+            }
+
             val candidates = plan.children flatMap (_.output) filter (_.name == name)
+
             candidates match {
-              case Seq(attribute) => attribute
-              case Nil            => throw ResolutionFailure(s"Cannot resolve attribute $name")
-              case _              => throw ResolutionFailure(s"Ambiguous attribute $name")
+              case Seq(attribute) =>
+                attribute
+
+              case Nil =>
+                reportResolutionFailure("No candidate input attribute(s) found")
+
+              case _ =>
+                reportResolutionFailure({
+                  val list = candidates.map(_.nodeCaption).mkString(", ")
+                  s"Multiple ambiguous input attributes found: $list"
+                })
             }
         }
     }
@@ -56,6 +76,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree.strictlyTyped.get
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan => plan.strictlyTyped.get
+    }
   }
 }

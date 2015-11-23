@@ -2,6 +2,7 @@ package scraper.expressions
 
 import scala.util.Try
 
+import scraper.TypeMismatchException
 import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.{DataType, NumericType}
 
@@ -11,8 +12,14 @@ trait ArithmeticExpression extends Expression {
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
-    NumericType(lhs) <- left.strictlyTyped
-    NumericType(rhs) <- right.strictlyTyped
+    lhs <- left.strictlyTyped map {
+      case NumericType(e) => e
+      case e              => throw TypeMismatchException(e, classOf[NumericType], None)
+    }
+    rhs <- right.strictlyTyped map {
+      case NumericType(e) => e
+      case e              => throw TypeMismatchException(e, classOf[NumericType], None)
+    }
     (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
     newChildren = promotedLhs :: promotedRhs :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)

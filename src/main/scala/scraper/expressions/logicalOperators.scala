@@ -2,17 +2,25 @@ package scraper.expressions
 
 import scala.util.Try
 
-import scraper.Row
 import scraper.expressions.Cast.promoteDataTypes
-import scraper.types.DataType
+import scraper.types.{BooleanType, DataType}
+import scraper.{Row, TypeMismatchException}
 
 trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = for {
-    Predicate(lhs) <- left.strictlyTyped
-    Predicate(rhs) <- right.strictlyTyped
-    (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
-    newChildren = promotedLhs :: promotedRhs :: Nil
-  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+  override lazy val strictlyTyped: Try[Expression] = {
+    for {
+      lhs <- left.strictlyTyped map {
+        case e: Predicate => e
+        case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+      }
+      rhs <- right.strictlyTyped map {
+        case e: Predicate => e
+        case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+      }
+      (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
+      newChildren = promotedLhs :: promotedRhs :: Nil
+    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+  }
 }
 
 case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
@@ -38,7 +46,10 @@ case class Not(child: Predicate) extends UnaryPredicate {
   override def nodeCaption: String = s"(NOT ${child.nodeCaption})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
-    Predicate(e) <- child.strictlyTyped
+    e <- child.strictlyTyped map {
+      case e: Predicate => e
+      case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+    }
   } yield copy(child = e)
 }
 
@@ -55,7 +66,10 @@ case class If(condition: Predicate, trueValue: Expression, falseValue: Expressio
       s"${falseValue.nodeCaption}"
 
   override lazy val strictlyTyped: Try[Expression] = for {
-    Predicate(c) <- condition.strictlyTyped
+    c <- condition.strictlyTyped map {
+      case e: Predicate => e
+      case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+    }
     t <- trueValue.strictlyTyped
     f <- falseValue.strictlyTyped
     (promotedT, promotedF) <- promoteDataTypes(t, f)
