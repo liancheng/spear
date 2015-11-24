@@ -4,7 +4,7 @@ import scala.util.Try
 
 import scraper.TypeMismatchException
 import scraper.expressions.Cast.promoteDataTypes
-import scraper.types.{DataType, NumericType}
+import scraper.types.{IntegralType, FractionalType, DataType, NumericType}
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]]
@@ -23,11 +23,11 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
     (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
     newChildren = promotedLhs :: promotedRhs :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+
+  override lazy val dataType: DataType = whenStrictlyTyped(left.dataType)
 }
 
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenStrictlyTyped(left.dataType)
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
   override def nodeCaption: String =
@@ -35,8 +35,6 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpr
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenStrictlyTyped(left.dataType)
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
   override def nodeCaption: String =
@@ -44,8 +42,6 @@ case class Minus(left: Expression, right: Expression) extends BinaryArithmeticEx
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = whenStrictlyTyped(left.dataType)
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
   override def nodeCaption: String =
@@ -53,9 +49,14 @@ case class Multiply(left: Expression, right: Expression) extends BinaryArithmeti
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
-  override def dataType: DataType = ???
+  private lazy val div = whenStrictlyTyped {
+    dataType match {
+      case t: FractionalType => t.fractional.asInstanceOf[Fractional[Any]].div _
+      case t: IntegralType   => t.integral.asInstanceOf[Integral[Any]].quot _
+    }
+  }
 
-  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ???
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = if (rhs == 0) null else div(lhs, rhs)
 
   override def nodeCaption: String =
     s"(${left.nodeCaption} / ${right.nodeCaption})"
