@@ -2,6 +2,7 @@ package scraper.expressions
 
 import scala.util.Try
 
+import scraper.TypeMismatchException
 import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.PrimitiveType
 
@@ -14,8 +15,14 @@ trait BinaryComparison extends Predicate with BinaryExpression {
   }
 
   override lazy val strictlyTyped: Try[Expression] = for {
-    PrimitiveType(lhs) <- left.strictlyTyped
-    PrimitiveType(rhs) <- right.strictlyTyped
+    lhs <- left.strictlyTyped map {
+      case PrimitiveType(e) => e
+      case e                => throw TypeMismatchException(e, classOf[PrimitiveType], None)
+    }
+    rhs <- right.strictlyTyped map {
+      case PrimitiveType(e) => e
+      case e                => throw TypeMismatchException(e, classOf[PrimitiveType], None)
+    }
     (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
     newChildren = promotedLhs :: promotedRhs :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
