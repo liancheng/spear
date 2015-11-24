@@ -72,6 +72,8 @@ object LocalRelation {
 case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
   extends UnaryLogicalPlan {
 
+  assert(projections.nonEmpty, "Project should have at least one expression")
+
   override def expressions: Seq[Expression] = projections
 
   override lazy val output: Seq[Attribute] = projections map (_.toAttribute)

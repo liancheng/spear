@@ -3,7 +3,7 @@ package scraper
 import scala.collection.mutable
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import scraper.expressions.NamedExpression
+import scraper.expressions.Expression
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
@@ -32,7 +32,9 @@ trait Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
-  def select(expressions: NamedExpression*): DataFrame
+  lazy val single: DataFrame = new DataFrame(SingleRowRelation, this)
+
+  def single(first: Expression, rest: Expression*): DataFrame = single select first +: rest
 
   def q(query: String): DataFrame
 }
@@ -55,11 +57,8 @@ class LocalContext extends Context {
 
   def lift[T <: Product: WeakTypeTag](data: Traversable[T], columnNames: String*): DataFrame = {
     val LocalRelation(rows, schema) = LocalRelation(data)
-    new DataFrame(LocalRelation(rows, schema rename (columnNames: _*)), this)
+    new DataFrame(LocalRelation(rows, schema rename columnNames), this)
   }
-
-  override def select(expressions: NamedExpression*): DataFrame =
-    new DataFrame(Project(SingleRowRelation, expressions), this)
 
   def range(end: Long): DataFrame = range(0, end)
 

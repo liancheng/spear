@@ -17,7 +17,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("single row relation") {
-    checkDataFrame(context select (1 as 'a) select 'a, Row(1))
+    checkDataFrame(context single (1 as 'a) select 'a, Row(1))
   }
 
   test("query string") {

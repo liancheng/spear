@@ -42,7 +42,7 @@ case class Alias(
 
   override def evaluate(input: Row): Any = child.evaluate(input)
 
-  override val toAttribute: Attribute = if (child.resolved) {
+  override lazy val toAttribute: Attribute = if (child.resolved) {
     AttributeRef(name, child.dataType, child.nullable, expressionId)
   } else {
     UnresolvedAttribute(name)

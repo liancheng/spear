@@ -1,7 +1,5 @@
 package scraper
 
-import scala.util.control.NoStackTrace
-
 import scraper.expressions.Expression
 import scraper.plans.logical.LogicalPlan
 import scraper.types.DataType
@@ -11,7 +9,7 @@ case class ParsingException(message: String) extends RuntimeException(message)
 abstract class AnalysisException(
   message: String,
   maybeCause: Option[Throwable] = None
-) extends RuntimeException(message, maybeCause.orNull) with NoStackTrace
+) extends RuntimeException(message, maybeCause.orNull)
 
 case class ExpressionUnevaluableException(
   expression: Expression,
@@ -42,7 +40,7 @@ case class TypeCheckException(
 object TypeCheckException {
   def apply(expression: Expression, maybeCause: Option[Throwable]): TypeCheckException =
     TypeCheckException({
-      s"""Expression doesn't pass type check:
+      s"""Expression ${expression.nodeCaption} doesn't pass type check:
          |
          |${expression.prettyTree}
          |""".stripMargin
