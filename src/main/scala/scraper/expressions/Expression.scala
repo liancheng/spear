@@ -32,6 +32,12 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
       case _                       => throw TypeCheckException(this, None)
     }
   ).get
+
+  def annotatedString: String
+
+  def sql: String
+
+  override def nodeCaption: String = annotatedString
 }
 
 trait LeafExpression extends Expression {

@@ -58,7 +58,7 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
   override val output: Seq[Attribute] = schema.toAttributes
 
   override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${output map (_.nodeCaption) mkString ", "}"
+    s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
 }
 
 object LocalRelation {
@@ -79,14 +79,13 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
   override lazy val output: Seq[Attribute] = projections map (_.toAttribute)
 
   override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${projections map (_.nodeCaption) mkString ", "}"
+    s"${getClass.getSimpleName} ${projections map (_.annotatedString) mkString ", "}"
 }
 
 case class Filter(child: LogicalPlan, condition: Predicate) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${condition.nodeCaption}"
+  override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
 }
 
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
@@ -96,6 +95,5 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
     n <- limit.strictlyTyped if n.foldable
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${limit.nodeCaption}"
+  override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
 }

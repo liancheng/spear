@@ -30,7 +30,7 @@ case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute
   override def iterator: Iterator[Row] = data
 
   override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${output.map(_.nodeCaption).mkString(", ")}"
+    s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
 }
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
@@ -44,7 +44,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
   }
 
   override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${expressions.map(_.nodeCaption).mkString(", ")}"
+    s"${getClass.getSimpleName} ${expressions map (_.annotatedString) mkString ", "}"
 }
 
 case class Filter(child: PhysicalPlan, condition: Predicate) extends UnaryPhysicalPlan {
@@ -57,8 +57,7 @@ case class Filter(child: PhysicalPlan, condition: Predicate) extends UnaryPhysic
     }
   }
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${condition.nodeCaption}"
+  override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
 }
 
 case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPlan {
@@ -66,6 +65,5 @@ case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPl
 
   override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${limit.nodeCaption}"
+  override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
 }

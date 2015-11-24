@@ -10,8 +10,8 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
 
   override def dataType: DataType = toType
 
-  override def nodeCaption: String =
-    s"CAST(${child.nodeCaption} AS ${toType.simpleName})"
+  override def annotatedString: String =
+    s"CAST(${child.annotatedString} AS ${toType.simpleName})"
 
   private def fromType = fromExpression.dataType
 
@@ -29,6 +29,8 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
       case e                        => copy(fromExpression = e)
     }
   }
+
+  override def sql: String = s"CAST(${child.sql} AS ${dataType.sql})"
 }
 
 object Cast {

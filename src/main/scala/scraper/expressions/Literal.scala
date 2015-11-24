@@ -18,7 +18,12 @@ case class Literal(value: Any, dataType: DataType) extends LiteralExpression {
 
   override def evaluate(input: Row): Any = value
 
-  override def nodeCaption: String = s"$value: ${dataType.simpleName}"
+  override def annotatedString: String = s"$value: ${dataType.simpleName}"
+
+  override def sql: String = value match {
+    case v: String => s"'$value'" // TODO escaping
+    case v         => v.toString
+  }
 }
 
 object Literal {
@@ -49,7 +54,9 @@ case class LogicalLiteral(value: Boolean) extends LiteralExpression with LeafPre
 
   override def evaluate(input: Row): Any = value
 
-  override def nodeCaption: String = if (value) "TRUE" else "FALSE"
+  override def annotatedString: String = if (value) "TRUE" else "FALSE"
+
+  override def sql: String = annotatedString
 }
 
 object LogicalLiteral {

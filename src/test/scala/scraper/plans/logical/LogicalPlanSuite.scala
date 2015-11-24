@@ -109,9 +109,11 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
 
 object LogicalPlanSuite {
   case class FakeExpr(literal: Literal, children: Seq[FakeExpr]) extends Expression {
-    override def nodeCaption: String = s"${getClass.getSimpleName} ${literal.nodeCaption}"
+    override def annotatedString: String = s"${getClass.getSimpleName} ${literal.annotatedString}"
 
-    override def dataType: DataType = IntType
+    override def sql: String = throw new UnsupportedOperationException
+
+    override def dataType: DataType = literal.dataType
 
     override def evaluate(input: Row): Any = literal.evaluated
 

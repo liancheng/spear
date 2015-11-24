@@ -30,22 +30,25 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} + ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} + ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} + ${right.sql}"
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} - ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} - ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} - ${right.sql}"
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} * ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} * ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} * ${right.sql}"
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -58,6 +61,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = if (rhs == 0) null else div(lhs, rhs)
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} / ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} / ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} / ${right.sql}"
 }

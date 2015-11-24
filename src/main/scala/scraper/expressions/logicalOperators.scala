@@ -28,22 +28,24 @@ case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} AND ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} AND ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} AND ${right.sql}"
 }
 
 case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
 
-  override def nodeCaption: String =
-    s"(${left.nodeCaption} OR ${right.nodeCaption})"
+  override def annotatedString: String = s"(${left.annotatedString} OR ${right.annotatedString})"
+
+  override def sql: String = s"${left.sql} OR ${right.sql}"
 }
 
 case class Not(child: Predicate) extends UnaryPredicate {
   override def evaluate(input: Row): Any = !child.evaluate(input).asInstanceOf[Boolean]
 
-  override def nodeCaption: String = s"(NOT ${child.nodeCaption})"
+  override def annotatedString: String = s"(NOT ${child.nodeCaption})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped map {
@@ -51,6 +53,8 @@ case class Not(child: Predicate) extends UnaryPredicate {
       case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
     }
   } yield copy(child = e)
+
+  override def sql: String = s"(NOT ${child.sql})"
 }
 
 case class If(condition: Predicate, trueValue: Expression, falseValue: Expression)
@@ -60,10 +64,11 @@ case class If(condition: Predicate, trueValue: Expression, falseValue: Expressio
 
   override def children: Seq[Expression] = Seq(condition, trueValue, falseValue)
 
-  override def nodeCaption: String =
-    s"if (${condition.nodeCaption}) " +
-      s"${trueValue.nodeCaption} else " +
-      s"${falseValue.nodeCaption}"
+  override def annotatedString: String =
+    s"if (${condition.annotatedString}) " +
+      s"${trueValue.annotatedString} else ${falseValue.annotatedString}"
+
+  override def sql: String = s"IF(${condition.sql}, ${trueValue.sql}, ${falseValue.sql})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
     c <- condition.strictlyTyped map {

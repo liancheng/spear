@@ -8,7 +8,9 @@ trait ComplexType extends DataType
 case class ArrayType(
   elementType: DataType,
   elementNullable: Boolean
-) extends ComplexType
+) extends ComplexType {
+  override def sql: String = s"ARRAY<${elementType.sql}>"
+}
 
 object ArrayType {
   def apply(schema: Schema): ArrayType = ArrayType(schema.dataType, schema.nullable)
@@ -18,7 +20,9 @@ case class MapType(
   keyType: DataType,
   valueType: DataType,
   valueNullable: Boolean
-) extends ComplexType
+) extends ComplexType {
+  override def sql: String = s"MAP<${keyType.sql}, ${valueType.sql}>"
+}
 
 object MapType {
   def apply(keyType: DataType, valueSchema: Schema): MapType =
@@ -57,6 +61,11 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
   }
 
   def rename(firstName: String, restNames: String*): TupleType = this rename firstName +: restNames
+
+  override def sql: String = {
+    val fieldsString = fields map (f => s"${f.name}: ${f.dataType.sql}") mkString ", "
+    s"STRUCT<$fieldsString>"
+  }
 }
 
 object TupleType {

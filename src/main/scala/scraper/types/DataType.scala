@@ -18,6 +18,8 @@ trait DataType {
   /** A brief name of this [[DataType]]. */
   def simpleName: String = (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
 
+  def sql: String
+
   def unapply(e: Expression): Option[Expression] = e match {
     case _ if e.dataType == this => Some(e)
     case _                       => None
@@ -118,14 +120,17 @@ object PrimitiveType {
 case object NullType extends PrimitiveType {
   override type InternalType = Null
   override val ordering: Ordering[Null] = implicitly[Ordering[Null]]
+  override def sql: String = "NULL"
 }
 
 case object StringType extends PrimitiveType {
   override type InternalType = String
   override val ordering: Ordering[String] = implicitly[Ordering[String]]
+  override def sql: String = "TEXT"
 }
 
 case object BooleanType extends PrimitiveType {
   override type InternalType = Boolean
   override val ordering: Ordering[Boolean] = implicitly[Ordering[Boolean]]
+  override def sql: String = "BOOL"
 }
