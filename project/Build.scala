@@ -21,6 +21,7 @@ object Build extends sbt.Build {
       // For Scala test coverage reporting
       .enablePlugins(ScoverageSbtPlugin)
       .settings(basicSettings)
+      .settings(consoleSettings)
       .settings(dependencySettings)
       .settings(scalariformSettings)
 
@@ -32,14 +33,27 @@ object Build extends sbt.Build {
       scalacOptions ++= Seq("-unchecked", "-deprecation"),
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
       fork := false,
-      parallelExecution in Test := false,
+      parallelExecution in Test := false
+    )
+
+  lazy val consoleSettings =
+    Seq(
       initialCommands in console :=
         """import scraper.LocalContext
           |import scraper.expressions.dsl._
           |import scraper.expressions.functions._
           |
           |val context = new LocalContext
-        """.stripMargin
+          |""".stripMargin,
+
+      initialCommands in console in Test :=
+        """import org.scalacheck.Gen
+          |import org.scalacheck.Gen._
+          |import org.scalacheck.Prop
+          |import org.scalacheck.Prop._
+          |import org.scalacheck.Test
+          |import org.scalacheck.Test._
+          |""".stripMargin
     )
 
   lazy val dependencySettings =
