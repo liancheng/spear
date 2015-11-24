@@ -6,9 +6,12 @@ import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.PrimitiveType
 
 trait BinaryComparison extends Predicate with BinaryExpression {
-  protected lazy val ordering: Ordering[Any] = whenStrictlyTyped(left.dataType match {
-    case t: PrimitiveType => t.ordering.asInstanceOf[Ordering[Any]]
-  })
+  protected lazy val ordering: Ordering[Any] = whenStrictlyTyped {
+    left.dataType match {
+      case t: PrimitiveType =>
+        t.ordering.asInstanceOf[Ordering[Any]]
+    }
+  }
 
   override lazy val strictlyTyped: Try[Expression] = for {
     PrimitiveType(lhs) <- left.strictlyTyped
