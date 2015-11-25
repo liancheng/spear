@@ -6,7 +6,6 @@ import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
-import scraper.generators._
 import scraper.generators.types._
 
 class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
@@ -16,14 +15,30 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("size of generated DataType") {
-    check(forAll { dataType: DataType =>
-      dataType.size <= defaultDataTypeDim.maxSize
+    check(forAll { t: PrimitiveType =>
+      t.size == 1
+    })
+
+    check(forAll { t: ArrayType =>
+      t.size == 1 + t.elementType.size
+    })
+
+    check(forAll { t: MapType =>
+      t.size == 1 + t.keyType.size + t.valueType.size
     })
   }
 
   test("depth of generated DataType") {
-    check(forAll { dataType: DataType =>
-      dataType.depth <= defaultDataTypeDim.maxDepth
+    check(forAll { t: PrimitiveType =>
+      t.depth == 1
+    })
+
+    check(forAll { t: ArrayType =>
+      t.depth == 1 + t.elementType.depth
+    })
+
+    check(forAll { t: MapType =>
+      t.depth == 1 + (t.keyType.depth max t.valueType.depth)
     })
   }
 

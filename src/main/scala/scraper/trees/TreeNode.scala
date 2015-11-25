@@ -128,7 +128,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
   }
 
-  def depth: Int = (children map (_.depth) foldLeft 1) { _ max _ }
+  def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 
-  def size: Int = (children map (_.size) foldLeft 1) { _ + _ }
+  def size: Int = 1 + children.map(_.size).sum
 }

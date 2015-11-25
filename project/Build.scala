@@ -82,7 +82,7 @@ object Dependencies {
   )
 
   object Versions {
-    val config = "1.3.0"
+    val config = "1.2.1"
     val jline = "2.13"
     val log4j = "1.2.16"
     val parquetMr = "1.8.1"

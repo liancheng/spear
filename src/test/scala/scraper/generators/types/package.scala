@@ -1,144 +1,148 @@
 package scraper.generators
 
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen.{choose, const, listOfN, oneOf}
+import org.scalacheck.Arbitrary._
 import org.scalacheck.{Arbitrary, Gen}
+import scraper.Test._
+import scraper.config.Settings
+import scraper.config.Settings.Key
 import scraper.types._
 
 package object types {
-  lazy val genIntegralType: Gen[IntegralType] = oneOf(
-    const(ByteType),
-    const(ShortType),
-    const(IntType),
-    const(LongType)
+  val AllowNullType: Key[Boolean] = Key(
+    "scraper.test.types.allow-null-type"
+  ).boolean
+
+  val AllowEmptyTupleType: Key[Boolean] = Key(
+    "scraper.test.types.allow-empty-tuple-type"
+  ).boolean
+
+  val AllowNullableComplexType: Key[Boolean] = Key(
+    "scraper.test.types.allow-nullable-complex-type"
+  ).boolean
+
+  val AllowNullableArrayType: Key[Boolean] = Key(
+    "scraper.test.types.allow-nullable-array-type"
+  ).boolean
+
+  val AllowNullableMapType: Key[Boolean] = Key(
+    "scraper.test.types.allow-nullable-map-type"
+  ).boolean
+
+  val AllowNullableTupleField: Key[Boolean] = Key(
+    "scraper.test.types.allow-nullable-tuple-field"
+  ).boolean
+
+  val AllowNestedTupleType: Key[Boolean] = Key(
+    "scraper.test.types.allow-nested-tuple-type"
+  ).boolean
+
+  def genDataType(implicit settings: Settings): Gen[DataType] = Gen.sized {
+    case 0 => Gen.fail
+    case 1 => genPrimitiveType(settings)
+    case _ => Gen.oneOf(genPrimitiveType(settings), genComplexType(settings))
+  }
+
+  implicit val arbDataType: Arbitrary[DataType] = Arbitrary(genDataType(defaultSettings))
+
+  def genPrimitiveType(implicit settings: Settings): Gen[PrimitiveType] =
+    if (settings(AllowNullType)) {
+      Gen.oneOf(genNumericType, Gen.const(StringType), Gen.const(BooleanType))
+    } else {
+      Gen.oneOf(
+        genNumericType, Gen.const(StringType), Gen.const(BooleanType), Gen.const(NullType)
+      )
+    }
+
+  implicit val arbPrimitiveType: Arbitrary[PrimitiveType] =
+    Arbitrary(genPrimitiveType(defaultSettings))
+
+  def genNumericType: Gen[NumericType] = Gen.oneOf(genIntegralType, genFractionalType)
+
+  implicit val arbNumericType: Arbitrary[NumericType] = Arbitrary(genNumericType)
+
+  def genIntegralType: Gen[IntegralType] = Gen.oneOf(
+    Gen.const(ByteType), Gen.const(ShortType), Gen.const(IntType), Gen.const(LongType)
   )
 
   implicit val arbIntegralType: Arbitrary[IntegralType] = Arbitrary(genIntegralType)
 
-  lazy val genFractionalType: Gen[FractionalType] = oneOf(
-    const(FloatType),
-    const(DoubleType)
+  def genFractionalType: Gen[FractionalType] = Gen.oneOf(
+    Gen.const(FloatType), Gen.const(DoubleType)
   )
 
   implicit val arbFractionalType: Arbitrary[FractionalType] = Arbitrary(genFractionalType)
 
-  lazy val genNumericType: Gen[NumericType] = oneOf(
-    genIntegralType,
-    genFractionalType
-  )
+  def genComplexType(implicit settings: Settings): Gen[ComplexType] =
+    Gen.oneOf(genArrayType(settings), genMapType(settings), genTupleType(settings))
 
-  implicit val arbNumericType: Arbitrary[NumericType] = Arbitrary(genNumericType)
+  implicit val arbComplexType: Arbitrary[ComplexType] = Arbitrary(genComplexType(defaultSettings))
 
-  lazy val genPrimitiveType: Gen[PrimitiveType] = oneOf(
-    genNumericType,
-    const(StringType),
-    const(BooleanType)
-  )
+  def genArrayType(implicit settings: Settings): Gen[ArrayType] = Gen.sized {
+    case size if size < 2 =>
+      Gen.fail
 
-  implicit val arbPrimitiveType: Arbitrary[PrimitiveType] = Arbitrary(genPrimitiveType)
+    case size =>
+      Gen.resize(size - 1, for {
+        elementType <- genDataType(settings)
 
-  def genArrayType(implicit dim: DataTypeDim): Gen[ArrayType] = {
-    require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
-    require(dim.maxSize >= 2, s"Max size too small: ${dim.maxSize}")
-
-    val genElementType = dim match {
-      case DataTypeDim(maxDepth, maxSize) if (maxDepth min maxSize) == 2 =>
-        // Size and depth of an `ArrayType` are at least 2
-        genPrimitiveType
-
-      case DataTypeDim(maxDepth, maxSize) =>
-        genDataType(DataTypeDim(maxDepth - 1, maxSize - 1))
-    }
-
-    for {
-      elementType <- genElementType
-      elementNullable <- arbitrary[Boolean]
-    } yield ArrayType(elementType, elementNullable)
+        allowNullable = settings(AllowNullableArrayType)
+        elementNullable <- if (allowNullable) arbitrary[Boolean] else Gen.const(false)
+      } yield ArrayType(elementType, elementNullable))
   }
 
-  implicit val arbArrayType: Arbitrary[ArrayType] = Arbitrary(genArrayType(defaultDataTypeDim))
+  implicit val arbArrayType: Arbitrary[ArrayType] = Arbitrary(genArrayType(defaultSettings))
 
-  def genMapType(implicit dim: DataTypeDim): Gen[MapType] = {
-    require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
-    require(dim.maxSize >= 3, s"Max size too small: ${dim.maxSize}")
+  def genMapType(implicit settings: Settings): Gen[MapType] = Gen.sized {
+    case size if size < 3 =>
+      Gen.fail
 
-    val genValueType = dim match {
-      case DataTypeDim(2, _) =>
-        // Depth of a `MapType` is at least 2
-        genPrimitiveType
+    case size =>
+      Gen.resize(size - 2, for {
+        keyType <- genPrimitiveType(settings)
+        valueType <- genDataType(settings)
 
-      case DataTypeDim(_, 3) =>
-        // Size of a `MapType` is at least 3
-        genPrimitiveType
-
-      case DataTypeDim(maxDepth, maxSize) =>
-        genDataType(DataTypeDim(maxDepth - 1, maxSize - 2))
-    }
-
-    for {
-      keyType <- genPrimitiveType
-      valueType <- genValueType
-      valueNullable <- arbitrary[Boolean]
-    } yield MapType(keyType, valueType, valueNullable)
+        allowNullable = settings(AllowNullableMapType)
+        valueNullable <- if (allowNullable) arbitrary[Boolean] else Gen.const(false)
+      } yield MapType(keyType, valueType, valueNullable))
   }
 
-  implicit val arbMapType: Arbitrary[MapType] = Arbitrary(genMapType(defaultDataTypeDim))
+  implicit val arbMapType: Arbitrary[MapType] = Arbitrary(genMapType(defaultSettings))
 
-  def genTupleType(implicit dim: DataTypeDim): Gen[TupleType] = {
-    require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
-    require(dim.maxSize >= 2, s"Max size too small: ${dim.maxSize}")
+  def genTupleType(implicit settings: Settings): Gen[TupleType] = Gen.sized {
+    case 0 =>
+      Gen.fail
 
-    for {
-      fieldNum <- choose(1, dim.maxSize - 1)
-      maxFieldSize = (dim.maxSize - 1) / fieldNum
+    case size =>
+      Gen.resize(size - 1, for {
+        fieldsSize <- Gen.size
 
-      genFieldSchema = for {
-        dataType <- genDataType(DataTypeDim(dim.maxDepth - 1, maxFieldSize))
-        nullable <- arbitrary[Boolean]
-      } yield Schema(dataType, nullable)
+        fieldNumUpperBound = fieldsSize / 2
+        fieldNumLowerBound = if (settings(AllowEmptyTupleType)) 0 else 1
 
-      fieldSchemata <- listOfN(fieldNum, genFieldSchema)
-    } yield {
-      TupleType(fieldSchemata.zipWithIndex.map {
-        case (schema, ordinal) =>
-          TupleField(s"col$ordinal", schema)
-      })
-    }
+        fieldNum <- Gen.choose(fieldNumLowerBound, fieldNumUpperBound)
+        fieldTypeUpperBound = fieldNumUpperBound / (fieldNum max 1)
+
+        genFieldType = Gen.resize(fieldTypeUpperBound, if (settings(AllowNestedTupleType)) {
+          genDataType(settings)
+        } else {
+          genPrimitiveType(settings)
+        })
+
+        allowNullable = settings(AllowNullableTupleField)
+        genNullable = if (allowNullable) arbitrary[Boolean] else Gen.const(false)
+
+        genFieldSchema = for {
+          fieldType <- genFieldType
+          nullable <- genNullable
+        } yield Schema(fieldType, nullable)
+
+        fieldSchemas <- Gen.listOfN(fieldNum, genFieldSchema)
+
+        fields = fieldSchemas.zipWithIndex map {
+          case (schema, ordinal) => TupleField(s"c$ordinal", schema)
+        }
+      } yield TupleType(fields))
   }
 
-  implicit val arbTupleType: Arbitrary[TupleType] = Arbitrary(genTupleType(defaultDataTypeDim))
-
-  def genComplexType(implicit dim: DataTypeDim): Gen[ComplexType] = {
-    require(dim.maxDepth >= 2, s"Max depth too small: ${dim.maxDepth}")
-    require(dim.maxSize >= 2, s"Max size too small: ${dim.maxSize}")
-
-    dim match {
-      case DataTypeDim(_, 2) => oneOf(genArrayType(dim), genTupleType(dim))
-      case _                 => oneOf(genArrayType(dim), genTupleType(dim), genMapType(dim))
-    }
-  }
-
-  implicit val arbComplexType: Arbitrary[ComplexType] =
-    Arbitrary(genComplexType(defaultDataTypeDim))
-
-  def genDataType(implicit dim: DataTypeDim): Gen[DataType] = {
-    require(dim.maxDepth >= 1, s"Max depth too small: ${dim.maxDepth}")
-    require(dim.maxSize >= 1, s"Max size too small: ${dim.maxSize}")
-
-    dim match {
-      case DataTypeDim(1, _) =>
-        genPrimitiveType
-
-      case DataTypeDim(_, 1) =>
-        genPrimitiveType
-
-      case DataTypeDim(maxDepth, maxSize) =>
-        Gen.frequency(
-          3 -> genPrimitiveType,
-          7 -> genComplexType(DataTypeDim(maxDepth, maxSize))
-        )
-    }
-  }
-
-  implicit val arbDataType: Arbitrary[DataType] = Arbitrary(genDataType(defaultDataTypeDim))
+  implicit val arbTupleType: Arbitrary[TupleType] = Arbitrary(genTupleType(defaultSettings))
 }

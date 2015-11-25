@@ -2,8 +2,10 @@ package scraper
 
 import scala.language.postfixOps
 
+import com.typesafe.config.{ConfigFactory, Config}
+
 package object utils {
-  private[scraper] def sideBySide(lhs: String, rhs: String, withHeader: Boolean): String = {
+  def sideBySide(lhs: String, rhs: String, withHeader: Boolean): String = {
     val lhsLines = lhs split "\n"
     val rhsLines = rhs split "\n"
 
@@ -29,4 +31,18 @@ package object utils {
         rtrim(s"$diffIndicator $lhsLine | $rhsLine")
     }
   } mkString "\n"
+
+  def loadConfig(component: String): Config =
+    ConfigFactory
+      // Environment variables takes highest priority and overrides everything else
+      .systemEnvironment()
+      // System properties comes after environment variables
+      .withFallback(ConfigFactory.systemProperties())
+      // Then follows user provided configuration files
+      .withFallback(ConfigFactory.parseResources(s"scraper-$component.conf"))
+      // Reference configuration, bundled as resource
+      .withFallback(ConfigFactory.parseResources(s"scraper-$component-reference.conf"))
+      // Configurations of all other components (like Akka)
+      .withFallback(ConfigFactory.load())
+      .resolve()
 }

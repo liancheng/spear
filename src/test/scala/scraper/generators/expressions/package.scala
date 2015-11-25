@@ -6,9 +6,13 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{choose, listOfN, option, sequence}
 import scraper.Row
+import scraper.config.Settings
+import scraper.config.Settings.Key
 import scraper.types._
 
 package object expressions {
+  val MaxRepetition: Key[Int] = Key("scraper.test.expressions.max-repetition").int
+
   def genValueForIntegralType(dataType: IntegralType): Gen[Any] = dataType match {
     case ByteType  => arbitrary[Byte]
     case ShortType => arbitrary[Short]
@@ -27,47 +31,44 @@ package object expressions {
   }
 
   def genValueForPrimitiveType(dataType: PrimitiveType): Gen[Any] = dataType match {
+    case NullType       => Gen.const(null)
     case BooleanType    => arbitrary[Boolean]
     case StringType     => arbitrary[String]
     case t: NumericType => genValueForNumericType(t)
   }
 
-  def genValueForArrayType(dataType: ArrayType)(implicit dim: ValueDim): Gen[Seq[_]] = {
+  def genValueForArrayType(dataType: ArrayType)(implicit settings: Settings): Gen[Seq[_]] = {
     val genElement = if (dataType.elementNullable) {
-      for {
-        maybeElement <- option(genValueForDataType(dataType)(dim))
-      } yield maybeElement.orNull
+      option(genValueForDataType(dataType)(settings)) map (_.orNull)
     } else {
-      genValueForDataType(dataType)(dim)
+      genValueForDataType(dataType)(settings)
     }
 
     for {
-      repetition <- choose(0, dim.maxRepetition)
+      repetition <- choose(0, settings(MaxRepetition))
       elements <- listOfN(repetition, genElement)
     } yield elements
   }
 
-  def genValueForMapType(dataType: MapType)(implicit dim: ValueDim): Gen[Map[_, _]] = {
-    val genKey = genValueForDataType(dataType.keyType)(dim)
+  def genValueForMapType(dataType: MapType)(implicit settings: Settings): Gen[Map[_, _]] = {
+    val genKey = genValueForDataType(dataType.keyType)(settings)
     val genValue = {
-      val genNonNullValue = genValueForDataType(dataType)(dim)
-      if (dataType.valueNullable) option(genNonNullValue).map(_.orNull)
-      else genNonNullValue
+      val genNonNullValue = genValueForDataType(dataType)(settings)
+      if (dataType.valueNullable) option(genNonNullValue) map (_.orNull) else genNonNullValue
     }
 
     for {
-      repetition <- choose(0, dim.maxRepetition)
+      repetition <- choose(0, settings(MaxRepetition))
       keys <- listOfN(repetition, genKey)
       values <- listOfN(repetition, genValue)
     } yield (keys zip values).toMap
   }
 
-  def genValueForTupleType(dataType: TupleType)(implicit dim: ValueDim): Gen[Row] = {
+  def genValueForTupleType(dataType: TupleType)(implicit settings: Settings): Gen[Row] = {
     val genFields = sequence(dataType.fields.map {
       case TupleField(_, fieldType, nullable) =>
-        val genNonNullField = genValueForDataType(fieldType)(dim)
-        if (nullable) option(genNonNullField).map(_.orNull)
-        else genNonNullField
+        val genNonNullField = genValueForDataType(fieldType)(settings)
+        if (nullable) option(genNonNullField) map (_.orNull) else genNonNullField
     })
 
     for {
@@ -75,15 +76,16 @@ package object expressions {
     } yield new Row(fields.asScala)
   }
 
-  def genValueForComplexType(dataType: ComplexType)(implicit dim: ValueDim): Gen[Any] =
+  def genValueForComplexType(dataType: ComplexType)(implicit settings: Settings): Gen[Any] =
     dataType match {
-      case t: ArrayType => genValueForArrayType(t)(dim)
-      case t: MapType   => genValueForMapType(t)(dim)
-      case t: TupleType => genValueForTupleType(t)(dim)
+      case t: ArrayType => genValueForArrayType(t)(settings)
+      case t: MapType   => genValueForMapType(t)(settings)
+      case t: TupleType => genValueForTupleType(t)(settings)
     }
 
-  def genValueForDataType(dataType: DataType)(implicit dim: ValueDim): Gen[Any] = dataType match {
-    case t: PrimitiveType => genValueForPrimitiveType(t)
-    case t: ComplexType   => genValueForComplexType(t)(dim)
-  }
+  def genValueForDataType(dataType: DataType)(implicit settings: Settings): Gen[Any] =
+    dataType match {
+      case t: PrimitiveType => genValueForPrimitiveType(t)
+      case t: ComplexType   => genValueForComplexType(t)(settings)
+    }
 }
