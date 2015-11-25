@@ -8,33 +8,26 @@ import scraper.config.Settings.Key
 import scraper.types._
 
 package object types {
-  val AllowNullType: Key[Boolean] = Key(
-    "scraper.test.types.allow-null-type"
-  ).boolean
+  val AllowNullType: Key[Boolean] =
+    Key("scraper.test.types.allow-null-type").boolean
 
-  val AllowEmptyTupleType: Key[Boolean] = Key(
-    "scraper.test.types.allow-empty-tuple-type"
-  ).boolean
+  val AllowEmptyTupleType: Key[Boolean] =
+    Key("scraper.test.types.allow-empty-tuple-type").boolean
 
-  val AllowNullableComplexType: Key[Boolean] = Key(
-    "scraper.test.types.allow-nullable-complex-type"
-  ).boolean
+  val AllowNullableComplexType: Key[Boolean] =
+    Key("scraper.test.types.allow-nullable-complex-type").boolean
 
-  val AllowNullableArrayType: Key[Boolean] = Key(
-    "scraper.test.types.allow-nullable-array-type"
-  ).boolean
+  val AllowNullableArrayType: Key[Boolean] =
+    Key("scraper.test.types.allow-nullable-array-type").boolean
 
-  val AllowNullableMapType: Key[Boolean] = Key(
-    "scraper.test.types.allow-nullable-map-type"
-  ).boolean
+  val AllowNullableMapType: Key[Boolean] =
+    Key("scraper.test.types.allow-nullable-map-type").boolean
 
-  val AllowNullableTupleField: Key[Boolean] = Key(
-    "scraper.test.types.allow-nullable-tuple-field"
-  ).boolean
+  val AllowNullableTupleField: Key[Boolean] =
+    Key("scraper.test.types.allow-nullable-tuple-field").boolean
 
-  val AllowNestedTupleType: Key[Boolean] = Key(
-    "scraper.test.types.allow-nested-tuple-type"
-  ).boolean
+  val AllowNestedTupleType: Key[Boolean] =
+    Key("scraper.test.types.allow-nested-tuple-type").boolean
 
   def genDataType(implicit settings: Settings): Gen[DataType] = Gen.sized {
     case 0 => Gen.fail
