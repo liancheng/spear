@@ -1,15 +1,15 @@
 package scraper.parser
 
 import scraper.LoggingFunSuite
-import scraper.expressions.{Alias, Literal}
-import scraper.plans.logical.{Project, UnresolvedRelation}
-import scraper.types.{IntType, TestUtils}
+import scraper.expressions.functions.lit
+import scraper.plans.logical.UnresolvedRelation
+import scraper.types.TestUtils
 
 class ParserSuite extends LoggingFunSuite with TestUtils {
   test("simple query") {
     checkPlan(
       new Parser().parse("SELECT 1 AS a FROM t"),
-      Project(UnresolvedRelation("t"), Alias("a", Literal(1, IntType)) :: Nil)
+      UnresolvedRelation("t") select (lit(1) as 'a)
     )
   }
 }

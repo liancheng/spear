@@ -11,7 +11,7 @@ import scraper.{ExpressionUnresolvedException, ResolutionFailureException, Row}
 case class ExpressionId(id: Long)
 
 trait NamedExpression extends Expression {
-  val name: String
+  def name: String
 
   def expressionId: ExpressionId
 
@@ -28,6 +28,16 @@ object NamedExpression {
   def newExpressionId(): ExpressionId = ExpressionId(currentId.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
+}
+
+case object Star extends LeafExpression with UnresolvedNamedExpression {
+  override def name: String = throw ExpressionUnresolvedException(this)
+
+  override def toAttribute: Attribute = throw ExpressionUnresolvedException(this)
+
+  override def sql: String = "*"
+
+  override def annotatedString: String = "*"
 }
 
 case class Alias(
@@ -61,12 +71,20 @@ trait Attribute extends NamedExpression with LeafExpression {
   override def foldable: Boolean = false
 
   override def toAttribute: Attribute = this
+
+  def ? : Attribute
+
+  def ! : Attribute
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
   override def annotatedString: String = s"`$name`?"
 
   override def sql: String = annotatedString
+
+  override def ? : Attribute = this
+
+  override def ! : Attribute = this
 }
 
 case class AttributeRef(
@@ -79,6 +97,10 @@ case class AttributeRef(
   override def annotatedString: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
 
   override def sql: String = s"`$name`"
+
+  override def ? : Attribute = copy(nullable = true)
+
+  override def ! : Attribute = copy(nullable = false)
 }
 
 case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)

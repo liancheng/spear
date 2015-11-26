@@ -1,12 +1,13 @@
 package scraper
 
+import scraper.Context._
 import scraper.LocalContextSuite.Person
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.types.TestUtils
 
 class LocalContextSuite extends LoggingFunSuite with TestUtils {
-  private val context = new LocalContext
+  private implicit val context = new LocalContext
 
   test("local data") {
     val data = Seq(1 -> "a", 2 -> "b")
@@ -24,16 +25,25 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     checkDataFrame(context q "SELECT 1 AS a", Row(1))
   }
 
-  test("mixed") {
-    context lift Seq(
-      Person("Alice", 20),
-      Person("Bob", 21),
-      Person("Chris", 22)
-    ) filter 'age =/= 21 registerAsTable "people"
+  private val people = context lift Seq(
+    Person("Alice", 20),
+    Person("Bob", 21),
+    Person("Chris", 22)
+  )
 
-    checkDataFrame(context q "SELECT name FROM people", Seq(
+  test("mixed") {
+    people filter 'age =/= 21 registerAsTable "people"
+
+    checkDataFrame("SELECT name FROM people".q, Seq(
       Row("Alice"),
       Row("Chris")
+    ))
+
+    (people filter 'age =/= 21 select ('name, 'age)).queryExecution.analyzedPlan
+
+    checkDataFrame("SELECT * FROM people".q, Seq(
+      Row("Alice", 20),
+      Row("Chris", 22)
     ))
   }
 }

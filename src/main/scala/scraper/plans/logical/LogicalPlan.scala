@@ -8,7 +8,7 @@ import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.schemaOf
 import scraper.types.TupleType
-import scraper.{LogicalPlanUnresolved, Row}
+import scraper.{LogicalPlanUnresolved, Row, TypeCheckException}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
@@ -18,6 +18,13 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
       case e => e.strictlyTyped.get
     }
   }
+
+  protected def whenStrictlyTyped[T](value: => T): T = (
+    strictlyTyped map {
+      case e if e sameOrEqual this => value
+      case _                       => throw TypeCheckException(this, None)
+    }
+  ).get
 
   def select(projections: Seq[NamedExpression]): LogicalPlan = Project(this, projections)
 
@@ -44,6 +51,14 @@ trait UnaryLogicalPlan extends LogicalPlan {
   def child: LogicalPlan
 
   override def children: Seq[LogicalPlan] = Seq(child)
+}
+
+trait BinaryLogicalPlan extends LogicalPlan {
+  def left: LogicalPlan
+
+  def right: LogicalPlan
+
+  override def children: Seq[LogicalPlan] = Seq(left, right)
 }
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
@@ -92,8 +107,37 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   override lazy val output: Seq[Attribute] = child.output
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    n <- limit.strictlyTyped if n.foldable
+    n <- limit.strictlyTyped map {
+      case e if e.foldable => e
+      case _               => throw TypeCheckException("Limit must be a constant")
+    }
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
+}
+
+trait JoinType
+case object Inner extends JoinType
+case object LeftSemi extends JoinType
+case object LeftOuter extends JoinType
+case object RightOuter extends JoinType
+case object FullOuter extends JoinType
+
+case class Join(
+  left: LogicalPlan,
+  right: LogicalPlan,
+  joinType: JoinType,
+  maybeCondition: Option[Predicate]
+) extends BinaryLogicalPlan {
+  override lazy val output: Seq[Attribute] = joinType match {
+    case LeftSemi   => left.output
+    case Inner      => left.output ++ right.output
+    case LeftOuter  => left.output ++ right.output.map(_.?)
+    case RightOuter => left.output.map(_.?) ++ right.output
+    case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
+  }
+}
+
+case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
+  override lazy val output: Seq[Attribute] = child.output
 }

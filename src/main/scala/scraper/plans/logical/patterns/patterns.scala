@@ -49,14 +49,15 @@ package object patterns {
     }
 
     /**
-     * Finds reducible [[Alias]]es appeared in `expressions`, and inlines/substitutes them.
+     * Finds reducible [[Alias]]es and [[AttributeRef]]s referencing to [[Alias]]s appeared in
+     * `expressions`, and inlines/substitutes them.
      *
      * @param aliases A map from all known aliases to corresponding aliased expressions.
      * @param expression The target expression.
      */
     def reduceAliases[T <: Expression](aliases: Map[Attribute, Expression], expression: T): T =
       expression.transformUp {
-        // Alias substitution. E.g., it reduces
+        // Alias substitution. E.g., it helps to reduce
         //
         //   SELECT a1 AS a2 FROM (
         //     SELECT e AS a1 FROM t
@@ -68,7 +69,7 @@ package object patterns {
         case a @ Alias(_, ref: AttributeRef, _) if aliases contains ref =>
           a.copy(child = aliases(ref))
 
-        // Alias inlining. E.g., it reduces
+        // Alias inlining. E.g., it helps to reduce
         //
         //   SELECT a1 FROM (
         //     SELECT e AS a1 FROM t
@@ -83,5 +84,19 @@ package object patterns {
 
     def collectAliases(projectList: Seq[NamedExpression]): Map[Attribute, Expression] =
       projectList.collect { case a: Alias => a.toAttribute -> a.child }.toMap
+  }
+
+  /** A simple pattern that matches resolved [[LogicalPlan]]s and [[Expression]]s */
+  object Resolved {
+    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (_.resolved)
+
+    def unapply(expression: Expression): Option[Expression] = Some(expression) filter (_.resolved)
+  }
+
+  /** A simple pattern that matches unresolved [[LogicalPlan]]s and [[Expression]]s */
+  object Unresolved {
+    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (!_.resolved)
+
+    def unapply(expression: Expression): Option[Expression] = Some(expression) filter (!_.resolved)
   }
 }

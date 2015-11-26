@@ -39,6 +39,12 @@ trait Context {
   def q(query: String): DataFrame
 }
 
+object Context {
+  implicit class QueryString(query: String)(implicit context: Context) {
+    def q: DataFrame = context q query
+  }
+}
+
 class LocalContext extends Context {
   type QueryExecution = LocalQueryExecution
 

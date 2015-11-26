@@ -14,15 +14,18 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
       FoldConstants,
       FoldLogicalPredicates,
-      ReduceNegations,
+
       CNFConversion,
       CombineFilters,
-      SimplifyCasts,
+
+      ReduceNegations,
+      ReduceCasts,
       ReduceProjects,
       ReduceAliases,
-      PushFiltersThroughProjects,
       ReduceLimits,
-      PushCastsThroughAliases
+
+      PushProjectsThroughLimits,
+      PushFiltersThroughProjects
     ))
   )
 
@@ -84,7 +87,7 @@ object Optimizer {
         plan transformExpressionsDown {
           case Not(Not(child))    => child
           case Not(lhs Eq rhs)    => lhs =/= rhs
-          case Not(lhs NotEq rhs) => lhs === rhs
+          case Not(lhs NotEq rhs) => lhs =:= rhs
         }
     }
   }
@@ -93,7 +96,7 @@ object Optimizer {
    * This rule eliminates unnecessary casts.  For example, implicit casts introduced by the
    * [[Analyzer]] may produce redundant casts.
    */
-  object SimplifyCasts extends Rule[LogicalPlan] {
+  object ReduceCasts extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
@@ -108,6 +111,9 @@ object Optimizer {
    */
   object ReduceProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+      case plan Project projections if projections == plan.output =>
+        plan
+
       case plan Project innerProjections Project outerProjections =>
         val aliases = collectAliases(innerProjections)
         plan select (outerProjections map (reduceAliases(aliases, _)))
@@ -167,11 +173,8 @@ object Optimizer {
     }
   }
 
-  object PruneColumns extends Rule[LogicalPlan] {
+  object PushProjectsThroughLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projections if projections == plan.output =>
-        plan
-
       case plan Limit n Project projections =>
         plan select projections limit n
     }
@@ -180,16 +183,6 @@ object Optimizer {
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => Limit(plan, If(n < m, n, m))
-    }
-  }
-
-  object PushCastsThroughAliases extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsUp {
-          case (alias: Alias) Cast toType =>
-            alias.copy(child = Cast(alias.child, toType))
-        }
     }
   }
 }

@@ -47,6 +47,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private val AS = Keyword("AS")
   private val FROM = Keyword("FROM")
   private val WHERE = Keyword("WHERE")
+  private val LIMIT = Keyword("LIMIT")
 
   private val AND = Keyword("AND")
   private val OR = Keyword("OR")
@@ -55,26 +56,71 @@ class Parser extends TokenParser[LogicalPlan] {
   private val TRUE = Keyword("TRUE")
   private val FALSE = Keyword("FALSE")
 
+  private val JOIN = Keyword("JOIN")
+  private val INNER = Keyword("INNER")
+  private val OUTER = Keyword("OUTER")
+  private val LEFT = Keyword("LEFT")
+  private val RIGHT = Keyword("RIGHT")
+  private val SEMI = Keyword("SEMI")
+  private val FULL = Keyword("FULL")
+  private val ON = Keyword("ON")
+
   override protected def start: Parser[LogicalPlan] =
     select
 
   private def select: Parser[LogicalPlan] = (
     SELECT ~> projections.?
     ~ (FROM ~> relations).?
-    ~ (WHERE ~> predicate).? ^^ {
-      case ps ~ r ~ f =>
-        val base = r.getOrElse(SingleRowRelation)
-        val withFilter = f.map(Filter(base, _)).getOrElse(base)
-        val withProjections = ps.map(Project(withFilter, _)).getOrElse(withFilter)
-        withProjections
+    ~ (WHERE ~> predicate).?
+    ~ (LIMIT ~> expression).? ^^ {
+      case ps ~ rs ~ f ~ n =>
+        val base = rs getOrElse SingleRowRelation
+        val withFilter = f map (Filter(base, _)) getOrElse base
+        val withProjections = ps map (Project(withFilter, _)) getOrElse withFilter
+        val withLimit = n map (Limit(withProjections, _)) getOrElse withProjections
+        withLimit
     }
   )
 
-  private def relations: Parser[LogicalPlan] =
-    ident ^^ UnresolvedRelation
+  private def relations: Parser[LogicalPlan] = (
+    relation ~ ("," ~> relation).* ^^ {
+      case r ~ joins => joins.foldLeft(r) { Join(_, _, Inner, None) }
+    }
+    | relation
+  )
+
+  private def relation: Parser[LogicalPlan] =
+    joinedRelation | relationFactor
+
+  private def joinedRelation: Parser[LogicalPlan] =
+    relationFactor ~ (joinType.? ~ (JOIN ~> relationFactor) ~ joinCondition.?).+ ^^ {
+      case r ~ joins =>
+        joins.foldLeft(r) {
+          case (lhs, t ~ rhs ~ c) => Join(lhs, rhs, t getOrElse Inner, c)
+        }
+    }
+
+  private def joinType: Parser[JoinType] = (
+    INNER ^^^ Inner
+    | LEFT ~ SEMI ^^^ LeftSemi
+    | LEFT ~ OUTER.? ^^^ LeftOuter
+    | RIGHT ~ OUTER.? ^^^ RightOuter
+    | FULL ~ OUTER.? ^^^ FullOuter
+  )
+
+  private def joinCondition: Parser[Predicate] =
+    ON ~> predicate
+
+  private def relationFactor: Parser[LogicalPlan] = (
+    ident ~ (AS.? ~> ident.?) ^^ {
+      case t ~ Some(a) => Subquery(UnresolvedRelation(t), a)
+      case t ~ None    => UnresolvedRelation(t)
+    }
+    | "(" ~> select <~ ")"
+  )
 
   private def projections: Parser[Seq[NamedExpression]] =
-    rep1sep(projection, ",") ^^ {
+    rep1sep(projection | star, ",") ^^ {
       case ps =>
         ps.zipWithIndex.map {
           case (e: NamedExpression, _) => e
@@ -87,6 +133,8 @@ class Parser extends TokenParser[LogicalPlan] {
       case e ~ Some(a) => Alias(a, e)
       case e ~ _       => e
     }
+
+  private def star: Parser[Star.type] = "*" ^^^ Star
 
   private def expression: Parser[Expression] =
     termExpression | predicate
