@@ -99,33 +99,31 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
-  def prettyTree: String = prettyTree(0, Nil) mkString "\n"
+  def prettyTree: String = prettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = toString
 
-  private def prettyTree(depth: Int, isLastChild: Seq[Boolean]): Seq[String] = {
+  private def prettyTree(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
     val corner = "\u2514"
     val bar = "\u2574"
 
-    val prefix = if (depth == 0) {
-      Seq.empty
-    } else {
-      isLastChild.init.map { isLast =>
-        if (isLast) " " * 2 else s"$pipe "
-      } :+ (if (isLastChild.last) s"$corner$bar" else s"$tee$bar")
+    if (depth > 0) {
+      lastChildren.init.foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    val head = Seq(prefix.mkString + nodeCaption)
+    builder ++= (nodeCaption + "\n")
 
-    if (children.isEmpty) {
-      head
-    } else {
-      val body = children.init.flatMap(_.prettyTree(depth + 1, isLastChild :+ false))
-      val last = children.last.prettyTree(depth + 1, isLastChild :+ true)
-      head ++ body ++ last
+    if (children.nonEmpty) {
+      children.init foreach (_ prettyTree (depth + 1, lastChildren :+ false, builder))
+      children.last prettyTree (depth + 1, lastChildren :+ true, builder)
     }
+
+    builder
   }
 
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
