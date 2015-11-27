@@ -32,7 +32,7 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpr
 
   override def annotatedString: String = s"(${left.annotatedString} + ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} + ${right.sql}"
+  override def sql: String = s"(${left.sql} + ${right.sql})"
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -40,7 +40,7 @@ case class Minus(left: Expression, right: Expression) extends BinaryArithmeticEx
 
   override def annotatedString: String = s"(${left.annotatedString} - ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} - ${right.sql}"
+  override def sql: String = s"(${left.sql} - ${right.sql})"
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -48,7 +48,7 @@ case class Multiply(left: Expression, right: Expression) extends BinaryArithmeti
 
   override def annotatedString: String = s"(${left.annotatedString} * ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} * ${right.sql}"
+  override def sql: String = s"(${left.sql} * ${right.sql})"
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -63,5 +63,5 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
 
   override def annotatedString: String = s"(${left.annotatedString} / ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} / ${right.sql}"
+  override def sql: String = s"(${left.sql} / ${right.sql})"
 }

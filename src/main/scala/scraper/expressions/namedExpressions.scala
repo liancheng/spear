@@ -80,7 +80,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
   override def annotatedString: String = s"`$name`?"
 
-  override def sql: String = annotatedString
+  override def sql: String = s"`$name`"
 
   override def ? : Attribute = this
 

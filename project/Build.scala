@@ -53,6 +53,11 @@ object Build extends sbt.Build {
           |import org.scalacheck.Prop._
           |import org.scalacheck.Test
           |import org.scalacheck.Test._
+          |
+          |import scraper.Test._
+          |import scraper.generators.expressions._
+          |import scraper.generators.types._
+          |import scraper.generators.values._
           |""".stripMargin
     )
 

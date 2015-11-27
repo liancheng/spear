@@ -37,13 +37,15 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def sql: String
 
-  override def nodeCaption: String = annotatedString
+  override def nodeCaption: String = getClass.getSimpleName
 }
 
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 
   override lazy val strictlyTyped: Try[this.type] = Success(this)
+
+  override def nodeCaption: String = annotatedString
 }
 
 trait UnaryExpression extends Expression {

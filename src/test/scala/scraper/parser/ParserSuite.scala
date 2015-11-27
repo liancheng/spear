@@ -2,7 +2,7 @@ package scraper.parser
 
 import scraper.LoggingFunSuite
 import scraper.expressions.functions.lit
-import scraper.plans.logical.UnresolvedRelation
+import scraper.plans.logical.{SingleRowRelation, UnresolvedRelation}
 import scraper.types.TestUtils
 
 class ParserSuite extends LoggingFunSuite with TestUtils {
@@ -10,6 +10,13 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     checkPlan(
       new Parser().parse("SELECT 1 AS a FROM t"),
       UnresolvedRelation("t") select (lit(1) as 'a)
+    )
+  }
+
+  test("join") {
+    checkPlan(
+      new Parser().parse("SELECT * FROM t a INNER JOIN t b ON a = b"),
+      SingleRowRelation
     )
   }
 }

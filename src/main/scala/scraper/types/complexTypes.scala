@@ -49,7 +49,7 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
 
   def fieldTypes: Seq[DataType] = fields.map(_.dataType)
 
-  def toAttributes: Seq[Attribute] = fields map {
+  def toAttributes: Seq[AttributeRef] = fields map {
     field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
   }
 

@@ -24,6 +24,8 @@ trait Context {
 
   private[scraper] def catalog: Catalog
 
+  private[scraper] def parse(query: String): LogicalPlan
+
   private[scraper] def analyze: RulesExecutor[LogicalPlan]
 
   private[scraper] def optimize: RulesExecutor[LogicalPlan]
@@ -52,6 +54,8 @@ class LocalContext extends Context {
 
   override private[scraper] val catalog: Catalog = new Catalog
 
+  override private[scraper] def parse(query: String): LogicalPlan = new Parser().parse(query)
+
   override private[scraper] val analyze = new Analyzer(catalog)
 
   override private[scraper] val optimize = new Optimizer
@@ -74,7 +78,7 @@ class LocalContext extends Context {
     new DataFrame(LocalRelation(rows, schema), this)
   }
 
-  override def q(query: String): DataFrame = new DataFrame(new Parser().parse(query), this)
+  override def q(query: String): DataFrame = new DataFrame(this parse query, this)
 
   def execute(logicalPlan: LogicalPlan): QueryExecution = new QueryExecution(logicalPlan, this)
 }

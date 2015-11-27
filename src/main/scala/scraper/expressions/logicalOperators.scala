@@ -30,7 +30,7 @@ case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate
 
   override def annotatedString: String = s"(${left.annotatedString} AND ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} AND ${right.sql}"
+  override def sql: String = s"(${left.sql} AND ${right.sql})"
 }
 
 case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
@@ -39,7 +39,7 @@ case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate 
 
   override def annotatedString: String = s"(${left.annotatedString} OR ${right.annotatedString})"
 
-  override def sql: String = s"${left.sql} OR ${right.sql}"
+  override def sql: String = s"(${left.sql} OR ${right.sql})"
 }
 
 case class Not(child: Predicate) extends UnaryPredicate {

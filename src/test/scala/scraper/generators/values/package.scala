@@ -21,7 +21,7 @@ package object values {
   def genValueForPrimitiveType(dataType: PrimitiveType): Gen[Any] = dataType match {
     case NullType       => Gen.const(null)
     case BooleanType    => arbitrary[Boolean]
-    case StringType     => arbitrary[String]
+    case StringType     => Gen.alphaStr
     case t: NumericType => genValueForNumericType(t)
   }
 

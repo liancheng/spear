@@ -22,7 +22,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("query string") {
-    checkDataFrame(context q "SELECT 1 AS a", Row(1))
+    checkDataFrame("SELECT 1 AS a".q, Row(1))
   }
 
   private val people = context lift Seq(

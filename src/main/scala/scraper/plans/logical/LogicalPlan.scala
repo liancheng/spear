@@ -61,7 +61,9 @@ trait BinaryLogicalPlan extends LogicalPlan {
   override def children: Seq[LogicalPlan] = Seq(left, right)
 }
 
-case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
+case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan {
+  override def nodeCaption: String = s"${getClass.getSimpleName} $name"
+}
 
 case object SingleRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
@@ -136,8 +138,15 @@ case class Join(
     case RightOuter => left.output.map(_.?) ++ right.output
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
+
+  override def nodeCaption: String = {
+    val details = joinType.toString +: maybeCondition.map(_.annotatedString).toSeq mkString ", "
+    s"${getClass.getSimpleName} $details"
+  }
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
+
+  override def nodeCaption: String = s"${getClass.getSimpleName} $alias"
 }
