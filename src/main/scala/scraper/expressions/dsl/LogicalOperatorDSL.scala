@@ -1,15 +1,15 @@
 package scraper.expressions.dsl
 
-import scraper.expressions.{And, Not, Or, Predicate}
+import scraper.expressions._
 
-trait LogicalOperatorDSL { this: Predicate =>
-  def &&(that: Predicate): And = And(this, that)
+trait LogicalOperatorDSL { this: Expression =>
+  def &&(that: Expression): And = And(this, that)
 
-  def and(that: Predicate): And = this && that
+  def and(that: Expression): And = this && that
 
-  def ||(that: Predicate): Or = Or(this, that)
+  def ||(that: Expression): Or = Or(this, that)
 
-  def or(that: Predicate): Or = this || that
+  def or(that: Expression): Or = this || that
 
   def unary_! : Not = Not(this)
 }

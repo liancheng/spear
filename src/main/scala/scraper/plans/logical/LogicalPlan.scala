@@ -30,7 +30,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def select(first: NamedExpression, rest: NamedExpression*): LogicalPlan = select(first +: rest)
 
-  def filter(condition: Predicate): LogicalPlan = Filter(this, condition)
+  def filter(condition: Expression): LogicalPlan = Filter(this, condition)
 
   def limit(n: Expression): LogicalPlan = Limit(this, n)
 
@@ -99,7 +99,7 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
     s"${getClass.getSimpleName} ${projections map (_.annotatedString) mkString ", "}"
 }
 
-case class Filter(child: LogicalPlan, condition: Predicate) extends UnaryLogicalPlan {
+case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
@@ -129,7 +129,7 @@ case class Join(
   left: LogicalPlan,
   right: LogicalPlan,
   joinType: JoinType,
-  maybeCondition: Option[Predicate]
+  maybeCondition: Option[Expression]
 ) extends BinaryLogicalPlan {
   override lazy val output: Seq[Attribute] = joinType match {
     case LeftSemi   => left.output

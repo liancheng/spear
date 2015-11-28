@@ -8,19 +8,19 @@ import scraper.types.TestUtils
 class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("a AND b") {
     check(Prop.forAll { (a: Boolean, b: Boolean) =>
-      And(LogicalLiteral(a), LogicalLiteral(b)).evaluated == (a && b)
+      And(Literal(a), Literal(b)).evaluated == (a && b)
     })
   }
 
   test("a OR b") {
     check(Prop.forAll { (a: Boolean, b: Boolean) =>
-      Or(LogicalLiteral(a), LogicalLiteral(b)).evaluated == (a || b)
+      Or(Literal(a), Literal(b)).evaluated == (a || b)
     })
   }
 
   test("NOT a") {
     check(Prop.forAll { a: Boolean =>
-      Not(LogicalLiteral(a)).evaluated == !a
+      Not(Literal(a)).evaluated == !a
     })
   }
 }

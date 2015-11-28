@@ -8,7 +8,7 @@ import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
 import scraper.ParsingException
-import scraper.expressions.LogicalLiteral.{False, True}
+import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.plans.logical._
 import scraper.types._
@@ -108,7 +108,7 @@ class Parser extends TokenParser[LogicalPlan] {
     | FULL ~ OUTER.? ^^^ FullOuter
   )
 
-  private def joinCondition: Parser[Predicate] =
+  private def joinCondition: Parser[Expression] =
     ON ~> predicate
 
   private def relationFactor: Parser[LogicalPlan] = (
@@ -139,22 +139,19 @@ class Parser extends TokenParser[LogicalPlan] {
   private def expression: Parser[Expression] =
     termExpression | predicate
 
-  private def predicate: Parser[Predicate] =
+  private def predicate: Parser[Expression] =
     orExpression
 
-  private def orExpression: Parser[Predicate] =
+  private def orExpression: Parser[Expression] =
     andExpression * (OR ^^^ Or)
 
-  private def andExpression: Parser[Predicate] =
-    notExpression * (AND ^^^ And)
+  private def andExpression: Parser[Expression] =
+    (notExpression | comparison) * (AND ^^^ And)
 
-  private def notExpression: Parser[Predicate] = (
+  private def notExpression: Parser[Expression] =
     NOT ~> comparison ^^ Not
-    | comparison
-    | logicalLiteral
-  )
 
-  private def comparison: Parser[Predicate] = (
+  private def comparison: Parser[Expression] = (
     termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
     | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
     | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
@@ -162,6 +159,7 @@ class Parser extends TokenParser[LogicalPlan] {
     | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
     | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
     | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
+    | logicalLiteral
   )
 
   private def termExpression: Parser[Expression] =
@@ -193,7 +191,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private def stringLiteral: Parser[Literal] =
     stringLit ^^ (Literal(_, StringType))
 
-  private def logicalLiteral: Parser[LogicalLiteral] = (
+  private def logicalLiteral: Parser[Expression] = (
     TRUE ^^^ True
     | FALSE ^^^ False
   )

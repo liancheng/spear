@@ -12,11 +12,4 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
       UnresolvedRelation("t") select (lit(1) as 'a)
     )
   }
-
-  test("join") {
-    checkPlan(
-      new Parser().parse("SELECT * FROM t a INNER JOIN t b ON a = b"),
-      SingleRowRelation
-    )
-  }
 }

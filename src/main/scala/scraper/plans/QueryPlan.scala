@@ -27,9 +27,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     }
 
     val (newArgs, argsChanged) = productIterator.map {
-      case e: Predicate =>
-        applyRule(e)
-
       case e: Expression =>
         applyRule(e)
 

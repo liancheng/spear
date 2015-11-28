@@ -47,7 +47,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
     s"${getClass.getSimpleName} ${expressions map (_.annotatedString) mkString ", "}"
 }
 
-case class Filter(child: PhysicalPlan, condition: Predicate) extends UnaryPhysicalPlan {
+case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override val output: Seq[Attribute] = child.output
 
   override def iterator: Iterator[Row] = {

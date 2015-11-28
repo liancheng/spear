@@ -1,7 +1,7 @@
 package scraper.plans
 
 import scraper.Analyzer
-import scraper.expressions.LogicalLiteral.{False, True}
+import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._

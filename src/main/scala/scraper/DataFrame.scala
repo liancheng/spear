@@ -2,7 +2,7 @@ package scraper
 
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.{Expression, NamedExpression, Predicate}
+import scraper.expressions.{Expression, NamedExpression}
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.{QueryExecution, logical}
 import scraper.types.TupleType
@@ -34,9 +34,9 @@ class DataFrame(val queryExecution: QueryExecution) {
     })
   )
 
-  def filter(condition: Predicate): DataFrame = build(logical.Filter(_, condition))
+  def filter(condition: Expression): DataFrame = build(logical.Filter(_, condition))
 
-  def where(condition: Predicate): DataFrame = this filter condition
+  def where(condition: Expression): DataFrame = this filter condition
 
   def limit(n: Expression): DataFrame = build(logical.Limit(_, n))
 

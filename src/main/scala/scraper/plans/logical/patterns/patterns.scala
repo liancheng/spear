@@ -13,9 +13,9 @@ package object patterns {
    * @note This pattern is only available for resolved logical plans.
    */
   private[scraper] object PhysicalOperation {
-    private type Result = (Seq[NamedExpression], Seq[Predicate], LogicalPlan)
+    private type Result = (Seq[NamedExpression], Seq[Expression], LogicalPlan)
 
-    private type IntermediateResult = (Option[Seq[NamedExpression]], Seq[Predicate], LogicalPlan)
+    private type IntermediateResult = (Option[Seq[NamedExpression]], Seq[Expression], LogicalPlan)
 
     def unapply(plan: LogicalPlan): Option[Result] = {
       assert(plan.resolved, {

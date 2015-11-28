@@ -6,16 +6,16 @@ import scraper.expressions.Cast.promoteDataTypes
 import scraper.types.{BooleanType, DataType}
 import scraper.{Row, TypeMismatchException}
 
-trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
+trait BinaryLogicalPredicate extends BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = {
     for {
       lhs <- left.strictlyTyped map {
-        case e: Predicate => e
-        case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case BooleanType(e) => e
+        case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
       rhs <- right.strictlyTyped map {
-        case e: Predicate => e
-        case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case BooleanType(e) => e
+        case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
       (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
       newChildren = promotedLhs :: promotedRhs :: Nil
@@ -23,7 +23,9 @@ trait BinaryLogicalPredicate extends Predicate with BinaryExpression {
   }
 }
 
-case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
+case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
+  override def dataType: DataType = BooleanType
+
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = {
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
@@ -33,7 +35,9 @@ case class And(left: Predicate, right: Predicate) extends BinaryLogicalPredicate
   override def sql: String = s"(${left.sql} AND ${right.sql})"
 }
 
-case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate {
+case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicate {
+  override def dataType: DataType = BooleanType
+
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
 
@@ -42,22 +46,24 @@ case class Or(left: Predicate, right: Predicate) extends BinaryLogicalPredicate 
   override def sql: String = s"(${left.sql} OR ${right.sql})"
 }
 
-case class Not(child: Predicate) extends UnaryPredicate {
+case class Not(child: Expression) extends UnaryExpression {
+  override def dataType: DataType = BooleanType
+
   override def evaluate(input: Row): Any = !child.evaluate(input).asInstanceOf[Boolean]
 
-  override def annotatedString: String = s"(NOT ${child.nodeCaption})"
+  override def annotatedString: String = s"(NOT ${child.annotatedString})"
 
   override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped map {
-      case e: Predicate => e
-      case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case BooleanType(e) => e
+      case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
     }
   } yield copy(child = e)
 
   override def sql: String = s"(NOT ${child.sql})"
 }
 
-case class If(condition: Predicate, trueValue: Expression, falseValue: Expression)
+case class If(condition: Expression, trueValue: Expression, falseValue: Expression)
   extends Expression {
 
   override def dataType: DataType = whenStrictlyTyped(trueValue.dataType)
@@ -72,8 +78,8 @@ case class If(condition: Predicate, trueValue: Expression, falseValue: Expressio
 
   override lazy val strictlyTyped: Try[Expression] = for {
     c <- condition.strictlyTyped map {
-      case e: Predicate => e
-      case e            => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case BooleanType(e) => e
+      case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
     }
     t <- trueValue.strictlyTyped
     f <- falseValue.strictlyTyped
