@@ -8,7 +8,7 @@ trait NumericType extends PrimitiveType {
 }
 
 object NumericType {
-  val default = DoubleType
+  val defaultType = DoubleType
 
   def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: NumericType => Some(e)
@@ -17,8 +17,13 @@ object NumericType {
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if implicitlyConvertible(t, default) => Some(e)
-      case _                                      => None
+      case t if implicitlyConvertible(t, defaultType) => Some(e)
+      case _                                          => None
+    }
+
+    def unapply(dataType: DataType): Option[DataType] = dataType match {
+      case t if implicitlyConvertible(t, defaultType) => Some(t)
+      case _                                          => None
     }
   }
 }

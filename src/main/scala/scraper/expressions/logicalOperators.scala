@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scala.util.Try
 
-import scraper.expressions.Cast.promoteDataTypes
+import scraper.expressions.Cast.{commonTypeOf, promoteDataType}
 import scraper.types.{BooleanType, DataType}
 import scraper.{Row, TypeMismatchException}
 
@@ -11,16 +11,17 @@ trait BinaryLogicalPredicate extends BinaryExpression {
     for {
       lhs <- left.strictlyTyped map {
         case BooleanType(e)            => e
-        case BooleanType.Implicitly(e) => e
+        case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
         case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
+
       rhs <- right.strictlyTyped map {
         case BooleanType(e)            => e
-        case BooleanType.Implicitly(e) => e
+        case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
         case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
-      (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
-      newChildren = promotedLhs :: promotedRhs :: Nil
+
+      newChildren = lhs :: rhs :: Nil
     } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
   }
 }
@@ -57,8 +58,9 @@ case class Not(child: Expression) extends UnaryExpression {
 
   override lazy val strictlyTyped: Try[Expression] = for {
     e <- child.strictlyTyped map {
-      case BooleanType(e) => e
-      case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case BooleanType(e)            => e
+      case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
+      case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
     }
   } yield copy(child = e)
 
@@ -80,13 +82,16 @@ case class If(condition: Expression, trueValue: Expression, falseValue: Expressi
 
   override lazy val strictlyTyped: Try[Expression] = for {
     c <- condition.strictlyTyped map {
-      case BooleanType(e) => e
-      case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case BooleanType(e)            => e
+      case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
+      case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
     }
-    t <- trueValue.strictlyTyped
-    f <- falseValue.strictlyTyped
-    (promotedT, promotedF) <- promoteDataTypes(t, f)
-    newChildren = c :: promotedT :: promotedF :: Nil
+
+    yes <- trueValue.strictlyTyped
+    no <- falseValue.strictlyTyped
+    t <- commonTypeOf(yes.dataType, no.dataType)
+
+    newChildren = c :: promoteDataType(yes, t) :: promoteDataType(no, t) :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
 
   override def evaluate(input: Row): Any =

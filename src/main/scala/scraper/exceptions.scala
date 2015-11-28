@@ -66,15 +66,14 @@ case class TypeMismatchException(message: String, maybeCause: Option[Throwable])
 
 object TypeMismatchException {
   def apply(
-    expression: Expression,
-    dataTypeClass: Class[_],
-    maybeCause: Option[Throwable]
+    expression: Expression, dataTypeClass: Class[_], maybeCause: Option[Throwable] = None
   ): TypeMismatchException = {
     TypeMismatchException({
       val dataType = expression.dataType
-      val className = dataTypeClass.getSimpleName.stripSuffix("$")
-      s"Expecting $className while expression ${expression.nodeCaption} " +
-        s"has type ${dataType.simpleName}."
+      val expected = dataTypeClass.getSimpleName.stripSuffix("$")
+      val actual = dataType.getClass.getSimpleName.stripSuffix("$")
+      s"Expecting $expected while expression ${expression.annotatedString} has type $actual, " +
+        s"which cannot be implicitly casted to $expected."
     }, maybeCause)
   }
 }

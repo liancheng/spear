@@ -31,6 +31,11 @@ trait DataType { self =>
       case t if implicitlyConvertible(t, self) => Some(e)
       case _                                   => None
     }
+
+    def unapply(dataType: DataType): Option[DataType] = dataType match {
+      case t if implicitlyConvertible(t, self) => Some(t)
+      case _                                   => None
+    }
   }
 }
 

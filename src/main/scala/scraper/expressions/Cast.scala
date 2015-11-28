@@ -4,7 +4,7 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.expressions.Cast.buildCast
 import scraper.types._
-import scraper.{Row, TypeCastException, TypeCheckException}
+import scraper.{Row, TypeCheckException, TypeMismatchException}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression
@@ -149,11 +149,19 @@ object Cast {
   def implicitlyCompatible(x: DataType, y: DataType): Boolean =
     x == y || implicitlyConvertible(x, y) || implicitlyConvertible(y, x)
 
-  def promoteDataTypes(e1: Expression, e2: Expression): Try[(Expression, Expression)] =
-    (e1.dataType, e2.dataType) match {
-      case (t1, t2) if t1 == t2                      => Success((e1, e2))
-      case (t1, t2) if implicitlyConvertible(t1, t2) => Success((Cast(e1, t2), e2))
-      case (t1, t2) if implicitlyConvertible(t2, t1) => Success((e1, Cast(e2, t1)))
-      case (t1, t2)                                  => Failure(TypeCastException(t1, t2))
+  def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
+    case _ if e.dataType == dataType => e
+    case n: NamedExpression          => Alias(n.name, n cast dataType, n.expressionId)
+    case _                           => e cast dataType
+  }
+
+  def commonTypeOf(first: DataType, rest: DataType*): Try[DataType] =
+    rest.foldLeft(Try(first)) {
+      case (Success(x), y) if implicitlyCompatible(x, y) => Try(y)
+      case (Success(x), y) if implicitlyCompatible(y, x) => Try(x)
+      case _ =>
+        Failure(TypeMismatchException(
+          s"Could not find common type for: ${first +: rest map (_.sql) mkString ", "}", None
+        ))
     }
 }
