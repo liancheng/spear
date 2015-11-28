@@ -6,28 +6,28 @@ import scala.reflect.runtime.universe.definitions._
 import scraper.types._
 
 package object reflection {
-  def schemaOf[T: WeakTypeTag]: Schema = schemaOf(weakTypeOf[T])
+  def fieldSpecFor[T: WeakTypeTag]: FieldSpec = fieldSpecFor(weakTypeOf[T])
 
-  private val schemaOf: PartialFunction[Type, Schema] = (
-    schemaOfUnboxedPrimitiveType
-    orElse schemaOfBoxedPrimitiveType
-    orElse schemaOfCompoundType
+  private val fieldSpecFor: PartialFunction[Type, FieldSpec] = (
+    fieldSpecForUnboxedPrimitiveType
+    orElse fieldSpecForBoxedPrimitiveType
+    orElse fieldSpecForCompoundType
   )
 
-  private def schemaOfCompoundType: PartialFunction[Type, Schema] = {
+  private def fieldSpecForCompoundType: PartialFunction[Type, FieldSpec] = {
     case t if t <:< weakTypeOf[Option[_]] =>
       val Seq(elementType) = t.typeArgs
-      schemaOf(elementType).dataType.?
+      fieldSpecFor(elementType).dataType.?
 
     case t if t <:< weakTypeOf[Seq[_]] || t <:< weakTypeOf[Array[_]] =>
       val Seq(elementType) = t.typeArgs
-      val Schema(elementDataType, elementOptional) = schemaOf(elementType)
+      val FieldSpec(elementDataType, elementOptional) = fieldSpecFor(elementType)
       ArrayType(elementDataType, elementOptional).?
 
     case t if t <:< weakTypeOf[Map[_, _]] =>
       val Seq(keyType, valueType) = t.typeArgs
-      val Schema(keyDataType, _) = schemaOf(keyType)
-      val Schema(valueDataType, valueOptional) = schemaOf(valueType)
+      val FieldSpec(keyDataType, _) = fieldSpecFor(keyType)
+      val FieldSpec(valueDataType, valueOptional) = fieldSpecFor(valueType)
       MapType(keyDataType, valueDataType, valueOptional).?
 
     case t if t <:< weakTypeOf[Product] =>
@@ -36,12 +36,12 @@ package object reflection {
       val List(constructorParams) = t.member(termNames.CONSTRUCTOR).asMethod.paramLists
       TupleType(constructorParams.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
-        val Schema(dataType, nullable) = schemaOf(paramType)
+        val FieldSpec(dataType, nullable) = fieldSpecFor(paramType)
         TupleField(param.name.toString, dataType, nullable)
       }).?
   }
 
-  private def schemaOfBoxedPrimitiveType: PartialFunction[Type, Schema] = {
+  private def fieldSpecForBoxedPrimitiveType: PartialFunction[Type, FieldSpec] = {
     case t if t <:< weakTypeOf[String]            => StringType.?
     case t if t <:< weakTypeOf[Integer]           => IntType.?
     case t if t <:< weakTypeOf[java.lang.Boolean] => BooleanType.?
@@ -52,7 +52,7 @@ package object reflection {
     case t if t <:< weakTypeOf[java.lang.Double]  => DoubleType.?
   }
 
-  private def schemaOfUnboxedPrimitiveType: PartialFunction[Type, Schema] = {
+  private def fieldSpecForUnboxedPrimitiveType: PartialFunction[Type, FieldSpec] = {
     case t if t <:< IntTpe     => IntType.!
     case t if t <:< BooleanTpe => BooleanType.!
     case t if t <:< ByteTpe    => ByteType.!

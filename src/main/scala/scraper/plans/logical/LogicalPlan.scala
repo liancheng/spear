@@ -6,7 +6,7 @@ import scala.util.Try
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
-import scraper.reflection.schemaOf
+import scraper.reflection.fieldSpecFor
 import scraper.types.TupleType
 import scraper.{LogicalPlanUnresolved, Row, TypeCheckException}
 
@@ -80,7 +80,7 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
 
 object LocalRelation {
   def apply[T <: Product: WeakTypeTag](data: Traversable[T]): LocalRelation = {
-    val schema = schemaOf[T].dataType match { case t: TupleType => t }
+    val schema = fieldSpecFor[T].dataType match { case t: TupleType => t }
     val rows = data.map { product => new Row(product.productIterator.toSeq) }
     LocalRelation(rows, schema)
   }

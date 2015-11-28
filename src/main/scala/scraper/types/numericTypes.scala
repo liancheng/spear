@@ -1,5 +1,6 @@
 package scraper.types
 
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions.Expression
 
 trait NumericType extends PrimitiveType {
@@ -7,9 +8,18 @@ trait NumericType extends PrimitiveType {
 }
 
 object NumericType {
+  val default = DoubleType
+
   def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: NumericType => Some(e)
     case _              => None
+  }
+
+  object Implicitly {
+    def unapply(e: Expression): Option[Expression] = e.dataType match {
+      case t if implicitlyConvertible(t, default) => Some(e)
+      case _                                      => None
+    }
   }
 }
 

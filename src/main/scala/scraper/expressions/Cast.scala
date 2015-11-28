@@ -2,8 +2,9 @@ package scraper.expressions
 
 import scala.util.{Failure, Success, Try}
 
+import scraper.expressions.Cast.buildCast
 import scraper.types._
-import scraper.{TypeCheckException, Row, TypeCastException}
+import scraper.{Row, TypeCastException, TypeCheckException}
 
 case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
   override def child: Expression = fromExpression
@@ -16,7 +17,7 @@ case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpre
   private def fromType = fromExpression.dataType
 
   override def evaluate(input: Row): Any =
-    Cast.buildCast(fromType)(toType)(fromExpression evaluate input)
+    buildCast(fromType)(toType)(fromExpression evaluate input)
 
   override lazy val strictlyTyped: Try[Expression] = {
     val strictChild = child.strictlyTyped.recover {
@@ -132,7 +133,11 @@ object Cast {
     case DoubleType => fromDouble
   }
 
-  /** Whether [[DataType]] `x` can be converted to [[DataType]] `y` implicitly. */
+  /**
+   * Whether [[DataType]] `x` can be converted to [[DataType]] `y` implicitly.
+   *
+   * @note Any [[DataType]] is not considered to be [[implicitlyConvertible]] to itself.
+   */
   def implicitlyConvertible(x: DataType, y: DataType): Boolean = buildImplicitCast(x) isDefinedAt y
 
   /**

@@ -133,15 +133,15 @@ package object types {
         allowNullable = settings(AllowNullableTupleField)
         genNullable = if (allowNullable) arbitrary[Boolean] else Gen const false
 
-        genFieldSchema = for {
+        genFieldSpec = for {
           fieldType <- genFieldType
           nullable <- genNullable
-        } yield Schema(fieldType, nullable)
+        } yield FieldSpec(fieldType, nullable)
 
-        fieldSchemas <- Gen listOfN (fieldNum, genFieldSchema)
+        fieldSpecs <- Gen listOfN (fieldNum, genFieldSpec)
 
-        fields = fieldSchemas.zipWithIndex map {
-          case (schema, ordinal) => TupleField(s"c$ordinal", schema)
+        fields = fieldSpecs.zipWithIndex map {
+          case (fieldSpec, ordinal) => TupleField(s"c$ordinal", fieldSpec)
         }
       } yield TupleType(fields))
   }

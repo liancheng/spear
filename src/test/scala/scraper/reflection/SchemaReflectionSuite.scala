@@ -8,29 +8,29 @@ import scraper.reflection.SchemaReflectionSuite._
 import scraper.types._
 
 class SchemaReflectionSuite extends LoggingFunSuite with TestUtils {
-  private def testType[T: WeakTypeTag](kind: String)(expected: Schema): Unit = {
+  private def testType[T: WeakTypeTag](kind: String)(expected: FieldSpec): Unit = {
     val className = implicitly[WeakTypeTag[T]].tpe.toString
     test(s"schema inference - $kind - $className") {
       checkTree(
         TupleType("inferred" -> expected),
-        TupleType("inferred" -> schemaOf[T])
+        TupleType("inferred" -> fieldSpecFor[T])
       )
     }
   }
 
-  private def testUnboxedPrimitive[T: WeakTypeTag](expected: Schema) =
+  private def testUnboxedPrimitive[T: WeakTypeTag](expected: FieldSpec) =
     testType[T]("unboxed primitive")(expected)
 
-  private def testBoxedPrimitive[T: WeakTypeTag](expected: Schema) =
+  private def testBoxedPrimitive[T: WeakTypeTag](expected: FieldSpec) =
     testType[T]("boxed primitive")(expected)
 
-  private def testArrayType[T: WeakTypeTag](expected: Schema) =
+  private def testArrayType[T: WeakTypeTag](expected: FieldSpec) =
     testType[T]("array type")(expected)
 
-  private def testMapType[T: WeakTypeTag](expected: Schema) =
+  private def testMapType[T: WeakTypeTag](expected: FieldSpec) =
     testType[T]("map type")(expected)
 
-  private def testTupleType[T: WeakTypeTag](expected: Schema) =
+  private def testTupleType[T: WeakTypeTag](expected: FieldSpec) =
     testType[T]("tuple type")(expected)
 
   testUnboxedPrimitive[Boolean] { BooleanType.! }

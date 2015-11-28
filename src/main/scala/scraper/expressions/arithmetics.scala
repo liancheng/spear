@@ -13,12 +13,14 @@ trait ArithmeticExpression extends Expression {
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
     lhs <- left.strictlyTyped map {
-      case NumericType(e) => e
-      case e              => throw TypeMismatchException(e, classOf[NumericType], None)
+      case NumericType(e)            => e
+      case NumericType.Implicitly(e) => e
+      case e                         => throw TypeMismatchException(e, classOf[NumericType], None)
     }
     rhs <- right.strictlyTyped map {
-      case NumericType(e) => e
-      case e              => throw TypeMismatchException(e, classOf[NumericType], None)
+      case NumericType(e)            => e
+      case NumericType.Implicitly(e) => e
+      case e                         => throw TypeMismatchException(e, classOf[NumericType], None)
     }
     (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
     newChildren = promotedLhs :: promotedRhs :: Nil

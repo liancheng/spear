@@ -1,6 +1,6 @@
 package scraper.plans.logical
 
-import org.scalacheck.Gen
+import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
@@ -23,21 +23,20 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   ignore("CNFConversion") {
     val optimizer = makeOptimizer(CNFConversion)
 
+    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
+
     check {
-      val gen = genPredicate(TupleType.empty.toAttributes)
+      forAll { predicate: Expression =>
+        val optimizedPlan = optimizer(SingleRowRelation filter predicate)
+        val conditions = optimizedPlan.collect {
+          case _ Filter condition => splitConjunction(condition)
+        }.flatten
 
-      forAll(gen) {
-        predicate =>
-          val optimizedPlan = optimizer(SingleRowRelation filter predicate)
-          val conditions = optimizedPlan.collect {
-            case _ Filter condition => splitConjunction(condition)
-          }.flatten
-
-          conditions.forall {
-            _.collect {
-              case and: And => and
-            }.isEmpty
-          }
+        conditions.forall {
+          _.collect {
+            case and: And => and
+          }.isEmpty
+        }
       }
     }
   }
@@ -45,18 +44,17 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   test("CombineFilters") {
     val optimizer = makeOptimizer(CombineFilters)
 
-    implicit val gen: Gen[Expression] = genPredicate(TupleType.empty.toAttributes)
+    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
     check {
-      forAll {
-        (condition1: Expression, condition2: Expression) =>
-          val optimized = optimizer(SingleRowRelation filter condition1 filter condition2)
-          val conditions = optimized.collect {
-            case f: Filter => f.condition
-          }
+      forAll { (condition1: Expression, condition2: Expression) =>
+        val optimized = optimizer(SingleRowRelation filter condition1 filter condition2)
+        val conditions = optimized.collect {
+          case f: Filter => f.condition
+        }
 
-          assert(conditions.length === 1)
-          conditions.head == (condition1 && condition2)
+        assert(conditions.length === 1)
+        conditions.head == (condition1 && condition2)
       }
     }
   }

@@ -12,7 +12,7 @@ package object expressions {
   def genExpression(schema: TupleType)(implicit settings: Settings): Gen[Expression] =
     genExpression(schema.toAttributes)(settings)
 
-  def genExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     Gen sized {
       case size if size < 3 =>
         genTermExpression(input)(settings)
@@ -21,36 +21,36 @@ package object expressions {
         Gen oneOf (genTermExpression(input)(settings), genPredicate(input)(settings))
     }
 
-  def genPredicate(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genPredicate(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     genOrExpression(input)(settings)
 
-  def genOrExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genOrExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     genUnaryOrBinary(genAndExpression(input)(settings), Or)
 
-  def genAndExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] = {
+  def genAndExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = {
     val genBranch = Gen oneOf (genNotExpression(input)(settings), Gen oneOf (True, False))
     genUnaryOrBinary(genBranch, And)
   }
 
-  def genNotExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genNotExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     for {
       size <- Gen.size
       comparison <- Gen resize (size - 1, genComparison(input)(settings))
     } yield !comparison
 
-  def genComparison(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genComparison(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     Gen oneOf (
       Gen oneOf (True, False),
       genBinary(genTermExpression(input)(settings), Eq, NotEq, Gt, GtEq, Lt, LtEq)
     )
 
-  def genTermExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genTermExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     genUnaryOrBinary(genProductExpression(input)(settings), Add, Minus)
 
-  def genProductExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genProductExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     genUnaryOrBinary(genBaseExpression(input)(settings), Multiply, Divide)
 
-  def genBaseExpression(input: Seq[AttributeRef])(implicit settings: Settings): Gen[Expression] =
+  def genBaseExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     Gen oneOf (
       Gen oneOf input,
       for {

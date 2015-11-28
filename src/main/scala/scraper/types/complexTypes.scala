@@ -13,7 +13,7 @@ case class ArrayType(
 }
 
 object ArrayType {
-  def apply(schema: Schema): ArrayType = ArrayType(schema.dataType, schema.nullable)
+  def apply(fieldSpec: FieldSpec): ArrayType = ArrayType(fieldSpec.dataType, fieldSpec.nullable)
 }
 
 case class MapType(
@@ -25,8 +25,8 @@ case class MapType(
 }
 
 object MapType {
-  def apply(keyType: DataType, valueSchema: Schema): MapType =
-    MapType(keyType, valueSchema.dataType, valueSchema.nullable)
+  def apply(keyType: DataType, valueFieldSpec: FieldSpec): MapType =
+    MapType(keyType, valueFieldSpec.dataType, valueFieldSpec.nullable)
 }
 
 case class TupleField(name: String, dataType: DataType, nullable: Boolean) {
@@ -38,8 +38,8 @@ case class TupleField(name: String, dataType: DataType, nullable: Boolean) {
 }
 
 object TupleField {
-  def apply(name: String, schema: Schema): TupleField =
-    TupleField(name, schema.dataType, schema.nullable)
+  def apply(name: String, fieldSpec: FieldSpec): TupleField =
+    TupleField(name, fieldSpec.dataType, fieldSpec.nullable)
 }
 
 case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {

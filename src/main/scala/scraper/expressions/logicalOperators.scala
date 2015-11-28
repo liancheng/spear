@@ -10,12 +10,14 @@ trait BinaryLogicalPredicate extends BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = {
     for {
       lhs <- left.strictlyTyped map {
-        case BooleanType(e) => e
-        case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case BooleanType(e)            => e
+        case BooleanType.Implicitly(e) => e
+        case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
       rhs <- right.strictlyTyped map {
-        case BooleanType(e) => e
-        case e              => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case BooleanType(e)            => e
+        case BooleanType.Implicitly(e) => e
+        case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
       }
       (promotedLhs, promotedRhs) <- promoteDataTypes(lhs, rhs)
       newChildren = promotedLhs :: promotedRhs :: Nil

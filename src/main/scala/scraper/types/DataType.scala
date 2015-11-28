@@ -2,15 +2,16 @@ package scraper.types
 
 import scala.language.implicitConversions
 
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions.Expression
 import scraper.trees.TreeNode
 
-trait DataType {
-  /** Returns a nullable [[Schema]] of this [[DataType]]. */
-  def ? : Schema = Schema(this, nullable = true)
+trait DataType { self =>
+  /** Returns a nullable [[FieldSpec]] of this [[DataType]]. */
+  def ? : FieldSpec = FieldSpec(this, nullable = true)
 
-  /** Returns a non-nullable [[Schema]] of this [[DataType]]. */
-  def ! : Schema = Schema(this, nullable = false)
+  /** Returns a non-nullable [[FieldSpec]] of this [[DataType]]. */
+  def ! : FieldSpec = FieldSpec(this, nullable = false)
 
   /** Returns a pretty-printed tree string of this [[DataType]]. */
   def prettyTree: String = DataType.`DataType->DataTypeNode`(this).prettyTree
@@ -24,9 +25,16 @@ trait DataType {
     case _ if e.dataType == this => Some(e)
     case _                       => None
   }
+
+  object Implicitly {
+    def unapply(e: Expression): Option[Expression] = e.dataType match {
+      case t if implicitlyConvertible(t, self) => Some(e)
+      case _                                   => None
+    }
+  }
 }
 
-case class Schema(dataType: DataType, nullable: Boolean)
+case class FieldSpec(dataType: DataType, nullable: Boolean)
 
 object DataType {
   /**
@@ -36,7 +44,7 @@ object DataType {
   sealed trait DataTypeNode extends TreeNode[DataTypeNode] {
     def children: Seq[DataTypeNode]
 
-    protected def schemaString(dataType: DataType, nullable: Boolean): String = {
+    protected def fieldSpecString(dataType: DataType, nullable: Boolean): String = {
       val nullabilityMark = if (nullable) "?" else ""
       s"${dataType.simpleName}$nullabilityMark"
     }
@@ -67,7 +75,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
     override def nodeCaption: String =
-      s"${field.name}: ${schemaString(field.dataType, field.nullable)}"
+      s"${field.name}: ${fieldSpecString(field.dataType, field.nullable)}"
   }
 
   case class TupleTypeNode(dataType: TupleType) extends DataTypeNode with HasDataType {
@@ -84,7 +92,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = mapType.valueType.children
 
     override def nodeCaption: String =
-      s"value: ${schemaString(mapType.valueType, mapType.valueNullable)}"
+      s"value: ${fieldSpecString(mapType.valueType, mapType.valueNullable)}"
   }
 
   case class MapTypeNode(dataType: MapType) extends DataTypeNode with HasDataType {
@@ -97,7 +105,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = arrayType.elementType.children
 
     override def nodeCaption: String =
-      s"element: ${schemaString(arrayType.elementType, arrayType.elementNullable)}"
+      s"element: ${fieldSpecString(arrayType.elementType, arrayType.elementNullable)}"
   }
 
   case class ArrayTypeNode(dataType: ArrayType) extends DataTypeNode with HasDataType {
