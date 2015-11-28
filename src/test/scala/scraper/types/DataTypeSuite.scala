@@ -2,7 +2,6 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
@@ -15,31 +14,31 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("size of generated DataType") {
-    check(forAll { t: PrimitiveType =>
+    check { t: PrimitiveType =>
       t.size == 1
-    })
+    }
 
-    check(forAll { t: ArrayType =>
+    check { t: ArrayType =>
       t.size == 1 + t.elementType.size
-    })
+    }
 
-    check(forAll { t: MapType =>
+    check { t: MapType =>
       t.size == 1 + t.keyType.size + t.valueType.size
-    })
+    }
   }
 
   test("depth of generated DataType") {
-    check(forAll { t: PrimitiveType =>
+    check { t: PrimitiveType =>
       t.depth == 1
-    })
+    }
 
-    check(forAll { t: ArrayType =>
+    check { t: ArrayType =>
       t.depth == 1 + t.elementType.depth
-    })
+    }
 
-    check(forAll { t: MapType =>
+    check { t: MapType =>
       t.depth == 1 + (t.keyType.depth max t.valueType.depth)
-    })
+    }
   }
 
   test("ArrayType instantiation") {
