@@ -62,8 +62,8 @@ case class Alias(
 
   override def sql: String = s"(${child.sql} AS `$name`)"
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    e <- child.strictlyTyped
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
 }
 

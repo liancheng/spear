@@ -189,18 +189,16 @@ class Parser extends TokenParser[LogicalPlan] {
   private def literal: Parser[Literal] = (
     numericLiteral
     | stringLiteral
+    | booleanLiteral
   )
 
   private def stringLiteral: Parser[Literal] =
     stringLit ^^ (Literal(_, StringType))
 
-  private def booleanLiteral: Parser[Expression] = (
+  private def booleanLiteral: Parser[Literal] = (
     TRUE ^^^ True
     | FALSE ^^^ False
   )
-
-  private def sign: Parser[String] =
-    "+" | "-"
 
   private def numericLiteral: Parser[Literal] =
     integral ^^ {
@@ -211,6 +209,9 @@ class Parser extends TokenParser[LogicalPlan] {
     sign.? ~ numericLit ^^ {
       case s ~ n => s.mkString + n
     }
+
+  private def sign: Parser[String] =
+    "+" | "-"
 
   private def narrowestIntegralValueOf(numeric: String): Any = {
     val bigInt = BigInt(numeric)

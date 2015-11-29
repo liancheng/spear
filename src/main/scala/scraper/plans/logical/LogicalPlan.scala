@@ -15,7 +15,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def strictlyTyped: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
-      case e => e.strictlyTyped.get
+      case e => e.strictlyTypedForm.get
     }
   }
 
@@ -109,7 +109,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   override lazy val output: Seq[Attribute] = child.output
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    n <- limit.strictlyTyped map {
+    n <- limit.strictlyTypedForm map {
       case e if e.foldable => e
       case _               => throw new TypeCheckException("Limit must be a constant", None)
     }

@@ -11,14 +11,14 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = for {
-    lhs <- left.strictlyTyped map {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    lhs <- left.strictlyTypedForm map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => e
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
 
-    rhs <- right.strictlyTyped map {
+    rhs <- right.strictlyTypedForm map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => e
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
@@ -31,7 +31,6 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
     //
     //  - The data type of neither side is NumericType, but both can be converted to NumericType
     //    implicitly.  In this case, we use the default NumericType as the final data type.
-
     t <- (lhs.dataType, rhs.dataType) match {
       case (t1: NumericType, t2) => commonTypeOf(t1, t2)
       case (t1, t2: NumericType) => commonTypeOf(t1, t2)

@@ -2,34 +2,27 @@ package scraper.expressions
 
 import scala.util.{Failure, Success, Try}
 
-import scraper.expressions.Cast.buildCast
+import scraper._
+import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types._
-import scraper.{ImplicitCastException, Row, TypeCheckException, TypeMismatchException}
 
-case class Cast(fromExpression: Expression, toType: DataType) extends UnaryExpression {
-  override def child: Expression = fromExpression
-
+case class Cast(child: Expression, toType: DataType) extends UnaryExpression {
   override def dataType: DataType = toType
 
   override def annotatedString: String =
     s"CAST(${child.annotatedString} AS ${toType.simpleName})"
 
-  private def fromType = fromExpression.dataType
+  private def fromType = child.dataType
 
   override def evaluate(input: Row): Any =
-    buildCast(fromType)(toType)(fromExpression evaluate input)
+    buildCast(fromType)(toType)(child evaluate input)
 
-  override lazy val strictlyTyped: Try[Expression] = {
-    val strictChild = child.strictlyTyped.recover {
-      case cause: Throwable =>
-        throw new TypeCheckException(child, Some(cause))
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    strictChild <- child.strictlyTypedForm map {
+      case e if convertible(e.dataType, toType) => e
+      case e                                    => throw new TypeCastException(e.dataType, toType)
     }
-
-    strictChild map {
-      case e if e sameOrEqual child => this
-      case e                        => copy(fromExpression = e)
-    }
-  }
+  } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
 
   override def sql: String = s"CAST(${child.sql} AS ${dataType.sql})"
 }

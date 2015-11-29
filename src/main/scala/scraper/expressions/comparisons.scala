@@ -14,13 +14,13 @@ trait BinaryComparison extends BinaryExpression {
     }
   }
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    lhs <- left.strictlyTyped map {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    lhs <- left.strictlyTypedForm map {
       case PrimitiveType(e) => e
       case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
     }
 
-    rhs <- right.strictlyTyped map {
+    rhs <- right.strictlyTypedForm map {
       case PrimitiveType(e) => e
       case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
     }

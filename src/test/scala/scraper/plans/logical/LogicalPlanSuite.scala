@@ -117,7 +117,7 @@ object LogicalPlanSuite {
 
     override def evaluate(input: Row): Any = literal.evaluated
 
-    override lazy val strictlyTyped: Try[this.type] = Success(this)
+    override lazy val strictlyTypedForm: Try[this.type] = Success(this)
   }
 
   object FakeExpr {

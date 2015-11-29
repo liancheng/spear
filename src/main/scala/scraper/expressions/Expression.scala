@@ -24,14 +24,12 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
 
-  def strictlyTyped: Try[Expression]
+  def strictlyTypedForm: Try[Expression]
 
-  protected def whenStrictlyTyped[T](value: => T): T = (
-    strictlyTyped map {
-      case e if e sameOrEqual this => value
-      case _                       => throw new TypeCheckException(this, None)
-    }
-  ).get
+  lazy val strictlyTyped: Boolean = strictlyTypedForm.get sameOrEqual this
+
+  protected def whenStrictlyTyped[T](value: => T): T =
+    if (strictlyTyped) value else throw new TypeCheckException(this, None)
 
   def annotatedString: String
 
@@ -43,7 +41,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 
-  override lazy val strictlyTyped: Try[this.type] = Success(this)
+  override lazy val strictlyTypedForm: Try[this.type] = Success(this)
 
   override def nodeCaption: String = annotatedString
 }

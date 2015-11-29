@@ -7,15 +7,15 @@ import scraper.types.{BooleanType, DataType}
 import scraper.{Row, TypeMismatchException}
 
 trait BinaryLogicalPredicate extends BinaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = {
+  override lazy val strictlyTypedForm: Try[Expression] = {
     for {
-      lhs <- left.strictlyTyped map {
+      lhs <- left.strictlyTypedForm map {
         case BooleanType(e)            => e
         case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
         case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
       }
 
-      rhs <- right.strictlyTyped map {
+      rhs <- right.strictlyTypedForm map {
         case BooleanType(e)            => e
         case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
         case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
@@ -56,8 +56,8 @@ case class Not(child: Expression) extends UnaryExpression {
 
   override def annotatedString: String = s"(NOT ${child.annotatedString})"
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    e <- child.strictlyTyped map {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    e <- child.strictlyTypedForm map {
       case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
@@ -80,15 +80,15 @@ case class If(condition: Expression, trueValue: Expression, falseValue: Expressi
 
   override def sql: String = s"IF(${condition.sql}, ${trueValue.sql}, ${falseValue.sql})"
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    c <- condition.strictlyTyped map {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    c <- condition.strictlyTypedForm map {
       case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
 
-    yes <- trueValue.strictlyTyped
-    no <- falseValue.strictlyTyped
+    yes <- trueValue.strictlyTypedForm
+    no <- falseValue.strictlyTypedForm
     t <- commonTypeOf(yes.dataType, no.dataType)
 
     newChildren = c :: promoteDataType(yes, t) :: promoteDataType(no, t) :: Nil
