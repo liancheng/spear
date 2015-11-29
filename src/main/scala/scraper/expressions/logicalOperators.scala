@@ -2,9 +2,10 @@ package scraper.expressions
 
 import scala.util.Try
 
+import scraper.Row
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{commonTypeOf, promoteDataType}
 import scraper.types.{BooleanType, DataType}
-import scraper.{Row, TypeMismatchException}
 
 trait BinaryLogicalPredicate extends BinaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = {

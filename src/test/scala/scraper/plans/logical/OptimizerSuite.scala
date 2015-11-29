@@ -6,22 +6,25 @@ import scraper.Test.defaultSettings
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
 import scraper.generators.expressions._
-import scraper.plans.Optimizer.{CNFConversion, CombineFilters}
+import scraper.plans.Optimizer.{CNFConversion, ReduceFilters}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.types.{TestUtils, TupleType}
 import scraper.{Analyzer, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
-  private def makeOptimizer(rule: Rule[LogicalPlan]): LogicalPlan => LogicalPlan =
-    new Analyzer(new LocalCatalog) andThen new RulesExecutor[LogicalPlan] {
-      override def batches: Seq[RuleBatch] = Seq(
-        RuleBatch("TestBatch", FixedPoint.Unlimited, rule :: Nil)
-      )
+  private def testRule(rule: Rule[LogicalPlan])(f: (LogicalPlan => LogicalPlan) => Unit): Unit = {
+    test(rule.getClass.getSimpleName) {
+      val optimizer = new Analyzer(new LocalCatalog) andThen new RulesExecutor[LogicalPlan] {
+        override def batches: Seq[RuleBatch] = Seq(
+          RuleBatch("TestBatch", FixedPoint.Unlimited, rule :: Nil)
+        )
+      }
+
+      f(optimizer)
     }
+  }
 
-  ignore("CNFConversion") {
-    val optimizer = makeOptimizer(CNFConversion)
-
+  testRule(CNFConversion) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
     check { predicate: Expression =>
@@ -38,9 +41,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  test("CombineFilters") {
-    val optimizer = makeOptimizer(CombineFilters)
-
+  testRule(ReduceFilters) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
     check { (condition1: Expression, condition2: Expression) =>

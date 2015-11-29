@@ -2,7 +2,7 @@ package scraper.parser
 
 import scraper.LoggingFunSuite
 import scraper.expressions.functions.lit
-import scraper.plans.logical.{SingleRowRelation, UnresolvedRelation}
+import scraper.plans.logical.UnresolvedRelation
 import scraper.types.TestUtils
 
 class ParserSuite extends LoggingFunSuite with TestUtils {

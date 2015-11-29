@@ -3,6 +3,7 @@ package scraper.expressions
 import scala.util.{Failure, Success, Try}
 
 import scraper._
+import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
 import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types._
 
@@ -163,22 +164,22 @@ object Cast {
   }
 
   /**
-   * Whether [[DataType]] `x` can be converted to [[DataType]] `y` implicitly.
+   * Whether [[types.DataType]] `x` can be converted to [[types.DataType]] `y` implicitly.
    *
-   * @note Any [[DataType]] is NOT considered to be [[implicitlyConvertible]] to itself.
+   * @note Any [[types.DataType]] is NOT considered to be [[implicitlyConvertible]] to itself.
    */
   def implicitlyConvertible(x: DataType, y: DataType): Boolean = buildImplicitCast(x) isDefinedAt y
 
   /**
-   * Whether [[DataType]] `x` can be converted to [[DataType]] `y`, either implicitly or
-   * explicitly.
+   * Whether [[types.DataType ]] `x` can be converted to [[types.DataType]] `y`, either implicitly
+   * or explicitly.
    *
-   * @note Any [[DataType]] is NOT considered to be [[convertible]] to itself.
+   * @note Any [[types.DataType]] is NOT considered to be [[convertible]] to itself.
    */
   def convertible(x: DataType, y: DataType): Boolean = buildCast(x) isDefinedAt y
 
   /**
-   * [[DataType]] `x` is implicitly compatible with [[DataType]] `y` iff:
+   * [[types.DataType]] `x` is implicitly compatible with [[types.DataType]] `y` iff:
    *
    *  - `x == y`, or
    *  - `x` is [[implicitlyConvertible]] to `y`
@@ -188,7 +189,7 @@ object Cast {
 
   /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
-   * [[DataType]] of `e` is [[implicitlyConvertible]] to `dataType`.
+   * [[types.DataType]] of `e` is [[implicitlyConvertible]] to `dataType`.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
     case _ if e.dataType == dataType                      => e

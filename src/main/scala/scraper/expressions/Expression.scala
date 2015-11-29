@@ -2,10 +2,11 @@ package scraper.expressions
 
 import scala.util.{Success, Try}
 
+import scraper.Row
+import scraper.exceptions.{ExpressionUnevaluableException, ExpressionUnresolvedException, TypeCheckException}
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.{TypeCheckException, ExpressionUnevaluableException, ExpressionUnresolvedException, Row}
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def foldable: Boolean = children.forall(_.foldable)

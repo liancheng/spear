@@ -7,7 +7,7 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
-import scraper.ParsingException
+import scraper.exceptions.ParsingException
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.plans.logical._
@@ -168,8 +168,8 @@ class Parser extends TokenParser[LogicalPlan] {
   private def arithmeticExpression: Parser[Expression] =
     productExpression * (
       "+" ^^^ Add
-        | "-" ^^^ Minus
-      )
+      | "-" ^^^ Minus
+    )
 
   private def productExpression: Parser[Expression] =
     baseExpression * (

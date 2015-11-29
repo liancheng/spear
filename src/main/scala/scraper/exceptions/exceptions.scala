@@ -1,4 +1,4 @@
-package scraper
+package scraper.exceptions
 
 import scraper.expressions.Expression
 import scraper.plans.logical.LogicalPlan

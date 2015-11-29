@@ -1,5 +1,6 @@
 package scraper.plans.logical
 
+import scraper.expressions
 import scraper.expressions.Predicate._
 import scraper.expressions._
 
@@ -86,14 +87,14 @@ package object patterns {
       projectList.collect { case a: Alias => a.toAttribute -> a.child }.toMap
   }
 
-  /** A simple pattern that matches resolved [[LogicalPlan]]s and [[Expression]]s */
+  /** A simple pattern that matches resolved [[LogicalPlan]]s and [[expressions.Expression]]s */
   object Resolved {
     def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (_.resolved)
 
     def unapply(expression: Expression): Option[Expression] = Some(expression) filter (_.resolved)
   }
 
-  /** A simple pattern that matches unresolved [[LogicalPlan]]s and [[Expression]]s */
+  /** A simple pattern that matches unresolved [[LogicalPlan]]s and [[expressions.Expression]]s */
   object Unresolved {
     def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (!_.resolved)
 

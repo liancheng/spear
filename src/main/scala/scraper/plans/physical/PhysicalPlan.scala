@@ -18,6 +18,12 @@ trait UnaryPhysicalPlan extends PhysicalPlan {
   override def children: Seq[PhysicalPlan] = Seq(child)
 }
 
+case object EmptyRelation extends LeafPhysicalPlan {
+  override def iterator: Iterator[Row] = Iterator.empty
+
+  override val output: Seq[Attribute] = Nil
+}
+
 case object SingleRowRelation extends LeafPhysicalPlan {
   override def iterator: Iterator[Row] = Iterator.single(Row.empty)
 

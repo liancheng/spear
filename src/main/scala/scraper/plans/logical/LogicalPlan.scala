@@ -3,32 +3,34 @@ package scraper.plans.logical
 import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.Try
 
+import scraper.Row
+import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
 import scraper.types.TupleType
-import scraper.{LogicalPlanUnresolved, Row, TypeCheckException}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
 
-  def strictlyTyped: Try[LogicalPlan] = Try {
+  def strictlyTypedForm: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
       case e => e.strictlyTypedForm.get
     }
   }
 
-  protected def whenStrictlyTyped[T](value: => T): T = (
-    strictlyTyped map {
-      case e if e sameOrEqual this => value
-      case _                       => throw new TypeCheckException(this, None)
-    }
-  ).get
+  lazy val strictlyTyped = strictlyTypedForm.get sameOrEqual this
 
-  def select(projections: Seq[NamedExpression]): LogicalPlan = Project(this, projections)
+  protected def whenStrictlyTyped[T](value: => T): T =
+    if (strictlyTyped) value else throw new TypeCheckException(this, None)
 
-  def select(first: NamedExpression, rest: NamedExpression*): LogicalPlan = select(first +: rest)
+  def select(projections: Seq[Expression]): LogicalPlan = Project(this, projections map {
+    case e: NamedExpression => e
+    case e                  => e as e.sql
+  })
+
+  def select(first: Expression, rest: Expression*): LogicalPlan = select(first +: rest)
 
   def filter(condition: Expression): LogicalPlan = Filter(this, condition)
 
@@ -63,6 +65,10 @@ trait BinaryLogicalPlan extends LogicalPlan {
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan {
   override def nodeCaption: String = s"${getClass.getSimpleName} $name"
+}
+
+case object EmptyRelation extends LeafLogicalPlan {
+  override def output: Seq[Attribute] = Nil
 }
 
 case object SingleRowRelation extends LeafLogicalPlan {
@@ -108,7 +114,7 @@ case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogica
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override lazy val strictlyTyped: Try[LogicalPlan] = for {
+  override lazy val strictlyTypedForm: Try[LogicalPlan] = for {
     n <- limit.strictlyTypedForm map {
       case e if e.foldable => e
       case _               => throw new TypeCheckException("Limit must be a constant", None)

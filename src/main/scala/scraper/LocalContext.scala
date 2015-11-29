@@ -114,6 +114,9 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data.toIterator, relation.output) :: Nil
 
+      case EmptyRelation =>
+        physical.EmptyRelation :: Nil
+
       case SingleRowRelation =>
         physical.SingleRowRelation :: Nil
 

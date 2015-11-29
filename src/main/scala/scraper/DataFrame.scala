@@ -30,7 +30,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def select(expressions: Seq[Expression]): DataFrame = build(
     logical.Project(_, expressions map {
       case e: NamedExpression => e
-      case e                  => e as e.nodeCaption
+      case e                  => e as e.sql
     })
   )
 

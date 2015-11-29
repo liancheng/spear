@@ -2,11 +2,11 @@ package scraper.plans.logical
 
 import scala.util.{Success, Try}
 
-import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionId
+import scraper.expressions._
 import scraper.plans.logical.LogicalPlanSuite.{FakeExpr, FakePlan}
 import scraper.types._
-import scraper.{LocalCatalog, Analyzer, LoggingFunSuite, Row}
+import scraper.{Analyzer, LocalCatalog, LoggingFunSuite, Row}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
   test("transformExpressionDown") {

@@ -1,5 +1,6 @@
 package scraper
 
+import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
 import scraper.plans.logical.{LogicalPlan, Project, UnresolvedRelation}
@@ -81,7 +82,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan => plan.strictlyTyped.get
+      case plan => plan.strictlyTypedForm.get
     }
   }
 }

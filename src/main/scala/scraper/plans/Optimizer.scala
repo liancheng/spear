@@ -1,12 +1,12 @@
 package scraper.plans
 
-import scraper.Analyzer
+import scraper.{Analyzer, expressions}
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._
+import scraper.plans.logical._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
-import scraper.plans.logical.{Filter, Limit, LogicalPlan, Project}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
@@ -16,16 +16,16 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       FoldLogicalPredicates,
 
       CNFConversion,
-      CombineFilters,
 
-      ReduceNegations,
-      ReduceCasts,
-      ReduceProjects,
       ReduceAliases,
+      ReduceCasts,
+      ReduceFilters,
       ReduceLimits,
+      ReduceNegations,
+      ReduceProjects,
 
-      PushProjectsThroughLimits,
-      PushFiltersThroughProjects
+      PushFiltersThroughProjects,
+      PushProjectsThroughLimits
     ))
   )
 
@@ -69,17 +69,20 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case True Or _   => True
-          case _ Or True   => True
+          case True Or _                => True
+          case _ Or True                => True
 
-          case False And _ => False
-          case _ And False => False
+          case False And _              => False
+          case _ And False              => False
+
+          case If(True, trueValue, _)   => trueValue
+          case If(False, _, falseValue) => falseValue
         }
     }
   }
 
   /**
-   * This rule eliminates unnecessary [[Not]] operators.
+   * This rule eliminates unnecessary [[expressions.Not]] operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -88,6 +91,13 @@ object Optimizer {
           case Not(Not(child))    => child
           case Not(lhs Eq rhs)    => lhs =/= rhs
           case Not(lhs NotEq rhs) => lhs =:= rhs
+
+          case Not(lhs Gt rhs)    => lhs <= rhs
+          case Not(lhs GtEq rhs)  => lhs < rhs
+          case Not(lhs Lt rhs)    => lhs >= rhs
+          case Not(lhs LtEq rhs)  => lhs > rhs
+
+          case If(Not(c), t, f)   => If(c, f, t)
         }
     }
   }
@@ -136,8 +146,8 @@ object Optimizer {
    * This rule converts a predicate to CNF (Conjunctive Normal Form).
    *
    * Since we don't support existential/universal quantifiers or implications, this rule simply
-   * pushes negations inwards by applying De Morgan's law and distributes [[Or]]s inwards over
-   * [[And]]s.
+   * pushes negations inwards by applying De Morgan's law and distributes [[expressions.Or]]s
+   * inwards over [[expressions.And]]s.
    *
    * @see https://en.wikipedia.org/wiki/Conjunctive_normal_form
    */
@@ -154,17 +164,18 @@ object Optimizer {
   }
 
   /**
-   * This rule combines adjacent [[Filter]]s into a single [[Filter]].
+   * This rule combines adjacent [[logical.Filter]]s into a single [[logical.Filter]].
    */
-  object CombineFilters extends Rule[LogicalPlan] {
+  object ReduceFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Filter innerCondition Filter outerCondition =>
-        plan filter innerCondition && outerCondition
+      case plan Filter True               => plan
+      case plan Filter False              => EmptyRelation
+      case plan Filter inner Filter outer => plan filter inner && outer
     }
   }
 
   /**
-   * This rule pushes [[Filter]] predicates beneath [[Project]]s.
+   * This rule pushes [[logical.Filter]] predicates beneath [[logical.Project]]s.
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {

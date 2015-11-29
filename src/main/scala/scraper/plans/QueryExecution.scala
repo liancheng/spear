@@ -3,7 +3,6 @@ package scraper.plans
 import scraper.Context
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
-import scraper.trees.RulesExecutor
 
 trait QueryExecution {
   def context: Context

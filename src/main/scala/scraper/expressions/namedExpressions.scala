@@ -4,9 +4,10 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.util.Try
 
+import scraper.Row
+import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types.DataType
-import scraper.{ExpressionUnresolvedException, ResolutionFailureException, Row}
 
 case class ExpressionId(id: Long)
 

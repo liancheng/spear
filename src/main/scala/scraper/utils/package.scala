@@ -2,7 +2,7 @@ package scraper
 
 import scala.language.postfixOps
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{Config, ConfigFactory}
 
 package object utils {
   def sideBySide(lhs: String, rhs: String, withHeader: Boolean): String = {

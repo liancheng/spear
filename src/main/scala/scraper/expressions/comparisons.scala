@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scala.util.Try
 
-import scraper.TypeMismatchException
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{commonTypeOf, promoteDataType}
 import scraper.types.{BooleanType, DataType, PrimitiveType}
 
