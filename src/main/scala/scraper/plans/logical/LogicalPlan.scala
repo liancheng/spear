@@ -22,7 +22,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   protected def whenStrictlyTyped[T](value: => T): T = (
     strictlyTyped map {
       case e if e sameOrEqual this => value
-      case _                       => throw TypeCheckException(this, None)
+      case _                       => throw new TypeCheckException(this, None)
     }
   ).get
 
@@ -38,7 +38,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
-  override def output: Seq[Attribute] = throw LogicalPlanUnresolved(this)
+  override def output: Seq[Attribute] = throw new LogicalPlanUnresolved(this)
 
   override def resolved: Boolean = false
 }
@@ -111,7 +111,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
     n <- limit.strictlyTyped map {
       case e if e.foldable => e
-      case _               => throw TypeCheckException("Limit must be a constant")
+      case _               => throw new TypeCheckException("Limit must be a constant", None)
     }
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 

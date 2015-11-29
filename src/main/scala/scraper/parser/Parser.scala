@@ -35,7 +35,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
   def parse(input: String): T = synchronized {
     phrase(start)(new lexical.Scanner(input)) match {
       case Success(plan, _) => plan
-      case failureOrError   => throw ParsingException(failureOrError.toString)
+      case failureOrError   => throw new ParsingException(failureOrError.toString)
     }
   }
 
@@ -159,14 +159,17 @@ class Parser extends TokenParser[LogicalPlan] {
     | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
     | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
     | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
-    | logicalLiteral
+    | booleanLiteral
   )
 
   private def termExpression: Parser[Expression] =
+    arithmeticExpression
+
+  private def arithmeticExpression: Parser[Expression] =
     productExpression * (
       "+" ^^^ Add
-      | "-" ^^^ Minus
-    )
+        | "-" ^^^ Minus
+      )
 
   private def productExpression: Parser[Expression] =
     baseExpression * (
@@ -191,7 +194,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private def stringLiteral: Parser[Literal] =
     stringLit ^^ (Literal(_, StringType))
 
-  private def logicalLiteral: Parser[Expression] = (
+  private def booleanLiteral: Parser[Expression] = (
     TRUE ^^^ True
     | FALSE ^^^ False
   )

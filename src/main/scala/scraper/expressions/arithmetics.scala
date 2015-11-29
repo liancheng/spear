@@ -12,32 +12,29 @@ trait ArithmeticExpression extends Expression {
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
-    // Data type of the left hand side must be either a NumericType or can be implicitly converted
-    // to a NumericType.
     lhs <- left.strictlyTyped map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => e
-      case e                         => throw TypeMismatchException(e, classOf[NumericType], None)
+      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
 
-    // Data type of the right hand side must be either a NumericType or can be implicitly converted
-    // to a NumericType.
     rhs <- right.strictlyTyped map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => e
-      case e                         => throw TypeMismatchException(e, classOf[NumericType], None)
+      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
 
+    // Figures out the final data type of this arithmetic expression. Basically there are two cases:
+    //
+    //  - The data type of at least one of both sides is NumericType.  In this case, we use the
+    //    common type of both sides as the final data type.
+    //
+    //  - The data type of neither side is NumericType, but both can be converted to NumericType
+    //    implicitly.  In this case, we use the default NumericType as the final data type.
+
     t <- (lhs.dataType, rhs.dataType) match {
-      // If the left hand side is of a NumericType while the right hand side is not, uses the
-      // left hand side data type as the final data type
       case (t1: NumericType, t2) => commonTypeOf(t1, t2)
-
-      // If the right hand side is of a NumericType while the left hand side is not, uses the
-      // left hand side data type as the final data type
       case (t1, t2: NumericType) => commonTypeOf(t1, t2)
-
-      // Otherwise, use NumericType.defaultType as the final data type
       case (t1, t2)              => Try(NumericType.defaultType)
     }
 

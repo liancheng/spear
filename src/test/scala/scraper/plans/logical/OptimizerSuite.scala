@@ -1,9 +1,7 @@
 package scraper.plans.logical
 
 import org.scalacheck.Arbitrary
-import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
-import scraper.LoggingFunSuite
 import scraper.Test.defaultSettings
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
@@ -11,10 +9,11 @@ import scraper.generators.expressions._
 import scraper.plans.Optimizer.{CNFConversion, CombineFilters}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.types.{TestUtils, TupleType}
+import scraper.{Analyzer, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
-  private def makeOptimizer(rule: Rule[LogicalPlan]): RulesExecutor[LogicalPlan] =
-    new RulesExecutor[LogicalPlan] {
+  private def makeOptimizer(rule: Rule[LogicalPlan]): LogicalPlan => LogicalPlan =
+    new Analyzer(new LocalCatalog) andThen new RulesExecutor[LogicalPlan] {
       override def batches: Seq[RuleBatch] = Seq(
         RuleBatch("TestBatch", FixedPoint.Unlimited, rule :: Nil)
       )

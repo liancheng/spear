@@ -12,13 +12,13 @@ trait BinaryLogicalPredicate extends BinaryExpression {
       lhs <- left.strictlyTyped map {
         case BooleanType(e)            => e
         case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-        case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
       }
 
       rhs <- right.strictlyTyped map {
         case BooleanType(e)            => e
         case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-        case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
+        case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
       }
 
       newChildren = lhs :: rhs :: Nil
@@ -60,7 +60,7 @@ case class Not(child: Expression) extends UnaryExpression {
     e <- child.strictlyTyped map {
       case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-      case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
   } yield copy(child = e)
 
@@ -84,7 +84,7 @@ case class If(condition: Expression, trueValue: Expression, falseValue: Expressi
     c <- condition.strictlyTyped map {
       case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-      case e                         => throw TypeMismatchException(e, BooleanType.getClass, None)
+      case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
 
     yes <- trueValue.strictlyTyped

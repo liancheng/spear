@@ -44,7 +44,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         plan transformExpressionsUp {
           case UnresolvedAttribute(name) =>
             def reportResolutionFailure(message: String): Nothing = {
-              throw ResolutionFailureException(
+              throw new ResolutionFailureException(
                 s"""Failed to resolve attribute $name in logical query plan:
                    |
                    |${plan.prettyTree}

@@ -19,7 +19,7 @@ trait NamedExpression extends Expression {
 }
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
-  override def expressionId: ExpressionId = throw ExpressionUnresolvedException(this)
+  override def expressionId: ExpressionId = throw new ExpressionUnresolvedException(this)
 }
 
 object NamedExpression {
@@ -31,9 +31,9 @@ object NamedExpression {
 }
 
 case object Star extends LeafExpression with UnresolvedNamedExpression {
-  override def name: String = throw ExpressionUnresolvedException(this)
+  override def name: String = throw new ExpressionUnresolvedException(this)
 
-  override def toAttribute: Attribute = throw ExpressionUnresolvedException(this)
+  override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override def sql: String = "*"
 
@@ -126,7 +126,7 @@ object BoundRef {
       case ref: AttributeRef =>
         val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
         if (ordinal == -1) {
-          throw ResolutionFailureException({
+          throw new ResolutionFailureException({
             val inputAttributes = input.map(_.nodeCaption).mkString(", ")
             s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
           })

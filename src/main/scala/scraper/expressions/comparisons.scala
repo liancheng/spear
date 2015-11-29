@@ -17,12 +17,12 @@ trait BinaryComparison extends BinaryExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
     lhs <- left.strictlyTyped map {
       case PrimitiveType(e) => e
-      case e                => throw TypeMismatchException(e, classOf[PrimitiveType], None)
+      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
     }
 
     rhs <- right.strictlyTyped map {
       case PrimitiveType(e) => e
-      case e                => throw TypeMismatchException(e, classOf[PrimitiveType], None)
+      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
     }
 
     t <- commonTypeOf(lhs.dataType, rhs.dataType)

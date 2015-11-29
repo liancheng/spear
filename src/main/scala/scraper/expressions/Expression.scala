@@ -29,7 +29,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def whenStrictlyTyped[T](value: => T): T = (
     strictlyTyped map {
       case e if e sameOrEqual this => value
-      case _                       => throw TypeCheckException(this, None)
+      case _                       => throw new TypeCheckException(this, None)
     }
   ).get
 
@@ -78,11 +78,11 @@ object BinaryExpression {
 }
 
 trait UnevaluableExpression extends Expression {
-  override def evaluate(input: Row): Any = throw ExpressionUnevaluableException(this)
+  override def evaluate(input: Row): Any = throw new ExpressionUnevaluableException(this)
 }
 
 trait UnresolvedExpression extends Expression with UnevaluableExpression {
-  override def dataType: DataType = throw ExpressionUnresolvedException(this)
+  override def dataType: DataType = throw new ExpressionUnresolvedException(this)
 
   override def resolved: Boolean = false
 }

@@ -2,13 +2,14 @@ package scraper.trees
 
 import scala.annotation.tailrec
 
+import scraper.plans.logical.LogicalPlan
 import scraper.utils.{Logging, sideBySide}
 
-trait Rule[Base <: TreeNode[Base]] {
+trait Rule[Base <: TreeNode[Base]] extends (Base => Base) {
   def apply(tree: Base): Base
 }
 
-trait RulesExecutor[Base <: TreeNode[Base]] extends Logging {
+trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (LogicalPlan => LogicalPlan) {
   sealed trait EndCondition {
     def maxIterations: Int
   }

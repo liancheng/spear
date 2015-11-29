@@ -2,7 +2,6 @@ package scraper.generators
 
 import org.scalacheck.Gen
 import scraper.config.Settings
-import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
@@ -28,7 +27,7 @@ package object expressions {
     genUnaryOrBinary(genAndExpression(input)(settings), Or)
 
   def genAndExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = {
-    val genBranch = Gen oneOf (genNotExpression(input)(settings), Gen oneOf (True, False))
+    val genBranch = Gen oneOf (genNotExpression(input)(settings), genComparison(input)(settings))
     genUnaryOrBinary(genBranch, And)
   }
 
@@ -40,7 +39,7 @@ package object expressions {
 
   def genComparison(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     Gen oneOf (
-      Gen oneOf (True, False),
+      genLiteral(BooleanType),
       genBinary(genTermExpression(input)(settings), Eq, NotEq, Gt, GtEq, Lt, LtEq)
     )
 
@@ -61,10 +60,7 @@ package object expressions {
     )
 
   def genLiteral(dataType: PrimitiveType): Gen[Expression] =
-    dataType match {
-      case BooleanType => Gen oneOf (True, False)
-      case _           => genValueForPrimitiveType(dataType) map Literal.apply
-    }
+    genValueForPrimitiveType(dataType) map Literal.apply
 
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
     Gen.sized {
