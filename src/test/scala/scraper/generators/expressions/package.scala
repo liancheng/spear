@@ -5,12 +5,9 @@ import scraper.config.Settings
 import scraper.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
-import scraper.types.{BooleanType, PrimitiveType, TupleType}
+import scraper.types.{BooleanType, PrimitiveType}
 
 package object expressions {
-  def genExpression(schema: TupleType)(implicit settings: Settings): Gen[Expression] =
-    genExpression(schema.toAttributes)(settings)
-
   def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
     Gen sized {
       case size if size < 3 =>
