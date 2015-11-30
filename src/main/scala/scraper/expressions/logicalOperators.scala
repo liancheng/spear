@@ -4,7 +4,7 @@ import scala.util.Try
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{commonTypeOf, promoteDataType}
+import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryExpression {
@@ -90,7 +90,7 @@ case class If(condition: Expression, trueValue: Expression, falseValue: Expressi
 
     yes <- trueValue.strictlyTypedForm
     no <- falseValue.strictlyTypedForm
-    t <- commonTypeOf(yes.dataType, no.dataType)
+    t <- widestTypeOf(yes.dataType, no.dataType)
 
     newChildren = c :: promoteDataType(yes, t) :: promoteDataType(no, t) :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)

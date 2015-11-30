@@ -2,59 +2,101 @@ package scraper.generators
 
 import org.scalacheck.Gen
 import scraper.config.Settings
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions._
-import scraper.generators.types._
 import scraper.generators.values._
-import scraper.types.{BooleanType, PrimitiveType}
+import scraper.types.{BooleanType, DataType, PrimitiveType}
 
 package object expressions {
-  def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
+  def genExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
     Gen sized {
       case size if size < 3 =>
-        genTermExpression(input)(settings)
+        genTermExpression(input, dataType)(settings)
 
       case size =>
-        Gen oneOf (genTermExpression(input)(settings), genPredicate(input)(settings))
+        Gen oneOf (
+          genTermExpression(input, dataType)(settings),
+          genPredicate(input, dataType)(settings)
+        )
     }
 
-  def genPredicate(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
-    genOrExpression(input)(settings)
+  def genPredicate(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
+    genOrExpression(input, dataType)(settings)
 
-  def genOrExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
-    genUnaryOrBinary(genAndExpression(input)(settings), Or)
+  def genOrExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
+    genUnaryOrBinary(genAndExpression(input, dataType)(settings), Or)
 
-  def genAndExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = {
-    val genBranch = Gen oneOf (genNotExpression(input)(settings), genComparison(input)(settings))
+  def genAndExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = {
+    val genBranch = Gen oneOf (
+      genNotExpression(input, dataType)(settings),
+      genComparison(input, dataType)(settings)
+    )
     genUnaryOrBinary(genBranch, And)
   }
 
-  def genNotExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
+  def genNotExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
     for {
       size <- Gen.size
-      comparison <- Gen resize (size - 1, genComparison(input)(settings))
+      comparison <- Gen resize (size - 1, genComparison(input, dataType)(settings))
     } yield !comparison
 
-  def genComparison(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
+  def genComparison(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
     Gen oneOf (
       genLiteral(BooleanType),
-      genBinary(genTermExpression(input)(settings), Eq, NotEq, Gt, GtEq, Lt, LtEq)
+      genBinary(genTermExpression(input, dataType)(settings), Eq, NotEq, Gt, GtEq, Lt, LtEq),
+      input collect { case BooleanType(e) => Gen const e }: _*
     )
 
-  def genTermExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
-    genUnaryOrBinary(genProductExpression(input)(settings), Add, Minus)
+  def genTermExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
+    genUnaryOrBinary(genProductExpression(input, dataType)(settings), Add, Minus)
 
-  def genProductExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
-    genUnaryOrBinary(genBaseExpression(input)(settings), Multiply, Divide)
+  def genProductExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
+    genUnaryOrBinary(genBaseExpression(input, dataType)(settings), Multiply, Divide)
 
-  def genBaseExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] =
-    Gen oneOf (
-      Gen oneOf input,
-      for {
-        dataType <- genPrimitiveType(settings)
-        literal <- genLiteral(dataType)
-      } yield literal,
-      genExpression(input)(settings)
-    )
+  def genBaseExpression(input: Seq[Expression], dataType: DataType)(
+    implicit
+    settings: Settings
+  ): Gen[Expression] =
+    dataType match {
+      case t: PrimitiveType =>
+        Gen oneOf (
+          Gen oneOf input,
+          genLiteral(t),
+          genExpression(input, dataType)(settings)
+        )
+
+      case _ =>
+        val es = input filter (e => implicitlyConvertible(e.dataType, dataType))
+        if (es.isEmpty) {
+          genExpression(input, dataType)(settings)
+        } else {
+          Gen oneOf (Gen oneOf es, genExpression(input, dataType)(settings))
+        }
+    }
 
   def genLiteral(dataType: PrimitiveType): Gen[Expression] =
     genValueForPrimitiveType(dataType) map Literal.apply
