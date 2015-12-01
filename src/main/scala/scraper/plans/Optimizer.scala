@@ -1,13 +1,14 @@
 package scraper.plans
 
-import scraper.{Analyzer, expressions}
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._
 import scraper.plans.logical._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
+import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
+import scraper.{Analyzer, expressions}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(

@@ -68,6 +68,27 @@ trait FractionalType extends NumericType {
   val fractional: Fractional[InternalType]
 }
 
+object FractionalType {
+  val defaultType = DoubleType
+
+  def unapply(e: Expression): Option[Expression] = e.dataType match {
+    case _: FractionalType => Some(e)
+    case _                 => None
+  }
+
+  object Implicitly {
+    def unapply(e: Expression): Option[Expression] = e.dataType match {
+      case t if implicitlyConvertible(t, defaultType) => Some(e)
+      case _                                          => None
+    }
+
+    def unapply(dataType: DataType): Option[DataType] = dataType match {
+      case t if implicitlyConvertible(t, defaultType) => Some(t)
+      case _                                          => None
+    }
+  }
+}
+
 case object FloatType extends FractionalType {
   override type InternalType = Float
   override val fractional: Fractional[Float] = implicitly[Fractional[Float]]

@@ -17,6 +17,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def references: Seq[Attribute] = children.flatMap(_.references)
 
+  def strictlyTypedForm: Try[Expression]
+
   def dataType: DataType
 
   def evaluate(input: Row): Any
@@ -24,8 +26,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def evaluated: Any = evaluate(null)
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
-
-  def strictlyTypedForm: Try[Expression]
 
   lazy val strictlyTyped: Boolean = strictlyTypedForm.get sameOrEqual this
 

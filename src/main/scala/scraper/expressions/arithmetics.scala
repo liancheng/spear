@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
@@ -34,7 +34,7 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
     t <- (lhs.dataType, rhs.dataType) match {
       case (t1: NumericType, t2) => widestTypeOf(t1, t2)
       case (t1, t2: NumericType) => widestTypeOf(t1, t2)
-      case (t1, t2)              => Try(NumericType.defaultType)
+      case (t1, t2)              => Success(NumericType.defaultType)
     }
 
     newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil

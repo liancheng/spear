@@ -45,4 +45,10 @@ package object utils {
       // Configurations of all other components (like Akka)
       .withFallback(ConfigFactory.load())
       .resolve()
+
+  implicit class StraightString(string: String) {
+    def straight: String = straight('|')
+
+    def straight(marginChar: Char): String = string stripMargin marginChar split "\n" mkString " "
+  }
 }

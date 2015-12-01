@@ -213,13 +213,21 @@ object Cast {
    * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
    */
   def widestTypeOf(first: DataType, second: DataType, rest: DataType*): Try[DataType] =
-    (second +: rest foldLeft Try(first)) {
+    widestTypeOf(Seq(first, second) ++ rest)
+
+  /**
+   * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
+   */
+  def widestTypeOf(types: Seq[DataType]): Try[DataType] = {
+    assert(types.nonEmpty)
+    (types.tail foldLeft Try(types.head)) {
       case (Success(x), y) if implicitlyCompatible(x, y) => Success(y)
       case (Success(x), y) if implicitlyCompatible(y, x) => Success(x)
       case _ =>
-        Failure {
-          val types = Seq(first, second) ++ rest map (_.sql) mkString ", "
-          new TypeMismatchException(s"Could not find common type for: $types", None)
-        }
+        Failure(new TypeMismatchException(
+          s"Could not find common type for: ${types map (_.sql) mkString ", "}", None
+        ))
     }
+  }
 }

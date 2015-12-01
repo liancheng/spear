@@ -3,6 +3,7 @@ package scraper.exceptions
 import scraper.expressions.Expression
 import scraper.plans.logical.LogicalPlan
 import scraper.types.DataType
+import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
@@ -38,7 +39,7 @@ class TypeCheckException(
 ) extends AnalysisException(message, maybeCause) {
   def this(expression: Expression, maybeCause: Option[Throwable]) =
     this({
-      s"""Expression ${expression.nodeCaption} doesn't pass type check:
+      s"""Expression [${expression.annotatedString}] doesn't pass type check:
          |
          |${expression.prettyTree}
          |""".stripMargin
@@ -69,11 +70,11 @@ class TypeMismatchException(message: String, maybeCause: Option[Throwable])
   def this(
     expression: Expression, dataTypeClass: Class[_], maybeCause: Option[Throwable] = None
   ) = this({
-    val dataType = expression.dataType
-    val expected = dataTypeClass.getSimpleName.stripSuffix("$")
-    val actual = dataType.getClass.getSimpleName.stripSuffix("$")
-    s"Expecting $expected while expression ${expression.annotatedString} has type $actual, " +
-      s"which cannot be implicitly casted to $expected."
+    val expected = dataTypeClass.getSimpleName stripSuffix "$"
+    val actual = expression.dataType.getClass.getSimpleName stripSuffix "$"
+    s"""Expression [${expression.annotatedString}] has type $actual,
+       |which cannot be implicitly converted to expected type $expected.
+     """.straight
   }, maybeCause)
 }
 

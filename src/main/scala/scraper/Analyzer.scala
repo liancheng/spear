@@ -4,6 +4,7 @@ import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
 import scraper.plans.logical.{LogicalPlan, Project, UnresolvedRelation}
+import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {

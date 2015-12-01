@@ -2,30 +2,14 @@ package scraper.trees
 
 import scala.annotation.tailrec
 
-import scraper.plans.logical.LogicalPlan
+import scraper.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
 import scraper.utils.{Logging, sideBySide}
 
 trait Rule[Base <: TreeNode[Base]] extends (Base => Base) {
   def apply(tree: Base): Base
 }
 
-trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (LogicalPlan => LogicalPlan) {
-  sealed trait EndCondition {
-    def maxIterations: Int
-  }
-
-  case object Once extends EndCondition {
-    val maxIterations = 1
-  }
-
-  case class FixedPoint(maxIterations: Int) extends EndCondition {
-    require(maxIterations != 0)
-  }
-
-  object FixedPoint {
-    val Unlimited = FixedPoint(-1)
-  }
-
+trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) {
   case class RuleBatch(
     name: String,
     condition: EndCondition,
@@ -94,4 +78,23 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (LogicalPlan =>
       }
     }
   }
+}
+
+object RulesExecutor {
+  sealed trait EndCondition {
+    def maxIterations: Int
+  }
+
+  case object Once extends EndCondition {
+    val maxIterations = 1
+  }
+
+  case class FixedPoint(maxIterations: Int) extends EndCondition {
+    require(maxIterations != 0)
+  }
+
+  object FixedPoint {
+    val Unlimited = FixedPoint(-1)
+  }
+
 }
