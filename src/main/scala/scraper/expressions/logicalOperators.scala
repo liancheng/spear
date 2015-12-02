@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
@@ -9,19 +9,15 @@ import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = {
+    val checkBranch: Expression => Try[Expression] = {
+      case BooleanType(e)            => Success(e)
+      case BooleanType.Implicitly(e) => Success(promoteDataType(e, BooleanType))
+      case e                         => Failure(new TypeMismatchException(e, BooleanType.getClass))
+    }
+
     for {
-      lhs <- left.strictlyTypedForm map {
-        case BooleanType(e)            => e
-        case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-        case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
-      }
-
-      rhs <- right.strictlyTypedForm map {
-        case BooleanType(e)            => e
-        case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
-        case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
-      }
-
+      lhs <- left.strictlyTypedForm flatMap checkBranch
+      rhs <- right.strictlyTypedForm flatMap checkBranch
       newChildren = lhs :: rhs :: Nil
     } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
   }
