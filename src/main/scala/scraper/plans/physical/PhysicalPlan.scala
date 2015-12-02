@@ -1,6 +1,7 @@
 package scraper.plans.physical
 
 import scraper.Row
+import scraper.expressions.BoundRef.bind
 import scraper.expressions._
 import scraper.plans.QueryPlan
 
@@ -18,6 +19,14 @@ trait UnaryPhysicalPlan extends PhysicalPlan {
   override def children: Seq[PhysicalPlan] = Seq(child)
 }
 
+trait BinaryPhysicalPlan extends PhysicalPlan {
+  def left: PhysicalPlan
+
+  def right: PhysicalPlan
+
+  override def children: Seq[PhysicalPlan] = Seq(left, right)
+}
+
 case object EmptyRelation extends LeafPhysicalPlan {
   override def iterator: Iterator[Row] = Iterator.empty
 
@@ -25,7 +34,7 @@ case object EmptyRelation extends LeafPhysicalPlan {
 }
 
 case object SingleRowRelation extends LeafPhysicalPlan {
-  override def iterator: Iterator[Row] = Iterator.single(Row.empty)
+  override def iterator: Iterator[Row] = Iterator single Row.empty
 
   override val output: Seq[Attribute] = Nil
 }
@@ -45,7 +54,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
   override val output: Seq[Attribute] = expressions.map(_.toAttribute)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
-    val boundProjections = expressions.map(BoundRef.bind(_, child.output))
+    val boundProjections = expressions map (bind(_, child.output))
     new Row(boundProjections map (_ evaluate row))
   }
 
@@ -57,9 +66,9 @@ case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysi
   override val output: Seq[Attribute] = child.output
 
   override def iterator: Iterator[Row] = {
-    val boundCondition = BoundRef.bind(condition, child.output)
-    child.iterator.filter { row =>
-      boundCondition.evaluate(row).asInstanceOf[Boolean]
+    val boundCondition = bind(condition, child.output)
+    child.iterator filter { row =>
+      (boundCondition evaluate row).asInstanceOf[Boolean]
     }
   }
 
@@ -72,4 +81,16 @@ case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPl
   override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
+}
+
+case class CartesianProduct(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
+  override def output: Seq[Attribute] = left.output ++ right.output
+
+  override def iterator: Iterator[Row] = for {
+    lhs <- left.iterator
+    rhs <- right.iterator
+    row = new Row((lhs.iterator ++ right.iterator).toSeq)
+  } yield row
+
+  override def nodeCaption: String = getClass.getSimpleName
 }

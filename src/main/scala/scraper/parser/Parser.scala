@@ -116,7 +116,9 @@ class Parser extends TokenParser[LogicalPlan] {
       case t ~ Some(a) => Subquery(UnresolvedRelation(t), a)
       case t ~ None    => UnresolvedRelation(t)
     }
-    | "(" ~> select <~ ")"
+    | ("(" ~> select <~ ")") ~ (AS.? ~> ident) ^^ {
+      case s ~ a => Subquery(s, a)
+    }
   )
 
   private def projections: Parser[Seq[NamedExpression]] =

@@ -3,6 +3,7 @@ package scraper
 import scala.collection.mutable
 import scala.reflect.runtime.universe.WeakTypeTag
 
+import scraper.exceptions.TableNotFoundException
 import scraper.expressions.Expression
 import scraper.parser.Parser
 import scraper.plans.logical._
@@ -39,6 +40,8 @@ trait Context {
   def single(first: Expression, rest: Expression*): DataFrame = single select first +: rest
 
   def q(query: String): DataFrame
+
+  def table(name: String): DataFrame
 }
 
 object Context {
@@ -78,9 +81,11 @@ class LocalContext extends Context {
     new DataFrame(LocalRelation(rows, schema), this)
   }
 
-  override def q(query: String): DataFrame = new DataFrame(this parse query, this)
+  override def q(query: String): DataFrame = new DataFrame(parse(query), this)
 
   def execute(logicalPlan: LogicalPlan): QueryExecution = new QueryExecution(logicalPlan, this)
+
+  override def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
 }
 
 class LocalCatalog extends Catalog {
@@ -89,7 +94,8 @@ class LocalCatalog extends Catalog {
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan
 
-  override def lookupRelation(tableName: String): LogicalPlan = tables(tableName)
+  override def lookupRelation(tableName: String): LogicalPlan =
+    tables getOrElse (tableName, throw new TableNotFoundException(tableName))
 }
 
 class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
@@ -111,8 +117,14 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case child Limit n =>
         physical.Limit(planLater(child), n) :: Nil
 
+      case Join(left, right, Inner, None) =>
+        physical.CartesianProduct(planLater(left), planLater(right)) :: Nil
+
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data.toIterator, relation.output) :: Nil
+
+      case child Subquery _ =>
+        planLater(child) :: Nil
 
       case EmptyRelation =>
         physical.EmptyRelation :: Nil

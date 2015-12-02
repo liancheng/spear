@@ -7,36 +7,21 @@ import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
-abstract class AnalysisException(
-  message: String,
-  maybeCause: Option[Throwable] = None
-) extends RuntimeException(message, maybeCause.orNull)
+abstract class AnalysisException(message: String, maybeCause: Option[Throwable] = None)
+  extends RuntimeException(message, maybeCause.orNull)
 
-class ExpressionUnevaluableException(
-  expression: Expression,
-  maybeCause: Option[Throwable] = None
-) extends {
-  val message = s"Expression ${expression.annotatedString} is unevaluable"
-} with AnalysisException(message, maybeCause)
+class ExpressionUnevaluableException(expression: Expression, maybeCause: Option[Throwable] = None)
+  extends AnalysisException(s"Expression ${expression.annotatedString} is unevaluable", maybeCause)
 
-class ExpressionUnresolvedException(
-  expression: Expression,
-  maybeCause: Option[Throwable] = None
-) extends {
-  val message = s"Expression ${expression.nodeCaption} is unresolved"
-} with AnalysisException(message, maybeCause)
+class ExpressionUnresolvedException(expression: Expression, maybeCause: Option[Throwable] = None)
+  extends AnalysisException(s"Expression ${expression.nodeCaption} is unresolved", maybeCause)
 
-class LogicalPlanUnresolved(
-  plan: LogicalPlan,
-  maybeCause: Option[Throwable] = None
-) extends {
-  val message = s"Unresolved logical query plan:\n\n${plan.prettyTree}"
-} with AnalysisException(message, maybeCause)
+class LogicalPlanUnresolved(plan: LogicalPlan, maybeCause: Option[Throwable] = None)
+  extends AnalysisException(s"Unresolved logical query plan:\n\n${plan.prettyTree}", maybeCause)
 
-class TypeCheckException(
-  message: String,
-  maybeCause: Option[Throwable]
-) extends AnalysisException(message, maybeCause) {
+class TypeCheckException(message: String, maybeCause: Option[Throwable])
+  extends AnalysisException(message, maybeCause) {
+
   def this(expression: Expression, maybeCause: Option[Throwable]) =
     this({
       s"""Expression [${expression.annotatedString}] doesn't pass type check:
@@ -54,15 +39,22 @@ class TypeCheckException(
     }, maybeCause)
 }
 
-class TypeCastException(
-  message: String, maybeCause: Option[Throwable]
-) extends AnalysisException(message, maybeCause) {
+class TypeCastException(message: String, maybeCause: Option[Throwable])
+  extends AnalysisException(message, maybeCause) {
+
   def this(from: DataType, to: DataType, maybeCause: Option[Throwable] = None) =
     this(s"Cannot convert data type $from to $to", maybeCause)
 }
 
-class ImplicitCastException(from: DataType, to: DataType, maybeCause: Option[Throwable] = None)
-  extends TypeCastException(s"Cannot convert data type $from to $to implicitly", maybeCause)
+class ImplicitCastException(message: String, maybeCause: Option[Throwable])
+  extends TypeCastException(message, maybeCause) {
+
+  def this(from: Expression, to: DataType, maybeCause: Option[Throwable]) = this({
+    s"""Cannot convert expression [${from.annotatedString}]
+       |of data type ${from.dataType} to $to implicitly.
+     """.straight
+  }, maybeCause)
+}
 
 class TypeMismatchException(message: String, maybeCause: Option[Throwable])
   extends AnalysisException(message, maybeCause) {
@@ -78,7 +70,8 @@ class TypeMismatchException(message: String, maybeCause: Option[Throwable])
   }, maybeCause)
 }
 
-class ResolutionFailureException(
-  message: String,
-  maybeCause: Option[Throwable] = None
-) extends AnalysisException(message, maybeCause)
+class ResolutionFailureException(message: String, maybeCause: Option[Throwable] = None)
+  extends AnalysisException(message, maybeCause)
+
+class TableNotFoundException(tableName: String, maybeCause: Option[Throwable] = None)
+  extends AnalysisException(s"Table $tableName not found", maybeCause)

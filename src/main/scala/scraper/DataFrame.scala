@@ -67,4 +67,8 @@ class DataFrame(val queryExecution: QueryExecution) {
        |${queryExecution.physicalPlan.prettyTree}
        |""".stripMargin
   }
+
+  def printExplain(extended: Boolean): Unit = println(explain(extended))
+
+  def printExplain(): Unit = println(explain(extended = true))
 }

@@ -1,22 +1,30 @@
 package scraper
 
-import scraper.exceptions.ResolutionFailureException
-import scraper.expressions.{Star, UnresolvedAttribute}
+import scraper.exceptions.{AnalysisException, ResolutionFailureException}
+import scraper.expressions.{Attribute, Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
-import scraper.plans.logical.{LogicalPlan, Project, UnresolvedRelation}
-import scraper.trees.RulesExecutor.FixedPoint
+import scraper.plans.logical.{LogicalPlan, Project, Subquery, UnresolvedRelation}
+import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
+    // Tries to resolve the logical query plan repeatedly until it reaches the fixed-point
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ExpandStars,
       ResolveRelations,
       ResolveReferences
     )),
 
-    RuleBatch("Type checking", FixedPoint.Unlimited, Seq(
+    // Performs type check by trying to transform all logical query plan operators into their
+    // strictly typed form
+    RuleBatch("Type checking", Once, Seq(
       ApplyImplicitCasts
+    )),
+
+    // Eliminate subquery scoping operators at the end of the analysis phase
+    RuleBatch("Subquery elimination", Once, Seq(
+      EliminateSubquery
     ))
   )
 
@@ -30,6 +38,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     super.apply(tree)
   }
 
+  /**
+   * This rule expands "`*`" appearing in `SELECT`.
+   */
   object ExpandStars extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Unresolved(Resolved(child) Project projections) =>
@@ -40,6 +51,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * This rule tries to resolve [[UnresolvedAttribute]]s in an logical plan operator using output
+   * [[Attribute]]s of its children.
+   */
+  @throws[ResolutionFailureException](
+    "If no candidate or multiple ambiguous candidate input attributes can be found"
+  )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Unresolved(plan) =>
@@ -81,9 +99,27 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * This rule tries to transform all logical plans (and expressions within them) into strictly
+   * typed form by applying implicit casts when necessary.
+   *
+   * @note This rule doesn't apply implicit casts directly. Instead, it simply delegates to
+   *       [[LogicalPlan.strictlyTypedForm]].
+   */
+  @throws[AnalysisException]("If some logical query plan operator doesn't type check")
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case plan => plan.strictlyTypedForm.get
+    }
+  }
+
+  /**
+   * This rule eliminates all [[Subquery]] operators, since they are only used to provide scoping
+   * information during analysis phase.
+   */
+  object EliminateSubquery extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan Subquery _ => plan
     }
   }
 }

@@ -9,10 +9,13 @@ import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
-import scraper.types.TupleType
+import scraper.types.{IntegralType, TupleType}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
+
+  protected def whenResolved[T](value: => T): T =
+    if (resolved) value else throw new LogicalPlanUnresolved(this)
 
   def strictlyTypedForm: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
@@ -24,6 +27,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this, None)
+
+  def sql: String
 
   def select(projections: Seq[Expression]): LogicalPlan = Project(this, projections map {
     case e: NamedExpression => e
@@ -65,14 +70,20 @@ trait BinaryLogicalPlan extends LogicalPlan {
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan {
   override def nodeCaption: String = s"${getClass.getSimpleName} $name"
+
+  override def sql: String = name
 }
 
 case object EmptyRelation extends LeafLogicalPlan {
   override def output: Seq[Attribute] = Nil
+
+  override def sql: String = ???
 }
 
 case object SingleRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
+
+  override def sql: String = ???
 }
 
 case class LocalRelation(data: Traversable[Row], schema: TupleType)
@@ -82,6 +93,8 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
 
   override def nodeCaption: String =
     s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
+
+  override def sql: String = s"`<local-relation>`"
 }
 
 object LocalRelation {
@@ -103,12 +116,16 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
 
   override def nodeCaption: String =
     s"${getClass.getSimpleName} ${projections map (_.annotatedString) mkString ", "}"
+
+  override def sql: String = s"SELECT ${projections map (_.sql) mkString ", "} FROM ${child.sql}"
 }
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
+
+  override def sql: String = s"${child.sql} WHERE ${condition.sql}"
 }
 
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
@@ -116,12 +133,16 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
 
   override lazy val strictlyTypedForm: Try[LogicalPlan] = for {
     n <- limit.strictlyTypedForm map {
-      case e if e.foldable => e
-      case _               => throw new TypeCheckException("Limit must be a constant", None)
+      case IntegralType(e) if e.foldable            => e
+      case IntegralType.Implicitly(e) if e.foldable => e
+      case _ =>
+        throw new TypeCheckException("Limit must be an integral constant", None)
     }
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
+
+  override def sql: String = s"${child.sql} LIMIT ${limit.sql}"
 }
 
 trait JoinType
@@ -149,10 +170,14 @@ case class Join(
     val details = joinType.toString +: maybeCondition.map(_.annotatedString).toSeq mkString ", "
     s"${getClass.getSimpleName} $details"
   }
+
+  override def sql: String = ???
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def nodeCaption: String = s"${getClass.getSimpleName} $alias"
+
+  override def sql: String = s"(${child.sql}) AS $alias"
 }

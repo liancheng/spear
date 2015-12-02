@@ -19,7 +19,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: QueryPlan[Physical
 
     assert(
       physicalPlans.nonEmpty,
-      s"""Failed to compile logical query plan
+      s"""Don't know how to compile the following logical query plan fragment:
          |
          |${logicalPlan.prettyTree}
          |""".stripMargin

@@ -128,5 +128,7 @@ object LogicalPlanSuite {
     override def output: Seq[Attribute] = Nil
 
     override def nodeCaption: String = s"${getClass.getSimpleName} ${expression.nodeCaption}"
+
+    override def sql: String = ???
   }
 }

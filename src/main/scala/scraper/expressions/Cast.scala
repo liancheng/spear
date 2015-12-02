@@ -205,7 +205,7 @@ object Cast {
     case _ if e.dataType == dataType                      => e
     case _ if implicitlyConvertible(e.dataType, dataType) => e cast dataType
     case _ =>
-      throw new ImplicitCastException(e.dataType, dataType)
+      throw new ImplicitCastException(e, dataType, None)
   }
 
   /**
@@ -222,8 +222,9 @@ object Cast {
   def widestTypeOf(types: Seq[DataType]): Try[DataType] = {
     assert(types.nonEmpty)
     (types.tail foldLeft Try(types.head)) {
-      case (Success(x), y) if implicitlyCompatible(x, y) => Success(y)
-      case (Success(x), y) if implicitlyCompatible(y, x) => Success(x)
+      case (Success(x), y) if x == y                      => Success(x)
+      case (Success(x), y) if implicitlyConvertible(x, y) => Success(y)
+      case (Success(x), y) if implicitlyConvertible(y, x) => Success(x)
       case _ =>
         Failure(new TypeMismatchException(
           s"Could not find common type for: ${types map (_.sql) mkString ", "}", None
