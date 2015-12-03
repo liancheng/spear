@@ -7,21 +7,20 @@ import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types._
 import scraper.{Row, types}
 
-case class Cast(child: Expression, toType: DataType) extends UnaryExpression {
-  override def dataType: DataType = toType
-
+case class Cast(child: Expression, dataType: DataType) extends UnaryExpression {
   override def annotatedString: String =
-    s"CAST(${child.annotatedString} AS ${toType.simpleName})"
+    s"CAST(${child.annotatedString} AS ${dataType.simpleName})"
 
   private def fromType = child.dataType
 
   override def evaluate(input: Row): Any =
-    buildCast(fromType)(toType)(child evaluate input)
+    buildCast(fromType)(dataType)(child evaluate input)
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
-      case e if convertible(e.dataType, toType) => e
-      case e                                    => throw new TypeCastException(e.dataType, toType)
+      case e if convertible(e.dataType, dataType) => e
+      case e =>
+        throw new TypeCastException(e.dataType, dataType)
     }
   } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
 
@@ -202,10 +201,9 @@ object Cast {
    * already of the target type, `e` is returned untouched.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
-    case _ if e.dataType == dataType                      => e
+    case _ if e.dataType == dataType => e
     case _ if implicitlyConvertible(e.dataType, dataType) => e cast dataType
-    case _ =>
-      throw new ImplicitCastException(e, dataType, None)
+    case _ => throw new ImplicitCastException(e, dataType)
   }
 
   /**
@@ -225,10 +223,9 @@ object Cast {
       case (Success(x), y) if x == y                      => Success(x)
       case (Success(x), y) if implicitlyConvertible(x, y) => Success(y)
       case (Success(x), y) if implicitlyConvertible(y, x) => Success(x)
-      case _ =>
-        Failure(new TypeMismatchException(
-          s"Could not find common type for: ${types map (_.sql) mkString ", "}", None
-        ))
+      case _ => Failure(new TypeMismatchException(
+        s"Could not find common type for: ${types map (_.sql) mkString ", "}"
+      ))
     }
   }
 }

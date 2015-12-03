@@ -17,12 +17,12 @@ trait BinaryComparison extends BinaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     lhs <- left.strictlyTypedForm map {
       case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
+      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
     }
 
     rhs <- right.strictlyTypedForm map {
       case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType], None)
+      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
     }
 
     t <- widestTypeOf(lhs.dataType, rhs.dataType)

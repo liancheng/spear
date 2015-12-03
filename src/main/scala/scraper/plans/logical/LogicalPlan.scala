@@ -26,7 +26,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   lazy val strictlyTyped = strictlyTypedForm.get sameOrEqual this
 
   protected def whenStrictlyTyped[T](value: => T): T =
-    if (strictlyTyped) value else throw new TypeCheckException(this, None)
+    if (strictlyTyped) value else throw new TypeCheckException(this)
 
   def sql: String
 
@@ -136,7 +136,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
       case IntegralType(e) if e.foldable            => e
       case IntegralType.Implicitly(e) if e.foldable => e
       case _ =>
-        throw new TypeCheckException("Limit must be an integral constant", None)
+        throw new TypeCheckException("Limit must be an integral constant")
     }
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 

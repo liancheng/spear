@@ -30,7 +30,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   lazy val strictlyTyped: Boolean = strictlyTypedForm.get sameOrEqual this
 
   protected def whenStrictlyTyped[T](value: => T): T =
-    if (strictlyTyped) value else throw new TypeCheckException(this, None)
+    if (strictlyTyped) value else throw new TypeCheckException(this)
 
   def annotatedString: String
 

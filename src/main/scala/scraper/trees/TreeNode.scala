@@ -103,6 +103,15 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def nodeCaption: String = toString
 
+  /**
+   * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
+   *
+   * @param depth Depth of the current node.  Depth of the root node is 0.
+   * @param lastChildren The `i`-th element in `lastChildren` indicates whether the direct ancestor
+   *        of this [[TreeNode]] at depth `i + 1` is the last child of its own parent at depth `i`.
+   *        For root node, `lastChildren` is empty (`Nil`).
+   * @param builder The string builder used to build the tree string.
+   */
   private def prettyTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
@@ -112,11 +121,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val bar = "\u2574"
 
     if (depth > 0) {
-      lastChildren.init.foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
       builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    builder ++= (nodeCaption + "\n")
+    builder ++= nodeCaption
+    builder ++= "\n"
 
     if (children.nonEmpty) {
       children.init foreach (_ prettyTree (depth + 1, lastChildren :+ false, builder))

@@ -12,7 +12,8 @@ trait BinaryLogicalPredicate extends BinaryExpression {
     val checkBranch: Expression => Try[Expression] = {
       case BooleanType(e)            => Success(e)
       case BooleanType.Implicitly(e) => Success(promoteDataType(e, BooleanType))
-      case e                         => Failure(new TypeMismatchException(e, BooleanType.getClass))
+      case e =>
+        Failure(new TypeMismatchException(e, BooleanType.getClass))
     }
 
     for {
