@@ -12,7 +12,9 @@ import scraper.reflection.fieldSpecFor
 import scraper.types.{IntegralType, TupleType}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
-  def resolved: Boolean = expressions.forall(_.resolved) && children.forall(_.resolved)
+  def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
+
+  def childrenResolved: Boolean = children forall (_.resolved)
 
   protected def whenResolved[T](value: => T): T =
     if (resolved) value else throw new LogicalPlanUnresolved(this)
@@ -23,7 +25,9 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     }
   }
 
-  lazy val strictlyTyped = strictlyTypedForm.get sameOrEqual this
+  lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
+
+  def childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
 
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this)

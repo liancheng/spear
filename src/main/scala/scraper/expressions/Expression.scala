@@ -13,7 +13,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def nullable: Boolean = true
 
-  def resolved: Boolean = children.forall(_.resolved)
+  def resolved: Boolean = childrenResolved
+
+  def childrenResolved: Boolean = children forall (_.resolved)
 
   def references: Seq[Attribute] = children.flatMap(_.references)
 
@@ -27,7 +29,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
 
-  lazy val strictlyTyped: Boolean = strictlyTypedForm.get sameOrEqual this
+  lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
 
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this)

@@ -46,6 +46,11 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row("Chris", 22)
     ))
   }
+
+  test("resolution") {
+    val df = context range 10 select ('id + 1 as 'x) where 'x > 5
+    assert(df.queryExecution.analyzedPlan.strictlyTyped)
+  }
 }
 
 object LocalContextSuite {

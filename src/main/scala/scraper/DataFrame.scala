@@ -49,6 +49,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def toSeq: Seq[Row] = iterator.toSeq
 
+  def toArray: Array[Row] = iterator.toArray
+
   def explain(extended: Boolean): String = if (extended) {
     s"""# Logical plan
        |${queryExecution.logicalPlan.prettyTree}

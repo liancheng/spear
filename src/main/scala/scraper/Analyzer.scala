@@ -13,12 +13,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ExpandStars,
       ResolveRelations,
-      ResolveReferences
-    )),
-
-    // Performs type check by trying to transform all logical query plan operators into their
-    // strictly typed form
-    RuleBatch("Type checking", Once, Seq(
+      ResolveReferences,
       ApplyImplicitCasts
     )),
 
@@ -60,7 +55,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(plan) =>
+      case Unresolved(plan) if plan.childrenStrictlyTyped =>
         plan transformExpressionsUp {
           case UnresolvedAttribute(name) =>
             def reportResolutionFailure(message: String): Nothing = {
@@ -100,16 +95,16 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule tries to transform all logical plans (and expressions within them) into strictly
-   * typed form by applying implicit casts when necessary.
+   * This rule tries to transform all resolved logical plans operators (and expressions within them)
+   * into strictly typed form by applying implicit casts when necessary.
    *
    * @note This rule doesn't apply implicit casts directly. Instead, it simply delegates to
    *       [[LogicalPlan.strictlyTypedForm]].
    */
-  @throws[AnalysisException]("If some logical query plan operator doesn't type check")
+  @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case plan => plan.strictlyTypedForm.get
+      case Resolved(plan) => plan.strictlyTypedForm.get
     }
   }
 
