@@ -19,7 +19,48 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def references: Seq[Attribute] = children.flatMap(_.references)
 
+  /**
+   * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] cannot
+   * be converted to strictly typed form, we say it doesn't type check.
+   *
+   * Any legal [[Expression]] `e` must be either strictly typed or well typed:
+   *
+   *  1. Strictly typed: `e` is strictly typed iff
+   *
+   *     - all of its child expressions strictly typed, and
+   *     - all of its child expressions immediately meet all type requirements of `e`.
+   *
+   *  2. Well typed: `e` is well typed iff
+   *
+   *     - all of its child expressions are well typed, and
+   *     - all of its child expressions can meet all type requirements of `e` by applying implicit
+   *       cast(s).
+   *
+   * For example, say attribute `a` is an attribute of type `LONG`, then `a + 1` is well typed
+   * because:
+   *
+   *  - Operator `+` requires both branches share the same type, while
+   *  - literal `1` is of type `INT`, but can be implicitly casted to `LONG`.
+   *
+   * On the other hand, `a + CAST(1 AS LONG)` is strictly typed because both branches are of type
+   * `LONG`.
+   */
   def strictlyTypedForm: Try[Expression]
+
+  /**
+   * Indicates whether this [[Expression]] is strictly typed.
+   *
+   * @see [[strictlyTypedForm]]
+   */
+  lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
+
+  /**
+   * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
+   * [[TypeCheckException]].
+   */
+  @throws[TypeCheckException]("If this expression is not strictly typed")
+  protected def whenStrictlyTyped[T](value: => T): T =
+    if (strictlyTyped) value else throw new TypeCheckException(this)
 
   def dataType: DataType
 
@@ -28,11 +69,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def evaluated: Any = evaluate(null)
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
-
-  lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
-
-  protected def whenStrictlyTyped[T](value: => T): T =
-    if (strictlyTyped) value else throw new TypeCheckException(this)
 
   def annotatedString: String
 
