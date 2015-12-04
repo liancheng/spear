@@ -5,6 +5,8 @@ import scraper.expressions.Expression
 
 trait NumericType extends PrimitiveType {
   val numeric: Numeric[InternalType]
+
+  def genericNumeric: Numeric[Any] = numeric.asInstanceOf[Numeric[Any]]
 }
 
 object NumericType {
@@ -30,6 +32,8 @@ object NumericType {
 
 trait IntegralType extends NumericType {
   val integral: Integral[InternalType]
+
+  def genericIntegral: Integral[Any] = integral.asInstanceOf[Integral[Any]]
 }
 
 object IntegralType {
@@ -103,6 +107,8 @@ case object LongType extends IntegralType {
 
 trait FractionalType extends NumericType {
   val fractional: Fractional[InternalType]
+
+  def genericFractional: Fractional[Any] = fractional.asInstanceOf[Fractional[Any]]
 }
 
 object FractionalType {

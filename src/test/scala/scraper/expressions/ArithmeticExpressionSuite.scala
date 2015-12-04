@@ -1,80 +1,70 @@
 package scraper.expressions
 
-import org.scalacheck.Prop
+import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 import scraper.LoggingFunSuite
+import scraper.generators.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
-import scraper.types.TestUtils
+import scraper.types.{FractionalType, IntegralType, NumericType, TestUtils}
 
 class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Checkers {
-  val genNumericPair = for {
+  private val genNumericLiteral: Gen[Literal] = for {
+    t <- genNumericType
+    v <- genValueForNumericType(t)
+  } yield Literal(v, t)
+
+  private val genNumericLiteralPair = for {
     t <- genNumericType
     a <- genValueForNumericType(t)
     b <- genValueForNumericType(t)
-  } yield (t, a, b)
-
-  val genIntegralPair = for {
-    t <- genIntegralType
-    a <- genValueForIntegralType(t)
-    b <- genValueForIntegralType(t)
-  } yield (t, a, b)
-
-  val genFractionalPair = for {
-    t <- genFractionalType
-    a <- genValueForFractionalType(t)
-    b <- genValueForFractionalType(t)
-  } yield (t, a, b)
-
-  val genSingleNumeric = for {
-    t <- genNumericType
-    v <- genValueForNumericType(t)
-  } yield (t, v)
+  } yield (Literal(a, t), Literal(b, t))
 
   test("add") {
-    check(forAll(genNumericPair) {
-      case (t, a, b) =>
-        val numeric = t.numeric.asInstanceOf[Numeric[Any]]
-        Add(Literal(a, t), Literal(b, t)).evaluated == numeric.plus(a, b)
+    check(forAll(genNumericLiteralPair) {
+      case (a @ Literal(_, t: NumericType), b) =>
+        Add(a, b).evaluated == t.genericNumeric.plus(a.value, b.value)
     })
   }
 
   test("minus") {
-    check(forAll(genNumericPair) {
-      case (t, a, b) =>
-        val numeric = t.numeric.asInstanceOf[Numeric[Any]]
-        Minus(Literal(a, t), Literal(b, t)).evaluated == numeric.minus(a, b)
+    check(forAll(genNumericLiteralPair) {
+      case (a @ Literal(_, t: NumericType), b) =>
+        Minus(a, b).evaluated == t.genericNumeric.minus(a.value, b.value)
     })
   }
 
   test("multiply") {
-    check(forAll(genNumericPair) {
-      case (t, a, b) =>
-        val numeric = t.numeric.asInstanceOf[Numeric[Any]]
-        Multiply(Literal(a, t), Literal(b, t)).evaluated == numeric.times(a, b)
+    check(forAll(genNumericLiteralPair) {
+      case (a @ Literal(_, t: NumericType), b) =>
+        Multiply(a, b).evaluated == t.genericNumeric.times(a.value, b.value)
     })
   }
 
   test("divide") {
-    check(forAll(genIntegralPair) {
-      case (t, a, b) =>
-        Prop.classify(b == 0, "divide by zero", "divide by non-zero") {
-          if (b == 0) {
-            Divide(Literal(a, t), Literal(b, t)).evaluated == null
-          } else {
-            val integral = t.integral.asInstanceOf[Integral[Any]]
-            Divide(Literal(a, t), Literal(b, t)).evaluated == integral.quot(a, b)
-          }
+    check(forAll(genNumericLiteralPair) {
+      case (a @ Literal(_, t: IntegralType), b) =>
+        if (b.value == 0) {
+          Divide(a, b).evaluated == null
+        } else {
+          Divide(a, b).evaluated == t.genericIntegral.quot(a.value, b.value)
+        }
+
+      case (a @ Literal(_, t: FractionalType), b) =>
+        if (b.value == 0D) {
+          Divide(a, b).evaluated == null
+        } else {
+          Divide(a, b).evaluated == t.genericFractional.div(a.value, b.value)
         }
     })
   }
 
-  test("negation") {
-    check(forAll(genSingleNumeric) {
-      case (t, v) =>
+  test("negate") {
+    check(forAll(genNumericLiteral) {
+      case lit @ Literal(v, t: NumericType) =>
         val numeric = t.numeric.asInstanceOf[Numeric[Any]]
-        Negate(Literal(v, t)).evaluated == numeric.negate(v)
+        Negate(lit).evaluated == numeric.negate(v)
     })
   }
 }
