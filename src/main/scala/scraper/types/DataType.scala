@@ -120,7 +120,10 @@ object DataType {
 
 trait PrimitiveType extends DataType {
   type InternalType
+
   val ordering: Ordering[InternalType]
+
+  def genericOrdering: Ordering[Any] = ordering.asInstanceOf[Ordering[Any]]
 }
 
 object PrimitiveType {

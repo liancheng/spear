@@ -7,7 +7,9 @@ import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types.{DataType, FractionalType, IntegralType, NumericType}
 
 trait ArithmeticExpression extends Expression {
-  lazy val numeric = dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]]
+  lazy val numeric = dataType match {
+    case t: NumericType => t.genericNumeric
+  }
 }
 
 case class Negate(child: Expression) extends UnaryExpression with ArithmeticExpression {
@@ -88,8 +90,8 @@ case class Multiply(left: Expression, right: Expression) extends BinaryArithmeti
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   private lazy val div = whenStrictlyTyped {
     dataType match {
-      case t: FractionalType => t.fractional.asInstanceOf[Fractional[Any]].div _
-      case t: IntegralType   => t.integral.asInstanceOf[Integral[Any]].quot _
+      case t: FractionalType => t.genericFractional.div _
+      case t: IntegralType   => t.genericIntegral.quot _
     }
   }
 

@@ -9,8 +9,7 @@ import scraper.types.{BooleanType, DataType, PrimitiveType}
 trait BinaryComparison extends BinaryExpression {
   protected lazy val ordering: Ordering[Any] = whenStrictlyTyped {
     left.dataType match {
-      case t: PrimitiveType =>
-        t.ordering.asInstanceOf[Ordering[Any]]
+      case t: PrimitiveType => t.genericOrdering
     }
   }
 
