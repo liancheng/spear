@@ -58,11 +58,7 @@ trait UnaryExpression extends Expression {
     sys.error(s"UnaryExpressions must override either eval or nullSafeEval")
 
   override def evaluate(input: Row): Any = {
-    val maybeResult = for {
-      value <- Option(child.evaluate(input))
-    } yield nullSafeEvaluate(value)
-
-    maybeResult.orNull
+    Option(child.evaluate(input)).map(nullSafeEvaluate).orNull
   }
 }
 

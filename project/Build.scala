@@ -33,8 +33,7 @@ object Build extends sbt.Build {
       scalacOptions ++= Seq("-unchecked", "-deprecation"),
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
       fork := false,
-      parallelExecution in Test := false,
-      resolvers += "Twitter Maven" at "http://maven.twttr.com"
+      parallelExecution in Test := false
     )
 
   lazy val consoleSettings =
@@ -84,7 +83,8 @@ object Build extends sbt.Build {
 
 object Dependencies {
   val extraResolvers = Seq(
-    Resolver.mavenLocal
+    Resolver.mavenLocal,
+    "Twitter Maven" at "http://maven.twttr.com"
   )
 
   object Versions {
