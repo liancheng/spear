@@ -10,6 +10,24 @@ trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType.asInstanceOf[NumericType].numeric.asInstanceOf[Numeric[Any]]
 }
 
+case class Negate(child: Expression) extends UnaryExpression with ArithmeticExpression {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    e <- child.strictlyTypedForm map {
+      case NumericType(e)            => e
+      case NumericType.Implicitly(e) => e
+      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
+    }
+  } yield copy(child = e)
+
+  override lazy val dataType: DataType = whenStrictlyTyped(child.dataType)
+
+  override def nullSafeEvaluate(value: Any): Any = numeric.negate(value)
+
+  override def annotatedString: String = s"(-${child.annotatedString})"
+
+  override def sql: String = s"(-${child.sql})"
+}
+
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {

@@ -83,7 +83,8 @@ object Build extends sbt.Build {
 
 object Dependencies {
   val extraResolvers = Seq(
-    Resolver.mavenLocal
+    Resolver.mavenLocal,
+    "Twitter Maven" at "http://maven.twttr.com"
   )
 
   object Versions {

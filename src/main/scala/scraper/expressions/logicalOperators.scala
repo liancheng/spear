@@ -50,7 +50,7 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
 case class Not(child: Expression) extends UnaryExpression {
   override def dataType: DataType = BooleanType
 
-  override def evaluate(input: Row): Any = !child.evaluate(input).asInstanceOf[Boolean]
+  override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
   override def annotatedString: String = s"(NOT ${child.annotatedString})"
 

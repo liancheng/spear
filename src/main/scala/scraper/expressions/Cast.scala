@@ -13,8 +13,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression {
 
   private def fromType = child.dataType
 
-  override def evaluate(input: Row): Any =
-    buildCast(fromType)(dataType)(child evaluate input)
+  override def nullSafeEvaluate(value: Any): Any =
+    buildCast(fromType)(dataType)(value)
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
