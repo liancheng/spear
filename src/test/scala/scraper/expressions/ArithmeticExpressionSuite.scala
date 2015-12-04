@@ -27,6 +27,11 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     b <- genValueForFractionalType(t)
   } yield (t, a, b)
 
+  val genSingleNumeric = for {
+    t <- genNumericType
+    v <- genValueForNumericType(t)
+  } yield (t, v)
+
   test("add") {
     check(forAll(genNumericPair) {
       case (t, a, b) =>
@@ -62,6 +67,14 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
             Divide(Literal(a, t), Literal(b, t)).evaluated == integral.quot(a, b)
           }
         }
+    })
+  }
+
+  test("unary minus") {
+    check(forAll(genSingleNumeric) {
+      case (t, v) =>
+        val numeric = t.numeric.asInstanceOf[Numeric[Any]]
+        Negate(Literal(v, t)).evaluated == numeric.negate(v)
     })
   }
 }
