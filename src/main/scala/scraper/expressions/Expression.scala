@@ -20,8 +20,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def references: Seq[Attribute] = children.flatMap(_.references)
 
   /**
-   * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] cannot
-   * be converted to strictly typed form, we say it doesn't type check.
+   * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] is
+   * already strictly typed, it's returned untouched.  If this [[Expression]] cannot be converted to
+   * strictly typed form, we say it doesn't type check, and a `Failure` containing an exception with
+   * detailed type check error message is returned.
    *
    * Any legal [[Expression]] `e` must be either strictly typed or well typed:
    *
@@ -91,7 +93,9 @@ trait UnaryExpression extends Expression {
   override def children: Seq[Expression] = Seq(child)
 
   protected def nullSafeEvaluate(value: Any): Any =
-    sys.error(s"UnaryExpressions must override either eval or nullSafeEval")
+    throw new ContractBrokenException(
+      s"Subtype of ${getClass.getSimpleName} must override either evaluate or nullSafeEvaluate"
+    )
 
   override def evaluate(input: Row): Any = {
     Option(child.evaluate(input)).map(nullSafeEvaluate).orNull

@@ -89,13 +89,13 @@ object Dependencies {
 
   object Versions {
     val config = "1.2.1"
-    val jline = "2.13"
     val log4j = "1.2.16"
     val parquetMr = "1.8.1"
     val protobuf = "2.5.0"
     val scala = "2.11.7"
     val scalaCheck = "1.12.5"
     val scalaParserCombinators = "1.0.4"
+    val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
     val scopt = "3.3.0"
     val slf4j = "1.6.4"
@@ -103,10 +103,6 @@ object Dependencies {
 
   val config = Seq(
     "com.typesafe" % "config" % Versions.config
-  )
-
-  val jline = Seq(
-    "jline" % "jline" % Versions.jline
   )
 
   val log4j = Seq(
@@ -127,7 +123,8 @@ object Dependencies {
   val scala = Seq(
     "org.scala-lang" % "scala-library" % Versions.scala,
     "org.scala-lang" % "scala-reflect" % Versions.scala,
-    "org.scala-lang.modules" %% "scala-parser-combinators" % Versions.scalaParserCombinators
+    "org.scala-lang.modules" %% "scala-parser-combinators" % Versions.scalaParserCombinators,
+    "org.scala-lang.modules" %% "scala-xml" % Versions.scalaXml
   )
 
   val scalaTest = Seq(
@@ -147,7 +144,7 @@ object Dependencies {
 
   val test = Seq.empty[ModuleID]
 
-  val all = test ++ config ++ jline ++ log4j ++ parquetMr ++ scala ++ scopt ++ scalaTest ++ slf4j
+  val all = test ++ config ++ log4j ++ parquetMr ++ scala ++ scopt ++ scalaTest ++ slf4j
 
   val overrides = Set.empty ++ protobuf ++ scala
 }
