@@ -7,6 +7,8 @@ import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
+class ContractBrokenException(message: String) extends RuntimeException(message)
+
 abstract class AnalysisException(message: String, maybeCause: Option[Throwable])
   extends RuntimeException(message, maybeCause.orNull) {
 

@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.{Success, Try}
 
 import scraper.Row
-import scraper.exceptions.{ExpressionUnevaluableException, ExpressionUnresolvedException, TypeCheckException}
+import scraper.exceptions.{ContractBrokenException, ExpressionUnevaluableException, ExpressionUnresolvedException, TypeCheckException}
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
@@ -62,7 +62,10 @@ trait BinaryExpression extends Expression {
 
   override def children: Seq[Expression] = Seq(left, right)
 
-  def nullSafeEvaluate(lhs: Any, rhs: Any): Any
+  def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
+    throw new ContractBrokenException(
+      s"Subtype of ${getClass.getSimpleName} must override either evaluate or nullSafeEvaluate"
+    )
 
   override def evaluate(input: Row): Any = {
     val maybeResult = for {
