@@ -70,7 +70,7 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     })
   }
 
-  test("unary minus") {
+  test("negation") {
     check(forAll(genSingleNumeric) {
       case (t, v) =>
         val numeric = t.numeric.asInstanceOf[Numeric[Any]]
