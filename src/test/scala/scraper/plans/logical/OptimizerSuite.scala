@@ -2,13 +2,12 @@ package scraper.plans.logical
 
 import scala.language.implicitConversions
 
+import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
-import scraper.expressions.functions._
-
-import org.scalacheck.{Test, Prop, Arbitrary}
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 import scraper.Test.defaultSettings
+import scraper.expressions.Literal.True
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
 import scraper.generators.expressions._
@@ -28,7 +27,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   )(
     f: (LogicalPlan => LogicalPlan) => Unit
   ): Unit = {
-    test(rule.getClass.getSimpleName) {
+    test(rule.getClass.getSimpleName stripSuffix "$") {
       val analyzer = new Analyzer(new LocalCatalog)
       val optimizer = new RulesExecutor[LogicalPlan] {
         override def batches: Seq[RuleBatch] = Seq(
@@ -43,7 +42,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
-    check {
+    check(
       forAll { predicate: Expression =>
         val optimizedPlan = optimizer(SingleRowRelation filter predicate)
         val conditions = optimizedPlan.collect {
@@ -59,30 +58,31 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           //
           // Here we simply replace them with a boolean literal.
           _ transformDown {
-            case BinaryComparison(_ And _, _) => Literal.True
-            case BinaryComparison(_, _ And _) => Literal.True
+            case BinaryComparison(_ And _, _) => True
+            case BinaryComparison(_, _ And _) => True
           } forall {
             case _ And _ => false
             case _       => true
           }
         }
-      }
-    }
+      },
+
+      // CNF conversion may potentially expand the predicate significantly and slows down the test
+      // quite a bit.  Here we restrict the max size of the expression tree to avoid slow test runs.
+      MaxSize(20)
+    )
   }
 
-  ignore("ReduceFilters") {
-    testRule(ReduceFilters, FixedPoint.Unlimited) { optimizer =>
-      implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
+  testRule(ReduceFilters, FixedPoint.Unlimited) { optimizer =>
+    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
-      check { (condition1: Expression, condition2: Expression) =>
-        val optimized = optimizer(SingleRowRelation filter condition1 filter condition2)
-        val conditions = optimized.collect {
-          case f: Filter => f.condition
-        }
-
-        assert(conditions.length === 1)
-        conditions.head == (condition1 && condition2)
+    check { (p1: Expression, p2: Expression) =>
+      val optimized = optimizer(SingleRowRelation filter p1 filter p2)
+      val conditions = optimized.collect {
+        case f: Filter => f.condition
       }
+
+      conditions == Seq(p1 && p2)
     }
   }
 }
