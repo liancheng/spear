@@ -3,7 +3,7 @@ package scraper
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Expression, NamedExpression}
-import scraper.plans.logical.LogicalPlan
+import scraper.plans.logical.{Inner, Join, LogicalPlan}
 import scraper.plans.{QueryExecution, logical}
 import scraper.types.TupleType
 
@@ -41,6 +41,10 @@ class DataFrame(val queryExecution: QueryExecution) {
   def limit(n: Expression): DataFrame = build(logical.Limit(_, n))
 
   def limit(n: Int): DataFrame = this limit lit(n)
+
+  def join(right: DataFrame, condition: Option[Expression] = None): DataFrame = build { left =>
+    Join(left, right.queryExecution.logicalPlan, Inner, condition)
+  }
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
