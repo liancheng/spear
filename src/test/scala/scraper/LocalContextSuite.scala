@@ -66,6 +66,37 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Seq(Row(1, "1"), Row(1, "2"))
     )
   }
+
+  test("aggregate") {
+    import GroupedData._
+
+    val df = context.lift(Seq("a" -> -1, "a" -> 1, "a" -> 2, "b" -> 4, "b" -> 5), "i", "j")
+
+    checkDataFrame(
+      df.groupBy('i).agg(count()),
+      Seq(Row(3), Row(2))
+    )
+
+    checkDataFrame(
+      df.groupBy('i).agg(sum('j)),
+      Seq(Row(2.0), Row(9.0))
+    )
+
+    checkDataFrame(
+      df.groupBy('i).agg(max('j)),
+      Seq(Row(2.0), Row(5.0))
+    )
+
+    checkDataFrame(
+      df.groupBy('i).agg(min('j)),
+      Seq(Row(-1.0), Row(4.0))
+    )
+
+    checkDataFrame(
+      df.groupBy('i).agg(count(), sum('j), max('j), min('j)),
+      Seq(Row(3, 2.0, 2.0, -1.0), Row(2, 9.0, 5.0, 4.0))
+    )
+  }
 }
 
 object LocalContextSuite {

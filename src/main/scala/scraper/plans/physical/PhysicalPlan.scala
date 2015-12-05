@@ -93,3 +93,34 @@ case class CartesianProduct(left: PhysicalPlan, right: PhysicalPlan) extends Bin
 
   override def nodeCaption: String = getClass.getSimpleName
 }
+
+case class Aggregate(
+  groupingExpressions: Seq[Expression],
+  aggregateExpressions: Seq[NamedExpression],
+  child: PhysicalPlan
+)
+  extends UnaryPhysicalPlan {
+
+  override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
+
+  override def iterator: Iterator[Row] = {
+    val input = child.iterator.toArray
+
+    val boundGroupings = groupingExpressions.map(bind(_, child.output))
+    val boundAggs = aggregateExpressions.map(bind(_, child.output))
+
+    val aggs = boundAggs.flatMap(_.collect {
+      case a: AggregateExpression => a
+    })
+    val finalExprs = boundAggs.map(_.transformDown {
+      case a: AggregateExpression => BoundRef(aggs.indexOf(a), a.dataType, true)
+    })
+
+    input.groupBy(row => boundGroupings.map(_.evaluate(row))).map {
+      case (_, values) =>
+        val agged = aggs.map(_.agg(values))
+        // TODO: support grouping expressions inside aggregate list.
+        Row.fromSeq(finalExprs.map(_.evaluate(Row.fromSeq(agged))))
+    }.toIterator
+  }
+}
