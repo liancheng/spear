@@ -98,8 +98,7 @@ case class Aggregate(
   groupingExpressions: Seq[Expression],
   aggregateExpressions: Seq[NamedExpression],
   child: PhysicalPlan
-)
-  extends UnaryPhysicalPlan {
+) extends UnaryPhysicalPlan {
 
   override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
 
@@ -114,13 +113,20 @@ case class Aggregate(
     })
     val finalExprs = boundAggs.map(_.transformDown {
       case a: AggregateExpression => BoundRef(aggs.indexOf(a), a.dataType, true)
+      case e =>
+        val index = boundGroupings.indexOf(e)
+        if (index == -1) {
+          e
+        } else {
+          BoundRef(aggs.length + index, e.dataType, true)
+        }
     })
 
     input.groupBy(row => boundGroupings.map(_.evaluate(row))).map {
-      case (_, values) =>
+      case (key, values) =>
         val agged = aggs.map(_.agg(values))
-        // TODO: support grouping expressions inside aggregate list.
-        Row.fromSeq(finalExprs.map(_.evaluate(Row.fromSeq(agged))))
+        val buffer = JoinedRow(Row.fromSeq(agged), Row.fromSeq(key))
+        Row.fromSeq(finalExprs.map(_.evaluate(buffer)))
     }.toIterator
   }
 }
