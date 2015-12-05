@@ -2,6 +2,9 @@ package scraper.plans.logical
 
 import scala.language.implicitConversions
 
+import org.scalacheck.Prop.forAll
+import scraper.expressions.functions._
+
 import org.scalacheck.{Test, Prop, Arbitrary}
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
@@ -37,25 +40,33 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  ignore("CNFConversion") {
-    testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
-      implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
+  testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
+    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
 
-      check(Prop.forAll { predicate: Expression =>
+    check {
+      forAll { predicate: Expression =>
         val optimizedPlan = optimizer(SingleRowRelation filter predicate)
         val conditions = optimizedPlan.collect {
           case _ Filter condition => splitConjunction(condition)
         }.flatten
 
         conditions.forall {
-          _.forall {
-            case BinaryComparison(_ And _, _) => true
-            case BinaryComparison(_, _ And _) => true
-            case _ And _                      => false
-            case _                            => true
+          // Within generated predicate expressions, there can be nested conjunctions within
+          // comparison expressions, which should be ignore.  For example, the following predicate
+          // is in CNF although the `=` comparison contains a nested conjunction:
+          //
+          //   (a > 1) AND ((TRUE AND FALSE) = FALSE)
+          //
+          // Here we simply replace them with a boolean literal.
+          _ transformDown {
+            case BinaryComparison(_ And _, _) => Literal.True
+            case BinaryComparison(_, _ And _) => Literal.True
+          } forall {
+            case _ And _ => false
+            case _       => true
           }
         }
-      }, Test.Parameters.defaultVerbose)
+      }
     }
   }
 
