@@ -125,6 +125,9 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case Aggregate(groupings, aggs, child) =>
         physical.Aggregate(groupings, aggs, planLater(child)) :: Nil
 
+      case Sort(child, order) =>
+        physical.Sort(planLater(child), order) :: Nil
+
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
 

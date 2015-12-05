@@ -2,8 +2,8 @@ package scraper
 
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.{Expression, NamedExpression}
-import scraper.plans.logical.{Inner, Join, LogicalPlan}
+import scraper.expressions.{Ascending, SortOrder, Expression, NamedExpression}
+import scraper.plans.logical.{Sort, Inner, Join, LogicalPlan}
 import scraper.plans.{QueryExecution, logical}
 import scraper.types.TupleType
 
@@ -47,6 +47,10 @@ class DataFrame(val queryExecution: QueryExecution) {
   }
 
   def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
+
+  def sortBy(expr: Expression, exprs: Expression*): DataFrame = build { plan =>
+    Sort(plan, (expr +: exprs).map(SortOrder(_, Ascending)))
+  }
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 

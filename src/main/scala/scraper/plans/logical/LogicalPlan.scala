@@ -190,9 +190,17 @@ case class Aggregate(
   groupingExpressions: Seq[Expression],
   aggregateExpressions: Seq[NamedExpression],
   child: LogicalPlan
-)
-  extends UnaryLogicalPlan {
+) extends UnaryLogicalPlan {
   override def sql: String = ???
 
   override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
+}
+
+case class Sort(
+  child: LogicalPlan,
+  order: Seq[SortOrder]
+) extends UnaryLogicalPlan {
+  override def output: Seq[Attribute] = child.output
+
+  override def sql: String = ???
 }
