@@ -40,8 +40,6 @@ object BinaryComparison {
 case class Eq(left: Expression, right: Expression) extends BinaryComparison {
   override def dataType: DataType = BooleanType
 
-  Seq(1, 2).sum
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs == rhs
 
   override def annotatedString: String = s"(${left.annotatedString} = ${right.annotatedString})"
