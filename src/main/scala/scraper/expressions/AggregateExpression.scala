@@ -1,57 +1,70 @@
 package scraper.expressions
 
-import scraper.Row
-import scraper.exceptions.{ContractBrokenException, TypeMismatchException}
-import scraper.types.{LongType, DoubleType, NumericType, DataType}
-
 import scala.util.Try
 
-trait AggregateExpression extends UnaryExpression {
+import scraper.Row
+import scraper.exceptions.TypeMismatchException
+import scraper.expressions.Cast.promoteDataType
+import scraper.types.{DataType, LongType, NumericType}
+
+trait AggregateExpression extends UnevaluableExpression {
   override def foldable: Boolean = false
 
-  override def evaluate(input: Row): Any =
-    throw new ContractBrokenException("Cannot call AggregateExpression.evaluate directly")
-
-  override def sql: String = ???
-
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    e <- child.strictlyTypedForm map {
-      case DoubleType(e)            => e
-      case DoubleType.Implicitly(e) => e
-      case e                        => throw new TypeMismatchException(e, classOf[NumericType])
-    }
-  } yield if (sameChildren(Seq(e))) this else makeCopy(Seq(e))
-
-  override def dataType: DataType = whenStrictlyTyped(DoubleType)
-
-  override def annotatedString: String = ???
-
-  def agg(rows: Seq[Row]): Any = _agg(rows.map(child.evaluate))
-
-  protected def _agg(values: Seq[Any]): Any
+  def agg(rows: Seq[Row]): Any
 }
 
-case class Count(child: Expression) extends AggregateExpression {
+case class Count(child: Expression) extends AggregateExpression with UnaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
 
   override def dataType: DataType = LongType
 
-  override def _agg(values: Seq[Any]): Any = values.length
+  override def agg(rows: Seq[Row]): Any = rows.length
+
+  override def annotatedString: String = s"COUNT(${child.annotatedString})"
+
+  override def sql: String = s"COUNT(${child.sql})"
 }
 
-case class Sum(child: Expression) extends AggregateExpression {
-  override def _agg(values: Seq[Any]): Any =
-    values.map(_.asInstanceOf[java.lang.Number].doubleValue()).sum
+trait UnaryArithmeticAggregation extends AggregateExpression with UnaryExpression {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
+    strictChild <- child.strictlyTypedForm map {
+      case NumericType(e)            => e
+      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
+      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
+    }
+  } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
+
+  override def dataType: NumericType = whenStrictlyTyped(child.dataType match {
+    case t: NumericType => t
+  })
+
+  protected lazy val numeric = dataType.genericNumeric
+
+  protected lazy val ordering = dataType.genericOrdering
 }
 
-case class Max(child: Expression) extends AggregateExpression {
-  override def _agg(values: Seq[Any]): Any =
-    values.map(_.asInstanceOf[java.lang.Number].doubleValue()).max
+case class Sum(child: Expression) extends UnaryArithmeticAggregation {
+  override def agg(rows: Seq[Row]): Any = rows map child.evaluate sum numeric
+
+  override def annotatedString: String = s"SUM(${child.annotatedString})"
+
+  override def sql: String = s"SUM(${child.sql})"
 }
 
-case class Min(child: Expression) extends AggregateExpression {
-  override def _agg(values: Seq[Any]): Any =
-    values.map(_.asInstanceOf[java.lang.Number].doubleValue()).min
+case class Max(child: Expression) extends UnaryArithmeticAggregation {
+  override def agg(rows: Seq[Row]): Any = rows map child.evaluate max ordering
+
+  override def annotatedString: String = s"MAX(${child.annotatedString})"
+
+  override def sql: String = s"MAX(${child.sql})"
+}
+
+case class Min(child: Expression) extends UnaryArithmeticAggregation {
+  override def agg(rows: Seq[Row]): Any = rows map child.evaluate min ordering
+
+  override def annotatedString: String = s"MIN(${child.annotatedString})"
+
+  override def sql: String = s"MIN(${child.sql})"
 }

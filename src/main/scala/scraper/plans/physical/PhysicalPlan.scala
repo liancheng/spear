@@ -95,9 +95,9 @@ case class CartesianProduct(left: PhysicalPlan, right: PhysicalPlan) extends Bin
 }
 
 case class Aggregate(
+  child: PhysicalPlan,
   groupingExpressions: Seq[Expression],
-  aggregateExpressions: Seq[NamedExpression],
-  child: PhysicalPlan
+  aggregateExpressions: Seq[NamedExpression]
 ) extends UnaryPhysicalPlan {
 
   override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
