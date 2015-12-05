@@ -83,7 +83,7 @@ object Optimizer {
   }
 
   /**
-   * This rule eliminates unnecessary [[expressions.Not]] operators.
+   * This rule eliminates unnecessary [[expressions.Not Not]] operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -147,8 +147,8 @@ object Optimizer {
    * This rule converts a predicate to CNF (Conjunctive Normal Form).
    *
    * Since we don't support existential/universal quantifiers or implications, this rule simply
-   * pushes negations inwards by applying De Morgan's law and distributes [[expressions.Or]]s
-   * inwards over [[expressions.And]]s.
+   * pushes negations inwards by applying De Morgan's law and distributes [[expressions.Or Or]]s
+   * inwards over [[expressions.And And]]s.
    *
    * @see https://en.wikipedia.org/wiki/Conjunctive_normal_form
    */
@@ -165,7 +165,7 @@ object Optimizer {
   }
 
   /**
-   * This rule combines adjacent [[logical.Filter]]s into a single [[logical.Filter]].
+   * This rule combines adjacent [[logical.Filter Filter]]s into a single [[logical.Filter Filter]].
    */
   object ReduceFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -176,7 +176,7 @@ object Optimizer {
   }
 
   /**
-   * This rule pushes [[logical.Filter]] predicates beneath [[logical.Project]]s.
+   * This rule pushes [[logical.Filter Filter]]s beneath [[logical.Project Project]]s.
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {

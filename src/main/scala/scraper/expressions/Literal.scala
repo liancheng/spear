@@ -17,6 +17,8 @@ case class Literal(value: Any, dataType: PrimitiveType) extends LeafExpression {
 }
 
 object Literal {
+  val Null: Literal = Literal(null)
+
   val Zero: Literal = Literal(0, IntType)
 
   val One: Literal = Literal(1, IntType)

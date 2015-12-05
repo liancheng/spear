@@ -1,5 +1,7 @@
 package scraper.generators
 
+import scala.collection.immutable.Stream.Empty
+
 import org.scalacheck.Shrink.shrink
 import org.scalacheck.{Gen, Shrink}
 import scraper.config.Settings
@@ -101,6 +103,11 @@ package object expressions {
 
   def genLiteral(dataType: PrimitiveType): Gen[Literal] =
     genValueForPrimitiveType(dataType) map Literal.apply
+
+  implicit val shrinkBoolean: Shrink[Boolean] = Shrink { v => v #:: !v #:: Empty }
+  implicit val shrinkByte: Shrink[Byte] = Shrink { v => shrink(v.toInt) map (_.toByte) }
+  implicit val shrinkShort: Shrink[Short] = Shrink { v => shrink(v.toInt) map (_.toShort) }
+  implicit val shrinkLong: Shrink[Long] = Shrink { v => shrink(v.toInt) map (_.toLong) }
 
   implicit val shrinkLiteral: Shrink[Literal] = Shrink {
     case lit @ Literal(value: Boolean, _) => shrink(value) map (v => lit.copy(value = v))

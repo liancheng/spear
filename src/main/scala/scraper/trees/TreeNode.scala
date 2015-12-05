@@ -52,6 +52,9 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
       case arg: AnyRef =>
         arg -> false
+
+      case null =>
+        (null, false)
     }.toSeq.unzip
 
     if (argsChanged exists identity) makeCopy(newArgs) else this

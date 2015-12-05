@@ -144,6 +144,15 @@ object Cast {
     case _ if false => identity
   }
 
+  private val implicitlyFromNull: CastBuilder = {
+    // NullType can be casted to any other type, and only has a single value `null`.
+    case _ => { case _ => null }
+  }
+
+  private val explicitlyFromNull: CastBuilder = {
+    case _ if false => identity
+  }
+
   private val buildImplicitCast: PartialFunction[DataType, CastBuilder] = {
     case BooleanType => implicitlyFromBoolean
     case ByteType    => implicitlyFromByte
@@ -153,6 +162,7 @@ object Cast {
     case FloatType   => implicitlyFromFloat
     case DoubleType  => implicitlyFromDouble
     case StringType  => implicitlyFromString
+    case NullType    => implicitlyFromNull
   }
 
   private val buildExplicitCast: PartialFunction[DataType, CastBuilder] = {
@@ -164,6 +174,7 @@ object Cast {
     case FloatType   => explicitlyFromFloat
     case DoubleType  => explicitlyFromDouble
     case StringType  => explicitlyFromString
+    case NullType    => explicitlyFromNull
   }
 
   private val buildCast: PartialFunction[DataType, CastBuilder] =

@@ -30,8 +30,17 @@ trait BinaryComparison extends BinaryExpression {
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
 }
 
+object BinaryComparison {
+  def unapply(e: Expression): Option[(Expression, Expression)] = e match {
+    case c: BinaryComparison => Some((c.left, c.right))
+    case _                   => None
+  }
+}
+
 case class Eq(left: Expression, right: Expression) extends BinaryComparison {
   override def dataType: DataType = BooleanType
+
+  Seq(1, 2).sum
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs == rhs
 
