@@ -2,6 +2,7 @@ package scraper.generators
 
 import org.scalacheck.Arbitrary._
 import org.scalacheck.{Arbitrary, Gen}
+
 import scraper.Test._
 import scraper.config.Settings
 import scraper.config.Settings.Key

@@ -198,8 +198,8 @@ case class Aggregate(
 }
 
 case class Sort(
-    child: LogicalPlan,
-    order: Seq[SortOrder]
+  child: LogicalPlan,
+  order: Seq[SortOrder]
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 

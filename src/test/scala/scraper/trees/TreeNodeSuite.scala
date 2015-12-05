@@ -4,6 +4,7 @@ import scala.collection.JavaConversions._
 
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
+
 import scraper.LoggingFunSuite
 import scraper.types.TestUtils
 

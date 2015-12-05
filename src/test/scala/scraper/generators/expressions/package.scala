@@ -1,6 +1,7 @@
 package scraper.generators
 
 import org.scalacheck.Gen
+
 import scraper.config.Settings
 import scraper.config.Settings.Key
 import scraper.exceptions.TypeMismatchException

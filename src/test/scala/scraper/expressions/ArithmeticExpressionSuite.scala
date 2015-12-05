@@ -3,8 +3,8 @@ package scraper.expressions
 import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
+
 import scraper.LoggingFunSuite
-import scraper.generators.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
 import scraper.types.{FractionalType, IntegralType, NumericType, TestUtils}

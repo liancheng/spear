@@ -6,6 +6,7 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
+
 import scraper.Test.defaultSettings
 import scraper.expressions.Literal.True
 import scraper.expressions.Predicate.splitConjunction

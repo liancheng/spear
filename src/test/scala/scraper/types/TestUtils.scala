@@ -1,6 +1,7 @@
 package scraper.types
 
 import org.scalatest.FunSuite
+
 import scraper.expressions.{Alias, AttributeRef, ExpressionId}
 import scraper.plans.QueryPlan
 import scraper.trees.TreeNode
