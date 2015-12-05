@@ -185,3 +185,14 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 
   override def sql: String = s"(${child.sql}) AS $alias"
 }
+
+case class Aggregate(
+  groupingExpressions: Seq[Expression],
+  aggregateExpressions: Seq[NamedExpression],
+  child: LogicalPlan
+)
+  extends UnaryLogicalPlan {
+  override def sql: String = ???
+
+  override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
+}

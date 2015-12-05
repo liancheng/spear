@@ -46,6 +46,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     Join(left, right.queryExecution.logicalPlan, Inner, condition)
   }
 
+  def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
+
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
   def registerAsTable(tableName: String): Unit =

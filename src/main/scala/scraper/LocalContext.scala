@@ -122,6 +122,9 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         val joined = physical.CartesianProduct(planLater(left), planLater(right))
         maybeCondition.map(c => physical.Filter(joined, c)).getOrElse(joined) :: Nil
 
+      case Aggregate(groupings, aggs, child) =>
+        physical.Aggregate(groupings, aggs, planLater(child)) :: Nil
+
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
 
