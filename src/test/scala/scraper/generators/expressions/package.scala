@@ -19,8 +19,8 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType    => genPredicate(input, outputSpec)(settings)
-    case _: NumericType => genArithmetic(input, outputSpec)(settings)
+    case BooleanType | BooleanType.Implicitly(_)    => genPredicate(input, outputSpec)(settings)
+    case _: NumericType | NumericType.Implicitly(_) => genArithmetic(input, outputSpec)(settings)
   }
 
   def genArithmetic(
@@ -29,7 +29,8 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType => genTermExpression(input, outputSpec)(settings)
+    case _: NumericType | NumericType.Implicitly(_) =>
+      genTermExpression(input, outputSpec)(settings)
   }
 
   def genTermExpression(
@@ -38,22 +39,22 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType =>
+    case _: NumericType | NumericType.Implicitly(_) =>
       for {
         size <- Gen.size
 
         genProduct = genProductExpression(input, outputSpec)(settings)
-        genNegate = Gen.resize(size - 1, genProduct map Negate)
+        genNegate = Gen resize (size - 1, genProduct map Negate)
         genTerm = genUnaryOrBinary(genProduct, Add, Minus)
 
         term <- size match {
-          case s if s < 2 => genProduct
-          case s if s < 3 => Gen oneOf (genProduct, genNegate)
-          case s          => Gen oneOf (genProduct, genNegate, genTerm)
+          case 1 => genProduct
+          case 2 => Gen oneOf (genProduct, genNegate)
+          case _ => Gen oneOf (genProduct, genNegate, genTerm)
         }
       } yield term
 
-    case BooleanType =>
+    case BooleanType | BooleanType.Implicitly(_) =>
       genPredicate(input, outputSpec)(settings)
   }
 
@@ -63,7 +64,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType =>
+    case _: NumericType | NumericType.Implicitly(_) =>
       Gen.sized {
         case size if size < 2 =>
           genBaseExpression(input, outputSpec)(settings)
@@ -94,12 +95,8 @@ package object expressions extends Logging {
     }
 
     Gen.sized {
-      case 1 =>
-        logDebug(s"genBaseExpression: 1")
-        genLeaf
-      case size =>
-        logDebug(s"genBaseExpression: $size")
-        Gen oneOf (genLeaf, Gen lzy genExpression(input, outputSpec)(settings))
+      case 1    => genLeaf
+      case size => Gen oneOf (genLeaf, Gen lzy genExpression(input, outputSpec)(settings))
     }
   }
 
@@ -118,7 +115,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType =>
+    case BooleanType | BooleanType.Implicitly(_) =>
       val genBranch = genAndExpression(input, outputSpec)(settings)
       genUnaryOrBinary(genBranch, Or)
   }
@@ -129,13 +126,13 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType =>
+    case BooleanType | BooleanType.Implicitly(_) =>
       val genBranch = Gen.sized {
         case size if size < 2 =>
           genComparison(input, outputSpec)(settings)
 
         case _ =>
-          Gen.oneOf(
+          Gen oneOf (
             genNotExpression(input, outputSpec)(settings),
             genComparison(input, outputSpec)(settings)
           )
@@ -150,10 +147,10 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType =>
+    case BooleanType | BooleanType.Implicitly(_) =>
       for {
         size <- Gen.size
-        predicate <- Gen.resize(size - 1, genPredicate(input, outputSpec)(settings))
+        predicate <- Gen resize (size - 1, genPredicate(input, outputSpec)(settings))
       } yield Not(predicate)
   }
 
@@ -163,16 +160,18 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType =>
+    case BooleanType | BooleanType.Implicitly(_) =>
+      val genBoolLiteral = genLiteral(outputSpec.copy(dataType = BooleanType))
+      val genBranch = Gen lzy genTermExpression(input, outputSpec)(settings)
+
       Gen.sized {
         case size if size < 2 =>
-          genLiteral(outputSpec.copy(dataType = BooleanType))
+          genBoolLiteral
 
         case _ =>
-          val genBranch = Gen lzy genTermExpression(input, outputSpec)(settings)
-          Gen.oneOf(
+          Gen oneOf (
             genBinary(genBranch, Gt, GtEq, Lt, LtEq, Eq, NotEq),
-            genLiteral(outputSpec.copy(dataType = BooleanType))
+            genBoolLiteral
           )
       }
   }
@@ -189,7 +188,7 @@ package object expressions extends Logging {
     val nullFreq = if (nullable) (settings(NullProbabilities) * 100).toInt else 0
     val nonNullFreq = 100 - nullFreq
 
-    Gen.frequency(
+    Gen frequency (
       nullFreq -> Gen.const(Literal(null, dataType)),
       nonNullFreq -> genValueForPrimitiveType(dataType).map(Literal(_, dataType))
     )
@@ -203,10 +202,16 @@ package object expressions extends Logging {
 
   private def genBinary[T <: Expression, R <: Expression](
     genBranch: Gen[T], ops: ((T, T) => R)*
-  ): Gen[R] = for {
-    size <- Gen.size
-    lhs <- Gen resize ((size - 1) / 2, genBranch)
-    rhs <- Gen resize ((size - 1) / 2, genBranch)
-    op <- Gen oneOf ops
-  } yield op(lhs, rhs)
+  ): Gen[R] = Gen.parameterized { params =>
+    for {
+      size <- Gen.size
+      op <- Gen oneOf ops
+
+      lhsSize = params.rng.nextInt(size - 1)
+      lhs <- Gen resize (lhsSize, genBranch)
+
+      rhsSize = size - 1 - lhsSize
+      rhs <- Gen resize (rhsSize, genBranch)
+    } yield op(lhs, rhs)
+  }
 }
