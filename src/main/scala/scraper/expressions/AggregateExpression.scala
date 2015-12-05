@@ -22,7 +22,7 @@ trait AggregateExpression extends UnaryExpression {
     }
   } yield if (sameChildren(Seq(e))) this else makeCopy(Seq(e))
 
-  override def dataType: DataType = whenStrictlyTyped(child.dataType)
+  override def dataType: DataType = whenStrictlyTyped(DoubleType)
 
   override def annotatedString: String = ???
 
@@ -34,7 +34,7 @@ trait AggregateExpression extends UnaryExpression {
 case class Count(child: Expression) extends AggregateExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm
-  } yield if (sameChildren(Seq(e))) this else makeCopy(Seq(e))
+  } yield if (e sameOrEqual child) this else copy(child = e)
 
   override def dataType: DataType = LongType
 
