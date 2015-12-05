@@ -50,7 +50,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def agg(expr: Expression, exprs: Expression*): DataFrame = this groupBy () agg (expr, exprs: _*)
 
-  def sortBy(expr: Expression, exprs: Expression*): DataFrame = build { plan =>
+  def orderBy(expr: Expression, exprs: Expression*): DataFrame = build { plan =>
     Sort(plan, (expr +: exprs).map(SortOrder(_, Ascending)))
   }
 
