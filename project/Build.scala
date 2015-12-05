@@ -57,7 +57,7 @@ object Build extends sbt.Build {
           |
           |import scraper.Test._
           |import scraper.types._
-          |import scraper.generators.expr._
+          |import scraper.generators.expressions._
           |import scraper.generators.types._
           |import scraper.generators.values._
           |""".stripMargin
