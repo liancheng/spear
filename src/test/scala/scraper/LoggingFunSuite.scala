@@ -1,6 +1,7 @@
 package scraper
 
 import org.scalatest.{FunSuite, Outcome}
+
 import scraper.utils.Logging
 
 trait LoggingFunSuite extends FunSuite with Logging {

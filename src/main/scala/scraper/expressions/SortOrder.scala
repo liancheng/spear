@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.Try
 
 import scraper.exceptions.TypeMismatchException
-import scraper.types.{PrimitiveType, DataType}
+import scraper.types.{DataType, PrimitiveType}
 
 abstract sealed class SortDirection
 case object Ascending extends SortDirection

@@ -1,9 +1,9 @@
 package scraper.plans.physical
 
-import scraper.{JoinedRow, Row}
 import scraper.expressions.BoundRef.bind
 import scraper.expressions._
 import scraper.plans.QueryPlan
+import scraper.{JoinedRow, Row}
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]

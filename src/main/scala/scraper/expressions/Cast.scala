@@ -4,8 +4,8 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
 import scraper.expressions.Cast.{buildCast, convertible}
+import scraper.types
 import scraper.types._
-import scraper.{Row, types}
 
 case class Cast(child: Expression, dataType: DataType) extends UnaryExpression {
   override def annotatedString: String =

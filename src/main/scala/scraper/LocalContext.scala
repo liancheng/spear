@@ -1,7 +1,6 @@
 package scraper
 
-import scala.collection.Iterable
-import scala.collection.mutable
+import scala.collection.{Iterable, mutable}
 import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.exceptions.TableNotFoundException

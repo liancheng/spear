@@ -4,6 +4,7 @@ import scala.collection.JavaConverters._
 
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
+
 import scraper.Row
 import scraper.config.Settings
 import scraper.config.Settings.Key

@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
+
 import scraper.LoggingFunSuite
 import scraper.generators.types._
 

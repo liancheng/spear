@@ -1,6 +1,7 @@
 package scraper.expressions
 
 import org.scalatest.prop.Checkers
+
 import scraper.LoggingFunSuite
 import scraper.types.TestUtils
 
