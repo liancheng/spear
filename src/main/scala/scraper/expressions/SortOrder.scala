@@ -2,8 +2,7 @@ package scraper.expressions
 
 import scala.util.Try
 
-import scraper.Row
-import scraper.exceptions.{TypeMismatchException, ContractBrokenException}
+import scraper.exceptions.TypeMismatchException
 import scraper.types.{PrimitiveType, DataType}
 
 abstract sealed class SortDirection
@@ -15,13 +14,10 @@ case object Descending extends SortDirection
  * transformations over expression will descend into its child.
  */
 case class SortOrder(child: Expression, direction: SortDirection)
-  extends UnaryExpression {
+  extends UnaryExpression with UnevaluableExpression {
 
   /** Sort order is not foldable because we don't have an eval for it. */
   override def foldable: Boolean = false
-
-  override def evaluate(input: Row): Any =
-    throw new ContractBrokenException("Cannot call SortOrder.evaluate directly")
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm map {
