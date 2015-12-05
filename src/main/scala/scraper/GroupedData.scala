@@ -4,23 +4,15 @@ import scraper.expressions._
 import scraper.plans.logical.Aggregate
 
 class GroupedData(df: DataFrame, groupingExprs: Seq[Expression]) {
-
   private[this] def alias(expr: Expression): NamedExpression = expr match {
     case expr: NamedExpression => expr
     case expr: Expression      => Alias(expr.getClass.getSimpleName, expr)
   }
 
-  private[this] def toDF(aggExprs: Seq[Expression]): DataFrame = {
-    val aliased = aggExprs.map(alias)
-    new DataFrame(Aggregate(groupingExprs, aliased, df.queryExecution.logicalPlan), df.context)
+  private[this] def toDF(aggs: Seq[Expression]): DataFrame = {
+    val aliased = aggs.map(alias)
+    new DataFrame(Aggregate(df.queryExecution.logicalPlan, groupingExprs, aliased), df.context)
   }
 
   def agg(expr: Expression, exprs: Expression*): DataFrame = toDF(expr +: exprs)
-}
-
-object GroupedData {
-  def count() = Count(Literal(1))
-  def sum(expr: Expression) = Sum(expr)
-  def max(expr: Expression) = Max(expr)
-  def min(expr: Expression) = Min(expr)
 }

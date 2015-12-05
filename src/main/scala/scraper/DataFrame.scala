@@ -48,6 +48,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
 
+  def agg(expr: Expression, exprs: Expression*): DataFrame = this groupBy () agg (expr, exprs: _*)
+
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
   def registerAsTable(tableName: String): Unit =
