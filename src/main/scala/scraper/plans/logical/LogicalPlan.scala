@@ -90,7 +90,7 @@ case object SingleRowRelation extends LeafLogicalPlan {
   override def sql: String = ???
 }
 
-case class LocalRelation(data: Traversable[Row], schema: TupleType)
+case class LocalRelation(data: Iterable[Row], schema: TupleType)
   extends LeafLogicalPlan {
 
   override val output: Seq[Attribute] = schema.toAttributes
@@ -102,9 +102,9 @@ case class LocalRelation(data: Traversable[Row], schema: TupleType)
 }
 
 object LocalRelation {
-  def apply[T <: Product: WeakTypeTag](data: Traversable[T]): LocalRelation = {
+  def apply[T <: Product: WeakTypeTag](data: Iterable[T]): LocalRelation = {
     val schema = fieldSpecFor[T].dataType match { case t: TupleType => t }
-    val rows = data.map { product => new Row(product.productIterator.toSeq) }
+    val rows = data.map { product => Row.fromSeq(product.productIterator.toSeq) }
     LocalRelation(rows, schema)
   }
 }

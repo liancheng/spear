@@ -1,5 +1,6 @@
 package scraper
 
+import scala.collection.Iterable
 import scala.collection.mutable
 import scala.reflect.runtime.universe.WeakTypeTag
 
@@ -65,10 +66,10 @@ class LocalContext extends Context {
 
   override private[scraper] val plan = new LocalQueryPlanner
 
-  def lift[T <: Product: WeakTypeTag](data: Traversable[T]): DataFrame =
+  def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(new QueryExecution(LocalRelation(data), this))
 
-  def lift[T <: Product: WeakTypeTag](data: Traversable[T], columnNames: String*): DataFrame = {
+  def lift[T <: Product: WeakTypeTag](data: Iterable[T], columnNames: String*): DataFrame = {
     val LocalRelation(rows, schema) = LocalRelation(data)
     new DataFrame(LocalRelation(rows, schema rename columnNames), this)
   }
@@ -117,11 +118,12 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case child Limit n =>
         physical.Limit(planLater(child), n) :: Nil
 
-      case Join(left, right, Inner, None) =>
-        physical.CartesianProduct(planLater(left), planLater(right)) :: Nil
+      case Join(left, right, Inner, maybeCondition) =>
+        val joined = physical.CartesianProduct(planLater(left), planLater(right))
+        maybeCondition.map(c => physical.Filter(joined, c)).getOrElse(joined) :: Nil
 
       case relation @ LocalRelation(data, _) =>
-        physical.LocalRelation(data.toIterator, relation.output) :: Nil
+        physical.LocalRelation(data, relation.output) :: Nil
 
       case child Subquery _ =>
         planLater(child) :: Nil

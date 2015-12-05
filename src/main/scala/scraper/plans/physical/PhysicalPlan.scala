@@ -1,6 +1,6 @@
 package scraper.plans.physical
 
-import scraper.Row
+import scraper.{JoinedRow, Row}
 import scraper.expressions.BoundRef.bind
 import scraper.expressions._
 import scraper.plans.QueryPlan
@@ -39,10 +39,10 @@ case object SingleRowRelation extends LeafPhysicalPlan {
   override val output: Seq[Attribute] = Nil
 }
 
-case class LocalRelation(data: Iterator[Row], override val output: Seq[Attribute])
+case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
   extends LeafPhysicalPlan {
 
-  override def iterator: Iterator[Row] = data
+  override def iterator: Iterator[Row] = data.iterator
 
   override def nodeCaption: String =
     s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
@@ -55,7 +55,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     val boundProjections = expressions map (bind(_, child.output))
-    new Row(boundProjections map (_ evaluate row))
+    Row.fromSeq(boundProjections map (_ evaluate row))
   }
 
   override def nodeCaption: String =
@@ -87,10 +87,9 @@ case class CartesianProduct(left: PhysicalPlan, right: PhysicalPlan) extends Bin
   override def output: Seq[Attribute] = left.output ++ right.output
 
   override def iterator: Iterator[Row] = for {
-    lhs <- left.iterator
-    rhs <- right.iterator
-    row = new Row((lhs.iterator ++ right.iterator).toSeq)
-  } yield row
+    leftRow <- left.iterator
+    rightRow <- right.iterator
+  } yield JoinedRow(leftRow, rightRow)
 
   override def nodeCaption: String = getClass.getSimpleName
 }

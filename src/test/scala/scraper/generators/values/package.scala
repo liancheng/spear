@@ -83,6 +83,6 @@ package object values {
         if (nullable) Gen.option(genNonNullField) map (_.orNull) else genNonNullField
     })
 
-    for (fields <- genFields) yield new Row(fields.asScala)
+    for (fields <- genFields) yield Row.fromSeq(fields.asScala)
   }
 }

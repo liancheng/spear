@@ -4,7 +4,7 @@ import scraper.Context._
 import scraper.LocalContextSuite.Person
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.TestUtils
+import scraper.types.{StringType, TestUtils}
 
 class LocalContextSuite extends LoggingFunSuite with TestUtils {
   private implicit val context = new LocalContext
@@ -50,6 +50,21 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   test("resolution") {
     val df = context range 10 select ('id + 1 as 'x) where 'x > 5
     assert(df.queryExecution.analyzedPlan.strictlyTyped)
+  }
+
+  test("join") {
+    val left = context range 2
+    val right = context.range(2).select(('id + 1).cast(StringType).as("str"))
+
+    checkDataFrame(
+      left.join(right),
+      Seq(Row(0, "1"), Row(0, "2"), Row(1, "1"), Row(1, "2"))
+    )
+
+    checkDataFrame(
+      left.join(right, Some('id > 0)),
+      Seq(Row(1, "1"), Row(1, "2"))
+    )
   }
 }
 
