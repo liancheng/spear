@@ -187,19 +187,18 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 }
 
 case class Aggregate(
+  child: LogicalPlan,
   groupingExpressions: Seq[Expression],
-  aggregateExpressions: Seq[NamedExpression],
-  child: LogicalPlan
-) extends UnaryLogicalPlan {
+  aggregateExpressions: Seq[NamedExpression]) extends UnaryLogicalPlan {
+
   override def sql: String = ???
 
-  override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
+  override lazy val output: Seq[Attribute] = aggregateExpressions map (_.toAttribute)
 }
 
 case class Sort(
-  child: LogicalPlan,
-  order: Seq[SortOrder]
-) extends UnaryLogicalPlan {
+    child: LogicalPlan,
+    order: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 
   override def sql: String = ???

@@ -48,6 +48,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
 
+  def agg(expr: Expression, exprs: Expression*): DataFrame = this groupBy () agg (expr, exprs: _*)
+
   def sortBy(expr: Expression, exprs: Expression*): DataFrame = build { plan =>
     Sort(plan, (expr +: exprs).map(SortOrder(_, Ascending)))
   }
