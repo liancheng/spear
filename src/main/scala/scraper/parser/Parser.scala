@@ -139,7 +139,10 @@ class Parser extends TokenParser[LogicalPlan] {
   private def star: Parser[Star.type] = "*" ^^^ Star
 
   private def expression: Parser[Expression] =
-    termExpression | predicate
+    arithmetic | predicate
+
+  private def arithmetic: Parser[Expression] =
+    termExpression
 
   private def predicate: Parser[Expression] =
     orExpression
@@ -151,7 +154,7 @@ class Parser extends TokenParser[LogicalPlan] {
     (notExpression | comparison) * (AND ^^^ And)
 
   private def notExpression: Parser[Expression] =
-    NOT ~> comparison ^^ Not
+    NOT ~> predicate ^^ Not
 
   private def comparison: Parser[Expression] = (
     termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
@@ -164,14 +167,13 @@ class Parser extends TokenParser[LogicalPlan] {
     | booleanLiteral
   )
 
-  private def termExpression: Parser[Expression] =
-    arithmeticExpression
-
-  private def arithmeticExpression: Parser[Expression] =
-    productExpression * (
+  private def termExpression: Parser[Expression] = (
+    "-" ~> productExpression ^^ Negate
+    | productExpression * (
       "+" ^^^ Add
       | "-" ^^^ Minus
     )
+  )
 
   private def productExpression: Parser[Expression] =
     baseExpression * (

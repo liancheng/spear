@@ -1,116 +1,197 @@
 package scraper.generators
 
-import org.scalacheck.Shrink.shrink
-import org.scalacheck.{Gen, Shrink}
+import org.scalacheck.Gen
 import scraper.config.Settings
+import scraper.config.Settings.Key
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions._
 import scraper.generators.values._
-import scraper.types.{BooleanType, DataType, PrimitiveType}
+import scraper.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
+import scraper.utils.Logging
 
-package object expressions {
-  def genExpression(input: Seq[Expression], dataType: DataType)(
+package object expressions extends Logging {
+  val NullProbabilities = Key("scraper.test.values.probabilities.null").double
+
+  def genExpression(
+    input: Seq[Expression], outputSpec: FieldSpec
+  )(
     implicit
     settings: Settings
-  ): Gen[Expression] =
-    Gen sized {
-      case size if size < 3 =>
-        genTermExpression(input, dataType)(settings)
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType | BooleanType.Implicitly(_)    => genPredicate(input, outputSpec)(settings)
+    case _: NumericType | NumericType.Implicitly(_) => genArithmetic(input, outputSpec)(settings)
+  }
 
-      case size =>
-        Gen oneOf (
-          genTermExpression(input, dataType)(settings),
-          genPredicate(input, dataType)(settings)
-        )
-    }
-
-  def genPredicate(input: Seq[Expression], dataType: DataType)(
+  def genArithmetic(
+    input: Seq[Expression], outputSpec: FieldSpec
+  )(
     implicit
     settings: Settings
-  ): Gen[Expression] =
-    genOrExpression(input, dataType)(settings)
+  ): Gen[Expression] = outputSpec.dataType match {
+    case _: NumericType | NumericType.Implicitly(_) =>
+      genTermExpression(input, outputSpec)(settings)
+  }
 
-  def genOrExpression(input: Seq[Expression], dataType: DataType)(
+  def genTermExpression(
+    input: Seq[Expression], outputSpec: FieldSpec
+  )(
     implicit
     settings: Settings
-  ): Gen[Expression] =
-    genUnaryOrBinary(genAndExpression(input, dataType)(settings), Or)
+  ): Gen[Expression] = outputSpec.dataType match {
+    case _: NumericType | NumericType.Implicitly(_) =>
+      for {
+        size <- Gen.size
 
-  def genAndExpression(input: Seq[Expression], dataType: DataType)(
+        genProduct = genProductExpression(input, outputSpec)(settings)
+        genNegate = Gen resize (size - 1, genProduct map Negate)
+        genTerm = genUnaryOrBinary(genProduct, Add, Minus)
+
+        term <- size match {
+          case 1 => genProduct
+          case 2 => Gen oneOf (genProduct, genNegate)
+          case _ => Gen oneOf (genProduct, genNegate, genTerm)
+        }
+      } yield term
+
+    case BooleanType | BooleanType.Implicitly(_) =>
+      genPredicate(input, outputSpec)(settings)
+  }
+
+  def genProductExpression(
+    input: Seq[Expression], outputSpec: FieldSpec
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case _: NumericType | NumericType.Implicitly(_) =>
+      Gen.sized {
+        case size if size < 2 =>
+          genBaseExpression(input, outputSpec)(settings)
+
+        case size =>
+          val genBranch = genBaseExpression(input, outputSpec)(settings)
+          genUnaryOrBinary(genBranch, Multiply, Divide)
+      }
+  }
+
+  def genBaseExpression(
+    input: Seq[Expression], outputSpec: FieldSpec
+  )(
     implicit
     settings: Settings
   ): Gen[Expression] = {
-    val genBranch = Gen oneOf (
-      genNotExpression(input, dataType)(settings),
-      genComparison(input, dataType)(settings)
-    )
-    genUnaryOrBinary(genBranch, And)
-  }
-
-  def genNotExpression(input: Seq[Expression], dataType: DataType)(
-    implicit
-    settings: Settings
-  ): Gen[Expression] =
-    for {
-      size <- Gen.size
-      comparison <- Gen resize (size - 1, genComparison(input, dataType)(settings))
-    } yield !comparison
-
-  def genComparison(input: Seq[Expression], dataType: DataType)(
-    implicit
-    settings: Settings
-  ): Gen[Expression] =
-    Gen oneOf (
-      genLiteral(BooleanType),
-      genBinary(genTermExpression(input, dataType)(settings), Eq, NotEq, Gt, GtEq, Lt, LtEq),
-      input collect { case BooleanType(e) => Gen const e }: _*
-    )
-
-  def genTermExpression(input: Seq[Expression], dataType: DataType)(
-    implicit
-    settings: Settings
-  ): Gen[Expression] =
-    genUnaryOrBinary(genProductExpression(input, dataType)(settings), Add, Minus)
-
-  def genProductExpression(input: Seq[Expression], dataType: DataType)(
-    implicit
-    settings: Settings
-  ): Gen[Expression] =
-    genUnaryOrBinary(genBaseExpression(input, dataType)(settings), Multiply, Divide)
-
-  def genBaseExpression(input: Seq[Expression], dataType: DataType)(
-    implicit
-    settings: Settings
-  ): Gen[Expression] =
-    dataType match {
-      case t: PrimitiveType =>
-        Gen oneOf (
-          Gen oneOf input,
-          genLiteral(t),
-          genExpression(input, dataType)(settings)
-        )
-
-      case _ =>
-        val es = input filter (e => implicitlyConvertible(e.dataType, dataType))
-        if (es.isEmpty) {
-          genExpression(input, dataType)(settings)
-        } else {
-          Gen oneOf (Gen oneOf es, genExpression(input, dataType)(settings))
-        }
+    val candidates = input.filter { e =>
+      e.nullable == outputSpec.nullable && (
+        e.dataType == outputSpec.dataType ||
+        implicitlyConvertible(e.dataType, outputSpec.dataType)
+      )
     }
 
-  def genLiteral(dataType: PrimitiveType): Gen[Literal] =
-    genValueForPrimitiveType(dataType) map Literal.apply
+    val genLeaf = if (candidates.nonEmpty) {
+      Gen oneOf candidates
+    } else {
+      genLiteral(outputSpec)(settings)
+    }
 
-  implicit val shrinkLiteral: Shrink[Literal] = Shrink {
-    case lit @ Literal(value: Boolean, _) => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Byte, _)    => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Short, _)   => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Int, _)     => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Long, _)    => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Float, _)   => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Double, _)  => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: String, _)  => shrink(value) map (v => lit.copy(value = v))
+    Gen.sized {
+      case 1    => genLeaf
+      case size => Gen oneOf (genLeaf, Gen lzy genExpression(input, outputSpec)(settings))
+    }
+  }
+
+  def genPredicate(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType => genOrExpression(input, outputSpec)(settings)
+  }
+
+  def genOrExpression(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType | BooleanType.Implicitly(_) =>
+      val genBranch = genAndExpression(input, outputSpec)(settings)
+      genUnaryOrBinary(genBranch, Or)
+  }
+
+  def genAndExpression(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType | BooleanType.Implicitly(_) =>
+      val genBranch = Gen.sized {
+        case size if size < 2 =>
+          genComparison(input, outputSpec)(settings)
+
+        case _ =>
+          Gen oneOf (
+            genNotExpression(input, outputSpec)(settings),
+            genComparison(input, outputSpec)(settings)
+          )
+      }
+
+      genUnaryOrBinary(genBranch, And)
+  }
+
+  def genNotExpression(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType | BooleanType.Implicitly(_) =>
+      for {
+        size <- Gen.size
+        predicate <- Gen resize (size - 1, genPredicate(input, outputSpec)(settings))
+      } yield Not(predicate)
+  }
+
+  def genComparison(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = outputSpec.dataType match {
+    case BooleanType | BooleanType.Implicitly(_) =>
+      val genBoolLiteral = genLiteral(outputSpec.copy(dataType = BooleanType))
+      val genBranch = Gen lzy genTermExpression(input, outputSpec)(settings)
+
+      Gen.sized {
+        case size if size < 2 =>
+          genBoolLiteral
+
+        case _ =>
+          Gen oneOf (
+            genBinary(genBranch, Gt, GtEq, Lt, LtEq, Eq, NotEq),
+            genBoolLiteral
+          )
+      }
+  }
+
+  def genLiteral(outputSpec: FieldSpec)(implicit settings: Settings): Gen[Literal] = {
+    val (dataType, nullable) = outputSpec match {
+      case FieldSpec(t: PrimitiveType, n) => (t, n)
+      case FieldSpec(t, _) =>
+        throw new TypeMismatchException(
+          s"Literal only accepts primitive type while a ${t.sql} was found"
+        )
+    }
+
+    val nullFreq = if (nullable) (settings(NullProbabilities) * 100).toInt else 0
+    val nonNullFreq = 100 - nullFreq
+
+    Gen frequency (
+      nullFreq -> Gen.const(Literal(null, dataType)),
+      nonNullFreq -> genValueForPrimitiveType(dataType).map(Literal(_, dataType))
+    )
   }
 
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
@@ -121,11 +202,16 @@ package object expressions {
 
   private def genBinary[T <: Expression, R <: Expression](
     genBranch: Gen[T], ops: ((T, T) => R)*
-  ): Gen[R] =
+  ): Gen[R] = Gen.parameterized { params =>
     for {
       size <- Gen.size
-      lhs <- Gen resize ((size - 1) / 2, genBranch)
-      rhs <- Gen resize ((size - 1) / 2, genBranch)
       op <- Gen oneOf ops
+
+      lhsSize = params.rng.nextInt(size - 1)
+      lhs <- Gen resize (lhsSize, genBranch)
+
+      rhsSize = size - 1 - lhsSize
+      rhs <- Gen resize (rhsSize, genBranch)
     } yield op(lhs, rhs)
+  }
 }
