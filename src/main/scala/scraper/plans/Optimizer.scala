@@ -155,7 +155,7 @@ object Optimizer {
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan: Filter =>
-        plan transformExpressionsUp {
+        plan transformExpressionsDown {
           case Not(lhs Or rhs)                => !lhs && !rhs
           case Not(lhs And rhs)               => !lhs || !rhs
           case (innerLhs And innerRhs) Or rhs => (innerLhs || rhs) && (innerRhs || rhs)
@@ -169,9 +169,14 @@ object Optimizer {
    */
   object ReduceFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Filter True               => plan
-      case plan Filter False              => EmptyRelation
-      case plan Filter inner Filter outer => plan filter inner && outer
+      case plan Filter inner Filter outer => plan filter (inner && outer)
+    }
+  }
+
+  object FoldConstantFilters extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan Filter True  => plan
+      case plan Filter False => EmptyRelation
     }
   }
 
