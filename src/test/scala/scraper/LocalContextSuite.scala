@@ -91,6 +91,11 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       df.groupBy('i).agg(min('j)),
       Seq(Row(-1.0), Row(4.0))
     )
+
+    checkDataFrame(
+      df.groupBy('i).agg(count(), sum('j), max('j), min('j)),
+      Seq(Row(3, 2.0, 2.0, -1.0), Row(2, 9.0, 5.0, 4.0))
+    )
   }
 }
 
