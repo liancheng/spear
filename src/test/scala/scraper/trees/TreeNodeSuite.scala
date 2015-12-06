@@ -1,6 +1,7 @@
 package scraper.trees
 
 import scala.collection.Iterator.iterate
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 import org.scalacheck.Prop.{BooleanOperators, all}
@@ -12,16 +13,32 @@ import scraper.LoggingFunSuite
 import scraper.trees.TreeNodeSuite.Node
 import scraper.types.TestUtils
 
-class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
-  private def genNode: Gen[Node] = Gen.sized {
-    case 1 =>
-      Gen const Node(1, Nil)
+import scala.util.Random
 
-    case size =>
+class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
+  private def genNode: Gen[Node] = Gen.parameterized { param =>
+    val size = param.size
+    if (size < 2) {
+      Node(1, Nil)
+    } else {
       for {
-        width <- Gen choose (1, size - 1)
-        children <- Gen listOfN (width, Gen resize ((size - 1) / width, Gen lzy genNode))
-      } yield Node(1, children)
+        width <- Gen choose (1, math.min(size - 1, 8))
+        childrenSizes = genNIntWithSumM(param.rng, width, size - 1)
+        children <- Gen.sequence(childrenSizes.map(Gen.resize(_, genNode)))
+      } yield Node(1, children.asScala)
+    }
+  }
+
+  private def genNIntWithSumM(rng: Random, n: Int, m: Int): Seq[Int] = {
+    assert(n <= m)
+    if (n == 1) {
+      Seq(m)
+    } else {
+      // see http://blog.csdn.net/morewindows/article/details/8439393 TODO: find an english blog
+      val init = (1 until n).map(_ => rng.nextInt(m)).sorted
+      val deltas = for (index <- 1 until n - 1) yield init(index) - init(index - 1)
+      init.head +: deltas :+ (m - init.last)
+    }
   }
 
   implicit val arbNode = Arbitrary(genNode)
@@ -99,6 +116,13 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
         "the generator we are using only generates nodes with value 1" |:
           !tree.exists(_.value == 2)
       )
+    }
+  }
+
+  ignore("wrong exists") {
+    check { tree: Node =>
+      println(tree.prettyTree)
+      tree.exists(_.children.length == 2) == tree.wrongExists(_.children.length == 2)
     }
   }
 
