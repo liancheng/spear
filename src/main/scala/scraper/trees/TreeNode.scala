@@ -102,14 +102,6 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
-  def wrongExists(f: Base => Boolean): Boolean = {
-    transformDown {
-      case node if f(node) && !children.exists(f) => return true
-      case node                                   => node
-    }
-    false
-  }
-
   def prettyTree: String = prettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = toString

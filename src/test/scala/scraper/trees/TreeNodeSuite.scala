@@ -6,14 +6,12 @@ import scala.language.implicitConversions
 
 import org.scalacheck.Prop.{BooleanOperators, all}
 import org.scalacheck.util.Pretty
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Shrink, Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
 import scraper.trees.TreeNodeSuite.Node
 import scraper.types.TestUtils
-
-import scala.util.Random
 
 class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   private def genNode: Gen[Node] = Gen.parameterized { param =>
@@ -23,25 +21,30 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
     } else {
       for {
         width <- Gen choose (1, math.min(size - 1, 8))
-        childrenSizes = genNIntWithSumM(param.rng, width, size - 1)
+        childrenSizes = scraper.generators.randomPartition(param.rng, size - 1, width)
         children <- Gen.sequence(childrenSizes.map(Gen.resize(_, genNode)))
-      } yield Node(1, children.asScala)
-    }
-  }
-
-  private def genNIntWithSumM(rng: Random, n: Int, m: Int): Seq[Int] = {
-    assert(n <= m)
-    if (n == 1) {
-      Seq(m)
-    } else {
-      // see http://blog.csdn.net/morewindows/article/details/8439393 TODO: find an english blog
-      val init = (1 until n).map(_ => rng.nextInt(m)).sorted
-      val deltas = for (index <- 1 until n - 1) yield init(index) - init(index - 1)
-      init.head +: deltas :+ (m - init.last)
+      } yield Node(1, children.asScala.toArray.toSeq)
     }
   }
 
   implicit val arbNode = Arbitrary(genNode)
+
+  implicit val nodeShrink: Shrink[Node] = Shrink { input =>
+    if (input.isLeaf) {
+      Stream.empty
+    } else {
+      input.children.toStream :+ removeLeaf(input)
+    }
+  }
+
+  private def removeLeaf(node: Node): Node = {
+    var stop = false
+    node transformUp {
+      case n if !stop && !n.isLeaf =>
+        stop = true
+        Node(1, Nil)
+    }
+  }
 
   implicit def prettyNode(tree: Node): Pretty = Pretty {
     _ => "\n" + tree.prettyTree
@@ -119,10 +122,9 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
     }
   }
 
-  ignore("wrong exists") {
+  test("wrong exists") {
     check { tree: Node =>
-      println(tree.prettyTree)
-      tree.exists(_.children.length == 2) == tree.wrongExists(_.children.length == 2)
+      tree.exists(_.children.length == 4) == tree.wrongExists(_.children.length == 4)
     }
   }
 
@@ -152,5 +154,13 @@ object TreeNodeSuite {
     override def nodeCaption: String = s"Node($value)"
 
     def isLeaf: Boolean = children.isEmpty
+
+    def wrongExists(f: Node => Boolean): Boolean = {
+      transformDown {
+        case node if f(node) && node.children.forall(_.isLeaf) => return true
+        case node => node
+      }
+      false
+    }
   }
 }
