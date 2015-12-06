@@ -3,9 +3,9 @@ package scraper.trees
 import scala.collection.Iterator.iterate
 import scala.language.implicitConversions
 
-import org.scalacheck.Prop.{BooleanOperators, all, forAll}
+import org.scalacheck.Prop.{BooleanOperators, all}
 import org.scalacheck.util.Pretty
-import org.scalacheck.{Arbitrary, Gen, Test}
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
@@ -54,13 +54,13 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("collect") {
-    val prop = forAll { tree: Node =>
+    check { tree: Node =>
       val even = tree collect { case n if n.children.size % 2 == 0 => n }
       val odd = tree collect { case n if n.children.size % 2 == 1 => n }
       val nodes = tree collect { case n => n }
 
       all(
-        "all nodes are collected" |:
+        "all nodes should be collected" |:
           (nodes.size == tree.size),
 
         "a node can't be both even and odd" |:
@@ -69,15 +69,13 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
         "a node must be either even or odd" |:
           (even.size + odd.size == nodes.size),
 
-        "even nodes are even" |:
+        "even nodes should be even" |:
           (even forall (_.children.size % 2 == 0)),
 
-        "odd nodes are odd" |:
+        "odd nodes should be odd" |:
           (odd forall (_.children.size % 2 == 1))
       )
     }
-
-    check(prop, Test.Parameters.defaultVerbose)
   }
 
   test("forall") {
