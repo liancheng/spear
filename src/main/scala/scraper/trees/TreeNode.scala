@@ -48,7 +48,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
           case node: TreeNode[_] if children contains node => applyRule(node.asInstanceOf[Base])
           case element                                     => element -> false
         }.unzip
-        newElements -> (elementsChanged exists identity)
+        newElements -> (elementsChanged exists (_ == true))
 
       case arg: AnyRef =>
         arg -> false
@@ -57,7 +57,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
         (null, false)
     }.toSeq.unzip
 
-    if (argsChanged exists identity) makeCopy(newArgs) else this
+    if (argsChanged contains true) makeCopy(newArgs) else this
   }
 
   protected def makeCopy(args: Seq[AnyRef]): Base = {

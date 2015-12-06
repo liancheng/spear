@@ -40,12 +40,12 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
           case e: Expression => applyRule(e)
           case e             => e -> false
         }.unzip
-        newElements -> (elementsChanged exists identity)
+        newElements -> (elementsChanged exists (_ == true))
 
       case arg: AnyRef =>
         arg -> false
     }.toSeq.unzip
 
-    if (argsChanged exists identity) makeCopy(newArgs) else this
+    if (argsChanged contains true) makeCopy(newArgs) else this
   }
 }
