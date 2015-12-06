@@ -1,6 +1,7 @@
 package scraper.generators
 
-import org.scalacheck.Gen
+import org.scalacheck.Shrink.shrink
+import org.scalacheck.{Gen, Shrink}
 
 import scraper.config.Settings
 import scraper.config.Settings.Key
@@ -193,6 +194,17 @@ package object expressions extends Logging {
       nullFreq -> Gen.const(Literal(null, dataType)),
       nonNullFreq -> genValueForPrimitiveType(dataType).map(Literal(_, dataType))
     )
+  }
+
+  implicit val shrinkLiteral: Shrink[Literal] = Shrink {
+    case lit @ Literal(value: Boolean, _) => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Byte, _)    => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Short, _)   => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Int, _)     => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Long, _)    => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Float, _)   => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Double, _)  => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: String, _)  => shrink(value) map (v => lit.copy(value = v))
   }
 
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
