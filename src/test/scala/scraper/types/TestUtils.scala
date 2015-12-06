@@ -9,7 +9,7 @@ import scraper.utils._
 import scraper.{DataFrame, Row}
 
 trait TestUtils { this: FunSuite =>
-  private[scraper] def assertSideBySide(expected: String, actual: String): Unit = {
+  private[scraper] def assertSideBySide(expected: String, actual: String): Boolean = {
     if (expected != actual) {
       fail(sideBySide(
         s"""Expected
@@ -23,12 +23,14 @@ trait TestUtils { this: FunSuite =>
         withHeader = true
       ))
     }
+
+    true
   }
 
   private[scraper] def checkTree[T <: TreeNode[T]](
     expected: TreeNode[T],
     actual: TreeNode[T]
-  ): Unit = {
+  ): Boolean = {
     assertSideBySide(expected.prettyTree, actual.prettyTree)
   }
 
@@ -46,14 +48,14 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](expected: Plan, actual: Plan): Unit = {
+  private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](expected: Plan, actual: Plan): Boolean = {
     checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
   }
 
-  private[scraper] def checkDataFrame(ds: DataFrame, expected: Row): Unit =
+  private[scraper] def checkDataFrame(ds: DataFrame, expected: Row): Boolean =
     checkDataFrame(ds, expected :: Nil)
 
-  private[scraper] def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Unit = {
+  private[scraper] def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Boolean = {
     val actual = ds.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
       val explanation = ds.explain(extended = true)
@@ -80,5 +82,7 @@ trait TestUtils { this: FunSuite =>
            |""".stripMargin
       )
     }
+
+    true
   }
 }

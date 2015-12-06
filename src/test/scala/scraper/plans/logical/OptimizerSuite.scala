@@ -50,7 +50,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           case _ Filter condition => splitConjunction(condition)
         }.flatten
 
-        conditions.forall {
+        conditions forall {
           // Within generated predicate expressions, there can be nested conjunctions within
           // comparison expressions, which should be ignore.  For example, the following predicate
           // is in CNF although the `=` comparison contains a nested conjunction:
