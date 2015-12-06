@@ -1,11 +1,12 @@
 package scraper.trees
 
 import scala.collection.Iterator.iterate
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 import org.scalacheck.Prop.{BooleanOperators, all}
 import org.scalacheck.util.Pretty
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Shrink, Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
@@ -13,18 +14,37 @@ import scraper.trees.TreeNodeSuite.Node
 import scraper.types.TestUtils
 
 class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
-  private def genNode: Gen[Node] = Gen.sized {
-    case 1 =>
-      Gen const Node(1, Nil)
-
-    case size =>
+  private def genNode: Gen[Node] = Gen.parameterized { param =>
+    val size = param.size
+    if (size < 2) {
+      Node(1, Nil)
+    } else {
       for {
-        width <- Gen choose (1, size - 1)
-        children <- Gen listOfN (width, Gen resize ((size - 1) / width, Gen lzy genNode))
-      } yield Node(1, children)
+        width <- Gen choose (1, math.min(size - 1, 8))
+        childrenSizes = scraper.generators.randomPartition(param.rng, size - 1, width)
+        children <- Gen.sequence(childrenSizes.map(Gen.resize(_, genNode)))
+      } yield Node(1, children.asScala.toArray.toSeq)
+    }
   }
 
   implicit val arbNode = Arbitrary(genNode)
+
+  implicit val nodeShrink: Shrink[Node] = Shrink { input =>
+    if (input.isLeaf) {
+      Stream.empty
+    } else {
+      input.children.toStream :+ removeLeaf(input)
+    }
+  }
+
+  private def removeLeaf(node: Node): Node = {
+    var stop = false
+    node transformUp {
+      case n if !stop && !n.isLeaf =>
+        stop = true
+        Node(1, Nil)
+    }
+  }
 
   implicit def prettyNode(tree: Node): Pretty = Pretty {
     _ => "\n" + tree.prettyTree
@@ -102,6 +122,12 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
     }
   }
 
+  test("wrong exists") {
+    check { tree: Node =>
+      tree.exists(_.children.length == 4) == tree.wrongExists(_.children.length == 4)
+    }
+  }
+
   test("size") {
     check { tree: Node =>
       tree.size == (tree collect { case n => n.value }).sum
@@ -128,5 +154,13 @@ object TreeNodeSuite {
     override def nodeCaption: String = s"Node($value)"
 
     def isLeaf: Boolean = children.isEmpty
+
+    def wrongExists(f: Node => Boolean): Boolean = {
+      transformDown {
+        case node if f(node) && node.children.forall(_.isLeaf) => return true
+        case node => node
+      }
+      false
+    }
   }
 }
