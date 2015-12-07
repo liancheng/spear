@@ -1,6 +1,9 @@
 package scraper.generators
 
-import org.scalacheck.Gen
+import scala.collection.immutable.Stream.Empty
+
+import org.scalacheck.Shrink.shrink
+import org.scalacheck.{Shrink, Gen}
 
 import scraper.config.Settings
 import scraper.config.Settings.Key
@@ -193,6 +196,59 @@ package object expressions extends Logging {
       nullFreq -> Gen.const(Literal(null, dataType)),
       nonNullFreq -> genValueForPrimitiveType(dataType).map(Literal(_, dataType))
     )
+  }
+
+  implicit lazy val shrinkByte: Shrink[Byte] = Shrink { n =>
+    shrink(n.toInt) map (_.toByte)
+  }
+
+  implicit lazy val shrinkShort: Shrink[Short] = Shrink { n =>
+    shrink(n.toInt) map (_.toShort)
+  }
+
+  implicit lazy val shrinkLong: Shrink[Long] = Shrink { n =>
+    if (n == 0) Empty else {
+      val ns = integralHalves(n / 2) map (n - _)
+      0 #:: interleave(ns, ns map (-1 * _))
+    }
+  }
+
+  implicit lazy val shrinkFloat: Shrink[Float] = shrinkFractional[Float]
+
+  implicit lazy val shrinkDouble: Shrink[Double] = shrinkFractional[Double]
+
+  private def shrinkFractional[T: Fractional]: Shrink[T] = Shrink { n =>
+    val f = implicitly[Fractional[T]]
+    val ns = fractionalHalves(f.div(n, f.fromInt(2))) map (f.minus(n, _))
+    f.zero #:: interleave(ns, ns map (f.times(_, f.fromInt(-1))))
+  }
+
+  private def integralHalves[T: Integral](n: T): Stream[T] = {
+    val i = implicitly[Integral[T]]
+    if (i.compare(n, i.zero) == 0) Empty else n #:: integralHalves(i.quot(n, i.fromInt(2)))
+  }
+
+  private def fractionalHalves[T: Fractional](n: T): Stream[T] = {
+    val f = implicitly[Fractional[T]]
+    val epsilon = f.toInt(f.times(f.abs(f.minus(n, f.zero)), f.fromInt(100000000)))
+    if (epsilon == 0) Empty else n #:: fractionalHalves(f.div(n, f.fromInt(2)))
+  }
+
+  private def interleave[T](xs: Stream[T], ys: Stream[T]): Stream[T] = (xs, ys) match {
+    case (Empty, _) => ys
+    case (_, Empty) => xs
+    case _          => xs.head #:: ys.head #:: interleave(xs.tail, ys.tail)
+  }
+
+  implicit lazy val shrinkLiteral: Shrink[Literal] = Shrink {
+    case lit @ Literal(value: Boolean, _) => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Byte, _)    => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Short, _)   => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Int, _)     => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Long, _)    => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Float, _)   => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Double, _)  => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: String, _)  => shrink(value) map (v => lit.copy(value = v))
   }
 
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
