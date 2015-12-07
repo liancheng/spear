@@ -198,8 +198,6 @@ package object expressions extends Logging {
     )
   }
 
-  implicit lazy val shrinkBoolean: Shrink[Boolean] = Shrink { !_ #:: Empty }
-
   implicit lazy val shrinkByte: Shrink[Byte] = Shrink { n =>
     shrink(n.toInt) map (_.toByte)
   }
