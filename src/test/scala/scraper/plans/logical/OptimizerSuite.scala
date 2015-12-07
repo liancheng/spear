@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scala.language.implicitConversions
 
-import org.scalacheck.Arbitrary
+import org.scalacheck.{Shrink, Arbitrary}
 import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
@@ -15,7 +15,7 @@ import scraper.generators.expressions._
 import scraper.plans.Optimizer.{CNFConversion, ReduceFilters}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.types.{TestUtils, TupleType}
+import scraper.types.{FieldSpec, TestUtils, TupleType}
 import scraper.{Analyzer, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
@@ -32,7 +32,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
       val analyzer = new Analyzer(new LocalCatalog)
       val optimizer = new RulesExecutor[LogicalPlan] {
         override def batches: Seq[RuleBatch] = Seq(
-          RuleBatch("TestBatch", FixedPoint.Unlimited, rule :: Nil)
+          RuleBatch("TestBatch", endCondition, rule :: Nil)
         )
       }
 
@@ -86,4 +86,64 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
       conditions == Seq(p1 && p2)
     }
   }
+
+  object WrongCNFConversion extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan: Filter =>
+        plan transformExpressionsDown {
+          case Not(lhs Or rhs)                => !lhs && !rhs
+          case Not(lhs And rhs)               => !lhs || !rhs
+          case (innerLhs And innerRhs) Or rhs => (innerLhs || rhs) && (innerRhs || rhs)
+          // case lhs Or (innerLhs And innerRhs) => (innerLhs || lhs) && (innerRhs || lhs)
+        }
+    }
+  }
+
+  implicit val shrinkExpression: Shrink[Expression] = Shrink { input =>
+    if (input.children.length == 0) {
+      input match {
+        case lit: Literal => shrinkLiteral.shrink(lit)
+        case _            => Stream.empty
+      }
+    } else {
+      input.children.filter(_.dataType == input.dataType).toStream :+ removeLeaf(input)
+    }
+  }
+
+  private def removeLeaf(expr: Expression): Expression = {
+    var stop = false
+    expr transformUp {
+      case e if !stop && e.children.length > 0 =>
+        stop = true
+        genLiteral(FieldSpec(e.dataType, e.nullable)).sample.get
+    }
+  }
+
+  // This test case is just a copy of CNF test.
+  // The WrongCNFConversion is obvious wrong when the right child of `Or` is `And`, let's see
+  // if we can shrink the input into the minimal format that can fail test.
+  testRule(WrongCNFConversion, FixedPoint.Unlimited) { optimizer =>
+    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
+
+    check(
+      forAll { predicate: Expression =>
+        val optimizedPlan = optimizer(SingleRowRelation filter predicate)
+        val conditions = optimizedPlan.collect {
+          case _ Filter condition => splitConjunction(condition)
+        }.flatten
+
+        conditions.forall {
+          _ transformDown {
+            case BinaryComparison(_ And _, _) => True
+            case BinaryComparison(_, _ And _) => True
+          } forall {
+            case _ And _ => false
+            case _       => true
+          }
+        }
+      },
+      MaxSize(20)
+    )
+  }
+
 }

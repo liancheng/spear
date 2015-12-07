@@ -122,6 +122,8 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
     }
   }
 
+  // This test case is obviously wrong if there is a `Node` having 4 children and one of its child
+  // is not leaf, let's see if we can shrink the input into the minimal format that can fail test.
   test("wrong exists") {
     check { tree: Node =>
       tree.exists(_.children.length == 4) == tree.wrongExists(_.children.length == 4)
