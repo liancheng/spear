@@ -101,10 +101,12 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
   implicit val expressionShrink: Shrink[Expression] = Shrink { input =>
     if (input.children.length == 0) {
-      // TODO: shrink leaf node
-      Stream.empty
+      input match {
+        case lit: Literal => shrinkLiteral.shrink(lit)
+        case _            => Stream.empty
+      }
     } else {
-      input.children.toStream :+ removeLeaf(input)
+      input.children.filter(_.dataType == input.dataType).toStream :+ removeLeaf(input)
     }
   }
 
