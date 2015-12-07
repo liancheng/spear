@@ -5,8 +5,8 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 import org.scalacheck.Prop.{BooleanOperators, all}
+import org.scalacheck._
 import org.scalacheck.util.Pretty
-import org.scalacheck.{Shrink, Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
@@ -154,8 +154,6 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
 object TreeNodeSuite {
   case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
     override def nodeCaption: String = s"Node($value)"
-
-    def isLeaf: Boolean = children.isEmpty
 
     def wrongExists(f: Node => Boolean): Boolean = {
       transformDown {

@@ -240,7 +240,7 @@ package object expressions extends Logging {
     case _          => xs.head #:: ys.head #:: interleave(xs.tail, ys.tail)
   }
 
-  implicit lazy val shrinkLiteral: Shrink[Literal] = Shrink {
+  lazy val shrinkLiteral: Shrink[Literal] = Shrink {
     case lit @ Literal(value: Byte, _)   => shrink(value) map (v => lit.copy(value = v))
     case lit @ Literal(value: Short, _)  => shrink(value) map (v => lit.copy(value = v))
     case lit @ Literal(value: Int, _)    => shrink(value) map (v => lit.copy(value = v))
@@ -249,6 +249,26 @@ package object expressions extends Logging {
     case lit @ Literal(value: Double, _) => shrink(value) map (v => lit.copy(value = v))
     case lit @ Literal(value: String, _) => shrink(value) map (v => lit.copy(value = v))
     case _                               => Empty
+  }
+
+  implicit def shrinkExpression(implicit settings: Settings): Shrink[Expression] = Shrink {
+    case lit: Literal =>
+      shrinkLiteral.shrink(lit)
+
+    case e =>
+      def stripLeaves(e: Expression): Expression = e transformDown {
+        case child if !child.isLeaf && child.children.forall(_.isLeaf) =>
+          genLiteral(FieldSpec(child.dataType, child.nullable))(settings).sample.get
+      }
+
+      val OutputType = e.dataType
+      val compatibleChildren = e.children.filter {
+        case OutputType(_)            => true
+        case OutputType.Implicitly(_) => true
+        case _                        => false
+      }
+
+      compatibleChildren.toStream :+ stripLeaves(e)
   }
 
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
