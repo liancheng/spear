@@ -30,6 +30,9 @@ package object types {
   val AllowNestedTupleType: Key[Boolean] =
     Key("scraper.test.types.allow-nested-tuple-type").boolean
 
+  val MaxTupleTypeWidth: Key[Int] =
+    Key("scraper.test.types.max-tuple-type-width").int
+
   def genDataType(implicit settings: Settings): Gen[DataType] = Gen sized {
     case 0 => Gen.fail
     case 1 => genPrimitiveType(settings)
@@ -119,7 +122,7 @@ package object types {
       Gen resize (size - 1, for {
         fieldsSize <- Gen.size
 
-        fieldNumUpperBound = fieldsSize / 2
+        fieldNumUpperBound = (fieldsSize / 2) min settings(MaxTupleTypeWidth)
         fieldNumLowerBound = if (settings(AllowEmptyTupleType)) 0 else 1
 
         fieldNum <- Gen choose (fieldNumLowerBound, fieldNumUpperBound)

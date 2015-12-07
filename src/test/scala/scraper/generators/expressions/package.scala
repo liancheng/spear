@@ -2,14 +2,15 @@ package scraper.generators
 
 import scala.collection.immutable.Stream.Empty
 
+import org.scalacheck.Arbitrary._
 import org.scalacheck.Shrink.shrink
-import org.scalacheck.{Shrink, Gen}
+import org.scalacheck.{Gen, Shrink}
 
 import scraper.config.Settings
 import scraper.config.Settings.Key
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions._
+import scraper.generators.types._
 import scraper.generators.values._
 import scraper.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
 import scraper.utils.Logging
@@ -17,14 +18,23 @@ import scraper.utils.Logging
 package object expressions extends Logging {
   val NullProbability = Key("scraper.test.values.probabilities.null").double
 
+  def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
+    dataType <- genPrimitiveType(settings)
+    nullable <- arbitrary[Boolean]
+
+    outputSpec = FieldSpec(dataType, nullable)
+    expression <- genExpression(input, outputSpec)(settings)
+  } yield expression
+
   def genExpression(
     input: Seq[Expression], outputSpec: FieldSpec
   )(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType | BooleanType.Implicitly(_)    => genPredicate(input, outputSpec)(settings)
-    case _: NumericType | NumericType.Implicitly(_) => genArithmetic(input, outputSpec)(settings)
+    case BooleanType      => genPredicate(input, outputSpec)(settings)
+    case _: NumericType   => genArithmetic(input, outputSpec)(settings)
+    case _: PrimitiveType => genLiteral(outputSpec)(settings)
   }
 
   def genArithmetic(
@@ -33,7 +43,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType | NumericType.Implicitly(_) =>
+    case _: NumericType =>
       genTermExpression(input, outputSpec)(settings)
   }
 
@@ -43,7 +53,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType | NumericType.Implicitly(_) =>
+    case _: NumericType =>
       for {
         size <- Gen.size
 
@@ -58,7 +68,7 @@ package object expressions extends Logging {
         }
       } yield term
 
-    case BooleanType | BooleanType.Implicitly(_) =>
+    case BooleanType =>
       genPredicate(input, outputSpec)(settings)
   }
 
@@ -68,7 +78,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case _: NumericType | NumericType.Implicitly(_) =>
+    case _: NumericType =>
       Gen.sized {
         case size if size < 2 =>
           genBaseExpression(input, outputSpec)(settings)
@@ -86,10 +96,7 @@ package object expressions extends Logging {
     settings: Settings
   ): Gen[Expression] = {
     val candidates = input.filter { e =>
-      e.nullable == outputSpec.nullable && (
-        e.dataType == outputSpec.dataType ||
-        implicitlyConvertible(e.dataType, outputSpec.dataType)
-      )
+      e.nullable == outputSpec.nullable && e.dataType == outputSpec.dataType
     }
 
     val genLeaf = if (candidates.nonEmpty) {
@@ -119,7 +126,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType | BooleanType.Implicitly(_) =>
+    case BooleanType =>
       val genBranch = genAndExpression(input, outputSpec)(settings)
       genUnaryOrBinary(genBranch, Or)
   }
@@ -130,7 +137,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType | BooleanType.Implicitly(_) =>
+    case BooleanType =>
       val genBranch = Gen.sized {
         case size if size < 2 =>
           genComparison(input, outputSpec)(settings)
@@ -151,7 +158,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType | BooleanType.Implicitly(_) =>
+    case BooleanType =>
       for {
         size <- Gen.size
         predicate <- Gen resize (size - 1, genPredicate(input, outputSpec)(settings))
@@ -164,7 +171,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType | BooleanType.Implicitly(_) =>
+    case BooleanType =>
       val genBoolLiteral = genLiteral(outputSpec.copy(dataType = BooleanType))
       val genBranch = Gen lzy genTermExpression(input, outputSpec)(settings)
 
@@ -263,9 +270,8 @@ package object expressions extends Logging {
 
       val OutputType = e.dataType
       val compatibleChildren = e.children.filter {
-        case OutputType(_)            => true
-        case OutputType.Implicitly(_) => true
-        case _                        => false
+        case OutputType(_) => true
+        case _             => false
       }
 
       compatibleChildren.toStream :+ stripLeaves(e)
