@@ -18,8 +18,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def sameOrEqual(that: Base): Boolean = (this eq that) || this == that
 
   def transformDown(rule: PartialFunction[Base, Base]): Base = {
-    val transformedSelf = rule applyOrElse (this, identity[Base])
-    transformedSelf transformChildren (rule, _ transformDown _)
+    val selfTransformed = rule applyOrElse (this, identity[Base])
+    selfTransformed transformChildren (rule, _ transformDown _)
   }
 
   def transformUp(rule: PartialFunction[Base, Base]): Base = {
@@ -142,4 +142,6 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 
   def size: Int = 1 + children.map(_.size).sum
+
+  def isLeaf: Boolean = children.isEmpty
 }
