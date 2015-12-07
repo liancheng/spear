@@ -99,7 +99,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  implicit val expressionShrink: Shrink[Expression] = Shrink { input =>
+  implicit val shrinkExpression: Shrink[Expression] = Shrink { input =>
     if (input.children.length == 0) {
       input match {
         case lit: Literal => shrinkLiteral.shrink(lit)
