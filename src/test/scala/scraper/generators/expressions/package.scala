@@ -16,7 +16,11 @@ import scraper.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
 import scraper.utils.Logging
 
 package object expressions extends Logging {
-  val NullChances = Key("scraper.test.values.chances.null").double
+  val NullChances: Key[Double] =
+    Key("scraper.test.expressions.chances.null").double
+
+  val OnlyLogicalOperatorsInPredicate: Key[Boolean] =
+    Key("scraper.test.expressions.only-logical-operators-in-predicate").boolean
 
   def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
     dataType <- genPrimitiveType(settings)
@@ -141,6 +145,9 @@ package object expressions extends Logging {
       val genBranch = Gen.sized {
         case size if size < 2 =>
           genComparison(input, outputSpec)(settings)
+
+        case _ if settings(OnlyLogicalOperatorsInPredicate) =>
+          genNotExpression(input, outputSpec)(settings)
 
         case _ =>
           Gen oneOf (

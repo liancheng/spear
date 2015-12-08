@@ -42,7 +42,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genPredicate(TupleType.empty.toAttributes))
+    implicit val arbPredicate = Arbitrary(
+      genPredicate(TupleType.empty.toAttributes)(
+        // Avoids generating nested conjunctions within other expressions that are not logical
+        // operators to simplify the property defined below.
+        defaultSettings.withValue(OnlyLogicalOperatorsInPredicate, true)
+      )
+    )
 
     check(
       forAll { predicate: Expression =>
@@ -52,20 +58,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         }.flatten
 
         conditions.forall {
-          // Within generated predicate expressions, there can be nested conjunctions within
-          // comparison expressions, which should be ignore.  For example, the following predicate
-          // is in CNF although the `=` comparison contains a nested conjunction:
-          //
-          //   (a > 1) AND ((TRUE AND FALSE) = FALSE)
-          //
-          // Here we simply replace them with a boolean literal.
-          _ transformDown {
-            case BinaryComparison(_ And _, _) => True
-            case BinaryComparison(_, _ And _) => True
-          } forall {
-            case _ And _ => false
-            case _       => true
-          }
+          _.collect { case _: And => () }.isEmpty
         }
       },
 
