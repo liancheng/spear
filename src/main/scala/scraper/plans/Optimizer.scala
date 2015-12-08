@@ -1,6 +1,7 @@
 package scraper.plans
 
 import scraper.expressions.Literal.{False, True}
+import scraper.expressions.Predicate.toCNF
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._
@@ -156,10 +157,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan: Filter =>
         plan transformExpressionsDown {
-          case Not(lhs Or rhs)                => !lhs && !rhs
-          case Not(lhs And rhs)               => !lhs || !rhs
-          case (innerLhs And innerRhs) Or rhs => (innerLhs || rhs) && (innerRhs || rhs)
-          case lhs Or (innerLhs And innerRhs) => (innerLhs || lhs) && (innerRhs || lhs)
+          case e => toCNF(e) reduce (_ && _)
         }
     }
   }
