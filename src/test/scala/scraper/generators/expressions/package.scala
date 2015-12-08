@@ -16,7 +16,7 @@ import scraper.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
 import scraper.utils.Logging
 
 package object expressions extends Logging {
-  val NullProbability = Key("scraper.test.values.probabilities.null").double
+  val NullChances = Key("scraper.test.values.chances.null").double
 
   def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
     dataType <- genPrimitiveType(settings)
@@ -196,7 +196,7 @@ package object expressions extends Logging {
         )
     }
 
-    val nullFreq = if (nullable) (settings(NullProbability) * 100).toInt else 0
+    val nullFreq = if (nullable) (settings(NullChances) * 100).toInt else 0
     val nonNullFreq = 100 - nullFreq
 
     Gen frequency (
