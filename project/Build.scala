@@ -58,6 +58,7 @@ object Build extends sbt.Build {
           |import scraper.LocalContext
           |import scraper.expressions.dsl._
           |import scraper.expressions.functions._
+          |import scraper._
           |
           |import scraper.Test._
           |import scraper.types._
@@ -65,6 +66,8 @@ object Build extends sbt.Build {
           |import scraper.generators.plans.logical._
           |import scraper.generators.types._
           |import scraper.generators.values._
+          |
+          |val context = new LocalContext
           |""".stripMargin
     )
 

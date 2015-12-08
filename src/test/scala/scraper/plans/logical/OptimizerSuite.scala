@@ -2,9 +2,9 @@ package scraper.plans.logical
 
 import scala.language.implicitConversions
 
+import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
-import org.scalacheck.{Arbitrary, Shrink}
 import org.scalatest.prop.Checkers
 
 import scraper.Test.defaultSettings
@@ -16,7 +16,7 @@ import scraper.plans.Optimizer.{CNFConversion, ReduceFilters}
 import scraper.plans.logical.OptimizerSuite.BadCNFConversion
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.types.{FieldSpec, TestUtils, TupleType}
+import scraper.types.{TestUtils, TupleType}
 import scraper.{Analyzer, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
