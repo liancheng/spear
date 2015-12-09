@@ -10,7 +10,7 @@ import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{Optimizer, QueryPlanner, physical}
 import scraper.trees.RulesExecutor
-import scraper.types.{LongType, TupleType}
+import scraper.types.{LongType, StructType}
 
 trait Catalog {
   def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
@@ -77,7 +77,7 @@ class LocalContext extends Context {
 
   def range(begin: Long, end: Long): DataFrame = {
     val rows = (begin until end).map(Row.apply(_))
-    val schema = TupleType('id -> LongType.!)
+    val schema = StructType('id -> LongType.!)
     new DataFrame(LocalRelation(rows, schema), this)
   }
 

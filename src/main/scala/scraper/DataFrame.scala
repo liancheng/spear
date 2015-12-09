@@ -5,7 +5,7 @@ import scraper.expressions.functions._
 import scraper.expressions.{Ascending, SortOrder, Expression, NamedExpression}
 import scraper.plans.logical.{Sort, Inner, Join, LogicalPlan}
 import scraper.plans.{QueryExecution, logical}
-import scraper.types.TupleType
+import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
   def this(logicalPlan: LogicalPlan, context: Context) = this(context execute logicalPlan)
@@ -15,7 +15,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   private def build(f: LogicalPlan => LogicalPlan): DataFrame =
     new DataFrame(f(queryExecution.logicalPlan), context)
 
-  lazy val schema: TupleType = TupleType fromAttributes queryExecution.analyzedPlan.output
+  lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
 
   def rename(newNames: String*): DataFrame = {
     assert(newNames.length == schema.fields.length)

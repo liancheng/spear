@@ -66,18 +66,18 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
     )
   }
 
-  test("TupleType instantiation") {
+  test("StructType instantiation") {
     checkTree(
-      TupleType(TupleField("f1", IntType, nullable = false) :: Nil),
-      TupleType('f1 -> IntType.!)
+      StructType(StructField("f1", IntType, nullable = false) :: Nil),
+      StructType('f1 -> IntType.!)
     )
 
     checkTree(
-      TupleType(Seq(
-        TupleField("f1", IntType, nullable = true),
-        TupleField("f2", DoubleType, nullable = false)
+      StructType(Seq(
+        StructField("f1", IntType, nullable = true),
+        StructField("f2", DoubleType, nullable = false)
       )),
-      TupleType(
+      StructType(
         'f1 -> IntType.?,
         'f2 -> DoubleType.!
       )
@@ -85,11 +85,11 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   private val testSchema =
-    TupleType(
+    StructType(
       'name -> StringType.!,
       'age -> IntType.?,
       'gender -> StringType.?,
-      'location -> TupleType(
+      'location -> StructType(
         'latitude -> DoubleType.!,
         'longitude -> DoubleType.!
       ).?,
@@ -97,22 +97,22 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
       'addresses -> MapType(StringType, StringType.!).?
     )
 
-  test("TupleType field types") {
+  test("StructType field types") {
     assertResult(IntType :: DoubleType :: Nil) {
-      TupleType(
+      StructType(
         'f0 -> IntType.!,
         'f1 -> DoubleType.?
       ).fieldTypes
     }
   }
 
-  test("pretty tree string of a TupleType") {
+  test("pretty tree string of a StructType") {
     assertSideBySide(
-      """tuple
+      """struct
         |├╴name: string
         |├╴age: int?
         |├╴gender: string?
-        |├╴location: tuple?
+        |├╴location: struct?
         |│ ├╴latitude: double
         |│ └╴longitude: double
         |├╴phone-numbers: array?

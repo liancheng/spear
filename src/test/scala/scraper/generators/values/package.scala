@@ -45,9 +45,9 @@ package object values {
 
   def genValueForComplexType(dataType: ComplexType)(implicit settings: Settings): Gen[Any] =
     dataType match {
-      case t: ArrayType => genValueForArrayType(t)(settings)
-      case t: MapType   => genValueForMapType(t)(settings)
-      case t: TupleType => genValueForTupleType(t)(settings)
+      case t: ArrayType  => genValueForArrayType(t)(settings)
+      case t: MapType    => genValueForMapType(t)(settings)
+      case t: StructType => genValueForStructType(t)(settings)
     }
 
   def genValueForArrayType(dataType: ArrayType)(implicit settings: Settings): Gen[Seq[_]] = {
@@ -77,9 +77,9 @@ package object values {
     } yield (keys zip values).toMap
   }
 
-  def genValueForTupleType(dataType: TupleType)(implicit settings: Settings): Gen[Row] = {
+  def genValueForStructType(dataType: StructType)(implicit settings: Settings): Gen[Row] = {
     val genFields = Gen.sequence(dataType.fields map {
-      case TupleField(_, fieldType, nullable) =>
+      case StructField(_, fieldType, nullable) =>
         val genNonNullField = genValueForDataType(fieldType)(settings)
         if (nullable) Gen.option(genNonNullField) map (_.orNull) else genNonNullField
     })

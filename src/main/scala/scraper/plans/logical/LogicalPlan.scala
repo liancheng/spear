@@ -9,7 +9,7 @@ import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
-import scraper.types.{IntegralType, TupleType}
+import scraper.types.{IntegralType, StructType}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
@@ -90,7 +90,7 @@ case object SingleRowRelation extends LeafLogicalPlan {
   override def sql: String = ???
 }
 
-case class LocalRelation(data: Iterable[Row], schema: TupleType)
+case class LocalRelation(data: Iterable[Row], schema: StructType)
   extends LeafLogicalPlan {
 
   override val output: Seq[Attribute] = schema.toAttributes
@@ -103,7 +103,7 @@ case class LocalRelation(data: Iterable[Row], schema: TupleType)
 
 object LocalRelation {
   def apply[T <: Product: WeakTypeTag](data: Iterable[T]): LocalRelation = {
-    val schema = fieldSpecFor[T].dataType match { case t: TupleType => t }
+    val schema = fieldSpecFor[T].dataType match { case t: StructType => t }
     val rows = data.map { product => Row.fromSeq(product.productIterator.toSeq) }
     LocalRelation(rows, schema)
   }

@@ -12,8 +12,8 @@ package object types {
   val AllowNullType: Key[Boolean] =
     Key("scraper.test.types.allow-null-type").boolean
 
-  val AllowEmptyTupleType: Key[Boolean] =
-    Key("scraper.test.types.allow-empty-tuple-type").boolean
+  val AllowEmptyStructType: Key[Boolean] =
+    Key("scraper.test.types.allow-empty-struct-type").boolean
 
   val AllowNullableComplexType: Key[Boolean] =
     Key("scraper.test.types.allow-nullable-complex-type").boolean
@@ -24,14 +24,14 @@ package object types {
   val AllowNullableMapType: Key[Boolean] =
     Key("scraper.test.types.allow-nullable-map-type").boolean
 
-  val AllowNullableTupleField: Key[Boolean] =
-    Key("scraper.test.types.allow-nullable-tuple-field").boolean
+  val AllowNullableStructField: Key[Boolean] =
+    Key("scraper.test.types.allow-nullable-struct-field").boolean
 
-  val AllowNestedTupleType: Key[Boolean] =
-    Key("scraper.test.types.allow-nested-tuple-type").boolean
+  val AllowNestedStructType: Key[Boolean] =
+    Key("scraper.test.types.allow-nested-struct-type").boolean
 
-  val MaxTupleTypeWidth: Key[Int] =
-    Key("scraper.test.types.max-tuple-type-width").int
+  val MaxStructTypeWidth: Key[Int] =
+    Key("scraper.test.types.max-struct-type-width").int
 
   def genDataType(implicit settings: Settings): Gen[DataType] = Gen sized {
     case 0 => Gen.fail
@@ -79,7 +79,7 @@ package object types {
   def genComplexType(implicit settings: Settings): Gen[ComplexType] = Gen oneOf (
     genArrayType(settings),
     genMapType(settings),
-    genTupleType(settings)
+    genStructType(settings)
   )
 
   implicit val arbComplexType: Arbitrary[ComplexType] = Arbitrary(genComplexType(defaultSettings))
@@ -114,7 +114,7 @@ package object types {
 
   implicit val arbMapType: Arbitrary[MapType] = Arbitrary(genMapType(defaultSettings))
 
-  def genTupleType(implicit settings: Settings): Gen[TupleType] = Gen sized {
+  def genStructType(implicit settings: Settings): Gen[StructType] = Gen sized {
     case 0 =>
       Gen.fail
 
@@ -122,19 +122,19 @@ package object types {
       Gen resize (size - 1, for {
         fieldsSize <- Gen.size
 
-        fieldNumUpperBound = (fieldsSize / 2) min settings(MaxTupleTypeWidth)
-        fieldNumLowerBound = if (settings(AllowEmptyTupleType)) 0 else 1
+        fieldNumUpperBound = (fieldsSize / 2) min settings(MaxStructTypeWidth)
+        fieldNumLowerBound = if (settings(AllowEmptyStructType)) 0 else 1
 
         fieldNum <- Gen choose (fieldNumLowerBound, fieldNumUpperBound)
         fieldTypeUpperBound = fieldNumUpperBound / (fieldNum max 1)
 
-        genFieldType = Gen resize (fieldTypeUpperBound, if (settings(AllowNestedTupleType)) {
+        genFieldType = Gen resize (fieldTypeUpperBound, if (settings(AllowNestedStructType)) {
           genDataType(settings)
         } else {
           genPrimitiveType(settings)
         })
 
-        allowNullable = settings(AllowNullableTupleField)
+        allowNullable = settings(AllowNullableStructField)
         genNullable = if (allowNullable) arbitrary[Boolean] else Gen const false
 
         genFieldSpec = for {
@@ -145,10 +145,10 @@ package object types {
         fieldSpecs <- Gen listOfN (fieldNum, genFieldSpec)
 
         fields = fieldSpecs.zipWithIndex map {
-          case (fieldSpec, ordinal) => TupleField(s"c$ordinal", fieldSpec)
+          case (fieldSpec, ordinal) => StructField(s"c$ordinal", fieldSpec)
         }
-      } yield TupleType(fields))
+      } yield StructType(fields))
   }
 
-  implicit val arbTupleType: Arbitrary[TupleType] = Arbitrary(genTupleType(defaultSettings))
+  implicit val arbStructType: Arbitrary[StructType] = Arbitrary(genStructType(defaultSettings))
 }

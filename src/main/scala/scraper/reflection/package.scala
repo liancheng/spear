@@ -34,10 +34,10 @@ package object reflection {
       val formalTypeArgs = t.typeSymbol.asClass.typeParams
       val TypeRef(_, _, actualTypeArgs) = t
       val List(constructorParams) = t.member(termNames.CONSTRUCTOR).asMethod.paramLists
-      TupleType(constructorParams.map { param =>
+      StructType(constructorParams.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
         val FieldSpec(dataType, nullable) = fieldSpecFor(paramType)
-        TupleField(param.name.toString, dataType, nullable)
+        StructField(param.name.toString, dataType, nullable)
       }).?
   }
 

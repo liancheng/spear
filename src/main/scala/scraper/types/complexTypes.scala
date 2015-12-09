@@ -29,23 +29,23 @@ object MapType {
     MapType(keyType, valueFieldSpec.dataType, valueFieldSpec.nullable)
 }
 
-case class TupleField(name: String, dataType: DataType, nullable: Boolean) {
-  /** Makes a nullable copy of this [[TupleField]]. */
-  def ? : TupleField = this.copy(nullable = true)
+case class StructField(name: String, dataType: DataType, nullable: Boolean) {
+  /** Makes a nullable copy of this [[StructField]]. */
+  def ? : StructField = this.copy(nullable = true)
 
-  /** Makes a non-nullable copy of this [[TupleField]]. */
-  def ! : TupleField = this.copy(nullable = false)
+  /** Makes a non-nullable copy of this [[StructField]]. */
+  def ! : StructField = this.copy(nullable = false)
 }
 
-object TupleField {
-  def apply(name: String, fieldSpec: FieldSpec): TupleField =
-    TupleField(name, fieldSpec.dataType, fieldSpec.nullable)
+object StructField {
+  def apply(name: String, fieldSpec: FieldSpec): StructField =
+    StructField(name, fieldSpec.dataType, fieldSpec.nullable)
 }
 
-case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
-  def apply(fieldName: String): TupleField = fields.find(_.name == fieldName).get
+case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType {
+  def apply(fieldName: String): StructField = fields.find(_.name == fieldName).get
 
-  def apply(index: Int): TupleField = fields(index)
+  def apply(index: Int): StructField = fields(index)
 
   def fieldTypes: Seq[DataType] = fields.map(_.dataType)
 
@@ -53,14 +53,14 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
     field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
   }
 
-  def rename(fieldNames: Seq[String]): TupleType = {
+  def rename(fieldNames: Seq[String]): StructType = {
     assert(fieldNames.length == fields.length)
-    TupleType(fields zip fieldNames map {
+    StructType(fields zip fieldNames map {
       case (field, name) => field.copy(name = name)
     })
   }
 
-  def rename(firstName: String, restNames: String*): TupleType = this rename firstName +: restNames
+  def rename(firstName: String, restNames: String*): StructType = this rename firstName +: restNames
 
   override def sql: String = {
     val fieldsString = fields map (f => s"${f.name}: ${f.dataType.sql}") mkString ", "
@@ -68,11 +68,11 @@ case class TupleType(fields: Seq[TupleField] = Seq.empty) extends ComplexType {
   }
 }
 
-object TupleType {
-  val empty: TupleType = TupleType(Nil)
+object StructType {
+  val empty: StructType = StructType(Nil)
 
-  def apply(first: TupleField, rest: TupleField*): TupleType = TupleType(first +: rest)
+  def apply(first: StructField, rest: StructField*): StructType = StructType(first +: rest)
 
-  def fromAttributes(attributes: Seq[Attribute]): TupleType =
-    TupleType(attributes.map(a => TupleField(a.name, a.dataType, a.nullable)))
+  def fromAttributes(attributes: Seq[Attribute]): StructType =
+    StructType(attributes.map(a => StructField(a.name, a.dataType, a.nullable)))
 }

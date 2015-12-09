@@ -83,7 +83,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
         Row(1, "a"),
         Row(2, "b")
       ),
-      TupleType(
+      StructType(
         'a -> IntType.!,
         'b -> StringType.?
       )

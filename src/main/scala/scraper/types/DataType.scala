@@ -61,7 +61,7 @@ object DataType {
    */
   implicit def `DataType->DataTypeNode`(dataType: DataType): DataTypeNode = dataType match {
     case t: PrimitiveType => PrimitiveTypeNode(t)
-    case t: TupleType     => TupleTypeNode(t)
+    case t: StructType    => StructTypeNode(t)
     case t: ArrayType     => ArrayTypeNode(t)
     case t: MapType       => MapTypeNode(t)
   }
@@ -76,15 +76,15 @@ object DataType {
     override def children: Seq[DataTypeNode] = Nil
   }
 
-  case class TupleFieldNode(field: TupleField) extends DataTypeNode {
+  case class StructFieldNode(field: StructField) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
     override def nodeCaption: String =
       s"${field.name}: ${fieldSpecString(field.dataType, field.nullable)}"
   }
 
-  case class TupleTypeNode(dataType: TupleType) extends DataTypeNode with HasDataType {
-    override def children: Seq[DataTypeNode] = dataType.fields.map(TupleFieldNode)
+  case class StructTypeNode(dataType: StructType) extends DataTypeNode with HasDataType {
+    override def children: Seq[DataTypeNode] = dataType.fields.map(StructFieldNode)
   }
 
   case class KeyTypeNode(mapType: MapType) extends DataTypeNode {
