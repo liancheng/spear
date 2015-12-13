@@ -4,13 +4,21 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Success, Try}
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 
 import scraper.config.Settings.Key
+import scraper.exceptions.SettingsValidationException
 
-class Settings(config: Config) {
-  def apply[T](key: Key[T]): T = key get config
+class Settings(val config: Config) {
+  def apply[T](key: Key[T]): T = (key validator (key get config)).recover {
+    case cause: Throwable =>
+      throw new SettingsValidationException(
+        s"Configured value of settings key ${key.name} didn't pass validation: ${cause.getMessage}",
+        cause
+      )
+  }.get
 
   def withValue(key: String, value: AnyRef): Settings =
     Settings(config.withValue(key, ConfigValueFactory.fromAnyRef(value)))
@@ -20,7 +28,9 @@ class Settings(config: Config) {
 }
 
 object Settings {
-  case class Key[T](name: String, get: Config => T)
+  case class Key[T](name: String, get: Config => T, validator: T => Try[T] = Success(_: T)) {
+    def validate(validator: T => Try[T]): Key[T] = copy(validator = validator)
+  }
 
   object Key {
     case class KeyBuilder(name: String) {

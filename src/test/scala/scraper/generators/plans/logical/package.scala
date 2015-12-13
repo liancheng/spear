@@ -111,7 +111,10 @@ package object logical {
   } yield plan select projections
 
   def genWhereClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
-    Gen resize (settings(MaxWherePredicateSize), genPredicate(plan.output)(settings)) map plan.filter
+    Gen resize (
+      settings(MaxWherePredicateSize),
+      genPredicate(plan.output)(settings)
+    ) map plan.filter
 
   def genLimitClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
     Gen choose (1, settings(MaxLimit)) map plan.limit

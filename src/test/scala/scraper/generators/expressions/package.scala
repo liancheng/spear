@@ -1,6 +1,7 @@
 package scraper.generators
 
 import scala.collection.immutable.Stream.Empty
+import scala.util.{Failure, Success}
 
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Shrink.shrink
@@ -8,7 +9,7 @@ import org.scalacheck.{Gen, Shrink}
 
 import scraper.config.Settings
 import scraper.config.Settings.Key
-import scraper.exceptions.TypeMismatchException
+import scraper.exceptions.{SettingsValidationException, TypeMismatchException}
 import scraper.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
@@ -17,7 +18,12 @@ import scraper.utils.Logging
 
 package object expressions extends Logging {
   val NullChances: Key[Double] =
-    Key("scraper.test.expressions.chances.null").double
+    Key("scraper.test.expressions.chances.null").double.validate {
+      case v if v >= 0D && v <= 1.0D => Success(v)
+      case v => Failure(new SettingsValidationException(
+        s"Illegal null chance $v, value must be within range [0.0, 1.0]."
+      ))
+    }
 
   val OnlyLogicalOperatorsInPredicate: Key[Boolean] =
     Key("scraper.test.expressions.only-logical-operators-in-predicate").boolean
@@ -123,6 +129,15 @@ package object expressions extends Logging {
   ): Gen[Expression] = outputSpec.dataType match {
     case BooleanType => genOrExpression(input, outputSpec)(settings)
   }
+
+  def genLogicalPredicate(
+    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
+  )(
+    implicit
+    settings: Settings
+  ): Gen[Expression] = genPredicate(input, outputSpec)(settings.withValue(
+    OnlyLogicalOperatorsInPredicate, true
+  ))
 
   def genOrExpression(
     input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
@@ -244,7 +259,7 @@ package object expressions extends Logging {
 
   private def fractionalHalves[T: Fractional](n: T): Stream[T] = {
     val f = implicitly[Fractional[T]]
-    val epsilon = f.toInt(f.times(f.abs(f.minus(n, f.zero)), f.fromInt(100000000)))
+    val epsilon = f.toInt(f.times(f.minus(n, f.zero), f.fromInt(100000000)))
     if (epsilon == 0) Empty else n #:: fractionalHalves(f.div(n, f.fromInt(2)))
   }
 

@@ -2,6 +2,7 @@ package scraper.trees
 
 import scala.collection.Iterator.iterate
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Stream.Empty
 import scala.language.implicitConversions
 
 import org.scalacheck.Prop.{BooleanOperators, all}
@@ -10,40 +11,28 @@ import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
+import scraper.generators.genRandomPartitions
 import scraper.trees.TreeNodeSuite.Node
 import scraper.types.TestUtils
 
 class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
-  private def genNode: Gen[Node] = Gen.parameterized { param =>
-    val size = param.size
-    if (size < 2) {
-      Node(1, Nil)
-    } else {
-      for {
-        width <- Gen choose (1, math.min(size - 1, 8))
-        childrenSizes = scraper.generators.randomPartition(param.rng, size - 1, width)
-        children <- Gen.sequence(childrenSizes.map(Gen.resize(_, genNode)))
-      } yield Node(1, children.asScala.toArray.toSeq)
+  def genNode: Gen[Node] = Gen.parameterized { param =>
+    param.size match {
+      case size if size < 2 => Node(1, Nil)
+      case size =>
+        for {
+          width <- Gen choose (1, size - 1)
+          childrenSizes <- genRandomPartitions(size - 1, width)
+          children <- Gen sequence (childrenSizes map (Gen.resize(_, genNode)))
+        } yield Node(1, children.asScala)
     }
   }
 
   implicit val arbNode = Arbitrary(genNode)
 
-  implicit val nodeShrink: Shrink[Node] = Shrink { input =>
-    if (input.isLeaf) {
-      Stream.empty
-    } else {
-      input.children.toStream :+ removeLeaf(input)
-    }
-  }
-
-  private def removeLeaf(node: Node): Node = {
-    var stop = false
-    node transformUp {
-      case n if !stop && !n.isLeaf =>
-        stop = true
-        Node(1, Nil)
-    }
+  implicit val shrinkNode: Shrink[Node] = Shrink {
+    case node if node.isLeaf => Empty
+    case node                => node.children.toStream :+ node.stripLeaves
   }
 
   implicit def prettyNode(tree: Node): Pretty = Pretty {
@@ -51,8 +40,8 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("transformDown") {
-    check { tree: Node =>
-      tree transformDown {
+    check {
+      (_: Node) transformDown {
         case node @ Node(_, children) =>
           node.copy(value = children.map(_.value).sum)
       } forall {
@@ -63,8 +52,8 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("transformUp") {
-    check { tree: Node =>
-      tree transformUp {
+    check {
+      (_: Node) transformUp {
         case n @ Node(_, children) =>
           n.copy(value = children.map(_.value).sum)
       } forall {
@@ -122,14 +111,6 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
     }
   }
 
-  // This test case is obviously wrong if there is a `Node` having 4 children and one of its child
-  // is not leaf, let's see if we can shrink the input into the minimal format that can fail test.
-  test("wrong exists") {
-    check { tree: Node =>
-      tree.exists(_.children.length == 4) == tree.wrongExists(_.children.length == 4)
-    }
-  }
-
   test("size") {
     check { tree: Node =>
       tree.size == (tree collect { case n => n.value }).sum
@@ -141,9 +122,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
       // Computes the depth by iterating over the tree and removing all the leaf nodes during each
       // iteration until only the root node is left.
       val iterations = iterate(tree) {
-        _ transformDown {
-          case n => n.copy(children = n.children filterNot (_.isLeaf))
-        }
+        _ transformDown { case n => n.stripLeaves }
       } takeWhile (_.size > 1)
 
       tree.depth == iterations.size + 1
@@ -155,12 +134,7 @@ object TreeNodeSuite {
   case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
     override def nodeCaption: String = s"Node($value)"
 
-    def wrongExists(f: Node => Boolean): Boolean = {
-      transformDown {
-        case node if f(node) && node.children.forall(_.isLeaf) => return true
-        case node => node
-      }
-      false
-    }
+    def stripLeaves: Node =
+      if (children forall (!_.isLeaf)) this else copy(children = children filterNot (_.isLeaf))
   }
 }
