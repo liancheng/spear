@@ -64,6 +64,16 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this)
 
+  lazy val wellTyped: Boolean = strictlyTypedForm.isSuccess
+
+  /**
+   * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
+   * [[TypeCheckException]].
+   */
+  @throws[TypeCheckException]("If this expression is not well typed")
+  protected def whenWellTyped[T](value: => T): T =
+    if (wellTyped) value else throw new TypeCheckException(this)
+
   def dataType: DataType
 
   def evaluate(input: Row): Any

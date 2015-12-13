@@ -4,7 +4,7 @@ import scala.util.Try
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast._
+import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types._
 
 case class Coalesce(children: Seq[Expression]) extends Expression {

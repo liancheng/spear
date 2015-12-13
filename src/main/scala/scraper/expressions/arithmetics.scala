@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.promoteDataType
 import scraper.types.{DataType, FractionalType, IntegralType, NumericType}
 
 trait ArithmeticExpression extends Expression {
@@ -14,12 +14,12 @@ trait ArithmeticExpression extends Expression {
 
 case class Negate(child: Expression) extends UnaryExpression with ArithmeticExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
-    e <- child.strictlyTypedForm map {
+    strictChild <- child.strictlyTypedForm map {
       case NumericType(e)            => e
-      case NumericType.Implicitly(e) => e
+      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
-  } yield copy(child = e)
+  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
   override lazy val dataType: DataType = whenStrictlyTyped(child.dataType)
 
@@ -45,14 +45,14 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
       // Figures out the final data type of this arithmetic expression. Basically there are two
       // cases:
       //
-      //  - The data type of at least one of both sides is NumericType.  In this case, we use the
-      //    wider type of both sides as the final data type.
+      //  - The data type of at least one side is NumericType.  In this case, we use the wider type
+      //    of the two as the final data type.
       //
       //  - The data type of neither side is NumericType, but both can be converted to NumericType
       //    implicitly.  In this case, we use the default NumericType as the final data type.
       t <- (lhs.dataType, rhs.dataType) match {
-        case (t1: NumericType, t2) => widestTypeOf(t1, t2)
-        case (t1, t2: NumericType) => widestTypeOf(t1, t2)
+        case (t1: NumericType, t2) => t1 widest t2
+        case (t1, t2: NumericType) => t1 widest t2
         case (t1, t2)              => Success(NumericType.defaultType)
       }
 

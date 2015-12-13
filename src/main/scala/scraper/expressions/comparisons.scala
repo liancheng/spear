@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.Try
 
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType, PrimitiveType}
 
 trait BinaryComparison extends BinaryExpression {
@@ -24,7 +24,7 @@ trait BinaryComparison extends BinaryExpression {
       case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
     }
 
-    t <- widestTypeOf(lhs.dataType, rhs.dataType)
+    t <- lhs.dataType widest rhs.dataType
 
     newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)

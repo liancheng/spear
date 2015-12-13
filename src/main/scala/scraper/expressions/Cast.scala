@@ -1,9 +1,9 @@
 package scraper.expressions
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
-import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
-import scraper.expressions.Cast.{buildCast, convertible}
+import scraper.exceptions.{ImplicitCastException, TypeCastException}
+import scraper.expressions.Cast.buildCast
 import scraper.types
 import scraper.types._
 
@@ -18,9 +18,8 @@ case class Cast(child: Expression, dataType: DataType) extends UnaryExpression {
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
-      case e if convertible(e.dataType, dataType) => e
-      case e =>
-        throw new TypeCastException(e.dataType, dataType)
+      case e if e.dataType >=> dataType => e
+      case e                            => throw new TypeCastException(e.dataType, dataType)
     }
   } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
 
@@ -183,28 +182,28 @@ object Cast {
   /**
    * Returns whether type `x` can be converted to type `y` implicitly.
    *
-   * @note Any [[types.DataType DataType]] is NOT considered to be [[implicitlyConvertible]] to
-   *       itself.
+   * @note Any [[types.DataType DataType]] is considered to be [[implicitlyConvertible]] to itself.
    */
   def implicitlyConvertible(x: DataType, y: DataType): Boolean =
-    buildImplicitCast lift x exists (_ isDefinedAt y)
+    x == y || buildImplicitCast.lift(x).exists(_ isDefinedAt y)
 
   /**
    * Returns whether type `x` can be converted to type `y`, either implicitly or explicitly.
    *
-   * @note Any [[types.DataType DataType]] is NOT considered to be [[convertible]] to itself.
+   * @note Any [[types.DataType DataType]] is considered to be [[convertible]] to itself.
    */
-  def convertible(x: DataType, y: DataType): Boolean = buildCast lift x exists (_ isDefinedAt y)
+  def convertible(x: DataType, y: DataType): Boolean =
+    x == y || buildCast.lift(x).exists(_ isDefinedAt y)
 
   /**
    * Returns whether type `x` is implicitly compatible with type `y`. Type `x` is implicitly
    * compatible with type `y` iff:
    *
-   *  - `x == y`, or
-   *  - `x` is [[implicitlyConvertible]] to `y`
+   *  - `x` is [[implicitlyConvertible]] to `y`, or
+   *  - `y` is [[implicitlyConvertible]] to `x`
    */
   def implicitlyCompatible(x: DataType, y: DataType): Boolean =
-    x == y || implicitlyConvertible(x, y) || implicitlyConvertible(y, x)
+    implicitlyConvertible(x, y) || implicitlyConvertible(y, x)
 
   /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
@@ -212,31 +211,17 @@ object Cast {
    * already of the target type, `e` is returned untouched.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
-    case _ if e.dataType == dataType => e
-    case _ if implicitlyConvertible(e.dataType, dataType) => e cast dataType
-    case _ => throw new ImplicitCastException(e, dataType)
+    case _ if e.dataType == dataType  => e
+    case _ if e.dataType >-> dataType => e cast dataType
+    case _                            => throw new ImplicitCastException(e, dataType)
   }
 
   /**
    * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
    * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
    */
-  def widestTypeOf(first: DataType, second: DataType, rest: DataType*): Try[DataType] =
-    widestTypeOf(Seq(first, second) ++ rest)
-
-  /**
-   * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
-   */
-  def widestTypeOf(types: Seq[DataType]): Try[DataType] = {
-    assert(types.nonEmpty)
-    (types.tail foldLeft Try(types.head)) {
-      case (Success(x), y) if x == y                      => Success(x)
-      case (Success(x), y) if implicitlyConvertible(x, y) => Success(y)
-      case (Success(x), y) if implicitlyConvertible(y, x) => Success(x)
-      case _ => Failure(new TypeMismatchException(
-        s"Could not find common type for: ${types map (_.sql) mkString ", "}"
-      ))
-    }
+  def widestTypeOf(types: Seq[DataType]): Try[DataType] = (types.tail foldLeft Try(types.head)) {
+    case (Success(x), y) => x widest y
+    case (failure, _)    => failure
   }
 }

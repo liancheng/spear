@@ -1,6 +1,6 @@
 package scraper.expressions.dsl
 
-import scraper.expressions.{Alias, Cast, Expression}
+import scraper.expressions._
 import scraper.types.DataType
 
 trait ExpressionDSL

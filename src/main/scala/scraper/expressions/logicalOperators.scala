@@ -4,16 +4,16 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
-      case BooleanType(e)            => Success(e)
       case BooleanType.Implicitly(e) => Success(promoteDataType(e, BooleanType))
-      case e =>
-        Failure(new TypeMismatchException(e, BooleanType.getClass))
+      case e => Failure(
+        new TypeMismatchException(e, BooleanType.getClass)
+      )
     }
 
     for {
@@ -56,7 +56,6 @@ case class Not(child: Expression) extends UnaryExpression {
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm map {
-      case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
@@ -80,14 +79,13 @@ case class If(condition: Expression, trueValue: Expression, falseValue: Expressi
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     c <- condition.strictlyTypedForm map {
-      case BooleanType(e)            => e
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
 
     yes <- trueValue.strictlyTypedForm
     no <- falseValue.strictlyTypedForm
-    t <- widestTypeOf(yes.dataType, no.dataType)
+    t <- yes.dataType widest no.dataType
 
     newChildren = c :: promoteDataType(yes, t) :: promoteDataType(no, t) :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)

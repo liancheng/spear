@@ -1,9 +1,11 @@
 package scraper.types
 
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
-import scraper.expressions.Cast.implicitlyConvertible
-import scraper.expressions.Expression
+import scraper.exceptions.TypeMismatchException
+import scraper.expressions.Cast.{convertible, implicitlyCompatible, implicitlyConvertible}
+import scraper.expressions.{Cast, Expression}
 import scraper.trees.TreeNode
 
 trait DataType { self =>
@@ -12,6 +14,27 @@ trait DataType { self =>
 
   /** Returns a non-nullable [[FieldSpec]] of this [[DataType]]. */
   def ! : FieldSpec = FieldSpec(this, nullable = false)
+
+  /** Shortcut method for [[Cast.convertible]] */
+  def >=>(that: DataType): Boolean = convertible(this, that)
+
+  /** Shortcut method for [[Cast.implicitlyConvertible]] */
+  def >->(that: DataType): Boolean = implicitlyConvertible(this, that)
+
+  /** Shortcut method for [[Cast.implicitlyCompatible]] */
+  def <->(that: DataType): Boolean = implicitlyCompatible(this, that)
+
+  /**
+   * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
+   */
+  def widest(that: DataType): Try[DataType] = (this, that) match {
+    case _ if this >-> that => Success(that)
+    case _ if that >-> this => Success(this)
+    case _ => Failure(new TypeMismatchException(
+      s"Could not find common type for: ${this.sql} and ${that.sql}"
+    ))
+  }
 
   /** Returns a pretty-printed tree string of this [[DataType]]. */
   def prettyTree: String = DataType.`DataType->DataTypeNode`(this).prettyTree
@@ -28,13 +51,13 @@ trait DataType { self =>
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if implicitlyConvertible(t, self) => Some(e)
-      case _                                   => None
+      case t if t >-> self => Some(e)
+      case _               => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if implicitlyConvertible(t, self) => Some(t)
-      case _                                   => None
+      case t if t >-> self => Some(t)
+      case _               => None
     }
   }
 }
