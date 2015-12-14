@@ -16,9 +16,6 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def childrenResolved: Boolean = children forall (_.resolved)
 
-  protected def whenResolved[T](value: => T): T =
-    if (resolved) value else throw new LogicalPlanUnresolved(this)
-
   def strictlyTypedForm: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
       case e => e.strictlyTypedForm.get
@@ -28,9 +25,6 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
 
   def childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
-
-  protected def whenStrictlyTyped[T](value: => T): T =
-    if (strictlyTyped) value else throw new TypeCheckException(this)
 
   def sql: String
 

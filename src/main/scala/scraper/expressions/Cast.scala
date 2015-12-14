@@ -7,7 +7,7 @@ import scraper.expressions.Cast.buildCast
 import scraper.types
 import scraper.types._
 
-case class Cast(child: Expression, dataType: DataType) extends UnaryExpression {
+case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
   override def annotatedString: String =
     s"CAST(${child.annotatedString} AS ${dataType.simpleName})"
 

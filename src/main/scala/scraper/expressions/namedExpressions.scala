@@ -49,7 +49,7 @@ case class Alias(
 
   override def foldable: Boolean = false
 
-  override def dataType: DataType = child.dataType
+  override protected def strictDataType: DataType = child.dataType
 
   override def evaluate(input: Row): Any = child.evaluate(input)
 
@@ -63,7 +63,7 @@ case class Alias(
 
   override def sql: String = s"(${child.sql} AS `$name`)"
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
+  override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
 }
@@ -90,7 +90,7 @@ case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNa
 
 case class AttributeRef(
   name: String,
-  dataType: DataType,
+  override val dataType: DataType,
   override val nullable: Boolean,
   override val expressionId: ExpressionId
 ) extends Attribute with UnevaluableExpression {
@@ -104,7 +104,7 @@ case class AttributeRef(
   override def ! : Attribute = copy(nullable = false)
 }
 
-case class BoundRef(ordinal: Int, dataType: DataType, override val nullable: Boolean)
+case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)
   extends NamedExpression with LeafExpression {
 
   override val name: String = s"input[$ordinal]"

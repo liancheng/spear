@@ -29,11 +29,13 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    *  1. Strictly typed: `e` is strictly typed iff
    *
+   *     - `e` is resolved, and
    *     - all of its child expressions strictly typed, and
    *     - all of its child expressions immediately meet all type requirements of `e`.
    *
    *  2. Well typed: `e` is well typed iff
    *
+   *     - `e` is resolved, and
    *     - all of its child expressions are well typed, and
    *     - all of its child expressions can meet all type requirements of `e` by applying implicit
    *       cast(s).
@@ -64,7 +66,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this)
 
-  lazy val wellTyped: Boolean = strictlyTypedForm.isSuccess
+  lazy val wellTyped: Boolean = resolved && strictlyTypedForm.isSuccess
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
@@ -74,7 +76,11 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def whenWellTyped[T](value: => T): T =
     if (wellTyped) value else throw new TypeCheckException(this)
 
-  def dataType: DataType
+  def dataType: DataType = whenWellTyped(strictlyTypedForm.get.strictDataType)
+
+  protected def strictDataType: DataType = throw new ContractBrokenException(
+    s"${getClass.getName} must override either dataType or strictDataType."
+  )
 
   def evaluate(input: Row): Any
 

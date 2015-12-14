@@ -22,11 +22,11 @@ trait BinaryLogicalPredicate extends BinaryExpression {
       newChildren = lhs :: rhs :: Nil
     } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
   }
+
+  override def dataType: DataType = BooleanType
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
-  override def dataType: DataType = BooleanType
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = {
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
@@ -37,8 +37,6 @@ case class And(left: Expression, right: Expression) extends BinaryLogicalPredica
 }
 
 case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicate {
-  override def dataType: DataType = BooleanType
-
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
 
@@ -64,36 +62,39 @@ case class Not(child: Expression) extends UnaryExpression {
   override def sql: String = s"(NOT ${child.sql})"
 }
 
-case class If(condition: Expression, trueValue: Expression, falseValue: Expression)
+case class If(condition: Expression, yes: Expression, no: Expression)
   extends Expression {
 
-  override def dataType: DataType = whenStrictlyTyped(trueValue.dataType)
+  override protected def strictDataType: DataType = yes.dataType
 
-  override def children: Seq[Expression] = Seq(condition, trueValue, falseValue)
+  override def children: Seq[Expression] = Seq(condition, yes, no)
 
   override def annotatedString: String =
-    s"if (${condition.annotatedString}) " +
-      s"${trueValue.annotatedString} else ${falseValue.annotatedString}"
+    s"if (${condition.annotatedString}) ${yes.annotatedString} else ${no.annotatedString}"
 
-  override def sql: String = s"IF(${condition.sql}, ${trueValue.sql}, ${falseValue.sql})"
+  override def sql: String = s"IF(${condition.sql}, ${yes.sql}, ${no.sql})"
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    c <- condition.strictlyTypedForm map {
+  override lazy val strictlyTypedForm: Try[If] = for {
+    strictCondition <- condition.strictlyTypedForm map {
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
 
-    yes <- trueValue.strictlyTypedForm
-    no <- falseValue.strictlyTypedForm
-    t <- yes.dataType widest no.dataType
+    strictYes <- yes.strictlyTypedForm
+    strictNo <- no.strictlyTypedForm
+    finalType <- strictYes.dataType widest strictNo.dataType
 
-    newChildren = c :: promoteDataType(yes, t) :: promoteDataType(no, t) :: Nil
-  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+    promotedYes = promoteDataType(strictYes, finalType)
+    promotedNo = promoteDataType(strictNo, finalType)
+    newChildren = strictCondition :: promotedYes :: promotedNo :: Nil
+  } yield if (sameChildren(newChildren)) this else copy(
+    condition = strictCondition, yes = promotedYes, no = promotedNo
+  )
 
   override def evaluate(input: Row): Any =
     if (condition.evaluate(input).asInstanceOf[Boolean]) {
-      trueValue.evaluate(input)
+      yes.evaluate(input)
     } else {
-      falseValue.evaluate(input)
+      no.evaluate(input)
     }
 }
