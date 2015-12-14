@@ -7,151 +7,115 @@ import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
-class ContractBrokenException protected (message: String, maybeCause: Option[Throwable])
-  extends RuntimeException(message, maybeCause.orNull) {
+class ContractBrokenException(message: String, cause: Throwable)
+  extends RuntimeException(message, cause) {
 
-  def this(message: String) = this(message, None)
-
-  def this(message: String, cause: Throwable) = this(message, Some(cause))
+  def this(message: String) = this(message, null)
 }
 
-abstract class AnalysisException protected (message: String, maybeCause: Option[Throwable])
-  extends RuntimeException(message, maybeCause.orNull) {
+abstract class AnalysisException(message: String, cause: Throwable)
+  extends RuntimeException(message, cause) {
 
-  def this(message: String, cause: Throwable) = this(message, Some(cause))
+  def this(message: String) = this(message, null)
 }
 
-class ExpressionUnevaluableException protected (
-  expression: Expression, maybeCause: Option[Throwable]
-) extends AnalysisException(
-  s"Expression ${expression.annotatedString} is unevaluable", maybeCause
-) {
-  def this(expression: Expression) = this(expression, None)
+class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
+  extends AnalysisException(s"Expression ${expression.annotatedString} is unevaluable", cause) {
 
-  def this(expression: Expression, cause: Throwable) = this(expression, Some(cause))
+  def this(expression: Expression) = this(expression, null)
 }
 
-class ExpressionUnresolvedException protected (
-  expression: Expression, maybeCause: Option[Throwable]
-) extends AnalysisException(s"Expression ${expression.nodeCaption} is unresolved", maybeCause) {
-  def this(expression: Expression) = this(expression, None)
+class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
+  extends AnalysisException(s"Expression ${expression.nodeCaption} is unresolved", cause) {
 
-  def this(expression: Expression, cause: Throwable) = this(expression, Some(cause))
+  def this(expression: Expression) = this(expression, null)
 }
 
-class LogicalPlanUnresolved protected (plan: LogicalPlan, maybeCause: Option[Throwable])
-  extends AnalysisException(s"Unresolved logical query plan:\n\n${plan.prettyTree}", maybeCause) {
+class LogicalPlanUnresolved(plan: LogicalPlan, cause: Throwable)
+  extends AnalysisException(s"Unresolved logical query plan:\n\n${plan.prettyTree}", cause) {
 
-  def this(plan: LogicalPlan) = this(plan, None)
-
-  def this(plan: LogicalPlan, cause: Throwable) = this(plan, Some(cause))
+  def this(plan: LogicalPlan) = this(plan, null)
 }
 
-class TypeCheckException protected (message: String, maybeCause: Option[Throwable])
-  extends AnalysisException(message, maybeCause) {
+class TypeCheckException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
 
-  def this(expression: Expression, maybeCause: Option[Throwable]) =
+  def this(expression: Expression, cause: Throwable) =
     this({
       s"""Expression [${expression.annotatedString}] doesn't pass type check:
          |
          |${expression.prettyTree}
          |""".stripMargin
-    }, maybeCause)
+    }, cause)
 
-  def this(expression: Expression, cause: Throwable) = this(expression, Some(cause))
+  def this(expression: Expression) = this(expression, null)
 
-  def this(expression: Expression) = this(expression, None)
-
-  def this(plan: LogicalPlan, maybeCause: Option[Throwable]) =
+  def this(plan: LogicalPlan, cause: Throwable) =
     this({
       s"""Logical query plan doesn't pass type check:
          |
          |${plan.prettyTree}
          |""".stripMargin
-    }, maybeCause)
+    }, cause)
 
-  def this(plan: LogicalPlan, cause: Throwable) = this(plan, Some(cause))
-
-  def this(plan: LogicalPlan) = this(plan, None)
+  def this(plan: LogicalPlan) = this(plan, null)
 }
 
-class TypeCastException protected (message: String, maybeCause: Option[Throwable])
-  extends AnalysisException(message, maybeCause) {
+class TypeCastException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
 
-  def this(from: DataType, to: DataType, maybeCause: Option[Throwable]) =
-    this(s"Cannot convert data type $from to $to", maybeCause)
+  def this(from: DataType, to: DataType, cause: Throwable) =
+    this(s"Cannot convert data type $from to $to", cause)
 
-  def this(from: DataType, to: DataType, cause: Throwable) = this(from, to, Some(cause))
-
-  def this(from: DataType, to: DataType) = this(from, to, None)
+  def this(from: DataType, to: DataType) = this(from, to, null)
 }
 
-class ImplicitCastException protected (message: String, maybeCause: Option[Throwable])
-  extends TypeCastException(message, maybeCause) {
+class ImplicitCastException(message: String, cause: Throwable)
+  extends TypeCastException(message, cause) {
 
-  def this(from: Expression, to: DataType, maybeCause: Option[Throwable]) = this({
+  def this(from: Expression, to: DataType, cause: Throwable) = this({
     s"""Cannot convert expression [${from.annotatedString}]
        |of data type ${from.dataType} to $to implicitly.
      """.straight
-  }, maybeCause)
+  }, cause)
 
-  def this(from: Expression, to: DataType, cause: Throwable) =
-    this(from, to, Some(cause))
-
-  def this(from: Expression, to: DataType) =
-    this(from, to, None)
+  def this(from: Expression, to: DataType) = this(from, to, null)
 }
 
-class TypeMismatchException protected (message: String, maybeCause: Option[Throwable])
-  extends AnalysisException(message, maybeCause) {
+class TypeMismatchException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
 
-  def this(message: String) = this(message, None)
+  def this(message: String) = this(message, null)
 
-  def this(message: String, cause: Throwable) = this(message, Some(cause))
-
-  protected def this(
-    expression: Expression, dataTypeClass: Class[_], maybeCause: Option[Throwable]
-  ) = this({
+  def this(expression: Expression, dataTypeClass: Class[_], cause: Throwable) = this({
     val expected = dataTypeClass.getSimpleName stripSuffix "$"
     val actual = expression.dataType.getClass.getSimpleName stripSuffix "$"
     s"""Expression [${expression.annotatedString}] has type $actual,
         |which cannot be implicitly converted to expected type $expected.
      """.straight
-  }, maybeCause)
-
-  def this(expression: Expression, dataTypeClass: Class[_], cause: Throwable) =
-    this(expression, dataTypeClass, Some(cause))
+  }, cause)
 
   def this(expression: Expression, dataTypeClass: Class[_]) =
-    this(expression, dataTypeClass, None)
-
-  def this(expression: Expression, dataType: DataType, cause: Throwable) =
-    this(expression, dataType.getClass, Some(cause))
+    this(expression, dataTypeClass, null)
 
   def this(expression: Expression, dataType: DataType) =
-    this(expression, dataType.getClass, None)
+    this(expression, dataType.getClass, null)
 }
 
-class ResolutionFailureException protected (message: String, maybeCause: Option[Throwable])
-  extends AnalysisException(message, maybeCause) {
+class ResolutionFailureException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
 
-  def this(message: String) = this(message, None)
-
-  def this(message: String, cause: Throwable) = this(message, Some(cause))
+  def this(message: String) = this(message, null)
 }
 
-class TableNotFoundException protected (tableName: String, maybeCause: Option[Throwable])
-  extends AnalysisException(s"Table $tableName not found", maybeCause) {
+class TableNotFoundException(tableName: String, cause: Throwable)
+  extends AnalysisException(s"Table $tableName not found", cause) {
 
-  def this(tableName: String) = this(tableName, None)
-
-  def this(tableName: String, cause: Throwable) = this(tableName, Some(cause))
+  def this(tableName: String) = this(tableName, null)
 }
 
-class SettingsValidationException protected (message: String, maybeCause: Option[Throwable])
-  extends RuntimeException(message, maybeCause.orNull) {
+class SettingsValidationException(message: String, cause: Throwable)
+  extends RuntimeException(message, cause) {
 
-  def this(message: String) = this(message, None)
-
-  def this(message: String, cause: Throwable) = this(message, Some(cause))
+  def this(message: String) = this(message, null)
 }
