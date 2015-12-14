@@ -30,14 +30,14 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *  1. Strictly typed: `e` is strictly typed iff
    *
    *     - `e` is resolved, and
-   *     - all of its child expressions strictly typed, and
-   *     - all of its child expressions immediately meet all type requirements of `e`.
+   *     - all child expressions of `e` are strictly typed, and
+   *     - all child expressions of `e` immediately meet all type requirements of `e`.
    *
    *  2. Well typed: `e` is well typed iff
    *
    *     - `e` is resolved, and
-   *     - all of its child expressions are well typed, and
-   *     - all of its child expressions can meet all type requirements of `e` by applying implicit
+   *     - all child expressions of `e` are well typed, and
+   *     - all child expressions of `e` can meet all type requirements of `e` by applying implicit
    *       cast(s).
    *
    * For example, say attribute `a` is an attribute of type `LONG`, then `a + 1` is well typed
@@ -68,6 +68,11 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def whenStrictlyTyped[T](value: => T): T =
     if (strictlyTyped) value else throw new TypeCheckException(this)
 
+  /**
+   * Indicates whether this [[Expression]] is well typed.
+   *
+   * @see [[strictlyTypedForm]]
+   */
   lazy val wellTyped: Boolean = resolved && strictlyTypedForm.isSuccess
 
   /**
@@ -131,7 +136,7 @@ trait UnaryExpression extends Expression {
 
   protected def nullSafeEvaluate(value: Any): Any =
     throw new ContractBrokenException(
-      s"Subtype of ${getClass.getSimpleName} must override either evaluate or nullSafeEvaluate"
+      s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 
   override def evaluate(input: Row): Any = {
@@ -148,7 +153,7 @@ trait BinaryExpression extends Expression {
 
   def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     throw new ContractBrokenException(
-      s"Subtype of ${getClass.getSimpleName} must override either evaluate or nullSafeEvaluate"
+      s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 
   override def evaluate(input: Row): Any = {

@@ -84,6 +84,12 @@ case object SingleRowRelation extends LeafLogicalPlan {
   override def sql: String = ???
 }
 
+case class NamedRelation(child: LogicalPlan, tableName: String) extends UnaryLogicalPlan {
+  override def sql: String = s"`$tableName`"
+
+  override def output: Seq[Attribute] = child.output
+}
+
 case class LocalRelation(data: Iterable[Row], schema: StructType)
   extends LeafLogicalPlan {
 

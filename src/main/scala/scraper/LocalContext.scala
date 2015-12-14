@@ -95,7 +95,10 @@ class LocalCatalog extends Catalog {
     tables(tableName) = analyzedPlan
 
   override def lookupRelation(tableName: String): LogicalPlan =
-    tables getOrElse (tableName, throw new TableNotFoundException(tableName))
+    tables
+      .get(tableName)
+      .map(NamedRelation(_, tableName))
+      .getOrElse(throw new TableNotFoundException(tableName))
 }
 
 class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
@@ -131,6 +134,9 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         physical.LocalRelation(data, relation.output) :: Nil
 
       case child Subquery _ =>
+        planLater(child) :: Nil
+
+      case child NamedRelation _ =>
         planLater(child) :: Nil
 
       case EmptyRelation =>

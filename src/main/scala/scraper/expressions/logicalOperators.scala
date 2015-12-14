@@ -91,10 +91,9 @@ case class If(condition: Expression, yes: Expression, no: Expression)
     condition = strictCondition, yes = promotedYes, no = promotedNo
   )
 
-  override def evaluate(input: Row): Any =
-    if (condition.evaluate(input).asInstanceOf[Boolean]) {
-      yes.evaluate(input)
-    } else {
-      no.evaluate(input)
-    }
+  override def evaluate(input: Row): Any = condition.evaluate(input) match {
+    case null  => null
+    case true  => yes.evaluate(input)
+    case false => no.evaluate(input)
+  }
 }
