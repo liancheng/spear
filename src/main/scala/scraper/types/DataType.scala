@@ -5,7 +5,7 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{convertible, implicitlyCompatible, implicitlyConvertible}
-import scraper.expressions.{Cast, Expression}
+import scraper.expressions.Expression
 import scraper.trees.TreeNode
 
 trait DataType { self =>
@@ -15,18 +15,18 @@ trait DataType { self =>
   /** Returns a non-nullable [[FieldSpec]] of this [[DataType]]. */
   def ! : FieldSpec = FieldSpec(this, nullable = false)
 
-  /** Shortcut method for [[Cast.convertible]] */
+  /** Shortcut method for [[scraper.expressions.Cast.convertible]] */
   def >=>(that: DataType): Boolean = convertible(this, that)
 
-  /** Shortcut method for [[Cast.implicitlyConvertible]] */
+  /** Shortcut method for [[scraper.expressions.Cast.implicitlyConvertible]] */
   def >->(that: DataType): Boolean = implicitlyConvertible(this, that)
 
-  /** Shortcut method for [[Cast.implicitlyCompatible]] */
+  /** Shortcut method for [[scraper.expressions.Cast.implicitlyCompatible]] */
   def <->(that: DataType): Boolean = implicitlyCompatible(this, that)
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[>->]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
     case _ if this >-> that => Success(that)

@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.{Success, Try}
 
 import scraper.Row
-import scraper.exceptions.{ContractBrokenException, ExpressionUnevaluableException, ExpressionUnresolvedException, TypeCheckException}
+import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
@@ -60,7 +60,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
-   * [[TypeCheckException]].
+   * [[scraper.exceptions.TypeCheckException TypeCheckException]].
+   *
+   * @see [[strictlyTypedForm]]
    */
   @throws[TypeCheckException]("If this expression is not strictly typed")
   protected def whenStrictlyTyped[T](value: => T): T =
@@ -70,14 +72,33 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
-   * [[TypeCheckException]].
+   * [[scraper.exceptions.TypeCheckException TypeCheckException]].
+   *
+   * @see [[strictlyTypedForm]]
    */
   @throws[TypeCheckException]("If this expression is not well typed")
   protected def whenWellTyped[T](value: => T): T =
     if (wellTyped) value else throw new TypeCheckException(this)
 
+  /**
+   * Returns the data type of this [[Expression]] if it's well typed, or throws
+   * [[scraper.exceptions.AnalysisException AnalysisException]] (or one of its subclasses) if it's
+   * not.
+   *
+   * By default, this method performs type checking and delegates to [[strictDataType]] if this
+   * [[Expression]] is well typed.  But subclasses may override this method directly if the
+   * expression data type is fixed (e.g. comparisons and predicates).
+   *
+   * @see [[strictlyTypedForm]]
+   */
   def dataType: DataType = whenWellTyped(strictlyTypedForm.get.strictDataType)
 
+  /**
+   * Returns the data type of a strictly typed [[Expression]]. This method is only called when this
+   * [[Expression]] is strictly typed.
+   *
+   * @see [[strictlyTypedForm]]
+   */
   protected def strictDataType: DataType = throw new ContractBrokenException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )

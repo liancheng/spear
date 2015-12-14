@@ -1,7 +1,7 @@
 package scraper
 
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
-import scraper.expressions.{Attribute, Star, UnresolvedAttribute}
+import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
 import scraper.plans.logical.{LogicalPlan, Project, Subquery, UnresolvedRelation}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
@@ -47,8 +47,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule tries to resolve [[UnresolvedAttribute]]s in an logical plan operator using output
-   * [[Attribute]]s of its children.
+   * This rule tries to resolve [[scraper.expressions.UnresolvedAttribute UnresolvedAttribute]]s in
+   * an logical plan operator using output [[scraper.expressions.Attribute Attribute]]s of its
+   * children.
    */
   @throws[ResolutionFailureException](
     "If no candidate or multiple ambiguous candidate input attributes can be found"
@@ -99,7 +100,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * into strictly typed form by applying implicit casts when necessary.
    *
    * @note This rule doesn't apply implicit casts directly. Instead, it simply delegates to
-   *       [[LogicalPlan.strictlyTypedForm]].
+   *       [[scraper.plans.logical.LogicalPlan.strictlyTypedForm LogicalPlan.strictlyTypedForm]].
    */
   @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
@@ -109,8 +110,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule eliminates all [[Subquery]] operators, since they are only used to provide scoping
-   * information during analysis phase.
+   * This rule eliminates all [[scraper.plans.logical.Subquery Subquery]] operators, since they are
+   * only used to provide scoping information during analysis phase.
    */
   object EliminateSubquery extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
