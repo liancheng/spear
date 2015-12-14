@@ -7,13 +7,13 @@ import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.types.{DataType, LongType, NumericType}
 
-trait AggregateExpression extends UnevaluableExpression {
+trait Aggregation extends UnevaluableExpression {
   override def foldable: Boolean = false
 
   def agg(rows: Seq[Row]): Any
 }
 
-case class Count(child: Expression) extends AggregateExpression with UnaryExpression {
+case class Count(child: Expression) extends Aggregation with UnaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
@@ -27,7 +27,7 @@ case class Count(child: Expression) extends AggregateExpression with UnaryExpres
   override def sql: String = s"COUNT(${child.sql})"
 }
 
-trait UnaryArithmeticAggregation extends AggregateExpression with UnaryExpression {
+trait UnaryArithmeticAggregation extends Aggregation with UnaryExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
       case NumericType(e)            => e

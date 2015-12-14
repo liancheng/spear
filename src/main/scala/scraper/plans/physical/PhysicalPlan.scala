@@ -109,16 +109,16 @@ case class Aggregate(
     val boundAggs = aggregateExpressions.map(bind(_, child.output))
 
     val aggs = boundAggs.flatMap(_.collect {
-      case a: AggregateExpression => a
+      case a: Aggregation => a
     })
     val finalExprs = boundAggs.map(_.transformDown {
-      case a: AggregateExpression => BoundRef(aggs.indexOf(a), a.dataType, true)
+      case a: Aggregation => BoundRef(aggs.indexOf(a), a.dataType, nullable = true)
       case e =>
         val index = boundGroupings.indexOf(e)
         if (index == -1) {
           e
         } else {
-          BoundRef(aggs.length + index, e.dataType, true)
+          BoundRef(aggs.length + index, e.dataType, nullable = true)
         }
     })
 
