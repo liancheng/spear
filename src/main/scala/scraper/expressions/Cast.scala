@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.{Success, Try}
 
 import scraper.exceptions.{ImplicitCastException, TypeCastException}
-import scraper.expressions.Cast.buildCast
+import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types
 import scraper.types._
 
@@ -18,8 +18,9 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
-      case e if e.dataType >=> dataType => e
-      case e                            => throw new TypeCastException(e.dataType, dataType)
+      case e if convertible(e.dataType, dataType) => e
+      case e =>
+        throw new TypeCastException(e.dataType, dataType)
     }
   } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
 
@@ -196,29 +197,20 @@ object Cast {
     x == y || buildCast.lift(x).exists(_ isDefinedAt y)
 
   /**
-   * Returns whether type `x` is implicitly compatible with type `y`. Type `x` is implicitly
-   * compatible with type `y` iff:
-   *
-   *  - `x` is [[implicitlyConvertible]] to `y`, or
-   *  - `y` is [[implicitlyConvertible]] to `x`
-   */
-  def implicitlyCompatible(x: DataType, y: DataType): Boolean =
-    implicitlyConvertible(x, y) || implicitlyConvertible(y, x)
-
-  /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
    * [[types.DataType DataType]] of `e` is [[implicitlyConvertible]] to `dataType`.  If `e` is
    * already of the target type, `e` is returned untouched.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
-    case _ if e.dataType == dataType  => e
-    case _ if e.dataType >-> dataType => e cast dataType
-    case _                            => throw new ImplicitCastException(e, dataType)
+    case _ if e.dataType == dataType           => e
+    case _ if e.dataType narrowerThan dataType => e cast dataType
+    case _                                     => throw new ImplicitCastException(e, dataType)
   }
 
   /**
    * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyCompatible]] to `x`.
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyConvertible]] to
+   * `x`.
    */
   def widestTypeOf(types: Seq[DataType]): Try[DataType] = (types.tail foldLeft Try(types.head)) {
     case (Success(x), y) => x widest y

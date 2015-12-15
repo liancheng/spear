@@ -14,7 +14,7 @@ import scraper.generators.expressions._
 import scraper.plans.Optimizer.{CNFConversion, ReduceFilters}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.types.{StructType, TestUtils}
+import scraper.types.TestUtils
 import scraper.{Analyzer, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
@@ -40,7 +40,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genLogicalPredicate(StructType.empty.toAttributes))
+    implicit val arbPredicate = Arbitrary(genLogicalPredicate(Nil))
 
     check(
       forAll { predicate: Expression =>
@@ -61,7 +61,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(ReduceFilters, FixedPoint.Unlimited) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genPredicate(StructType.empty.toAttributes))
+    implicit val arbPredicate = Arbitrary(genPredicate(Nil))
 
     check { (p1: Expression, p2: Expression) =>
       val optimized = optimizer(SingleRowRelation filter p1 filter p2)

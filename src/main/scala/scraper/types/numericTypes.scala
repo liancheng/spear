@@ -1,6 +1,5 @@
 package scraper.types
 
-import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions.Expression
 
 trait NumericType extends PrimitiveType {
@@ -19,13 +18,13 @@ object NumericType {
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t >-> defaultType => Some(e)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(e)
+      case _                               => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t >-> defaultType => Some(t)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(t)
+      case _                               => None
     }
   }
 }
@@ -46,13 +45,13 @@ object IntegralType {
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t >-> defaultType => Some(e)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(e)
+      case _                               => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t >-> defaultType => Some(t)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(t)
+      case _                               => None
     }
   }
 }
@@ -121,13 +120,13 @@ object FractionalType {
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t >-> defaultType => Some(e)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(e)
+      case _                               => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t >-> defaultType => Some(t)
-      case _                      => None
+      case t if t narrowerThan defaultType => Some(t)
+      case _                               => None
     }
   }
 }

@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{convertible, implicitlyCompatible, implicitlyConvertible}
+import scraper.expressions.Cast.implicitlyConvertible
 import scraper.expressions.Expression
 import scraper.trees.TreeNode
 
@@ -15,24 +15,18 @@ trait DataType { self =>
   /** Returns a non-nullable [[FieldSpec]] of this [[DataType]]. */
   def ! : FieldSpec = FieldSpec(this, nullable = false)
 
-  /** Shortcut method for [[scraper.expressions.Cast.convertible]] */
-  def >=>(that: DataType): Boolean = convertible(this, that)
-
   /** Shortcut method for [[scraper.expressions.Cast.implicitlyConvertible]] */
-  def >->(that: DataType): Boolean = implicitlyConvertible(this, that)
-
-  /** Shortcut method for [[scraper.expressions.Cast.implicitlyCompatible]] */
-  def <->(that: DataType): Boolean = implicitlyCompatible(this, that)
+  def narrowerThan(that: DataType): Boolean = implicitlyConvertible(this, that)
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[>->]] `x`.
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[narrowerThan]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
-    case _ if this >-> that => Success(that)
-    case _ if that >-> this => Success(this)
+    case _ if this narrowerThan that => Success(that)
+    case _ if that narrowerThan this => Success(this)
     case _ => Failure(new TypeMismatchException(
-      s"Could not find common type for: ${this.sql} and ${that.sql}"
+      s"Could not find common type for ${this.sql} and ${that.sql}"
     ))
   }
 
@@ -51,13 +45,13 @@ trait DataType { self =>
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t >-> self => Some(e)
-      case _               => None
+      case t if t narrowerThan self => Some(e)
+      case _                        => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t >-> self => Some(t)
-      case _               => None
+      case t if t narrowerThan self => Some(t)
+      case _                        => None
     }
   }
 }
@@ -169,7 +163,7 @@ case object StringType extends PrimitiveType {
 
   override val ordering: Ordering[String] = implicitly[Ordering[String]]
 
-  override def sql: String = "TEXT"
+  override def sql: String = "STRING"
 }
 
 case object BooleanType extends PrimitiveType {

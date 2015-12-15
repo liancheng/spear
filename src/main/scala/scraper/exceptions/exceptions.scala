@@ -14,10 +14,7 @@ class ContractBrokenException(message: String, cause: Throwable)
 }
 
 abstract class AnalysisException(message: String, cause: Throwable)
-  extends RuntimeException(message, cause) {
-
-  def this(message: String) = this(message, null)
-}
+  extends RuntimeException(message, cause)
 
 class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
   extends AnalysisException(s"Expression ${expression.annotatedString} is unevaluable", cause) {
