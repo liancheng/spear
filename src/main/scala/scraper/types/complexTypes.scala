@@ -1,5 +1,7 @@
 package scraper.types
 
+import scala.language.implicitConversions
+
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions.{Attribute, AttributeRef}
 
@@ -40,6 +42,26 @@ case class StructField(name: String, dataType: DataType, nullable: Boolean) {
 object StructField {
   def apply(name: String, fieldSpec: FieldSpec): StructField =
     StructField(name, fieldSpec.dataType, fieldSpec.nullable)
+
+  implicit def `(String,DataType)->StructField`(pair: (String, DataType)): StructField =
+    pair match {
+      case (name, dataType) => StructField(name, dataType, nullable = true)
+    }
+
+  implicit def `(Symbol,DataType)->StructField`(pair: (Symbol, DataType)): StructField =
+    pair match {
+      case (name, dataType) => StructField(name.name, dataType, nullable = true)
+    }
+
+  implicit def `(String,FieldSpec)->StructField`(pair: (String, FieldSpec)): StructField =
+    pair match {
+      case (name, fieldSpec) => StructField(name, fieldSpec)
+    }
+
+  implicit def `(Symbol,FieldSpec)->StructField`(pair: (Symbol, FieldSpec)): StructField =
+    pair match {
+      case (name, fieldSpec) => StructField(name.name, fieldSpec)
+    }
 }
 
 case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType {

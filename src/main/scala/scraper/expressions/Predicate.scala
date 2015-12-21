@@ -1,16 +1,17 @@
 package scraper.expressions
 
+import scraper.expressions.dsl._
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
 
 object Predicate {
   private[scraper] def splitConjunction(predicate: Expression): Seq[Expression] = predicate match {
-    case left And right => splitConjunction(left) ++ splitConjunction(right)
-    case _              => predicate :: Nil
+    case left && right => splitConjunction(left) ++ splitConjunction(right)
+    case _             => predicate :: Nil
   }
 
   private[scraper] def splitDisjunction(predicate: Expression): Seq[Expression] = predicate match {
-    case left Or right => splitDisjunction(left) ++ splitDisjunction(right)
+    case left || right => splitDisjunction(left) ++ splitDisjunction(right)
     case _             => predicate :: Nil
   }
 
@@ -23,11 +24,11 @@ object Predicate {
 
   private object CNFConversion extends Rule[Expression] {
     override def apply(tree: Expression): Expression = tree transformDown {
-      case Not(Not(x))    => x
-      case Not(x Or y)    => !x && !y
-      case Not(x And y)   => !x || !y
-      case (x And y) Or z => (x || z) && (y || z)
-      case x Or (y And z) => (y || x) && (z || x)
+      case !(!(x))       => x
+      case !(x || y)     => !x && !y
+      case !(x && y)     => !x || !y
+      case (x && y) || z => (x || z) && (y || z)
+      case x || (y && z) => (x || y) && (x || z)
     }
   }
 }

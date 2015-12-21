@@ -65,19 +65,26 @@ class Parser extends TokenParser[LogicalPlan] {
   private val FULL = Keyword("FULL")
   private val ON = Keyword("ON")
 
+  private val GROUP = Keyword("GROUP")
+  private val BY = Keyword("BY")
+  private val HAVING = Keyword("HAVING")
+
   override protected def start: Parser[LogicalPlan] =
     select
 
   private def select: Parser[LogicalPlan] = (
-    SELECT ~> projections.?
+    SELECT ~> projections
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
+    ~ (GROUP ~> BY ~> rep1sep(expression, ",")).?
+    ~ (HAVING ~> predicate).?
     ~ (LIMIT ~> expression).? ^^ {
-      case ps ~ rs ~ f ~ n =>
+      case ps ~ rs ~ f ~ gs ~ h ~ n =>
         val base = rs getOrElse SingleRowRelation
         val withFilter = f map (Filter(base, _)) getOrElse base
-        val withProjections = ps map (Project(withFilter, _)) getOrElse withFilter
-        val withLimit = n map (Limit(withProjections, _)) getOrElse withProjections
+        val withProject = gs map (Aggregate(withFilter, _, ps)) getOrElse Project(withFilter, ps)
+        val withHaving = h map (Filter(withProject, _)) getOrElse withProject
+        val withLimit = n map (Limit(withHaving, _)) getOrElse withHaving
         withLimit
     }
   )

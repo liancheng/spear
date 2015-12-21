@@ -10,6 +10,7 @@ import org.scalatest.prop.Checkers
 import scraper.Test.defaultSettings
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
+import scraper.expressions.dsl._
 import scraper.generators.expressions._
 import scraper.plans.Optimizer.{CNFConversion, ReduceFilters}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
@@ -50,7 +51,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         }.flatten
 
         conditions.forall {
-          _.collect { case _: And => () }.isEmpty
+          _.collect { case _ && _ => () }.isEmpty
         }
       },
 

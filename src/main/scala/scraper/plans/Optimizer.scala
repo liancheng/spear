@@ -1,8 +1,9 @@
 package scraper.plans
 
 import scraper.expressions.Literal.{False, True}
-import scraper.expressions.Predicate.toCNF
+import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions._
+import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.Optimizer._
 import scraper.plans.logical._
@@ -18,6 +19,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       FoldLogicalPredicates,
 
       CNFConversion,
+      EliminateCommonPredicates,
 
       ReduceAliases,
       ReduceCasts,
@@ -71,14 +73,17 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case True Or _                => True
-          case _ Or True                => True
+          case True || _        => True
+          case _ || True        => True
 
-          case False And _              => False
-          case _ And False              => False
+          case False && _       => False
+          case _ && False       => False
 
-          case If(True, trueValue, _)   => trueValue
-          case If(False, _, falseValue) => falseValue
+          case a && b if a == b => a
+          case a || b if a == b => a
+
+          case If(True, yes, _) => yes
+          case If(False, _, no) => no
         }
     }
   }
@@ -90,16 +95,22 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case Not(Not(child))    => child
-          case Not(lhs Eq rhs)    => lhs =/= rhs
-          case Not(lhs NotEq rhs) => lhs =:= rhs
+          case !(!(child))         => child
+          case !(lhs =:= rhs)      => lhs =/= rhs
+          case !(lhs =/= rhs)      => lhs =:= rhs
 
-          case Not(lhs Gt rhs)    => lhs <= rhs
-          case Not(lhs GtEq rhs)  => lhs < rhs
-          case Not(lhs Lt rhs)    => lhs >= rhs
-          case Not(lhs LtEq rhs)  => lhs > rhs
+          case !(lhs > rhs)        => lhs <= rhs
+          case !(lhs >= rhs)       => lhs < rhs
+          case !(lhs < rhs)        => lhs >= rhs
+          case !(lhs <= rhs)       => lhs > rhs
 
-          case If(Not(c), t, f)   => If(c, f, t)
+          case If(!(c), t, f)      => If(c, f, t)
+
+          case a && !(b) if a == b => False
+          case a || !(b) if a == b => True
+
+          case !(IsNull(child))    => IsNotNull(child)
+          case !(IsNotNull(child)) => IsNull(child)
         }
     }
   }
@@ -155,7 +166,20 @@ object Optimizer {
    */
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan: Filter => plan.copy(condition = toCNF(plan.condition))
+      case plan: Filter =>
+        val cnf = toCNF(plan.condition)
+        plan.copy(condition = splitConjunction(cnf).distinct reduce (_ && _))
+    }
+  }
+
+  object EliminateCommonPredicates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan =>
+        plan transformExpressionsDown {
+          case lhs && rhs if lhs == rhs            => lhs
+          case lhs || rhs if lhs == rhs            => lhs
+          case If(condition, yes, no) if yes == no => Coalesce(condition, yes)
+        }
     }
   }
 

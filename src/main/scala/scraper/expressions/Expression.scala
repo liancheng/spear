@@ -171,6 +171,8 @@ object BinaryExpression {
 }
 
 trait UnevaluableExpression extends Expression {
+  override def foldable: Boolean = false
+
   override def evaluate(input: Row): Any = throw new ExpressionUnevaluableException(this)
 }
 

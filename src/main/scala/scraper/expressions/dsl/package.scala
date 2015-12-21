@@ -23,4 +23,28 @@ package object dsl {
 
   implicit def `Symbol->UnresolvedAttribute`(name: Symbol): UnresolvedAttribute =
     UnresolvedAttribute(name.name)
+
+  trait BinaryPattern[T <: BinaryExpression] {
+    def unapply(op: T): Option[(Expression, Expression)] = Some((op.left, op.right))
+  }
+
+  object ! {
+    def unapply(not: Not): Option[Expression] = Some(not.child)
+  }
+
+  object || extends BinaryPattern[Or]
+
+  object && extends BinaryPattern[And]
+
+  object =:= extends BinaryPattern[Eq]
+
+  object =/= extends BinaryPattern[NotEq]
+
+  object > extends BinaryPattern[Gt]
+
+  object < extends BinaryPattern[Lt]
+
+  object >= extends BinaryPattern[GtEq]
+
+  object <= extends BinaryPattern[LtEq]
 }

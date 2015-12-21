@@ -27,7 +27,7 @@ package object utils {
         rtrim(s"# $lhsLine | $rhsLine")
     } ++ contents.map {
       case (lhsLine, rhsLine) =>
-        val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) ">" else " "
+        val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) "!" else " "
         rtrim(s"$diffIndicator $lhsLine | $rhsLine")
     }
   } mkString "\n"

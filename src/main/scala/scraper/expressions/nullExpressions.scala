@@ -24,6 +24,11 @@ case class Coalesce(children: Seq[Expression]) extends Expression {
     (children.iterator map (_ evaluate input) find (_ != null)).orNull
 }
 
+object Coalesce {
+  def apply(first: Expression, second: Expression, rest: Expression*): Coalesce =
+    Coalesce(Seq(first, second) ++ rest)
+}
+
 case class IsNull(child: Expression) extends UnaryExpression {
   override def strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm

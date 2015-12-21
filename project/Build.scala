@@ -99,6 +99,7 @@ object Dependencies {
 
   object Versions {
     val config = "1.2.1"
+    val janino = "2.7.8"
     val log4j = "1.2.16"
     val parquetMr = "1.8.1"
     val protobuf = "2.5.0"
@@ -107,12 +108,18 @@ object Dependencies {
     val scalaParserCombinators = "1.0.4"
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
+    val scodecCore = "1.8.3"
     val scopt = "3.3.0"
+    val shapeless = "2.2.5"
     val slf4j = "1.6.4"
   }
 
   val config = Seq(
     "com.typesafe" % "config" % Versions.config
+  )
+
+  val janino = Seq(
+    "org.codehaus.janino" % "janino" % Versions.janino
   )
 
   val log4j = Seq(
@@ -142,8 +149,16 @@ object Dependencies {
     "org.scalacheck" %% "scalacheck" % Versions.scalaCheck % "test"
   )
 
+  val scodec = Seq(
+    "org.scodec" %% "scodec-core" % Versions.scodecCore
+  )
+
   val scopt = Seq(
     "com.github.scopt" %% "scopt" % Versions.scopt
+  )
+
+  val shapeless = Seq(
+    "com.chuusai" %% "shapeless" % Versions.shapeless
   )
 
   val slf4j = Seq(
@@ -154,7 +169,9 @@ object Dependencies {
 
   val test = Seq.empty[ModuleID]
 
-  val all = test ++ config ++ log4j ++ parquetMr ++ scala ++ scopt ++ scalaTest ++ slf4j
+  val all =
+    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++
+      scodec ++ scopt ++ scalaTest ++ shapeless ++ slf4j
 
   val overrides = Set.empty ++ protobuf ++ scala
 }

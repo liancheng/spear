@@ -45,7 +45,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("ArrayType instantiation") {
     checkTree(
       ArrayType(IntType, elementNullable = true),
-      ArrayType(IntType.?)
+      ArrayType(IntType)
     )
 
     checkTree(
@@ -57,7 +57,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("MapType instantiation") {
     checkTree(
       MapType(IntType, StringType, valueNullable = true),
-      MapType(IntType, StringType.?)
+      MapType(IntType, StringType)
     )
 
     checkTree(
@@ -78,7 +78,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
         StructField("f2", DoubleType, nullable = false)
       )),
       StructType(
-        'f1 -> IntType.?,
+        'f1 -> IntType,
         'f2 -> DoubleType.!
       )
     )
@@ -87,21 +87,21 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
   private val testSchema =
     StructType(
       'name -> StringType.!,
-      'age -> IntType.?,
-      'gender -> StringType.?,
+      'age -> IntType,
+      'gender -> StringType,
       'location -> StructType(
         'latitude -> DoubleType.!,
         'longitude -> DoubleType.!
-      ).?,
-      "phone-numbers" -> ArrayType(StringType.!).?,
-      'addresses -> MapType(StringType, StringType.!).?
+      ),
+      "phone-numbers" -> ArrayType(StringType.!),
+      'addresses -> MapType(StringType, StringType.!)
     )
 
   test("StructType field types") {
     assertResult(IntType :: DoubleType :: Nil) {
       StructType(
         'f0 -> IntType.!,
-        'f1 -> DoubleType.?
+        'f1 -> DoubleType
       ).fieldTypes
     }
   }

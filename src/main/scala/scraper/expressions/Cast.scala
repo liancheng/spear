@@ -28,21 +28,19 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
 }
 
 object Cast {
-  private type CastBuilder = PartialFunction[DataType, Any => Any]
-
-  private val implicitlyFromBoolean: CastBuilder = {
+  private val implicitlyFromBoolean: PartialFunction[DataType, Any => Any] = {
     case StringType => _.toString
   }
 
   private val asBoolean = (_: Any) match { case v: Boolean => v }
 
-  private val explicitlyFromBoolean: CastBuilder = {
+  private val explicitlyFromBoolean: PartialFunction[DataType, Any => Any] = {
     case IntType => asBoolean andThen (if (_) 1 else 0)
   }
 
   private val asByte = (_: Any) match { case v: Byte => v }
 
-  private val implicitlyFromByte: CastBuilder = {
+  private val implicitlyFromByte: PartialFunction[DataType, Any => Any] = {
     case ShortType  => asByte andThen (_.toShort)
     case IntType    => asByte andThen (_.toInt)
     case LongType   => asByte andThen (_.toLong)
@@ -51,13 +49,13 @@ object Cast {
     case StringType => _.toString
   }
 
-  private val explicitlyFromByte: CastBuilder = {
+  private val explicitlyFromByte: PartialFunction[DataType, Any => Any] = {
     case _ if false => identity
   }
 
   private val asShort = (_: Any) match { case v: Short => v }
 
-  private val implicitlyFromShort: CastBuilder = {
+  private val implicitlyFromShort: PartialFunction[DataType, Any => Any] = {
     case IntType    => asShort andThen (_.toInt)
     case LongType   => asShort andThen (_.toLong)
     case FloatType  => asShort andThen (_.toFloat)
@@ -65,13 +63,13 @@ object Cast {
     case StringType => _.toString
   }
 
-  private val explicitlyFromShort: CastBuilder = {
+  private val explicitlyFromShort: PartialFunction[DataType, Any => Any] = {
     case ByteType => asShort andThen (_.toByte)
   }
 
   private val asInt = (_: Any) match { case v: Int => v }
 
-  private val implicitlyFromInt: CastBuilder = {
+  private val implicitlyFromInt: PartialFunction[DataType, Any => Any] = {
     case BooleanType => asInt andThen (_ == 0)
     case LongType    => asInt andThen (_.toLong)
     case FloatType   => asInt andThen (_.toFloat)
@@ -79,20 +77,20 @@ object Cast {
     case StringType  => _.toString
   }
 
-  private val explicitlyFromInt: CastBuilder = {
+  private val explicitlyFromInt: PartialFunction[DataType, Any => Any] = {
     case ByteType  => asInt andThen (_.toByte)
     case ShortType => asInt andThen (_.toShort)
   }
 
   private val asLong = (_: Any) match { case v: Long => v }
 
-  private val implicitlyFromLong: CastBuilder = {
+  private val implicitlyFromLong: PartialFunction[DataType, Any => Any] = {
     case FloatType  => asLong andThen (_.toFloat)
     case DoubleType => asLong andThen (_.toDouble)
     case StringType => _.toString
   }
 
-  private val explicitlyFromLong: CastBuilder = {
+  private val explicitlyFromLong: PartialFunction[DataType, Any => Any] = {
     case ByteType  => asLong andThen (_.toByte)
     case ShortType => asLong andThen (_.toShort)
     case IntType   => asLong andThen (_.toInt)
@@ -100,25 +98,25 @@ object Cast {
 
   private val asFloat = (_: Any) match { case v: Float => v }
 
-  private val implicitlyFromFloat: CastBuilder = {
+  private val implicitlyFromFloat: PartialFunction[DataType, Any => Any] = {
     case DoubleType => asFloat andThen (_.toDouble)
     case StringType => _.toString
   }
 
-  private val explicitlyFromFloat: CastBuilder = {
+  private val explicitlyFromFloat: PartialFunction[DataType, Any => Any] = {
     case ByteType  => asFloat andThen (_.toByte)
     case ShortType => asFloat andThen (_.toShort)
     case IntType   => asFloat andThen (_.toInt)
     case LongType  => asFloat andThen (_.toLong)
   }
 
-  private val implicitlyFromDouble: CastBuilder = {
+  private val implicitlyFromDouble: PartialFunction[DataType, Any => Any] = {
     case StringType => _.toString
   }
 
   private val asDouble = (_: Any) match { case v: Double => v }
 
-  private val explicitlyFromDouble: CastBuilder = {
+  private val explicitlyFromDouble: PartialFunction[DataType, Any => Any] = {
     case ByteType  => asDouble andThen (_.toByte)
     case ShortType => asDouble andThen (_.toShort)
     case IntType   => asDouble andThen (_.toInt)
@@ -130,7 +128,7 @@ object Cast {
 
   private val asString = (_: Any) match { case v: String => v }
 
-  private val implicitlyFromString: CastBuilder = {
+  private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
     case BooleanType => asString andThen booleanStrings.contains
     case ByteType    => asString andThen (_.toByte)
     case ShortType   => asString andThen (_.toShort)
@@ -140,20 +138,22 @@ object Cast {
     case DoubleType  => asString andThen (_.toDouble)
   }
 
-  private val explicitlyFromString: CastBuilder = {
+  private val explicitlyFromString: PartialFunction[DataType, Any => Any] = {
     case _ if false => identity
   }
 
-  private val implicitlyFromNull: CastBuilder = {
+  private val implicitlyFromNull: PartialFunction[DataType, Any => Any] = {
     // NullType can be casted to any other type, and only has a single value `null`.
     case _ => { case _ => null }
   }
 
-  private val explicitlyFromNull: CastBuilder = {
+  private val explicitlyFromNull: PartialFunction[DataType, Any => Any] = {
     case _ if false => identity
   }
 
-  private val buildImplicitCast: PartialFunction[DataType, CastBuilder] = {
+  private type CastBuilder = PartialFunction[DataType, PartialFunction[DataType, Any => Any]]
+
+  private val buildImplicitCast: CastBuilder = {
     case BooleanType => implicitlyFromBoolean
     case ByteType    => implicitlyFromByte
     case ShortType   => implicitlyFromShort
@@ -165,7 +165,7 @@ object Cast {
     case NullType    => implicitlyFromNull
   }
 
-  private val buildExplicitCast: PartialFunction[DataType, CastBuilder] = {
+  private val buildExplicitCast: CastBuilder = {
     case BooleanType => explicitlyFromBoolean
     case ByteType    => explicitlyFromByte
     case ShortType   => explicitlyFromShort
@@ -177,7 +177,7 @@ object Cast {
     case NullType    => explicitlyFromNull
   }
 
-  private val buildCast: PartialFunction[DataType, CastBuilder] =
+  private val buildCast: PartialFunction[DataType, PartialFunction[DataType, Any => Any]] =
     buildImplicitCast orElse buildExplicitCast
 
   /**

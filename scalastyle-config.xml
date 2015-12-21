@@ -122,5 +122,5 @@
       <parameter name="ignoreRegex"><![CDATA[^""$]]></parameter>
     </parameters>
   </check>
-  <check level="error" class="org.scalastyle.scalariform.ImportGroupingChecker" enabled="true"/>
+  <check level="error" class="org.scalastyle.scalariform.ImportGroupingChecker" enabled="false"/>
 </scalastyle>

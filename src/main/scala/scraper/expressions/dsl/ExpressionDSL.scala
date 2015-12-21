@@ -13,4 +13,8 @@ trait ExpressionDSL
   def as(alias: Symbol): Alias = Alias(alias.name, this)
 
   def cast(dataType: DataType): Cast = Cast(this, dataType)
+
+  def isNull: IsNull = IsNull(this)
+
+  def notNull: IsNotNull = IsNotNull(this)
 }

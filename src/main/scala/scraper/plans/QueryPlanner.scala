@@ -1,8 +1,9 @@
 package scraper.plans
 
+import scraper.trees.TreeNode
 import scraper.utils.Logging
 
-trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: QueryPlan[Physical]] extends Logging {
+trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]] extends Logging {
   trait Strategy {
     def apply(logicalPlan: Logical): Seq[Physical]
   }

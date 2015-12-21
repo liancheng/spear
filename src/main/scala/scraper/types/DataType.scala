@@ -59,6 +59,8 @@ trait DataType { self =>
 case class FieldSpec(dataType: DataType, nullable: Boolean)
 
 object DataType {
+  implicit def `DataType->FieldSpec`(dataType: DataType): FieldSpec = dataType.?
+
   /**
    * A trait for wrapping [[DataType]]s into [[scraper.trees.TreeNode TreeNode]]s, so that we can
    * easily apply recursive transformations to a nested [[DataType]].

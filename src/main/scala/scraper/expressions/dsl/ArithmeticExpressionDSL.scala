@@ -10,4 +10,8 @@ trait ArithmeticExpressionDSL { this: Expression =>
   def *(that: Expression): Multiply = Multiply(this, that)
 
   def /(that: Expression): Divide = Divide(this, that)
+
+  def unary_- : Negate = Negate(this)
+
+  def isNaN: IsNaN = IsNaN(this)
 }
