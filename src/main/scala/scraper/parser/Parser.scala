@@ -96,12 +96,8 @@ class Parser extends TokenParser[LogicalPlan] {
     }
   )
 
-  private def relations: Parser[LogicalPlan] = (
-    relation ~ ("," ~> relation).* ^^ {
-      case r ~ joins => joins.foldLeft(r) { Join(_, _, Inner, None) }
-    }
-    | relation
-  )
+  private def relations: Parser[LogicalPlan] =
+    relation * ("," ^^^ (Join(_, _, Inner, None)))
 
   private def relation: Parser[LogicalPlan] =
     joinedRelation | relationFactor
