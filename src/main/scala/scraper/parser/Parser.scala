@@ -25,12 +25,16 @@ abstract class TokenParser[T] extends StdTokenParsers {
   private val keywords = mutable.Set.empty[String]
 
   protected case class Keyword(name: String) {
-    keywords += name
+    keywords += normalized
+
+    def normalized: String = name.toLowerCase
+
+    def asParser: Parser[String] = normalized
   }
 
   override lazy val lexical: Tokens = new Lexical(keywords.toSet)
 
-  protected implicit def keywordAsParser(k: Keyword): Parser[String] = k.name
+  protected implicit def `Keyword->Parser[String]`(k: Keyword): Parser[String] = k.asParser
 
   def parse(input: String): T = synchronized {
     phrase(start)(new lexical.Scanner(input)) match {
