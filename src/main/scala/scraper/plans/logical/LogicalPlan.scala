@@ -149,12 +149,29 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   override def sql: String = s"${child.sql} LIMIT ${limit.sql}"
 }
 
-trait JoinType
-case object Inner extends JoinType
-case object LeftSemi extends JoinType
-case object LeftOuter extends JoinType
-case object RightOuter extends JoinType
-case object FullOuter extends JoinType
+trait JoinType {
+  def sql: String
+}
+
+case object Inner extends JoinType {
+  override def sql: String = "INNER"
+}
+
+case object LeftSemi extends JoinType {
+  override def sql: String = "LEFT SEMI"
+}
+
+case object LeftOuter extends JoinType {
+  override def sql: String = "LEFT OUTER"
+}
+
+case object RightOuter extends JoinType {
+  override def sql: String = "RIGHT OUTER"
+}
+
+case object FullOuter extends JoinType {
+  override def sql: String = "FULL OUTER"
+}
 
 case class Join(
   left: LogicalPlan,
