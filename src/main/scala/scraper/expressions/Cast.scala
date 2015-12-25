@@ -23,8 +23,6 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
         throw new TypeCastException(e.dataType, dataType)
     }
   } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
-
-  override def sql: String = s"CAST(${child.sql} AS ${dataType.sql})"
 }
 
 object Cast {

@@ -32,6 +32,4 @@ case class SortOrder(child: Expression, direction: SortDirection)
   override def annotatedString: String = s"$child $direction"
 
   def isAscending: Boolean = direction == Ascending
-
-  override def sql: String = ???
 }

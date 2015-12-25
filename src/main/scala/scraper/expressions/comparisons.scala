@@ -43,46 +43,34 @@ case class Eq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs == rhs
 
   override def annotatedString: String = s"(${left.annotatedString} = ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} = ${right.sql})"
 }
 
 case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs != rhs
 
   override def annotatedString: String = s"(${left.annotatedString} != ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} != ${right.sql})"
 }
 
 case class Gt(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.gt(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} > ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} > ${right.sql})"
 }
 
 case class Lt(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.lt(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} < ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} < ${right.sql})"
 }
 
 case class GtEq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.gteq(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} >= ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} >= ${right.sql})"
 }
 
 case class LtEq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.lteq(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} <= ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} <= ${right.sql})"
 }

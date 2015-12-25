@@ -97,7 +97,7 @@ class Parser extends TokenParser[LogicalPlan] {
   )
 
   private def relations: Parser[LogicalPlan] =
-    relation * ("," ^^^ (Join(_, _, Inner, None)))
+    relation * ("," ^^^ (Join(_: LogicalPlan, _: LogicalPlan, Inner, None)))
 
   private def relation: Parser[LogicalPlan] =
     joinedRelation | relationFactor

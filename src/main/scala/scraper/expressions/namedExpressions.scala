@@ -36,8 +36,6 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override def sql: String = "*"
-
   override def annotatedString: String = "*"
 }
 
@@ -61,8 +59,6 @@ case class Alias(
 
   override def annotatedString: String = s"(${child.annotatedString} AS `$name`#${expressionId.id})"
 
-  override def sql: String = s"(${child.sql} AS `$name`)"
-
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
@@ -81,8 +77,6 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
   override def annotatedString: String = s"`$name`?"
 
-  override def sql: String = s"`$name`"
-
   override def ? : Attribute = this
 
   override def ! : Attribute = this
@@ -96,8 +90,6 @@ case class AttributeRef(
 ) extends Attribute with UnevaluableExpression {
 
   override def annotatedString: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
-
-  override def sql: String = s"`$name`"
 
   override def ? : Attribute = copy(nullable = true)
 
@@ -116,9 +108,6 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   override def evaluate(input: Row): Any = input(ordinal)
 
   override def annotatedString: String = name
-
-  override def sql: String =
-    throw new UnsupportedOperationException(s"${getClass.getSimpleName} doesn't have a SQL form")
 }
 
 object BoundRef {

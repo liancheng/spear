@@ -2,9 +2,9 @@ package scraper
 
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.{Ascending, SortOrder, Expression, NamedExpression}
-import scraper.plans.logical.{Sort, Inner, Join, LogicalPlan}
-import scraper.plans.{QueryExecution, logical}
+import scraper.expressions.{Ascending, Expression, SortOrder}
+import scraper.plans.QueryExecution
+import scraper.plans.logical.{Inner, Join, LogicalPlan, Sort}
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
@@ -24,21 +24,15 @@ class DataFrame(val queryExecution: QueryExecution) {
     this select aliases
   }
 
-  def select(first: Expression, rest: Expression*): DataFrame =
-    this select (first +: rest)
+  def select(first: Expression, rest: Expression*): DataFrame = this select (first +: rest)
 
-  def select(expressions: Seq[Expression]): DataFrame = build(
-    logical.Project(_, expressions map {
-      case e: NamedExpression => e
-      case e                  => e as e.sql
-    })
-  )
+  def select(expressions: Seq[Expression]): DataFrame = build(_ select expressions)
 
-  def filter(condition: Expression): DataFrame = build(logical.Filter(_, condition))
+  def filter(condition: Expression): DataFrame = build(_ filter condition)
 
   def where(condition: Expression): DataFrame = this filter condition
 
-  def limit(n: Expression): DataFrame = build(logical.Limit(_, n))
+  def limit(n: Expression): DataFrame = build(_ limit n)
 
   def limit(n: Int): DataFrame = this limit lit(n)
 

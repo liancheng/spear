@@ -32,8 +32,6 @@ case class And(left: Expression, right: Expression) extends BinaryLogicalPredica
   }
 
   override def annotatedString: String = s"(${left.annotatedString} AND ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} AND ${right.sql})"
 }
 
 case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -41,8 +39,6 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
 
   override def annotatedString: String = s"(${left.annotatedString} OR ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} OR ${right.sql})"
 }
 
 case class Not(child: Expression) extends UnaryExpression {
@@ -58,8 +54,6 @@ case class Not(child: Expression) extends UnaryExpression {
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
   } yield copy(child = e)
-
-  override def sql: String = s"(NOT ${child.sql})"
 }
 
 case class If(condition: Expression, yes: Expression, no: Expression)
@@ -71,8 +65,6 @@ case class If(condition: Expression, yes: Expression, no: Expression)
 
   override def annotatedString: String =
     s"if (${condition.annotatedString}) ${yes.annotatedString} else ${no.annotatedString}"
-
-  override def sql: String = s"IF(${condition.sql}, ${yes.sql}, ${no.sql})"
 
   override lazy val strictlyTypedForm: Try[If] = for {
     strictCondition <- condition.strictlyTypedForm map {

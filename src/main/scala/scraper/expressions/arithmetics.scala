@@ -27,8 +27,6 @@ case class Negate(child: Expression) extends UnaryExpression with ArithmeticExpr
   override def nullSafeEvaluate(value: Any): Any = numeric.negate(value)
 
   override def annotatedString: String = s"(-${child.annotatedString})"
-
-  override def sql: String = s"(-${child.sql})"
 }
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
@@ -68,24 +66,18 @@ case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpr
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} + ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} + ${right.sql})"
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} - ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} - ${right.sql})"
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} * ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} * ${right.sql})"
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -99,8 +91,6 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = if (rhs == 0) null else div(lhs, rhs)
 
   override def annotatedString: String = s"(${left.annotatedString} / ${right.annotatedString})"
-
-  override def sql: String = s"(${left.sql} / ${right.sql})"
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
@@ -121,8 +111,6 @@ case class IsNaN(child: Expression) extends UnaryExpression {
   } yield if (promotedChild sameOrEqual child) this else copy(child = promotedChild)
 
   override def dataType: DataType = BooleanType
-
-  override def sql: String = s"ISNAN(${child.sql})"
 
   override def annotatedString: String = s"ISNAN(${child.annotatedString})"
 

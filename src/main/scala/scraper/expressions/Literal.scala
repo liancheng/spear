@@ -9,11 +9,6 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
   override def evaluate(input: Row): Any = value
 
   override def annotatedString: String = s"$value: ${dataType.simpleName}"
-
-  override def sql: String = value match {
-    case v: String => s"'$value'" // TODO escaping
-    case v         => v.toString
-  }
 }
 
 object Literal {

@@ -116,8 +116,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def annotatedString: String
 
-  def sql: String
-
   override def nodeCaption: String = getClass.getSimpleName
 }
 

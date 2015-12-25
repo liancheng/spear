@@ -26,12 +26,11 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
 
-  def sql: String
-
-  def select(projections: Seq[Expression]): LogicalPlan = Project(this, projections map {
-    case e: NamedExpression => e
-    case e                  => e as e.sql
-  })
+  def select(projections: Seq[Expression]): LogicalPlan =
+    Project(this, projections.zipWithIndex map {
+      case (e: NamedExpression, _) => e
+      case (e, ordinal)            => e as s"col$ordinal"
+    })
 
   def select(first: Expression, rest: Expression*): LogicalPlan = select(first +: rest)
 
@@ -68,25 +67,17 @@ trait BinaryLogicalPlan extends LogicalPlan {
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan {
   override def nodeCaption: String = s"${getClass.getSimpleName} $name"
-
-  override def sql: String = name
 }
 
 case object EmptyRelation extends LeafLogicalPlan {
   override def output: Seq[Attribute] = Nil
-
-  override def sql: String = ???
 }
 
 case object SingleRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
-
-  override def sql: String = ???
 }
 
 case class NamedRelation(child: LogicalPlan, tableName: String) extends UnaryLogicalPlan {
-  override def sql: String = s"`$tableName`"
-
   override def output: Seq[Attribute] = child.output
 }
 
@@ -97,8 +88,6 @@ case class LocalRelation(data: Iterable[Row], schema: StructType)
 
   override def nodeCaption: String =
     s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
-
-  override def sql: String = s"`<local-relation>`"
 }
 
 object LocalRelation {
@@ -120,16 +109,12 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
 
   override def nodeCaption: String =
     s"${getClass.getSimpleName} ${projections map (_.annotatedString) mkString ", "}"
-
-  override def sql: String = s"SELECT ${projections map (_.sql) mkString ", "} FROM ${child.sql}"
 }
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
-
-  override def sql: String = s"${child.sql} WHERE ${condition.sql}"
 }
 
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
@@ -145,8 +130,6 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 
   override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
-
-  override def sql: String = s"${child.sql} LIMIT ${limit.sql}"
 }
 
 trait JoinType {
@@ -191,16 +174,12 @@ case class Join(
     val details = joinType.toString +: maybeCondition.map(_.annotatedString).toSeq mkString ", "
     s"${getClass.getSimpleName} $details"
   }
-
-  override def sql: String = ???
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def nodeCaption: String = s"${getClass.getSimpleName} $alias"
-
-  override def sql: String = s"(${child.sql}) AS $alias"
 }
 
 case class Aggregate(
@@ -208,8 +187,6 @@ case class Aggregate(
   groupingExpressions: Seq[Expression],
   aggregateExpressions: Seq[NamedExpression]
 ) extends UnaryLogicalPlan {
-
-  override def sql: String = ???
 
   override lazy val output: Seq[Attribute] = aggregateExpressions map (_.toAttribute)
 }
@@ -219,6 +196,4 @@ case class Sort(
   order: Seq[SortOrder]
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
-
-  override def sql: String = ???
 }

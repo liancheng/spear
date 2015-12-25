@@ -15,8 +15,6 @@ case class Coalesce(children: Seq[Expression]) extends Expression {
     promotedChildren = children.map(promoteDataType(_, finalType))
   } yield if (sameChildren(promotedChildren)) this else copy(children = promotedChildren)
 
-  override def sql: String = s"COALESCE(${children map (_.sql) mkString ", "})"
-
   override def annotatedString: String =
     s"COALESCE(${children map (_.annotatedString) mkString ", "})"
 
@@ -34,21 +32,17 @@ case class IsNull(child: Expression) extends UnaryExpression {
     strictChild <- child.strictlyTypedForm
   } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
-  override def sql: String = s"(${child.sql} IS NULL)"
-
   override def evaluate(input: Row): Any = (child evaluate input) == null
 
   override def dataType: DataType = BooleanType
 
-  override def annotatedString: String = s"(${child.sql} IS NULL)"
+  override def annotatedString: String = s"(${child.annotatedString} IS NULL)"
 }
 
 case class IsNotNull(child: Expression) extends UnaryExpression {
   override def strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm
   } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
-
-  override def sql: String = s"(${child.sql} IS NOT NULL)"
 
   override def evaluate(input: Row): Any = (child evaluate input) != null
 
