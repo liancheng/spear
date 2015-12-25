@@ -73,6 +73,9 @@ class Parser extends TokenParser[LogicalPlan] {
   private val BY = Keyword("BY")
   private val HAVING = Keyword("HAVING")
 
+  private val IS = Keyword("IS")
+  private val NULL = Keyword("NULL")
+
   override protected def start: Parser[LogicalPlan] =
     select
 
@@ -175,6 +178,8 @@ class Parser extends TokenParser[LogicalPlan] {
     | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
     | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
     | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
+    | termExpression <~ IS ~ NULL ^^ IsNull
+    | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
   )
 
   private def termExpression: Parser[Expression] = (
