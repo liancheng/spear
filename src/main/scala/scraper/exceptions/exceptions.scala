@@ -17,7 +17,7 @@ abstract class AnalysisException(message: String, cause: Throwable)
   extends RuntimeException(message, cause)
 
 class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
-  extends AnalysisException(s"Expression ${expression.annotatedString} is unevaluable", cause) {
+  extends AnalysisException(s"Expression ${expression.debugString} is unevaluable", cause) {
 
   def this(expression: Expression) = this(expression, null)
 }
@@ -39,7 +39,7 @@ class TypeCheckException(message: String, cause: Throwable)
 
   def this(expression: Expression, cause: Throwable) =
     this({
-      s"""Expression [${expression.annotatedString}] doesn't pass type check:
+      s"""Expression [${expression.debugString}] doesn't pass type check:
          |
          |${expression.prettyTree}
          |""".stripMargin
@@ -71,7 +71,7 @@ class ImplicitCastException(message: String, cause: Throwable)
   extends TypeCastException(message, cause) {
 
   def this(from: Expression, to: DataType, cause: Throwable) = this({
-    s"""Cannot convert expression [${from.annotatedString}]
+    s"""Cannot convert expression [${from.debugString}]
        |of data type ${from.dataType} to $to implicitly.
      """.straight
   }, cause)
@@ -87,7 +87,7 @@ class TypeMismatchException(message: String, cause: Throwable)
   def this(expression: Expression, dataTypeClass: Class[_], cause: Throwable) = this({
     val expected = dataTypeClass.getSimpleName stripSuffix "$"
     val actual = expression.dataType.getClass.getSimpleName stripSuffix "$"
-    s"""Expression [${expression.annotatedString}] has type $actual,
+    s"""Expression [${expression.debugString}] has type $actual,
         |which cannot be implicitly converted to expected type $expected.
      """.straight
   }, cause)

@@ -50,13 +50,16 @@ trait TestUtils { this: FunSuite =>
     checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
   }
 
+  private[scraper] def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
+    checkDataFrame(actual, expected.toSeq)
+
   private[scraper] def checkDataFrame(ds: DataFrame, expected: Row): Unit =
     checkDataFrame(ds, expected :: Nil)
 
   private[scraper] def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Unit = {
     val actual = ds.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
-      val explanation = ds.explain(extended = true)
+      val explanation = ds.explanation(extended = true)
 
       val answerDiff = sideBySide(
         s"""Expected answer:

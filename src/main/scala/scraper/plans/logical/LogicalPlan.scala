@@ -2,14 +2,16 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.Try
+import scalaz.Scalaz._
 
-import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
 import scraper.types.{IntegralType, StructType}
+import scraper.utils._
+import scraper.{Context, Row}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
@@ -26,10 +28,15 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
 
+  def sqlFragment(context: Context): Option[String] = None
+
+  def sql(context: Context): Option[String] = None
+
   def select(projections: Seq[Expression]): LogicalPlan =
     Project(this, projections.zipWithIndex map {
-      case (e: NamedExpression, _) => e
-      case (e, ordinal)            => e as s"col$ordinal"
+      case (UnresolvedAttribute("*"), _) => Star
+      case (e: NamedExpression, _)       => e
+      case (e, ordinal)                  => e as s"col$ordinal"
     })
 
   def select(first: Expression, rest: Expression*): LogicalPlan = select(first +: rest)
@@ -39,6 +46,16 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def limit(n: Expression): LogicalPlan = Limit(this, n)
 
   def limit(n: Int): LogicalPlan = this limit lit(n)
+
+  def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
+
+  def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
+
+  override def nodeCaption: String = if (resolved) {
+    super.nodeCaption
+  } else {
+    s"$nodeName args=$argsString"
+  }
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
@@ -65,36 +82,25 @@ trait BinaryLogicalPlan extends LogicalPlan {
   override def children: Seq[LogicalPlan] = Seq(left, right)
 }
 
-case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan {
-  override def nodeCaption: String = s"${getClass.getSimpleName} $name"
-}
-
-case object EmptyRelation extends LeafLogicalPlan {
-  override def output: Seq[Attribute] = Nil
-}
+case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
 
 case object SingleRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
+
+  override def sql(context: Context): Option[String] = Some("")
 }
 
-case class NamedRelation(child: LogicalPlan, tableName: String) extends UnaryLogicalPlan {
-  override def output: Seq[Attribute] = child.output
-}
-
-case class LocalRelation(data: Iterable[Row], schema: StructType)
+case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
   extends LeafLogicalPlan {
 
-  override val output: Seq[Attribute] = schema.toAttributes
-
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
+  override def nodeCaption: String = s"$nodeName output=$outputString"
 }
 
 object LocalRelation {
   def apply[T <: Product: WeakTypeTag](data: Iterable[T]): LocalRelation = {
     val schema = fieldSpecFor[T].dataType match { case t: StructType => t }
     val rows = data.map { product => Row.fromSeq(product.productIterator.toSeq) }
-    LocalRelation(rows, schema)
+    LocalRelation(rows, schema.toAttributes)
   }
 }
 
@@ -107,14 +113,47 @@ case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projections map (_.toAttribute)
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${projections map (_.annotatedString) mkString ", "}"
+  override def sqlFragment(context: Context): Option[String] = for {
+    projectionsSQL <- sequence(projections map (_.sql))
+  } yield s"SELECT ${projectionsSQL mkString ", "}"
+
+  override def sql(context: Context): Option[String] = child match {
+    case SingleRowRelation =>
+      sqlFragment(context)
+
+    case subquery: Subquery =>
+      for {
+        projectFragment <- sqlFragment(context)
+        subqueryFragment <- subquery.sqlFragment(context)
+      } yield s"$projectFragment FROM $subqueryFragment"
+
+    case plan =>
+      for {
+        projectFragment <- sqlFragment(context)
+        planFragment <- plan.sqlFragment(context)
+      } yield s"$projectFragment FROM $planFragment"
+  }
 }
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
+  override def sql(context: Context): Option[String] = child match {
+    case plan: Project =>
+      for {
+        planSQL <- plan.sql(context)
+        conditionSQL <- condition.sql
+      } yield s"$planSQL WHERE $conditionSQL"
+
+    case plan: Aggregate =>
+      for {
+        planSQL <- plan.sql(context)
+        conditionSQL <- condition.sql
+      } yield s"$planSQL HAVING $conditionSQL"
+
+    case plan =>
+      (context execute copy(child = plan select '*)).sql
+  }
 }
 
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
@@ -129,7 +168,10 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
     }
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 
-  override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
+  override def sql(context: Context): Option[String] = for {
+    childSQL <- child.sql(context)
+    limitSQL <- limit.sql
+  } yield s"$childSQL LIMIT $limitSQL"
 }
 
 trait JoinType {
@@ -170,16 +212,30 @@ case class Join(
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
 
-  override def nodeCaption: String = {
-    val details = joinType.toString +: maybeCondition.map(_.annotatedString).toSeq mkString ", "
-    s"${getClass.getSimpleName} $details"
-  }
+  def on(condition: Expression): Join = copy(maybeCondition = Some(condition))
+
+  override def sqlFragment(context: Context): Option[String] =
+    for {
+      leftSQL <- left.sqlFragment(context)
+      rightSQL <- right.sqlFragment(context)
+      typeSQL = joinType.sql
+      conditionSQL = maybeCondition flatMap (_.sql) map (" ON " + _) getOrElse ""
+    } yield s"$leftSQL $typeSQL JOIN $rightSQL$conditionSQL"
+
+  override def sql(context: Context): Option[String] = (context execute (this select '*)).sql
 }
 
-case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
+case class Subquery(child: LogicalPlan, alias: String, fromTable: Boolean = false)
+  extends UnaryLogicalPlan {
+
   override lazy val output: Seq[Attribute] = child.output
 
-  override def nodeCaption: String = s"${getClass.getSimpleName} $alias"
+  override def sqlFragment(context: Context): Option[String] = fromTable match {
+    case true  => Some(s"`$alias`")
+    case false => child.sql(context) map (childSQL => s"($childSQL) `$alias`")
+  }
+
+  override def sql(context: Context): Option[String] = (context execute (this select '*)).sql
 }
 
 case class Aggregate(
@@ -191,9 +247,6 @@ case class Aggregate(
   override lazy val output: Seq[Attribute] = aggregateExpressions map (_.toAttribute)
 }
 
-case class Sort(
-  child: LogicalPlan,
-  order: Seq[SortOrder]
-) extends UnaryLogicalPlan {
+case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }

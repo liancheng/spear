@@ -2,7 +2,7 @@ package scraper
 
 trait Row extends Seq[Any]
 
-class GenericRow(values: Seq[Any]) extends Row {
+class BasicRow(values: Seq[Any]) extends Row {
   override def length: Int = values.length
 
   override def apply(index: Int): Any = values.apply(index)
@@ -20,9 +20,9 @@ case class JoinedRow(row1: Row, row2: Row) extends Row {
 }
 
 object Row {
-  val empty = new GenericRow(Nil)
+  val empty = new BasicRow(Nil)
 
-  def apply(first: Any, rest: Any*): Row = new GenericRow(first +: rest)
+  def apply(first: Any, rest: Any*): Row = new BasicRow(first +: rest)
 
-  def fromSeq(values: Seq[Any]): Row = new GenericRow(values)
+  def fromSeq(values: Seq[Any]): Row = new BasicRow(values)
 }

@@ -11,13 +11,7 @@ trait ComparisonDSL { this: Expression =>
 
   def <=(that: Expression): LtEq = LtEq(this, that)
 
-  def ===(that: Expression): Eq = Eq(this, that)
+  def =:=(that: Expression): Eq = Eq(this, that)
 
-  def !==(that: Expression): NotEq = NotEq(this, that)
-
-  /** Equivalent to [[===]].  Useful for avoiding name collision with ScalaTest. */
-  def =:=(that: Expression): Eq = this === that
-
-  /** Equivalent to [[!==]].  Useful for avoiding name collision with ScalaTest. */
-  def =/=(that: Expression): NotEq = this !== that
+  def =/=(that: Expression): NotEq = NotEq(this, that)
 }

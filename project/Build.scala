@@ -108,6 +108,7 @@ object Dependencies {
     val scalaParserCombinators = "1.0.4"
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
+    val scalaz = "7.2.0"
     val scodecCore = "1.8.3"
     val scopt = "3.3.0"
     val shapeless = "2.2.5"
@@ -144,9 +145,16 @@ object Dependencies {
     "org.scala-lang.modules" %% "scala-xml" % Versions.scalaXml
   )
 
-  val scalaTest = Seq(
-    "org.scalatest" %% "scalatest" % Versions.scalaTest % "test",
+  val scalaCheck = Seq(
     "org.scalacheck" %% "scalacheck" % Versions.scalaCheck % "test"
+  )
+
+  val scalaTest = Seq(
+    "org.scalatest" %% "scalatest" % Versions.scalaTest % "test"
+  )
+
+  val scalaz = Seq(
+    "org.scalaz" %% "scalaz-core" % Versions.scalaz
   )
 
   val scodec = Seq(
@@ -170,8 +178,8 @@ object Dependencies {
   val test = Seq.empty[ModuleID]
 
   val all =
-    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++
-      scodec ++ scopt ++ scalaTest ++ shapeless ++ slf4j
+    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++ scodec ++
+      scopt ++ scalaCheck ++ scalaTest ++ scalaz ++ shapeless ++ slf4j
 
   val overrides = Set.empty ++ protobuf ++ scala
 }

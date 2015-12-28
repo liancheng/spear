@@ -1,5 +1,7 @@
 package scraper.expressions
 
+import org.apache.commons.lang.StringEscapeUtils
+
 import scraper.Row
 import scraper.types._
 
@@ -8,7 +10,17 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
 
   override def evaluate(input: Row): Any = value
 
-  override def annotatedString: String = s"$value: ${dataType.simpleName}"
+  override def debugString: String = s"$value: ${dataType.simpleName}"
+
+  override def sql: Option[String] = Some((value, dataType) match {
+    case (v: String, StringType) => '"' + StringEscapeUtils.escapeJavaScript(v) + '"'
+    case (v: Byte, ByteType)     => s"CAST($v AS ${ByteType.sql})"
+    case (v: Short, ShortType)   => s"CAST($v AS ${ShortType.sql})"
+    case (v: Long, LongType)     => s"CAST($v AS ${LongType.sql})"
+    case (v: Float, FloatType)   => s"CAST($v AS ${FloatType.sql})"
+    case (v: Double, DoubleType) => s"CAST($v AS ${DoubleType.sql})"
+    case (v, _)                  => v.toString
+  })
 }
 
 object Literal {
@@ -33,8 +45,9 @@ object Literal {
       case v: Double  => Literal(v, DoubleType)
       case v: String  => Literal(v, StringType)
       case null       => Literal(null, NullType)
-      case v =>
-        throw new UnsupportedOperationException(s"Unsupported literal type ${v.getClass} $v")
+      case v => throw new UnsupportedOperationException(
+        s"Unsupported literal type ${v.getClass} $v"
+      )
     }
   }
 }

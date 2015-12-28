@@ -54,7 +54,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
 
   test("join") {
     val left = context range 2
-    val right = context.range(2).select(('id + 1).cast(StringType).as("str"))
+    val right = context range 2 select ('id + 1 cast StringType as "str")
 
     checkDataFrame(
       left.join(right),
@@ -62,7 +62,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     )
 
     checkDataFrame(
-      left.join(right, Some('id > 0)),
+      left.join(right, 'id > 0),
       Seq(Row(1, "1"), Row(1, "2"))
     )
   }

@@ -19,17 +19,17 @@ case class SortOrder(child: Expression, direction: SortDirection)
   extends UnaryExpression with UnevaluableExpression {
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
-    e <- child.strictlyTypedForm map {
+    strictChild <- child.strictlyTypedForm map {
       case PrimitiveType(e) => e
       case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
     }
-  } yield if (e sameOrEqual child) this else copy(child = e)
+  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
   override def dataType: DataType = child.dataType
 
   override def nullable: Boolean = child.nullable
 
-  override def annotatedString: String = s"$child $direction"
+  override def debugString: String = s"${child.debugString} $direction"
 
   def isAscending: Boolean = direction == Ascending
 }

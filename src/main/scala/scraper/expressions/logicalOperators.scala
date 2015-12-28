@@ -24,6 +24,15 @@ trait BinaryLogicalPredicate extends BinaryExpression {
   }
 
   override def dataType: DataType = BooleanType
+
+  def operator: String
+
+  override def debugString: String = s"(${left.debugString} $operator ${right.debugString})"
+
+  override def sql: Option[String] = for {
+    lhs <- left.sql
+    rhs <- right.sql
+  } yield s"($lhs $operator $rhs)"
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -31,14 +40,14 @@ case class And(left: Expression, right: Expression) extends BinaryLogicalPredica
     lhs.asInstanceOf[Boolean] && rhs.asInstanceOf[Boolean]
   }
 
-  override def annotatedString: String = s"(${left.annotatedString} AND ${right.annotatedString})"
+  override def operator: String = "AND"
 }
 
 case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicate {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
     lhs.asInstanceOf[Boolean] || rhs.asInstanceOf[Boolean]
 
-  override def annotatedString: String = s"(${left.annotatedString} OR ${right.annotatedString})"
+  override def operator: String = "OR"
 }
 
 case class Not(child: Expression) extends UnaryExpression {
@@ -46,7 +55,7 @@ case class Not(child: Expression) extends UnaryExpression {
 
   override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
-  override def annotatedString: String = s"(NOT ${child.annotatedString})"
+  override def debugString: String = s"(NOT(${child.debugString}))"
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm map {
@@ -54,6 +63,8 @@ case class Not(child: Expression) extends UnaryExpression {
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
   } yield copy(child = e)
+
+  override def sql: Option[String] = child.sql.map(childSQL => s"(NOT($childSQL))")
 }
 
 case class If(condition: Expression, yes: Expression, no: Expression)
@@ -63,8 +74,14 @@ case class If(condition: Expression, yes: Expression, no: Expression)
 
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
-  override def annotatedString: String =
-    s"if (${condition.annotatedString}) ${yes.annotatedString} else ${no.annotatedString}"
+  override def debugString: String =
+    s"IF(${condition.debugString}, ${yes.debugString}, ${no.debugString})"
+
+  override def sql: Option[String] = for {
+    conditionSQL <- condition.sql
+    yesSQL <- yes.sql
+    noSQL <- no.sql
+  } yield s"IF($conditionSQL, $yesSQL, $noSQL)"
 
   override lazy val strictlyTypedForm: Try[If] = for {
     strictCondition <- condition.strictlyTypedForm map {

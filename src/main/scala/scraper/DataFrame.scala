@@ -1,5 +1,6 @@
 package scraper
 
+import scraper.exceptions.ContractBrokenException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Ascending, Expression, SortOrder}
@@ -24,6 +25,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     this select aliases
   }
 
+  def sql: Option[String] = queryExecution.analyzedPlan.sql(context)
+
   def select(first: Expression, rest: Expression*): DataFrame = this select (first +: rest)
 
   def select(expressions: Seq[Expression]): DataFrame = build(_ select expressions)
@@ -36,8 +39,19 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
-  def join(right: DataFrame, condition: Option[Expression] = None): DataFrame = build { left =>
-    Join(left, right.queryExecution.logicalPlan, Inner, condition)
+  def join(right: DataFrame): DataFrame = build {
+    Join(_, right.queryExecution.logicalPlan, Inner, None)
+  }
+
+  def join(right: DataFrame, condition: Expression): DataFrame = build {
+    Join(_, right.queryExecution.logicalPlan, Inner, Some(condition))
+  }
+
+  def on(condition: Expression): DataFrame = build {
+    case join: Join => join on condition
+    case _ => throw new ContractBrokenException(
+      s"${getClass.getSimpleName}.on() can only be applied over join operators."
+    )
   }
 
   def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
@@ -57,7 +71,9 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def toArray: Array[Row] = iterator.toArray
 
-  def explain(extended: Boolean): String = if (extended) {
+  def foreach(f: Row => Unit): Unit = iterator foreach f
+
+  def explanation(extended: Boolean): String = if (extended) {
     s"""# Logical plan
        |${queryExecution.logicalPlan.prettyTree}
        |
@@ -76,7 +92,7 @@ class DataFrame(val queryExecution: QueryExecution) {
        |""".stripMargin
   }
 
-  def printExplain(extended: Boolean): Unit = println(explain(extended))
+  def explain(extended: Boolean): Unit = println(explanation(extended))
 
-  def printExplain(): Unit = println(explain(extended = true))
+  def explain(): Unit = println(explanation(extended = true))
 }

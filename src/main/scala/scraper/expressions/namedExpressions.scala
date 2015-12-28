@@ -36,7 +36,7 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override def annotatedString: String = "*"
+  override def debugString: String = "*"
 }
 
 case class Alias(
@@ -57,7 +57,9 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def annotatedString: String = s"(${child.annotatedString} AS `$name`#${expressionId.id})"
+  override def debugString: String = s"(${child.debugString} AS `$name`#${expressionId.id})"
+
+  override def sql: Option[String] = child.sql.map(childSQL => s"$childSQL AS `$name`")
 
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
@@ -75,7 +77,9 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def annotatedString: String = s"`$name`?"
+  override def debugString: String = s"`$name`"
+
+  override def sql: Option[String] = Some(s"`$name`")
 
   override def ? : Attribute = this
 
@@ -89,7 +93,12 @@ case class AttributeRef(
   override val expressionId: ExpressionId
 ) extends Attribute with UnevaluableExpression {
 
-  override def annotatedString: String = s"`$name`#${expressionId.id}: ${dataType.simpleName}"
+  override def debugString: String = {
+    val nullability = if (nullable) "?" else "!"
+    s"`$name`#${expressionId.id}: ${dataType.simpleName}$nullability"
+  }
+
+  override def sql: Option[String] = Some(s"`$name`")
 
   override def ? : Attribute = copy(nullable = true)
 
@@ -107,7 +116,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override def evaluate(input: Row): Any = input(ordinal)
 
-  override def annotatedString: String = name
+  override def debugString: String = name
 }
 
 object BoundRef {

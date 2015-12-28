@@ -76,6 +76,20 @@ class Parser extends TokenParser[LogicalPlan] {
   private val IS = Keyword("IS")
   private val NULL = Keyword("NULL")
 
+  private val CAST = Keyword("CAST")
+
+  private val INT = Keyword("INT")
+  private val TINYINT = Keyword("TINYINT")
+  private val SMALLINT = Keyword("SMALLINT")
+  private val BIGINT = Keyword("BIGINT")
+  private val FLOAT = Keyword("FLOAT")
+  private val DOUBLE = Keyword("DOUBLE")
+  private val BOOLEAN = Keyword("BOOLEAN")
+  private val STRING = Keyword("STRING")
+  private val ARRAY = Keyword("ARRAY")
+  private val MAP = Keyword("MAP")
+  private val STRUCT = Keyword("STRUCT")
+
   override protected def start: Parser[LogicalPlan] =
     select
 
@@ -155,7 +169,7 @@ class Parser extends TokenParser[LogicalPlan] {
     termExpression
 
   private def predicate: Parser[Expression] =
-    orExpression
+    orExpression ||| "(" ~> predicate <~ ")"
 
   private def orExpression: Parser[Expression] =
     andExpression * (OR ^^^ Or)
@@ -198,6 +212,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private def primary: Parser[Expression] = (
     literal
     | ident ^^ UnresolvedAttribute
+    | cast
     | "(" ~> expression <~ ")"
   )
 
@@ -236,6 +251,43 @@ class Parser extends TokenParser[LogicalPlan] {
       case i if i.isValidLong => i.longValue()
     }
   }
+
+  private def cast: Parser[Cast] =
+    CAST ~ "(" ~> expression ~ (AS ~> dataType) <~ ")" ^^ { case e ~ t => Cast(e, t) }
+
+  private def dataType: Parser[DataType] = (
+    primitiveType
+    | arrayType
+    | mapType
+    | structType
+  )
+
+  private def primitiveType: Parser[PrimitiveType] = (
+    TINYINT ^^^ ByteType
+    | SMALLINT ^^^ ShortType
+    | INT ^^^ IntType
+    | BIGINT ^^^ LongType
+    | FLOAT ^^^ FloatType
+    | DOUBLE ^^^ DoubleType
+    | BOOLEAN ^^^ BooleanType
+    | STRING ^^^ StringType
+  )
+
+  private def arrayType: Parser[ArrayType] =
+    ARRAY ~ "<" ~> dataType <~ ">" ^^ (ArrayType(_))
+
+  private def mapType: Parser[MapType] =
+    MAP ~ "<" ~> dataType ~ ("," ~> dataType) <~ ">" ^^ {
+      case kt ~ vt => MapType(kt, vt)
+    }
+
+  private def structType: Parser[StructType] =
+    STRUCT ~ "<" ~> rep1sep(structField, ",") <~ ">" ^^ (StructType(_))
+
+  private def structField: Parser[StructField] =
+    ident ~ (":" ~> dataType) ^^ {
+      case i ~ t => StructField(i, t)
+    }
 }
 
 class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
@@ -312,4 +364,9 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     // Illegal inputs
     | '/' ~ '*' ~ failure("unclosed multi-line comment")
   ).*
+
+  override protected def processIdent(name: String) = {
+    val lowerCased = name.toLowerCase
+    if (reserved contains lowerCased) Keyword(lowerCased) else Identifier(name)
+  }
 }

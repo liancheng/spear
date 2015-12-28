@@ -8,8 +8,11 @@ import scraper.types
 import scraper.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
-  override def annotatedString: String =
-    s"CAST(${child.annotatedString} AS ${dataType.simpleName})"
+  override def debugString: String =
+    s"CAST(${child.debugString} AS ${dataType.simpleName})"
+
+  override def sql: Option[String] =
+    child.sql.map(childSQL => s"CAST($childSQL AS ${dataType.sql})")
 
   private def fromType = child.dataType
 

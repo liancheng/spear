@@ -86,7 +86,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
       StructType(
         'a -> IntType.!,
         'b -> StringType.?
-      )
+      ).toAttributes
     )
 
     val project = Project(relation, Seq(
@@ -109,9 +109,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
 
 object LogicalPlanSuite {
   case class FakeExpr(literal: Literal, children: Seq[FakeExpr]) extends Expression {
-    override def annotatedString: String = s"${getClass.getSimpleName} ${literal.annotatedString}"
-
-    override def sql: String = throw new UnsupportedOperationException
+    override def debugString: String = s"${getClass.getSimpleName} ${literal.debugString}"
 
     override def dataType: DataType = literal.dataType
 
@@ -128,7 +126,5 @@ object LogicalPlanSuite {
     override def output: Seq[Attribute] = Nil
 
     override def nodeCaption: String = s"${getClass.getSimpleName} ${expression.nodeCaption}"
-
-    override def sql: String = ???
   }
 }

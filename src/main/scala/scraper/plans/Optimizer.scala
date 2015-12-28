@@ -10,7 +10,7 @@ import scraper.plans.logical._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{Analyzer, expressions}
+import scraper.{Row, Analyzer, expressions}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
@@ -195,7 +195,7 @@ object Optimizer {
   object FoldConstantFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Filter True  => plan
-      case plan Filter False => EmptyRelation
+      case plan Filter False => LocalRelation(Nil, plan.output)
     }
   }
 

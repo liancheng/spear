@@ -1,6 +1,9 @@
 package scraper
 
-import scala.language.postfixOps
+import scala.language.{higherKinds, postfixOps}
+import scala.util.Try
+import scalaz.Scalaz._
+import scalaz._
 
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -47,8 +50,26 @@ package object utils {
       .resolve()
 
   implicit class StraightString(string: String) {
-    def straight: String = straight('|')
+    def straight: String = straight('|', " ")
 
-    def straight(marginChar: Char): String = string stripMargin marginChar split "\n" mkString " "
+    def straight(joiner: String): String =
+      string stripMargin '|' split "\n" mkString joiner
+
+    def straight(marginChar: Char, joiner: String): String =
+      string stripMargin marginChar split "\n" mkString joiner
+  }
+
+  class TryApplicative[T] extends Applicative[Try] {
+    override def point[A](a: => A): Try[A] = Try(a)
+
+    override def ap[A, B](fa: => Try[A])(f: => Try[(A) => B]): Try[B] =
+      for (a <- fa; fn <- f) yield fn(a)
+  }
+
+  implicit def tryApplicative[T]: Applicative[Try] = new TryApplicative[T]
+
+  def sequence[F[_]: Applicative, A](seq: Seq[F[A]]): F[Seq[A]] = seq match {
+    case xs if xs.isEmpty => Seq.empty[A].point[F]
+    case Seq(x, xs @ _*)  => (x |@| sequence(xs)) { _ +: _ }
   }
 }

@@ -1,6 +1,7 @@
 package scraper.plans.physical
 
 import scraper.expressions.BoundRef.bind
+import scraper.expressions.Literal.True
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.{JoinedRow, Row}
@@ -44,8 +45,7 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
 
   override def iterator: Iterator[Row] = data.iterator
 
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${output map (_.annotatedString) mkString ", "}"
+  override def nodeCaption: String = s"$nodeName output=$outputString"
 }
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
@@ -57,9 +57,6 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
     val boundProjections = expressions map (bind(_, child.output))
     Row.fromSeq(boundProjections map (_ evaluate row))
   }
-
-  override def nodeCaption: String =
-    s"${getClass.getSimpleName} ${expressions map (_.annotatedString) mkString ", "}"
 }
 
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
@@ -71,27 +68,34 @@ case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysi
       (boundCondition evaluate row).asInstanceOf[Boolean]
     }
   }
-
-  override def nodeCaption: String = s"${getClass.getSimpleName} ${condition.annotatedString}"
 }
 
 case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
-
-  override def nodeCaption: String = s"${getClass.getSimpleName} ${limit.annotatedString}"
 }
 
-case class CartesianProduct(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
+case class CartesianProduct(
+  left: PhysicalPlan,
+  right: PhysicalPlan,
+  maybeCondition: Option[Expression]
+) extends BinaryPhysicalPlan {
+
+  private val boundCondition = maybeCondition map (BoundRef.bind(_, output)) getOrElse True
+
+  def evaluateBoundCondition(input: Row): Boolean =
+    boundCondition.evaluate(input) match { case result: Boolean => result }
+
   override def output: Seq[Attribute] = left.output ++ right.output
 
-  override def iterator: Iterator[Row] = for {
-    leftRow <- left.iterator
-    rightRow <- right.iterator
-  } yield JoinedRow(leftRow, rightRow)
-
-  override def nodeCaption: String = getClass.getSimpleName
+  override def iterator: Iterator[Row] = {
+    for {
+      leftRow <- left.iterator
+      rightRow <- right.iterator
+      joinedRow = JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
+    } yield JoinedRow(leftRow, rightRow)
+  }
 }
 
 case class Aggregate(

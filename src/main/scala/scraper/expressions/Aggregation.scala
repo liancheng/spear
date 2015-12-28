@@ -22,7 +22,7 @@ case class Count(child: Expression) extends Aggregation with UnaryExpression {
 
   override def agg(rows: Seq[Row]): Any = rows.length
 
-  override def annotatedString: String = s"COUNT(${child.annotatedString})"
+  override def debugString: String = s"COUNT(${child.debugString})"
 }
 
 trait UnaryArithmeticAggregation extends Aggregation with UnaryExpression {
@@ -46,17 +46,17 @@ trait UnaryArithmeticAggregation extends Aggregation with UnaryExpression {
 case class Sum(child: Expression) extends UnaryArithmeticAggregation {
   override def agg(rows: Seq[Row]): Any = rows map child.evaluate sum numeric
 
-  override def annotatedString: String = s"SUM(${child.annotatedString})"
+  override def debugString: String = s"SUM(${child.debugString})"
 }
 
 case class Max(child: Expression) extends UnaryArithmeticAggregation {
   override def agg(rows: Seq[Row]): Any = rows map child.evaluate max ordering
 
-  override def annotatedString: String = s"MAX(${child.annotatedString})"
+  override def debugString: String = s"MAX(${child.debugString})"
 }
 
 case class Min(child: Expression) extends UnaryArithmeticAggregation {
   override def agg(rows: Seq[Row]): Any = rows map child.evaluate min ordering
 
-  override def annotatedString: String = s"MIN(${child.annotatedString})"
+  override def debugString: String = s"MIN(${child.debugString})"
 }

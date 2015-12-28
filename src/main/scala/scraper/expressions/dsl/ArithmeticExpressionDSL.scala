@@ -13,5 +13,7 @@ trait ArithmeticExpressionDSL { this: Expression =>
 
   def unary_- : Negate = Negate(this)
 
+  def unary_+ : Positive = Positive(this)
+
   def isNaN: IsNaN = IsNaN(this)
 }

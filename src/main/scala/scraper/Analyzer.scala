@@ -4,7 +4,7 @@ import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
 import scraper.plans.logical.{LogicalPlan, Project, Subquery, UnresolvedRelation}
-import scraper.trees.RulesExecutor.{FixedPoint, Once}
+import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
@@ -15,11 +15,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ResolveRelations,
       ResolveReferences,
       ApplyImplicitCasts
-    )),
-
-    // Eliminate subquery scoping operators at the end of the analysis phase
-    RuleBatch("Subquery elimination", Once, Seq(
-      EliminateSubquery
     ))
   )
 
@@ -81,7 +76,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
               case _ =>
                 reportResolutionFailure {
-                  val list = candidates map (_.annotatedString) mkString ", "
+                  val list = candidates map (_.debugString) mkString ", "
                   s"Multiple ambiguous input attributes found: $list"
                 }
             }
@@ -115,7 +110,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object EliminateSubquery extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Subquery _ => plan
+      case Subquery(plan, _, _) => plan
     }
   }
 }

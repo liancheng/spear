@@ -114,9 +114,11 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
 
-  def annotatedString: String
+  def debugString: String
 
   override def nodeCaption: String = getClass.getSimpleName
+
+  def sql: Option[String] = None
 }
 
 trait LeafExpression extends Expression {
@@ -124,7 +126,7 @@ trait LeafExpression extends Expression {
 
   override lazy val strictlyTypedForm: Try[this.type] = Success(this)
 
-  override def nodeCaption: String = annotatedString
+  override def nodeCaption: String = debugString
 }
 
 trait UnaryExpression extends Expression {

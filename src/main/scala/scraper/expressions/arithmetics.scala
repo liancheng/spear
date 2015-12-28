@@ -13,20 +13,36 @@ trait ArithmeticExpression extends Expression {
   }
 }
 
-case class Negate(child: Expression) extends UnaryExpression with ArithmeticExpression {
-  override lazy val strictlyTypedForm: Try[Negate] = for {
+trait UnaryArithmeticExpression extends UnaryExpression with ArithmeticExpression {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
+  } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
 
-  override lazy val dataType: DataType = whenWellTyped(strictlyTypedForm.get.child.dataType)
+  override lazy val dataType: DataType = whenWellTyped(strictlyTypedForm.get match {
+    case e: UnaryArithmeticExpression => e.child.dataType
+  })
+
+  protected def operator: String
+
+  override def debugString: String = s"($operator${child.debugString})"
+
+  override def sql: Option[String] = child.sql.map(childSQL => s"($operator$childSQL)")
+}
+
+case class Negate(child: Expression) extends UnaryArithmeticExpression {
+  protected def operator: String = "-"
 
   override def nullSafeEvaluate(value: Any): Any = numeric.negate(value)
+}
 
-  override def annotatedString: String = s"(-${child.annotatedString})"
+case class Positive(child: Expression) extends UnaryArithmeticExpression {
+  protected def operator: String = "+"
+
+  override def nullSafeEvaluate(value: Any): Any = value
 }
 
 trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
@@ -60,24 +76,33 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
   }
 
   override protected def strictDataType: DataType = left.dataType
+
+  def operator: String
+
+  override def debugString: String = s"(${left.debugString} $operator ${right.debugString})"
+
+  override def sql: Option[String] = for {
+    lhs <- left.sql
+    rhs <- right.sql
+  } yield s"($lhs $operator $rhs)"
 }
 
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
-  override def annotatedString: String = s"(${left.annotatedString} + ${right.annotatedString})"
+  override def operator: String = "+"
 }
 
 case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
-  override def annotatedString: String = s"(${left.annotatedString} - ${right.annotatedString})"
+  override def operator: String = "-"
 }
 
 case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
-  override def annotatedString: String = s"(${left.annotatedString} * ${right.annotatedString})"
+  override def operator: String = "*"
 }
 
 case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -90,7 +115,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = if (rhs == 0) null else div(lhs, rhs)
 
-  override def annotatedString: String = s"(${left.annotatedString} / ${right.annotatedString})"
+  override def operator: String = "/"
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
@@ -112,7 +137,9 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override def annotatedString: String = s"ISNAN(${child.annotatedString})"
+  override def debugString: String = s"IsNaN(${child.debugString})"
+
+  override def sql: Option[String] = child.sql map (childSQL => s"IsNaN($childSQL)")
 
   override def evaluate(input: Row): Any = {
     val value = child evaluate input

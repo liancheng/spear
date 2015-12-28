@@ -28,9 +28,9 @@ class InterpretedOrdering(ordering: Seq[SortOrder]) extends Ordering[Row] {
       } else {
         val comparison = order.dataType match {
           case dt: PrimitiveType if order.direction == Ascending =>
-            dt.ordering.asInstanceOf[Ordering[Any]].compare(left, right)
+            dt.genericOrdering.compare(left, right)
           case dt: PrimitiveType if order.direction == Descending =>
-            dt.ordering.asInstanceOf[Ordering[Any]].reverse.compare(left, right)
+            dt.genericOrdering.reverse.compare(left, right)
           case other =>
             throw new IllegalArgumentException(s"Type $other does not support ordered operations")
         }

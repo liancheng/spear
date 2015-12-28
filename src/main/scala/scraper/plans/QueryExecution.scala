@@ -14,4 +14,6 @@ trait QueryExecution {
   lazy val optimizedPlan: LogicalPlan = context optimize analyzedPlan
 
   lazy val physicalPlan: PhysicalPlan = context plan optimizedPlan
+
+  lazy val sql: Option[String] = analyzedPlan.sql(context)
 }

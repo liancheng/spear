@@ -15,6 +15,8 @@ import scraper.types.{LongType, StructType}
 trait Catalog {
   def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
 
+  def removeRelation(tableName: String): Unit
+
   def lookupRelation(tableName: String): LogicalPlan
 }
 
@@ -69,16 +71,17 @@ class LocalContext extends Context {
     new DataFrame(new QueryExecution(LocalRelation(data), this))
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T], columnNames: String*): DataFrame = {
-    val LocalRelation(rows, schema) = LocalRelation(data)
-    new DataFrame(LocalRelation(rows, schema rename columnNames), this)
+    val LocalRelation(rows, output) = LocalRelation(data)
+    val renamed = (StructType fromAttributes output rename columnNames).toAttributes
+    new DataFrame(LocalRelation(rows, renamed), this)
   }
 
   def range(end: Long): DataFrame = range(0, end)
 
   def range(begin: Long, end: Long): DataFrame = {
     val rows = (begin until end).map(Row.apply(_))
-    val schema = StructType('id -> LongType.!)
-    new DataFrame(LocalRelation(rows, schema), this)
+    val output = StructType('id -> LongType.!).toAttributes
+    new DataFrame(LocalRelation(rows, output), this)
   }
 
   override def q(query: String): DataFrame = new DataFrame(parse(query), this)
@@ -94,10 +97,12 @@ class LocalCatalog extends Catalog {
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan
 
+  override def removeRelation(tableName: String): Unit = tables -= tableName
+
   override def lookupRelation(tableName: String): LogicalPlan =
     tables
       .get(tableName)
-      .map(NamedRelation(_, tableName))
+      .map(Subquery(_, tableName, fromTable = true))
       .getOrElse(throw new TableNotFoundException(tableName))
 }
 
@@ -121,8 +126,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         physical.Limit(planLater(child), n) :: Nil
 
       case Join(left, right, Inner, maybeCondition) =>
-        val joined = physical.CartesianProduct(planLater(left), planLater(right))
-        maybeCondition.map(c => physical.Filter(joined, c)).getOrElse(joined) :: Nil
+        physical.CartesianProduct(planLater(left), planLater(right), maybeCondition) :: Nil
 
       case Aggregate(child, groupings, aggs) =>
         physical.Aggregate(planLater(child), groupings, aggs) :: Nil
@@ -133,14 +137,8 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
 
-      case child Subquery _ =>
+      case Subquery(child, _, _) =>
         planLater(child) :: Nil
-
-      case child NamedRelation _ =>
-        planLater(child) :: Nil
-
-      case EmptyRelation =>
-        physical.EmptyRelation :: Nil
 
       case SingleRowRelation =>
         physical.SingleRowRelation :: Nil

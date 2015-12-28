@@ -106,6 +106,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def nodeCaption: String = toString
 
+  def nodeName: String = getClass.getSimpleName stripSuffix "$"
+
   /**
    * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
    *
