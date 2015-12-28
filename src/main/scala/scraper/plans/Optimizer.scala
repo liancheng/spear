@@ -10,7 +10,7 @@ import scraper.plans.logical._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{Row, Analyzer, expressions}
+import scraper.{Analyzer, expressions}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
@@ -29,6 +29,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       ReduceProjects,
 
       PushFiltersThroughProjects,
+      PushFiltersThroughJoins,
       PushProjectsThroughLimits
     ))
   )
@@ -95,22 +96,22 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case !(!(child))         => child
-          case !(lhs =:= rhs)      => lhs =/= rhs
-          case !(lhs =/= rhs)      => lhs =:= rhs
+          case !(!(child))                  => child
+          case !(lhs =:= rhs)               => lhs =/= rhs
+          case !(lhs =/= rhs)               => lhs =:= rhs
 
-          case !(lhs > rhs)        => lhs <= rhs
-          case !(lhs >= rhs)       => lhs < rhs
-          case !(lhs < rhs)        => lhs >= rhs
-          case !(lhs <= rhs)       => lhs > rhs
+          case !(lhs > rhs)                 => lhs <= rhs
+          case !(lhs >= rhs)                => lhs < rhs
+          case !(lhs < rhs)                 => lhs >= rhs
+          case !(lhs <= rhs)                => lhs > rhs
 
-          case If(!(c), t, f)      => If(c, f, t)
+          case If(!(c), t, f)               => If(c, f, t)
 
-          case a && !(b) if a == b => False
-          case a || !(b) if a == b => True
+          case a && !(b) if a sameOrEqual b => False
+          case a || !(b) if a sameOrEqual b => True
 
-          case !(IsNull(child))    => IsNotNull(child)
-          case !(IsNotNull(child)) => IsNull(child)
+          case !(IsNull(child))             => IsNotNull(child)
+          case !(IsNotNull(child))          => IsNull(child)
         }
     }
   }
@@ -166,9 +167,7 @@ object Optimizer {
    */
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan: Filter =>
-        val cnf = toCNF(plan.condition)
-        plan.copy(condition = splitConjunction(cnf).distinct reduce (_ && _))
+      case plan Filter condition => plan filter toCNF(condition)
     }
   }
 
@@ -206,6 +205,28 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projections Filter condition =>
         plan filter reduceAliases(collectAliases(projections), condition) select projections
+    }
+  }
+
+  /**
+   * This rule pushes [[logical.Filter Filter]]s beneath [[logical.Join Join]]s whenever possible.
+   */
+  object PushFiltersThroughJoins extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case (join @ Join(left, right, Inner, maybeCondition)) Filter condition =>
+        val (leftPredicates, rest) = splitConjunction(toCNF(condition)).partition {
+          _.references subsetOf left.references
+        }
+
+        val (rightPredicates, commonPredicates) = rest.partition {
+          _.references subsetOf right.references
+        }
+
+        join.copy(
+          left = leftPredicates reduceOption (_ && _) map left.filter getOrElse left,
+          right = rightPredicates reduceOption (_ && _) map right.filter getOrElse right,
+          maybeCondition = (maybeCondition ++ commonPredicates) reduceOption (_ && _)
+        )
     }
   }
 

@@ -17,7 +17,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenResolved: Boolean = children forall (_.resolved)
 
-  def references: Seq[Attribute] = children.flatMap(_.references)
+  def references: Set[Attribute] = children.toSet.flatMap((_: Expression).references)
 
   /**
    * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] is
@@ -37,8 +37,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    *     - `e` is resolved, and
    *     - all child expressions of `e` are well typed, and
-   *     - all child expressions of `e` can meet all type requirements of `e` by applying implicit
-   *       cast(s).
+   *     - all child expressions of `e` can meet all type requirements of `e` by applying at most
+   *       one implicit cast(s).
    *
    * For example, say attribute `a` is an attribute of type `LONG`, then `a + 1` is well typed
    * because:

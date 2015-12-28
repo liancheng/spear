@@ -95,7 +95,7 @@ case class AttributeRef(
 
   override def debugString: String = {
     val nullability = if (nullable) "?" else "!"
-    s"`$name`#${expressionId.id}: ${dataType.simpleName}$nullability"
+    s"`$name`#${expressionId.id}: ${dataType.sql}$nullability"
   }
 
   override def sql: Option[String] = Some(s"`$name`")

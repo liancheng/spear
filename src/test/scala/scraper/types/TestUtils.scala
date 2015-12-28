@@ -77,6 +77,7 @@ trait TestUtils { this: FunSuite =>
         s"""Unexpected row(s) detected:
            |
            |$answerDiff
+           |
            |Query plan details:
            |
            |$explanation

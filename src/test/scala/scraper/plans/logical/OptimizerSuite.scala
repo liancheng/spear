@@ -25,9 +25,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
   private def testRule(
     rule: Rule[LogicalPlan], endCondition: EndCondition
-  )(
-    f: (LogicalPlan => LogicalPlan) => Unit
-  ): Unit = {
+  )(f: (LogicalPlan => LogicalPlan) => Unit): Unit = {
     test(rule.getClass.getSimpleName stripSuffix "$") {
       val analyzer = new Analyzer(new LocalCatalog)
       val optimizer = new RulesExecutor[LogicalPlan] {
