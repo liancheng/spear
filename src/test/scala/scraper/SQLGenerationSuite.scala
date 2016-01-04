@@ -129,7 +129,7 @@ class SQLGenerationSuite extends LoggingFunSuite with TestUtils with BeforeAndAf
     val t1 = context table "t1"
 
     checkSQL(
-      t0.join(t1),
+      t0 join t1,
       "SELECT `a`, `b` FROM `t0` INNER JOIN `t1`"
     )
 

@@ -51,13 +51,13 @@ object BinaryComparison {
 }
 
 case class Eq(left: Expression, right: Expression) extends BinaryComparison {
-  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs == rhs
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.equiv(lhs, rhs)
 
   override def operator: String = "="
 }
 
 case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
-  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = lhs != rhs
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = !ordering.equiv(lhs, rhs)
 
   override def operator: String = "!="
 }

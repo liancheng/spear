@@ -74,17 +74,17 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan =>
         plan transformExpressionsDown {
-          case True || _        => True
-          case _ || True        => True
+          case True || _                 => True
+          case _ || True                 => True
 
-          case False && _       => False
-          case _ && False       => False
+          case False && _                => False
+          case _ && False                => False
 
-          case a && b if a == b => a
-          case a || b if a == b => a
+          case a && b if a sameOrEqual b => a
+          case a || b if a sameOrEqual b => a
 
-          case If(True, yes, _) => yes
-          case If(False, _, no) => no
+          case If(True, yes, _)          => yes
+          case If(False, _, no)          => no
         }
     }
   }
@@ -151,7 +151,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case plan =>
         plan transformExpressionsDown {
-          case outer @ Alias(_, inner: Alias, _) => outer.copy(child = inner.child)
+          case outer @ Alias(_, Alias(_, child, _), _) => outer.copy(child = child)
         }
     }
   }
@@ -222,9 +222,12 @@ object Optimizer {
           _.references subsetOf right.references
         }
 
+        def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan) =
+          predicates reduceOption (_ && _) map plan.filter getOrElse plan
+
         join.copy(
-          left = leftPredicates reduceOption (_ && _) map left.filter getOrElse left,
-          right = rightPredicates reduceOption (_ && _) map right.filter getOrElse right,
+          left = applyPredicates(leftPredicates, left),
+          right = applyPredicates(rightPredicates, right),
           maybeCondition = (maybeCondition ++ commonPredicates) reduceOption (_ && _)
         )
     }

@@ -135,13 +135,9 @@ case class Aggregate(
   }
 }
 
-case class Sort(
-  child: PhysicalPlan,
-  order: Seq[SortOrder]
-) extends UnaryPhysicalPlan {
+case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
   override def output: Seq[Attribute] = child.output
 
-  override def iterator: Iterator[Row] = {
-    child.iterator.toArray.sorted(new InterpretedOrdering(order, child.output)).toIterator
-  }
+  override def iterator: Iterator[Row] =
+    child.iterator.toArray.sorted(new RowOrdering(order, child.output)).toIterator
 }

@@ -1,11 +1,10 @@
 package scraper
 
-import scraper.exceptions.ContractBrokenException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Ascending, Expression, SortOrder}
 import scraper.plans.QueryExecution
-import scraper.plans.logical.{Inner, Join, LogicalPlan, Sort}
+import scraper.plans.logical._
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
@@ -39,20 +38,16 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
-  def join(right: DataFrame): DataFrame = build {
-    Join(_, right.queryExecution.logicalPlan, Inner, None)
-  }
+  def join(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, Inner)
 
-  def join(right: DataFrame, condition: Expression): DataFrame = build {
-    Join(_, right.queryExecution.logicalPlan, Inner, Some(condition))
-  }
+  def join(right: DataFrame, joinType: JoinType): DataFrame =
+    new JoinedDataFrame(this, right, joinType)
 
-  def on(condition: Expression): DataFrame = build {
-    case join: Join => join on condition
-    case _ => throw new ContractBrokenException(
-      s"${getClass.getSimpleName}.on() can only be applied over join operators."
-    )
-  }
+  def leftJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, LeftOuter)
+
+  def rightJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, RightOuter)
+
+  def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
 
   def groupBy(expr: Expression*): GroupedData = new GroupedData(this, expr)
 
@@ -95,4 +90,15 @@ class DataFrame(val queryExecution: QueryExecution) {
   def explain(extended: Boolean): Unit = println(explanation(extended))
 
   def explain(): Unit = println(explanation(extended = true))
+}
+
+class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) extends {
+  private val join = {
+    val leftPlan = left.queryExecution.logicalPlan
+    val rightPlan = right.queryExecution.logicalPlan
+    Join(leftPlan, rightPlan, joinType, None)
+  }
+} with DataFrame(join, left.context) {
+  def on(condition: Expression): DataFrame =
+    new DataFrame(join.copy(maybeCondition = Some(condition)), context)
 }

@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 import scraper.Row
 import scraper.exceptions._
@@ -124,7 +124,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 
-  override lazy val strictlyTypedForm: Try[this.type] = Success(this)
+  override def strictlyTypedForm: Try[Expression] = Success(this)
 
   override def nodeCaption: String = debugString
 }
@@ -178,6 +178,9 @@ trait UnevaluableExpression extends Expression {
 
 trait UnresolvedExpression extends Expression with UnevaluableExpression {
   override def dataType: DataType = throw new ExpressionUnresolvedException(this)
+
+  override def strictlyTypedForm: Try[Expression] =
+    Failure(new ExpressionUnevaluableException(this))
 
   override def resolved: Boolean = false
 }

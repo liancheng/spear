@@ -57,12 +57,12 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val right = context range 2 select ('id + 1 cast StringType as "str")
 
     checkDataFrame(
-      left.join(right),
+      left join right,
       Seq(Row(0, "1"), Row(0, "2"), Row(1, "1"), Row(1, "2"))
     )
 
     checkDataFrame(
-      left.join(right, 'id > 0),
+      left join right on 'id > 0,
       Seq(Row(1, "1"), Row(1, "2"))
     )
   }
