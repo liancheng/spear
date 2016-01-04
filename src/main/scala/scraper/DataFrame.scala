@@ -24,8 +24,6 @@ class DataFrame(val queryExecution: QueryExecution) {
     this select aliases
   }
 
-  def sql: Option[String] = queryExecution.analyzedPlan.sql(context)
-
   def select(first: Expression, rest: Expression*): DataFrame = this select (first +: rest)
 
   def select(expressions: Seq[Expression]): DataFrame = build(_ select expressions)

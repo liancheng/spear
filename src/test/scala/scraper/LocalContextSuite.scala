@@ -67,7 +67,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
-  test("aggregate") {
+  ignore("aggregate") {
     val df = context.lift(Seq("a" -> -1, "a" -> 1, "a" -> 2, "b" -> 4, "b" -> 5), "i", "j")
 
     checkDataFrame(
