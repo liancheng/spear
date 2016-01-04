@@ -2,16 +2,14 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.Try
-import scalaz.Scalaz._
 
+import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
 import scraper.types.{IntegralType, StructType}
-import scraper.utils._
-import scraper.{Context, Row}
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
@@ -46,6 +44,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
 
   def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
+
+  def subquery(name: String): Subquery = Subquery(this, name)
 
   override def nodeCaption: String = if (resolved) {
     super.nodeCaption
@@ -166,8 +166,7 @@ case class Join(
   def on(condition: Expression): Join = copy(maybeCondition = Some(condition))
 }
 
-case class Subquery(child: LogicalPlan, alias: String, fromTable: Boolean = false)
-  extends UnaryLogicalPlan {
+case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
 
   override lazy val output: Seq[Attribute] = child.output
 }

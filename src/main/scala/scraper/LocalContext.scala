@@ -102,7 +102,7 @@ class LocalCatalog extends Catalog {
   override def lookupRelation(tableName: String): LogicalPlan =
     tables
       .get(tableName)
-      .map(Subquery(_, tableName, fromTable = true))
+      .map(_ subquery tableName)
       .getOrElse(throw new TableNotFoundException(tableName))
 }
 
@@ -128,16 +128,13 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case Join(left, right, Inner, maybeCondition) =>
         physical.CartesianProduct(planLater(left), planLater(right), maybeCondition) :: Nil
 
-      case Aggregate(child, groupings, aggs) =>
-        physical.Aggregate(planLater(child), groupings, aggs) :: Nil
-
-      case Sort(child, order) =>
+      case child Sort order =>
         physical.Sort(planLater(child), order) :: Nil
 
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
 
-      case Subquery(child, _, _) =>
+      case child Subquery _ =>
         planLater(child) :: Nil
 
       case SingleRowRelation =>

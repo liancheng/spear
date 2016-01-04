@@ -67,45 +67,6 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
-  ignore("aggregate") {
-    val df = context.lift(Seq("a" -> -1, "a" -> 1, "a" -> 2, "b" -> 4, "b" -> 5), "i", "j")
-
-    checkDataFrame(
-      df groupBy 'i agg ('i, count) orderBy 'i,
-      Seq(Row("a", 3), Row("b", 2))
-    )
-
-    checkDataFrame(
-      df groupBy 'i agg ('i, sum('j)) orderBy 'i,
-      Seq(Row("a", 2.0), Row("b", 9.0))
-    )
-
-    checkDataFrame(
-      df groupBy 'i agg ('i, max('j)) orderBy 'i,
-      Seq(Row("a", 2.0), Row("b", 5.0))
-    )
-
-    checkDataFrame(
-      df groupBy 'i agg (min('j), 'i) orderBy 'i,
-      Seq(Row(-1.0, "a"), Row(4.0, "b"))
-    )
-
-    checkDataFrame(
-      df groupBy 'i === "a" agg (min('j + 1) - 2, ('i === "a").as("bool")) orderBy 'bool,
-      Seq(Row(3.0, false), Row(-2.0, true))
-    )
-
-    checkDataFrame(
-      df agg (min('j) + 1, max('j) * 2),
-      Seq(Row(0.0, 10.0))
-    )
-
-    checkDataFrame(
-      df groupBy 'i agg (count, sum('j), max('j), min('j), ('i === "a").as("bool")) orderBy 'bool,
-      Seq(Row(2, 9.0, 5.0, 4.0, false), Row(3, 2.0, 2.0, -1.0, true))
-    )
-  }
-
   test("sort") {
     val df = context.lift(Seq("a" -> 3, "b" -> 1, "f" -> 2, "d" -> 4, "c" -> 5), "i", "j")
 

@@ -98,43 +98,6 @@ case class CartesianProduct(
   }
 }
 
-case class Aggregate(
-  child: PhysicalPlan,
-  groupingExpressions: Seq[Expression],
-  aggregateExpressions: Seq[NamedExpression]
-) extends UnaryPhysicalPlan {
-
-  override def output: Seq[Attribute] = aggregateExpressions.map(_.toAttribute)
-
-  override def iterator: Iterator[Row] = {
-    val input = child.iterator.toArray
-
-    val boundGroupings = groupingExpressions.map(bind(_, child.output))
-    val boundAggs = aggregateExpressions.map(bind(_, child.output))
-
-    val aggs = boundAggs.flatMap(_.collect {
-      case a: Aggregation => a
-    })
-    val finalExprs = boundAggs.map(_.transformDown {
-      case a: Aggregation => BoundRef(aggs.indexOf(a), a.dataType, nullable = true)
-      case e =>
-        val index = boundGroupings.indexOf(e)
-        if (index == -1) {
-          e
-        } else {
-          BoundRef(aggs.length + index, e.dataType, nullable = true)
-        }
-    })
-
-    input.groupBy(row => boundGroupings.map(_.evaluate(row))).map {
-      case (key, values) =>
-        val agged = aggs.map(_.agg(values))
-        val buffer = JoinedRow(Row.fromSeq(agged), Row.fromSeq(key))
-        Row.fromSeq(finalExprs.map(_.evaluate(buffer)))
-    }.toIterator
-  }
-}
-
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
   override def output: Seq[Attribute] = child.output
 

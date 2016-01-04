@@ -110,7 +110,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object EliminateSubquery extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Subquery(plan, _, _) => plan
+      case plan Subquery _ => plan
     }
   }
 }
