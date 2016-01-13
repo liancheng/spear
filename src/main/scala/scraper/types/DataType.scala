@@ -56,8 +56,6 @@ trait DataType { self =>
   }
 }
 
-case class FieldSpec(dataType: DataType, nullable: Boolean)
-
 object DataType {
   implicit def `DataType->FieldSpec`(dataType: DataType): FieldSpec = dataType.?
 
@@ -137,13 +135,24 @@ object DataType {
   }
 }
 
-trait PrimitiveType extends DataType {
+case class FieldSpec(dataType: DataType, nullable: Boolean)
+
+trait OrderedType { this: DataType =>
   type InternalType
 
-  val ordering: Ordering[InternalType]
+  def ordering: Ordering[InternalType]
 
   def genericOrdering: Ordering[Any] = ordering.asInstanceOf[Ordering[Any]]
 }
+
+object OrderedType {
+  def unapply(e: Expression): Option[Expression] = e.dataType match {
+    case _: OrderedType => Some(e)
+    case _              => None
+  }
+}
+
+trait PrimitiveType extends DataType
 
 object PrimitiveType {
   def unapply(e: Expression): Option[Expression] = e.dataType match {
@@ -152,7 +161,7 @@ object PrimitiveType {
   }
 }
 
-case object NullType extends PrimitiveType {
+case object NullType extends PrimitiveType with OrderedType {
   override type InternalType = Null
 
   override val ordering: Ordering[Null] = implicitly[Ordering[Null]]
@@ -160,7 +169,7 @@ case object NullType extends PrimitiveType {
   override def sql: String = "NULL"
 }
 
-case object StringType extends PrimitiveType {
+case object StringType extends PrimitiveType with OrderedType {
   override type InternalType = String
 
   override val ordering: Ordering[String] = implicitly[Ordering[String]]
@@ -168,7 +177,7 @@ case object StringType extends PrimitiveType {
   override def sql: String = "STRING"
 }
 
-case object BooleanType extends PrimitiveType {
+case object BooleanType extends PrimitiveType with OrderedType {
   override type InternalType = Boolean
 
   override val ordering: Ordering[Boolean] = implicitly[Ordering[Boolean]]

@@ -184,12 +184,12 @@ trait Operator { this: Expression =>
 }
 
 trait BinaryOperator extends BinaryExpression with Operator {
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     (f(left) |@| f(right)) { "(" + _ + s" $operator " + _ + ")" }
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     f(child) map (s"($operator" + _ + ")")
 }
 

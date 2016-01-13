@@ -4,8 +4,10 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.promoteDataType
+import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.plans.physical.NullSafeOrdering
 import scraper.types._
+import scraper.utils._
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -39,7 +41,7 @@ case class Positive(child: Expression) extends UnaryArithmeticExpression {
   override def nullSafeEvaluate(value: Any): Any = value
 }
 
-trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryOperator {
+trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case NumericType(e)            => Success(e)
@@ -72,25 +74,25 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryOperato
   override protected def strictDataType: DataType = left.dataType
 }
 
-case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
+case class Add(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
   override def operator: String = "+"
 }
 
-case class Minus(left: Expression, right: Expression) extends BinaryArithmeticExpression {
+case class Minus(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.minus(lhs, rhs)
 
   override def operator: String = "-"
 }
 
-case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticExpression {
+case class Multiply(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.times(lhs, rhs)
 
   override def operator: String = "*"
 }
 
-case class Divide(left: Expression, right: Expression) extends BinaryArithmeticExpression {
+case class Divide(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   private lazy val div = whenStrictlyTyped {
     dataType match {
       case t: FractionalType => t.genericFractional.div _
@@ -122,10 +124,6 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override def debugString: String = s"IsNaN(${child.debugString})"
-
-  override def sql: Option[String] = child.sql map (childSQL => s"IsNaN($childSQL)")
-
   override def evaluate(input: Row): Any = {
     val value = child evaluate input
     if (value == null) false else dataType match {
@@ -134,4 +132,20 @@ case class IsNaN(child: Expression) extends UnaryExpression {
       case _          => false
     }
   }
+}
+
+case class Greatest(children: Seq[Expression]) extends Expression {
+  assert(children.nonEmpty)
+
+  override protected def strictDataType: DataType = children.head.dataType
+
+  override def strictlyTypedForm: Try[Expression] = for {
+    strictChildren <- sequence(children map (_.strictlyTypedForm))
+    widestType <- widestTypeOf(strictChildren map (_.dataType))
+    promotedChildren = strictChildren.map(promoteDataType(_, widestType))
+  } yield if (sameChildren(promotedChildren)) this else makeCopy(promotedChildren)
+
+  private lazy val ordering = new NullSafeOrdering(strictDataType)
+
+  override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
 }

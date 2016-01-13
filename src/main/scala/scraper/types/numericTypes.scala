@@ -2,7 +2,7 @@ package scraper.types
 
 import scraper.expressions.Expression
 
-trait NumericType extends PrimitiveType {
+trait NumericType extends PrimitiveType with OrderedType {
   val numeric: Numeric[InternalType]
 
   def genericNumeric: Numeric[Any] = numeric.asInstanceOf[Numeric[Any]]

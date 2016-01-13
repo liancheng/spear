@@ -2,13 +2,13 @@ package scraper.plans.physical
 
 import scraper.Row
 import scraper.expressions._
-import scraper.types.{DataType, PrimitiveType}
+import scraper.types.{DataType, OrderedType}
 
 class NullSafeOrdering(dataType: DataType, nullsFirst: Boolean = true)
   extends Ordering[Any] {
 
   private val baseOrdering = dataType match {
-    case t: PrimitiveType => t.genericOrdering
+    case t: OrderedType => t.genericOrdering
   }
 
   override def compare(lhs: Any, rhs: Any): Int = (lhs, rhs) match {
@@ -19,17 +19,17 @@ class NullSafeOrdering(dataType: DataType, nullsFirst: Boolean = true)
   }
 }
 
-class RowOrdering(sortOrders: Seq[SortOrder]) extends Ordering[Row] {
-  def this(ordering: Seq[SortOrder], inputSchema: Seq[Attribute]) =
-    this(ordering map (BoundRef.bind(_, inputSchema)))
+class RowOrdering(boundSortOrders: Seq[SortOrder]) extends Ordering[Row] {
+  def this(unboundSortOrders: Seq[SortOrder], inputSchema: Seq[Attribute]) =
+    this(unboundSortOrders map (BoundRef.bind(_, inputSchema)))
 
-  private val nullSafeOrderings = sortOrders.map {
+  private val nullSafeOrderings = boundSortOrders.map {
     case order @ SortOrder(_, Ascending)  => new NullSafeOrdering(order.dataType)
     case order @ SortOrder(_, Descending) => new NullSafeOrdering(order.dataType).reverse
   }
 
   def compare(a: Row, b: Row): Int =
-    (sortOrders map (_.child) zip nullSafeOrderings).iterator map {
+    (boundSortOrders map (_.child) zip nullSafeOrderings).iterator map {
       case (e, ordering) => ordering.compare(e evaluate a, e evaluate b)
     } find (_ != 0) getOrElse 0
 }

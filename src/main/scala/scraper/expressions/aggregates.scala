@@ -5,7 +5,7 @@ import scala.util.Try
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.plans.physical.NullSafeOrdering
-import scraper.types.{DataType, LongType, NumericType, PrimitiveType}
+import scraper.types._
 import scraper.{MutableRow, Row}
 
 trait AggregateFunction extends Expression {
@@ -66,43 +66,32 @@ case class Sum(child: Expression) extends UnaryExpression with AggregateFunction
   override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
 }
 
-case class Max(child: Expression) extends UnaryExpression with AggregateFunction {
+abstract class MinMaxLike extends UnaryExpression with AggregateFunction {
+  this: Product =>
+
   override protected def strictDataType: DataType = child.dataType
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
-      case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
+      case OrderedType(e) => e
+      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
+  } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
 
-  private lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsFirst = true)
+  protected lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsFirst = true)
 
   override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = null
 
   override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
+}
 
+case class Max(child: Expression) extends MinMaxLike {
   override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
     accumulator(ordinal) = ordering.max(accumulator(ordinal), rows map child.evaluate max ordering)
   }
 }
 
-case class Min(child: Expression) extends UnaryExpression with AggregateFunction {
-  override protected def strictDataType: DataType = child.dataType
-
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
-      case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
-    }
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
-
-  private lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsFirst = false)
-
-  override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = null
-
-  override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
-
+case class Min(child: Expression) extends MinMaxLike {
   override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
     accumulator(ordinal) = ordering.min(accumulator(ordinal), rows map child.evaluate min ordering)
   }

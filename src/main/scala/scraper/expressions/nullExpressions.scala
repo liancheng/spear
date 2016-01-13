@@ -35,7 +35,7 @@ case class IsNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     f(child) map ("(" + _ + "IS NULL)")
 }
 
@@ -48,6 +48,6 @@ case class IsNotNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     f(child) map ("(" + _ + "IS NOT NULL)")
 }

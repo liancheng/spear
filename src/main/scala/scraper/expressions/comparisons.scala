@@ -6,7 +6,7 @@ import scalaz.Applicative
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
-import scraper.types.{BooleanType, DataType, PrimitiveType}
+import scraper.types.{BooleanType, DataType, OrderedType}
 import scraper.utils._
 
 trait BinaryComparison extends BinaryOperator {
@@ -14,19 +14,19 @@ trait BinaryComparison extends BinaryOperator {
 
   protected lazy val ordering: Ordering[Any] = whenStrictlyTyped {
     left.dataType match {
-      case t: PrimitiveType => t.genericOrdering
+      case t: OrderedType => t.genericOrdering
     }
   }
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     lhs <- left.strictlyTypedForm map {
-      case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
+      case OrderedType(e) => e
+      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
 
     rhs <- right.strictlyTypedForm map {
-      case PrimitiveType(e) => e
-      case e                => throw new TypeMismatchException(e, classOf[PrimitiveType])
+      case OrderedType(e) => e
+      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
 
     t <- lhs.dataType widest rhs.dataType
@@ -106,7 +106,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
     val listValues = list map (_ evaluate input)
 
     dataType match {
-      case t: PrimitiveType =>
+      case t: OrderedType =>
         listValues exists (t.genericOrdering.compare(testValue, _) == 0)
 
       case _ =>
@@ -114,7 +114,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
     }
   }
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] = {
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] = {
     import scalaz.Scalaz._
 
     sequence(children map f) map {
