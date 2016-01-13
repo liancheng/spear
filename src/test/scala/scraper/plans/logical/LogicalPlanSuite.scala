@@ -6,7 +6,7 @@ import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlanSuite.{FakeExpr, FakePlan}
 import scraper.types._
-import scraper.{Analyzer, LocalCatalog, LoggingFunSuite, Row}
+import scraper.{LocalCatalog, LoggingFunSuite, Row}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
   test("transformExpressionDown") {

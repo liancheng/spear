@@ -1,12 +1,12 @@
 package scraper.expressions
 
 import scala.util.Try
+import scalaz.Applicative
 import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types.{BooleanType, DataType}
-import scraper.utils.sequence
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
@@ -19,13 +19,6 @@ case class Coalesce(children: Seq[Expression]) extends Expression {
 
   override def evaluate(input: Row): Any =
     (children.iterator map (_ evaluate input) find (_ != null)).orNull
-
-  override def debugString: String =
-    s"COALESCE(${children map (_.debugString) mkString ", "})"
-
-  override def sql: Option[String] = for {
-    childrenSQL <- sequence(children.map(_.sql))
-  } yield s"COALESCE(${childrenSQL mkString ", "})"
 }
 
 object Coalesce {
@@ -42,9 +35,8 @@ case class IsNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override def debugString: String = s"(${child.debugString} IS NULL)"
-
-  override def sql: Option[String] = child.sql.map(childSQL => s"($childSQL IS NULL)")
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map ("(" + _ + "IS NULL)")
 }
 
 case class IsNotNull(child: Expression) extends UnaryExpression {
@@ -56,7 +48,6 @@ case class IsNotNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override def debugString: String = s"(${child.debugString} IS NOT NULL)"
-
-  override def sql: Option[String] = child.sql.map(childSQL => s"($childSQL IS NOT NULL)")
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map ("(" + _ + "IS NOT NULL)")
 }

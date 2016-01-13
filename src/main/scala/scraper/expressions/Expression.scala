@@ -1,12 +1,16 @@
 package scraper.expressions
 
+import scala.language.higherKinds
 import scala.util.{Failure, Success, Try}
+import scalaz.Scalaz._
+import scalaz._
 
 import scraper.Row
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
+import scraper.utils.sequence
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def foldable: Boolean = children.forall(_.foldable)
@@ -114,11 +118,16 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenTypes: Seq[DataType] = children.map(_.dataType)
 
-  def debugString: String
-
   override def nodeCaption: String = getClass.getSimpleName
 
-  def sql: Option[String] = None
+  protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
+    sequence(children map f) map (_ mkString (s"$nodeName(", ", ", ")"))
+
+  def debugString: String = template(_.debugString.some).get
+
+  def sql: Option[String] = template(_.sql)
+
+  override def toString: String = debugString
 }
 
 trait LeafExpression extends Expression {
@@ -167,7 +176,21 @@ trait BinaryExpression extends Expression {
 }
 
 object BinaryExpression {
-  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = Some((e.left, e.right))
+  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = (e.left, e.right).some
+}
+
+trait Operator { this: Expression =>
+  def operator: String
+}
+
+trait BinaryOperator extends BinaryExpression with Operator {
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    (f(left) |@| f(right)) { "(" + _ + s" $operator " + _ + ")" }
+}
+
+trait UnaryOperator extends UnaryExpression with Operator {
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map (s"($operator" + _ + ")")
 }
 
 trait UnevaluableExpression extends Expression {

@@ -48,6 +48,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
 
 class Parser extends TokenParser[LogicalPlan] {
   private val SELECT = Keyword("SELECT")
+  private val DISTINCT = Keyword("DISTINCT")
   private val AS = Keyword("AS")
   private val FROM = Keyword("FROM")
   private val WHERE = Keyword("WHERE")
@@ -94,17 +95,18 @@ class Parser extends TokenParser[LogicalPlan] {
     select
 
   private def select: Parser[LogicalPlan] = (
-    SELECT ~> projections
+    SELECT ~> DISTINCT.? ~ projections
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
     ~ (GROUP ~> BY ~> rep1sep(expression, ",")).?
     ~ (HAVING ~> predicate).?
     ~ (LIMIT ~> expression).? ^^ {
-      case ps ~ rs ~ f ~ gs ~ h ~ n =>
-        val base = rs getOrElse SingleRowRelation
+      case d ~ ps ~ rs ~ f ~ gs ~ h ~ n =>
+        val base = rs getOrElse OneRowRelation
         val withFilter = f map (Filter(base, _)) getOrElse base
         val withProject = gs map (Aggregate(withFilter, _, ps)) getOrElse Project(withFilter, ps)
-        val withHaving = h map (Filter(withProject, _)) getOrElse withProject
+        val withDistinct = d map (_ => Distinct(withProject)) getOrElse withProject
+        val withHaving = h map (Filter(withDistinct, _)) getOrElse withProject
         val withLimit = n map (Limit(withHaving, _)) getOrElse withHaving
         withLimit
     }

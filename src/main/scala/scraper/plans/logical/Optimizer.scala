@@ -1,16 +1,16 @@
-package scraper.plans
+package scraper.plans.logical
 
+import scraper.expressions
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.plans.Optimizer._
-import scraper.plans.logical._
+import scraper.plans.logical
+import scraper.plans.logical.Optimizer._
 import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{Analyzer, expressions}
 
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(

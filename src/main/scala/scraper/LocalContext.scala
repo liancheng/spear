@@ -8,7 +8,7 @@ import scraper.expressions.Expression
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
-import scraper.plans.{Optimizer, QueryPlanner, physical}
+import scraper.plans.{QueryPlanner, physical}
 import scraper.trees.RulesExecutor
 import scraper.types.{LongType, StructType}
 
@@ -37,7 +37,7 @@ trait Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
-  lazy val single: DataFrame = new DataFrame(SingleRowRelation, this)
+  lazy val single: DataFrame = new DataFrame(OneRowRelation, this)
 
   def single(first: Expression, rest: Expression*): DataFrame = single select first +: rest
 
@@ -137,7 +137,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case child Subquery _ =>
         planLater(child) :: Nil
 
-      case SingleRowRelation =>
+      case OneRowRelation =>
         physical.SingleRowRelation :: Nil
 
       case _ => Nil

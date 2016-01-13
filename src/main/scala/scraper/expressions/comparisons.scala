@@ -1,6 +1,7 @@
 package scraper.expressions
 
 import scala.util.{Failure, Success, Try}
+import scalaz.Applicative
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
@@ -8,7 +9,7 @@ import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType, PrimitiveType}
 import scraper.utils._
 
-trait BinaryComparison extends BinaryExpression {
+trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
   protected lazy val ordering: Ordering[Any] = whenStrictlyTyped {
@@ -32,15 +33,6 @@ trait BinaryComparison extends BinaryExpression {
 
     newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
   } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
-
-  def operator: String
-
-  override def debugString: String = s"(${left.debugString} $operator ${right.debugString})"
-
-  override def sql: Option[String] = for {
-    lhs <- left.sql
-    rhs <- right.sql
-  } yield s"($lhs $operator $rhs)"
 }
 
 object BinaryComparison {
@@ -122,6 +114,12 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
     }
   }
 
-  override def debugString: String =
-    s"(${test.debugString} IN (${list map (_.debugString) mkString ", "}))"
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] = {
+    import scalaz.Scalaz._
+
+    sequence(children map f) map {
+      case Seq(testStr, listStr @ _*) =>
+        s"($testStr IN (${listStr mkString ", "}))"
+    }
+  }
 }

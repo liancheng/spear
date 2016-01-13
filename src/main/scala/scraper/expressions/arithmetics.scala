@@ -13,7 +13,7 @@ trait ArithmeticExpression extends Expression {
   }
 }
 
-trait UnaryArithmeticExpression extends UnaryExpression with ArithmeticExpression {
+trait UnaryArithmeticExpression extends UnaryOperator with ArithmeticExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
       case NumericType(e)            => e
@@ -25,27 +25,21 @@ trait UnaryArithmeticExpression extends UnaryExpression with ArithmeticExpressio
   override lazy val dataType: DataType = whenWellTyped(strictlyTypedForm.get match {
     case e: UnaryArithmeticExpression => e.child.dataType
   })
-
-  protected def operator: String
-
-  override def debugString: String = s"($operator${child.debugString})"
-
-  override def sql: Option[String] = child.sql.map(childSQL => s"($operator$childSQL)")
 }
 
 case class Negate(child: Expression) extends UnaryArithmeticExpression {
-  protected def operator: String = "-"
+  override def operator: String = "-"
 
   override def nullSafeEvaluate(value: Any): Any = numeric.negate(value)
 }
 
 case class Positive(child: Expression) extends UnaryArithmeticExpression {
-  protected def operator: String = "+"
+  override def operator: String = "+"
 
   override def nullSafeEvaluate(value: Any): Any = value
 }
 
-trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpression {
+trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryOperator {
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case NumericType(e)            => Success(e)
@@ -76,15 +70,6 @@ trait BinaryArithmeticExpression extends ArithmeticExpression with BinaryExpress
   }
 
   override protected def strictDataType: DataType = left.dataType
-
-  def operator: String
-
-  override def debugString: String = s"(${left.debugString} $operator ${right.debugString})"
-
-  override def sql: Option[String] = for {
-    lhs <- left.sql
-    rhs <- right.sql
-  } yield s"($lhs $operator $rhs)"
 }
 
 case class Add(left: Expression, right: Expression) extends BinaryArithmeticExpression {
@@ -119,7 +104,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticE
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override def strictlyTypedForm: Try[Expression] = for {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
       case FractionalType(e)            => e
       case FractionalType.Implicitly(e) => e

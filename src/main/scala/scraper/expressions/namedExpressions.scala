@@ -3,6 +3,7 @@ package scraper.expressions
 import java.util.concurrent.atomic.AtomicLong
 
 import scala.util.Try
+import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
@@ -37,6 +38,8 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override def debugString: String = "*"
+
+  override def sql: Option[String] = "*".some
 }
 
 case class Alias(
@@ -59,7 +62,7 @@ case class Alias(
 
   override def debugString: String = s"(${child.debugString} AS `$name`#${expressionId.id})"
 
-  override def sql: Option[String] = child.sql.map(childSQL => s"$childSQL AS `$name`")
+  override def sql: Option[String] = child.sql map (childSQL => s"$childSQL AS `$name`")
 
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
@@ -79,7 +82,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
   override def debugString: String = s"`$name`"
 
-  override def sql: Option[String] = Some(s"`$name`")
+  override def sql: Option[String] = s"`$name`".some
 
   override def ? : Attribute = this
 
@@ -98,7 +101,7 @@ case class AttributeRef(
     s"`$name`#${expressionId.id}: ${dataType.sql}$nullability"
   }
 
-  override def sql: Option[String] = Some(s"`$name`")
+  override def sql: Option[String] = s"`$name`".some
 
   override def ? : Attribute = copy(nullable = true)
 
@@ -117,6 +120,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   override def evaluate(input: Row): Any = input(ordinal)
 
   override def debugString: String = name
+
+  override def sql: Option[String] = None
 }
 
 object BoundRef {

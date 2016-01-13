@@ -1,9 +1,9 @@
-package scraper
+package scraper.plans.logical
 
+import scraper.Catalog
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.patterns._
-import scraper.plans.logical.{LogicalPlan, Project, Subquery, UnresolvedRelation}
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
 

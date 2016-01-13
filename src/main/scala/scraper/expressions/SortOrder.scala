@@ -1,6 +1,8 @@
 package scraper.expressions
 
 import scala.util.Try
+import scalaz.Scalaz._
+import scalaz._
 
 import scraper.exceptions.TypeMismatchException
 import scraper.types.{DataType, PrimitiveType}
@@ -29,7 +31,8 @@ case class SortOrder(child: Expression, direction: SortDirection)
 
   override def nullable: Boolean = child.nullable
 
-  override def debugString: String = s"${child.debugString} $direction"
-
   def isAscending: Boolean = direction == Ascending
+
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map (str => s"$str $direction")
 }

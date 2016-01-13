@@ -7,7 +7,9 @@ import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType}
 
-trait BinaryLogicalPredicate extends BinaryExpression {
+trait BinaryLogicalPredicate extends BinaryOperator {
+  override def dataType: DataType = BooleanType
+
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case BooleanType.Implicitly(e) => Success(promoteDataType(e, BooleanType))
@@ -22,17 +24,6 @@ trait BinaryLogicalPredicate extends BinaryExpression {
       newChildren = lhs :: rhs :: Nil
     } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
   }
-
-  override def dataType: DataType = BooleanType
-
-  def operator: String
-
-  override def debugString: String = s"(${left.debugString} $operator ${right.debugString})"
-
-  override def sql: Option[String] = for {
-    lhs <- left.sql
-    rhs <- right.sql
-  } yield s"($lhs $operator $rhs)"
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -50,12 +41,8 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
   override def operator: String = "OR"
 }
 
-case class Not(child: Expression) extends UnaryExpression {
+case class Not(child: Expression) extends UnaryOperator {
   override def dataType: DataType = BooleanType
-
-  override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
-
-  override def debugString: String = s"(NOT(${child.debugString}))"
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     e <- child.strictlyTypedForm map {
@@ -64,24 +51,15 @@ case class Not(child: Expression) extends UnaryExpression {
     }
   } yield copy(child = e)
 
-  override def sql: Option[String] = child.sql.map(childSQL => s"(NOT($childSQL))")
+  override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
+
+  override def operator: String = "NOT"
 }
 
-case class If(condition: Expression, yes: Expression, no: Expression)
-  extends Expression {
-
+case class If(condition: Expression, yes: Expression, no: Expression) extends Expression {
   override protected def strictDataType: DataType = yes.dataType
 
   override def children: Seq[Expression] = Seq(condition, yes, no)
-
-  override def debugString: String =
-    s"IF(${condition.debugString}, ${yes.debugString}, ${no.debugString})"
-
-  override def sql: Option[String] = for {
-    conditionSQL <- condition.sql
-    yesSQL <- yes.sql
-    noSQL <- no.sql
-  } yield s"IF($conditionSQL, $yesSQL, $noSQL)"
 
   override lazy val strictlyTypedForm: Try[If] = for {
     strictCondition <- condition.strictlyTypedForm map {

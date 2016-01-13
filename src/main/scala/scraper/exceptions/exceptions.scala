@@ -88,7 +88,7 @@ class TypeMismatchException(message: String, cause: Throwable)
     val expected = dataTypeClass.getSimpleName stripSuffix "$"
     val actual = expression.dataType.getClass.getSimpleName stripSuffix "$"
     s"""Expression [${expression.debugString}] has type $actual,
-        |which cannot be implicitly converted to expected type $expected.
+       |which cannot be implicitly converted to expected type $expected.
      """.straight
   }, cause)
 

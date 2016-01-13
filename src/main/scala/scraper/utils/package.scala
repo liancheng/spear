@@ -56,9 +56,12 @@ package object utils {
       string stripMargin '|' split "\n" mkString joiner
 
     def straight(marginChar: Char, joiner: String): String =
-      string stripMargin marginChar split "\n" mkString joiner
+      string stripMargin marginChar split "\n" mkString joiner trim
   }
 
+  /**
+   * Makes a `Try[T]` an `Applicative`, so that we can apply [[sequence]] over it.
+   */
   class TryApplicative[T] extends Applicative[Try] {
     override def point[A](a: => A): Try[A] = Try(a)
 

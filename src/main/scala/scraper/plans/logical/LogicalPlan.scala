@@ -80,7 +80,7 @@ trait BinaryLogicalPlan extends LogicalPlan {
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
 
-case object SingleRowRelation extends LeafLogicalPlan {
+case object OneRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
 }
 
@@ -96,6 +96,10 @@ object LocalRelation {
     val rows = data.map { product => Row.fromSeq(product.productIterator.toSeq) }
     LocalRelation(rows, schema.toAttributes)
   }
+}
+
+case class Distinct(child: LogicalPlan) extends UnaryLogicalPlan {
+  override def output: Seq[Attribute] = child.output
 }
 
 case class Project(child: LogicalPlan, projections: Seq[NamedExpression])

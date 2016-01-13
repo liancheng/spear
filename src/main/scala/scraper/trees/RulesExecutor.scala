@@ -50,9 +50,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) 
     transformed
   }
 
-  def apply(tree: Base): Base = {
-    batches.foldLeft(tree) { executeBatch }
-  }
+  def apply(tree: Base): Base = batches.foldLeft(tree) { executeBatch }
 
   private def logTransformation(transformation: String, before: Base, after: Base): Unit = {
     if (before sameOrEqual after) {
@@ -96,5 +94,4 @@ object RulesExecutor {
   object FixedPoint {
     val Unlimited = FixedPoint(-1)
   }
-
 }
