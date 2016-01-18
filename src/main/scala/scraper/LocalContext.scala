@@ -140,6 +140,15 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case OneRowRelation =>
         physical.SingleRowRelation :: Nil
 
+      case left Union right =>
+        physical.Union(planLater(left), planLater(right)) :: Nil
+
+      case left Intersect right =>
+        physical.Intersect(planLater(left), planLater(right)) :: Nil
+
+      case left Except right =>
+        physical.Except(planLater(left), planLater(right)) :: Nil
+
       case _ => Nil
     }
   }

@@ -188,9 +188,13 @@ trait BinaryOperator extends BinaryExpression with Operator {
     (f(left) |@| f(right)) { "(" + _ + s" $operator " + _ + ")" }
 }
 
+object BinaryOperator {
+  def unapply(e: BinaryOperator): Option[(Expression, Expression)] = (e.left, e.right).some
+}
+
 trait UnaryOperator extends UnaryExpression with Operator {
   override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map (s"($operator" + _ + ")")
+    f(child) map (operator + _)
 }
 
 trait UnevaluableExpression extends Expression {

@@ -8,8 +8,10 @@ import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
+import scraper.plans.logical.Optimizer.{ReduceCasts, ReduceProjects}
 import scraper.reflection.fieldSpecFor
-import scraper.types.{IntegralType, StructType}
+import scraper.types.{DataType, IntegralType, StructType}
+import scraper.utils._
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
@@ -24,13 +26,13 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
 
-  def childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
+  lazy val childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
 
   def select(projections: Seq[Expression]): LogicalPlan =
     Project(this, projections.zipWithIndex map {
       case (UnresolvedAttribute("*"), _) => Star
       case (e: NamedExpression, _)       => e
-      case (e, ordinal)                  => e as s"col$ordinal"
+      case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
     })
 
   def select(first: Expression, rest: Expression*): LogicalPlan = select(first +: rest)
@@ -46,6 +48,12 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
 
   def subquery(name: String): Subquery = Subquery(this, name)
+
+  def union(that: LogicalPlan): Union = Union(this, that)
+
+  def intersect(that: LogicalPlan): Intersect = Intersect(this, that)
+
+  def except(that: LogicalPlan): Except = Except(this, that)
 
   override def nodeCaption: String = if (resolved) {
     super.nodeCaption
@@ -129,7 +137,64 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
   } yield if (n sameOrEqual limit) this else copy(limit = n)
 }
 
-trait JoinType {
+trait SetOperator extends BinaryLogicalPlan {
+  require(
+    left.output.map(_.name) == right.output.map(_.name),
+    s"""$nodeName branches have incompatible schemata.  Left branch:
+       |
+       |${left.schema.prettyTree}
+       |
+       |right branch:
+       |
+       |${right.schema.prettyTree}
+     """.stripMargin
+  )
+
+  override lazy val strictlyTypedForm: Try[LogicalPlan] = {
+    def widen(branch: LogicalPlan, types: Seq[DataType]): LogicalPlan = {
+      val projectList = (branch.output, types).zipped.map(_ cast _)
+      // Removes redundant casts and projects
+      (ReduceCasts andThen ReduceProjects)(branch select projectList)
+    }
+
+    for {
+      lhs <- left.strictlyTypedForm
+      rhs <- right.strictlyTypedForm
+
+      lhsTypes = left.schema.fieldTypes
+      rhsTypes = right.schema.fieldTypes
+
+      widenedTypes <- sequence((lhsTypes, rhsTypes).zipped map (_ widest _))
+
+      widenedLhs = widen(lhs, widenedTypes)
+      widenedRhs = widen(rhs, widenedTypes)
+
+      newChildren = widenedLhs :: widenedRhs :: Nil
+    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+  }
+}
+
+case class Union(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
+  override lazy val output: Seq[Attribute] =
+    left.output.zip(right.output).map {
+      case (a1, a2) =>
+        a1.withNullability(a1.nullable || a2.nullable)
+    }
+}
+
+case class Intersect(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
+  override lazy val output: Seq[Attribute] =
+    left.output.zip(right.output).map {
+      case (a1, a2) =>
+        a1.withNullability(a1.nullable && a2.nullable)
+    }
+}
+
+case class Except(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
+  override lazy val output: Seq[Attribute] = left.output
+}
+
+sealed trait JoinType {
   def sql: String
 }
 

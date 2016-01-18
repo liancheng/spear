@@ -47,9 +47,23 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
 
-  def orderBy(expr: Expression, exprs: Expression*): DataFrame = build { plan =>
-    Sort(plan, (expr +: exprs).map(SortOrder(_, Ascending)))
+  def orderBy(expr: Expression, exprs: Expression*): DataFrame = build {
+    Sort(_, expr +: exprs map (SortOrder(_, Ascending)))
   }
+
+  def subquery(name: String): DataFrame = build(_ subquery name)
+
+  def subquery(name: Symbol): DataFrame = subquery(name.name)
+
+  def as(name: String): DataFrame = subquery(name)
+
+  def as(name: Symbol): DataFrame = subquery(name.name)
+
+  def union(that: DataFrame): DataFrame = build(_ union that.queryExecution.logicalPlan)
+
+  def intersect(that: DataFrame): DataFrame = build(_ intersect that.queryExecution.logicalPlan)
+
+  def except(that: DataFrame): DataFrame = build(_ except that.queryExecution.logicalPlan)
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 

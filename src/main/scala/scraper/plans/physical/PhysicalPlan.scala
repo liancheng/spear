@@ -76,6 +76,33 @@ case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPl
   override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
 }
 
+case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
+  override lazy val output: Seq[Attribute] =
+    left.output.zip(right.output).map {
+      case (a1, a2) =>
+        a1.withNullability(a1.nullable || a2.nullable)
+    }
+
+  override def iterator: Iterator[Row] = left.iterator ++ right.iterator
+}
+
+case class Intersect(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
+  override lazy val output: Seq[Attribute] =
+    left.output.zip(right.output).map {
+      case (a1, a2) =>
+        a1.withNullability(a1.nullable && a2.nullable)
+    }
+
+  override def iterator: Iterator[Row] =
+    (left.iterator.toSeq intersect right.iterator.toSeq).iterator
+}
+
+case class Except(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
+  override lazy val output: Seq[Attribute] = left.output
+
+  override def iterator: Iterator[Row] = (left.iterator.toSeq diff right.iterator.toSeq).iterator
+}
+
 case class CartesianProduct(
   left: PhysicalPlan,
   right: PhysicalPlan,

@@ -91,8 +91,17 @@ class Parser extends TokenParser[LogicalPlan] {
   private val MAP = Keyword("MAP")
   private val STRUCT = Keyword("STRUCT")
 
+  private val UNION = Keyword("UNION")
+  private val ALL = Keyword("ALL")
+  private val INTERSECT = Keyword("INTERSECT")
+  private val EXCEPT = Keyword("EXCEPT")
+
   override protected def start: Parser[LogicalPlan] =
-    select
+    select * (
+      UNION ~ ALL ^^^ Union
+      | INTERSECT ^^^ Intersect
+      | EXCEPT ^^^ Except
+    )
 
   private def select: Parser[LogicalPlan] = (
     SELECT ~> DISTINCT.? ~ projections

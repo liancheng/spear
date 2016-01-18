@@ -60,7 +60,7 @@ package object utils {
   }
 
   /**
-   * Makes a `Try[T]` an `Applicative`, so that we can apply [[sequence]] over it.
+   * Makes `Try[T]` an `Applicative`, so that we can apply [[sequence]] over it.
    */
   class TryApplicative[T] extends Applicative[Try] {
     override def point[A](a: => A): Try[A] = Try(a)
@@ -69,7 +69,7 @@ package object utils {
       for (a <- fa; fn <- f) yield fn(a)
   }
 
-  implicit def tryApplicative[T]: Applicative[Try] = new TryApplicative[T]
+  implicit def `Try[T]->Applicative[Try]`[T]: Applicative[Try] = new TryApplicative[T]
 
   def sequence[F[_]: Applicative, A](seq: Seq[F[A]]): F[Seq[A]] = seq match {
     case xs if xs.isEmpty => Seq.empty[A].point[F]

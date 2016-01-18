@@ -2,10 +2,8 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.BasicRow
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions.{Attribute, AttributeRef}
-import scraper.plans.physical.RowOrdering
 
 trait ComplexType extends DataType
 

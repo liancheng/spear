@@ -15,7 +15,7 @@ trait ArithmeticExpression extends Expression {
   }
 }
 
-trait UnaryArithmeticExpression extends UnaryOperator with ArithmeticExpression {
+trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
       case NumericType(e)            => e
@@ -25,17 +25,17 @@ trait UnaryArithmeticExpression extends UnaryOperator with ArithmeticExpression 
   } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
 
   override lazy val dataType: DataType = whenWellTyped(strictlyTypedForm.get match {
-    case e: UnaryArithmeticExpression => e.child.dataType
+    case e: UnaryArithmeticOperator => e.child.dataType
   })
 }
 
-case class Negate(child: Expression) extends UnaryArithmeticExpression {
+case class Negate(child: Expression) extends UnaryArithmeticOperator {
   override def operator: String = "-"
 
   override def nullSafeEvaluate(value: Any): Any = numeric.negate(value)
 }
 
-case class Positive(child: Expression) extends UnaryArithmeticExpression {
+case class Positive(child: Expression) extends UnaryArithmeticOperator {
   override def operator: String = "+"
 
   override def nullSafeEvaluate(value: Any): Any = value
@@ -134,18 +134,27 @@ case class IsNaN(child: Expression) extends UnaryExpression {
   }
 }
 
-case class Greatest(children: Seq[Expression]) extends Expression {
+abstract class GreatestLeastLike extends Expression {
   assert(children.nonEmpty)
 
   override protected def strictDataType: DataType = children.head.dataType
 
   override def strictlyTypedForm: Try[Expression] = for {
     strictChildren <- sequence(children map (_.strictlyTypedForm))
-    widestType <- widestTypeOf(strictChildren map (_.dataType))
+    widestType <- widestTypeOf(strictChildren map (_.dataType)) map {
+      case t: OrderedType => t
+      case t              => throw new TypeMismatchException(this, classOf[OrderedType])
+    }
     promotedChildren = strictChildren.map(promoteDataType(_, widestType))
   } yield if (sameChildren(promotedChildren)) this else makeCopy(promotedChildren)
 
-  private lazy val ordering = new NullSafeOrdering(strictDataType)
+  protected lazy val ordering = new NullSafeOrdering(strictDataType)
+}
 
+case class Greatest(children: Seq[Expression]) extends GreatestLeastLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
+}
+
+case class Least(children: Seq[Expression]) extends GreatestLeastLike {
+  override def evaluate(input: Row): Any = children map (_ evaluate input) min ordering
 }

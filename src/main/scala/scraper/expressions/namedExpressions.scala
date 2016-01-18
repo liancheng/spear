@@ -74,9 +74,11 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   override def toAttribute: Attribute = this
 
-  def ? : Attribute
+  def withNullability(nullability: Boolean): Attribute
 
-  def ! : Attribute
+  def ? : Attribute = withNullability(true)
+
+  def ! : Attribute = withNullability(false)
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
@@ -84,9 +86,10 @@ case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNa
 
   override def sql: Option[String] = s"`$name`".some
 
-  override def ? : Attribute = this
+  override def withNullability(nullability: Boolean): Attribute = this
 
-  override def ! : Attribute = this
+  def of(dataType: DataType): AttributeRef =
+    AttributeRef(name, dataType, nullable = true, newExpressionId())
 }
 
 case class AttributeRef(
@@ -103,9 +106,9 @@ case class AttributeRef(
 
   override def sql: Option[String] = s"`$name`".some
 
-  override def ? : Attribute = copy(nullable = true)
+  override def withNullability(nullable: Boolean): Attribute = copy(nullable = nullable)
 
-  override def ! : Attribute = copy(nullable = false)
+  def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)
