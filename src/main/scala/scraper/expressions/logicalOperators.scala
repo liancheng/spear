@@ -80,7 +80,7 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
 
   override def evaluate(input: Row): Any = condition.evaluate(input) match {
     case null  => null
-    case true  => yes.evaluate(input)
-    case false => no.evaluate(input)
+    case true  => yes evaluate input
+    case false => no evaluate input
   }
 }

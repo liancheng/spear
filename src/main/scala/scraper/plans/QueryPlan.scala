@@ -60,7 +60,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
       arg.map {
         case e: Expression => e.debugString
         case _             => arg.toString
-      } mkString ("Seq(", ", ", ")")
+      } mkString ("[", ", ", "]")
 
     case arg: Some[_] =>
       arg.map {
@@ -73,9 +73,9 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
     case arg =>
       arg.toString
-  } mkString ("[", ", ", "]")
+  } mkString ("{", ", ", "}")
 
-  protected def outputString: String = output map (_.debugString) mkString ("[", ", ", "]")
+  protected def outputString: String = output map (_.debugString) mkString ("{", ", ", "}")
 
   override def nodeCaption: String = s"$nodeName args=$argsString output=$outputString"
 }

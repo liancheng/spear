@@ -14,6 +14,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ExpandStars,
       ResolveRelations,
       ResolveReferences,
+      ResolveSelfJoins,
       ApplyImplicitCasts
     ))
   )
@@ -51,7 +52,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(plan) if plan.childrenStrictlyTyped =>
+      case Unresolved(plan) if plan.children forall (_.strictlyTyped) =>
         plan transformExpressionsUp {
           case UnresolvedAttribute(name) =>
             def reportResolutionFailure(message: String): Nothing = {
@@ -108,9 +109,16 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * This rule eliminates all [[scraper.plans.logical.Subquery Subquery]] operators, since they are
    * only used to provide scoping information during analysis phase.
    */
-  object EliminateSubquery extends Rule[LogicalPlan] {
+  object EliminateSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Subquery _ => plan
+    }
+  }
+
+  object ResolveSelfJoins extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case Resolved(plan @ Join(left, right, _, _)) if left.output == right.output =>
+        throw new UnsupportedOperationException("Self-join is not supported yet")
     }
   }
 }

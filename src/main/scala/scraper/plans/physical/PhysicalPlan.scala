@@ -1,13 +1,45 @@
 package scraper.plans.physical
 
+import scalaz.Scalaz._
+
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
 import scraper.expressions._
+import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.{JoinedRow, Row}
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]
+
+  def select(projections: Seq[Expression]): Project =
+    Project(this, projections.zipWithIndex map {
+      case (UnresolvedAttribute("*"), _) => Star
+      case (e: NamedExpression, _)       => e
+      case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
+    })
+
+  def select(first: Expression, rest: Expression*): Project = select(first +: rest)
+
+  def filter(condition: Expression): Filter = Filter(this, condition)
+
+  def where(condition: Expression): Filter = filter(condition)
+
+  def limit(n: Expression): Limit = Limit(this, n)
+
+  def limit(n: Int): Limit = limit(lit(n))
+
+  def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
+
+  def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
+
+  def cartesian(that: PhysicalPlan): CartesianProduct = CartesianProduct(this, that, None)
+
+  def union(that: PhysicalPlan): Union = Union(this, that)
+
+  def intersect(that: PhysicalPlan): Intersect = Intersect(this, that)
+
+  def except(that: PhysicalPlan): Except = Except(this, that)
 }
 
 trait LeafPhysicalPlan extends PhysicalPlan {
@@ -51,7 +83,7 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
   extends UnaryPhysicalPlan {
 
-  override val output: Seq[Attribute] = expressions.map(_.toAttribute)
+  override val output: Seq[Attribute] = expressions map (_.toAttribute)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     val boundProjections = expressions map (bind(_, child.output))
@@ -78,7 +110,7 @@ case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPl
 
 case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
   override lazy val output: Seq[Attribute] =
-    left.output.zip(right.output).map {
+    left.output zip right.output map {
       case (a1, a2) =>
         a1.withNullability(a1.nullable || a2.nullable)
     }
@@ -88,7 +120,7 @@ case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysical
 
 case class Intersect(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
   override lazy val output: Seq[Attribute] =
-    left.output.zip(right.output).map {
+    left.output zip right.output map {
       case (a1, a2) =>
         a1.withNullability(a1.nullable && a2.nullable)
     }
@@ -123,6 +155,8 @@ case class CartesianProduct(
       joinedRow = JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
     } yield JoinedRow(leftRow, rightRow)
   }
+
+  def on(condition: Expression): CartesianProduct = copy(maybeCondition = condition.some)
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {

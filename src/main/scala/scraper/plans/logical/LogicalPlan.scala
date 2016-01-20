@@ -2,6 +2,7 @@ package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.Try
+import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
@@ -26,28 +27,36 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
 
-  lazy val childrenStrictlyTyped: Boolean = children forall (_.strictlyTyped)
-
-  def select(projections: Seq[Expression]): LogicalPlan =
+  def select(projections: Seq[Expression]): Project =
     Project(this, projections.zipWithIndex map {
       case (UnresolvedAttribute("*"), _) => Star
       case (e: NamedExpression, _)       => e
       case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
     })
 
-  def select(first: Expression, rest: Expression*): LogicalPlan = select(first +: rest)
+  def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
-  def filter(condition: Expression): LogicalPlan = Filter(this, condition)
+  def filter(condition: Expression): Filter = Filter(this, condition)
 
-  def limit(n: Expression): LogicalPlan = Limit(this, n)
+  def where(condition: Expression): Filter = filter(condition)
 
-  def limit(n: Int): LogicalPlan = this limit lit(n)
+  def limit(n: Expression): Limit = Limit(this, n)
+
+  def limit(n: Int): Limit = this limit lit(n)
 
   def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
 
   def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
 
   def subquery(name: String): Subquery = Subquery(this, name)
+
+  def join(that: LogicalPlan): LogicalPlan = Join(this, that, Inner, None)
+
+  def leftJoin(that: LogicalPlan): Join = Join(this, that, LeftOuter, None)
+
+  def rightJoin(that: LogicalPlan): Join = Join(this, that, RightOuter, None)
+
+  def outerJoin(that: LogicalPlan): Join = Join(this, that, FullOuter, None)
 
   def union(that: LogicalPlan): Union = Union(this, that)
 
@@ -232,7 +241,7 @@ case class Join(
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
 
-  def on(condition: Expression): Join = copy(maybeCondition = Some(condition))
+  def on(condition: Expression): Join = copy(maybeCondition = condition.some)
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {

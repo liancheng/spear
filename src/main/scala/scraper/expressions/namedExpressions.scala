@@ -8,7 +8,8 @@ import scalaz.Scalaz._
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionId
-import scraper.types.DataType
+import scraper.types._
+import scraper.utils._
 
 case class ExpressionId(id: Long)
 
@@ -60,9 +61,9 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"(${child.debugString} AS `$name`#${expressionId.id})"
+  override def debugString: String = s"(${child.debugString} AS ${quote(name)}#${expressionId.id})"
 
-  override def sql: Option[String] = child.sql map (childSQL => s"$childSQL AS `$name`")
+  override def sql: Option[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
@@ -82,14 +83,30 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def debugString: String = s"`$name`"
+  override def debugString: String = s"${quote(name)}"
 
-  override def sql: Option[String] = s"`$name`".some
+  override def sql: Option[String] = s"${quote(name)}".some
 
   override def withNullability(nullability: Boolean): Attribute = this
 
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, nullable = true, newExpressionId())
+
+  def boolean: AttributeRef = this of BooleanType
+
+  def byte: AttributeRef = this of ByteType
+
+  def short: AttributeRef = this of ShortType
+
+  def long: AttributeRef = this of LongType
+
+  def int: AttributeRef = this of IntType
+
+  def float: AttributeRef = this of FloatType
+
+  def double: AttributeRef = this of DoubleType
+
+  def string: AttributeRef = this of StringType
 }
 
 case class AttributeRef(
@@ -101,18 +118,22 @@ case class AttributeRef(
 
   override def debugString: String = {
     val nullability = if (nullable) "?" else "!"
-    s"`$name`#${expressionId.id}: ${dataType.sql}$nullability"
+    s"${quote(name)}#${expressionId.id}:${dataType.sql}$nullability"
   }
 
-  override def sql: Option[String] = s"`$name`".some
+  override def sql: Option[String] = s"${quote(name)}".some
 
-  override def withNullability(nullable: Boolean): Attribute = copy(nullable = nullable)
+  override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
+
+  override def ? : AttributeRef = withNullability(true)
+
+  override def ! : AttributeRef = withNullability(false)
 
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)
-  extends NamedExpression with LeafExpression {
+  extends NamedExpression with LeafExpression with NonSQLExpression {
 
   override val name: String = s"input[$ordinal]"
 
@@ -123,8 +144,6 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   override def evaluate(input: Row): Any = input(ordinal)
 
   override def debugString: String = name
-
-  override def sql: Option[String] = None
 }
 
 object BoundRef {

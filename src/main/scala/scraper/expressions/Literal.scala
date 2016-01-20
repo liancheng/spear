@@ -10,7 +10,7 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
 
   override def evaluate(input: Row): Any = value
 
-  override def debugString: String = s"$value: ${dataType.sql}"
+  override def debugString: String = s"$value:${dataType.sql}"
 
   override def sql: Option[String] = Some((value, dataType) match {
     case (v: String, StringType) => '"' + StringEscapeUtils.escapeJavaScript(v) + '"'

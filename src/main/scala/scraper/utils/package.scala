@@ -75,4 +75,6 @@ package object utils {
     case xs if xs.isEmpty => Seq.empty[A].point[F]
     case Seq(x, xs @ _*)  => (x |@| sequence(xs)) { _ +: _ }
   }
+
+  def quote(name: String): String = "`" + name.replace("`", "``") + "`"
 }

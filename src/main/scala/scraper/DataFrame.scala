@@ -76,7 +76,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def foreach(f: Row => Unit): Unit = iterator foreach f
 
-  def explanation(extended: Boolean): String = if (extended) {
+  def explanation(extended: Boolean = true): String = if (extended) {
     s"""# Logical plan
        |${queryExecution.logicalPlan.prettyTree}
        |
@@ -95,9 +95,7 @@ class DataFrame(val queryExecution: QueryExecution) {
        |""".stripMargin
   }
 
-  def explain(extended: Boolean): Unit = println(explanation(extended))
-
-  def explain(): Unit = println(explanation(extended = true))
+  def explain(extended: Boolean = true): Unit = println(explanation(extended))
 }
 
 class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) extends {

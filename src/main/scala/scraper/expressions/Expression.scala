@@ -130,6 +130,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def toString: String = debugString
 }
 
+trait NonSQLExpression extends Expression {
+  override def sql: Option[String] = None
+}
+
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 

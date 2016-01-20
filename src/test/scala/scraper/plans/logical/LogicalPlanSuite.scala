@@ -2,76 +2,78 @@ package scraper.plans.logical
 
 import scala.util.{Success, Try}
 
-import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions._
-import scraper.plans.logical.LogicalPlanSuite.{FakeExpr, FakePlan}
+import scraper.expressions.dsl._
+import scraper.plans.logical.LogicalPlanSuite.{MockExpr, MockPlan}
 import scraper.types._
 import scraper.{LocalCatalog, LoggingFunSuite, Row}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
+  val analyze = new Analyzer(new LocalCatalog)
+
   test("transformExpressionDown") {
-    val plan = FakePlan(
-      FakeExpr(1, Seq(
-        FakeExpr(2, Seq(
-          FakeExpr(4, Nil),
-          FakeExpr(5, Nil)
+    val plan = MockPlan(
+      MockExpr(1, Seq(
+        MockExpr(2, Seq(
+          MockExpr(4, Nil),
+          MockExpr(5, Nil)
         )),
-        FakeExpr(3, Seq(
-          FakeExpr(6, Nil),
-          FakeExpr(7, Nil)
+        MockExpr(3, Seq(
+          MockExpr(6, Nil),
+          MockExpr(7, Nil)
         ))
       ))
     )
 
     checkPlan(
-      FakePlan(
-        FakeExpr(6, Seq(
-          FakeExpr(11, Seq(
-            FakeExpr(4, Nil),
-            FakeExpr(5, Nil)
+      MockPlan(
+        MockExpr(6, Seq(
+          MockExpr(11, Seq(
+            MockExpr(4, Nil),
+            MockExpr(5, Nil)
           )),
-          FakeExpr(16, Seq(
-            FakeExpr(6, Nil),
-            FakeExpr(7, Nil)
+          MockExpr(16, Seq(
+            MockExpr(6, Nil),
+            MockExpr(7, Nil)
           ))
         ))
       ),
       plan.transformExpressionsDown {
-        case e @ FakeExpr(i, children) =>
+        case e @ MockExpr(i, children) =>
           e.copy(literal = Literal(children.fold(i: Expression)(_ + _).evaluated))
       }
     )
   }
 
   test("transformExpressionUp") {
-    val plan = FakePlan(
-      FakeExpr(1, Seq(
-        FakeExpr(2, Seq(
-          FakeExpr(4, Nil),
-          FakeExpr(5, Nil)
+    val plan = MockPlan(
+      MockExpr(1, Seq(
+        MockExpr(2, Seq(
+          MockExpr(4, Nil),
+          MockExpr(5, Nil)
         )),
-        FakeExpr(3, Seq(
-          FakeExpr(6, Nil),
-          FakeExpr(7, Nil)
+        MockExpr(3, Seq(
+          MockExpr(6, Nil),
+          MockExpr(7, Nil)
         ))
       ))
     )
 
     checkPlan(
-      FakePlan(
-        FakeExpr(28, Seq(
-          FakeExpr(11, Seq(
-            FakeExpr(4, Nil),
-            FakeExpr(5, Nil)
+      MockPlan(
+        MockExpr(28, Seq(
+          MockExpr(11, Seq(
+            MockExpr(4, Nil),
+            MockExpr(5, Nil)
           )),
-          FakeExpr(16, Seq(
-            FakeExpr(6, Nil),
-            FakeExpr(7, Nil)
+          MockExpr(16, Seq(
+            MockExpr(6, Nil),
+            MockExpr(7, Nil)
           ))
         ))
       ),
       plan.transformExpressionsUp {
-        case e @ FakeExpr(i, children) =>
+        case e @ MockExpr(i, children) =>
           e.copy(literal = Literal(children.fold(i: Expression)(_ + _).evaluated))
       }
     )
@@ -79,36 +81,19 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("analyzer") {
     val relation = LocalRelation(
-      Seq(
-        Row(1, "a"),
-        Row(2, "b")
-      ),
-      StructType(
-        'a -> IntType.!,
-        'b -> StringType.?
-      ).toAttributes
+      Seq(Row(1, "a"), Row(2, "b")),
+      'a.int.! :: 'b.string.? :: Nil
     )
 
-    val project = Project(relation, Seq(
-      UnresolvedAttribute("b"),
-      Alias("s", Add(UnresolvedAttribute("a"), Literal(1)))
-    ))
-
     checkPlan(
-      Project(relation, Seq(
-        AttributeRef("b", StringType, nullable = true, newExpressionId()),
-        Alias(
-          "s",
-          Add(AttributeRef("a", IntType, nullable = false, newExpressionId()), Literal(1))
-        )
-      )),
-      new Analyzer(new LocalCatalog).apply(project)
+      relation select ('b.string.?, ('a.int.! + 1) as 's),
+      analyze(relation select ('b, ('a + 1) as 's))
     )
   }
 }
 
 object LogicalPlanSuite {
-  case class FakeExpr(literal: Literal, children: Seq[FakeExpr]) extends Expression {
+  case class MockExpr(literal: Literal, children: Seq[MockExpr]) extends Expression {
     override def debugString: String = s"${getClass.getSimpleName} ${literal.debugString}"
 
     override def dataType: DataType = literal.dataType
@@ -118,11 +103,11 @@ object LogicalPlanSuite {
     override lazy val strictlyTypedForm: Try[this.type] = Success(this)
   }
 
-  object FakeExpr {
-    def apply(value: Int, children: Seq[FakeExpr]): FakeExpr = FakeExpr(Literal(value), children)
+  object MockExpr {
+    def apply(value: Int, children: Seq[MockExpr]): MockExpr = MockExpr(Literal(value), children)
   }
 
-  case class FakePlan(expression: Expression) extends LeafLogicalPlan {
+  case class MockPlan(expression: Expression) extends LeafLogicalPlan {
     override def output: Seq[Attribute] = Nil
 
     override def nodeCaption: String = s"${getClass.getSimpleName} ${expression.nodeCaption}"
