@@ -113,6 +113,10 @@ object LocalRelation {
     val rows = data.map { product => Row.fromSeq(product.productIterator.toSeq) }
     LocalRelation(rows, schema.toAttributes)
   }
+
+  def empty(output: Seq[Attribute]): LocalRelation = LocalRelation(Seq.empty[Row], output)
+
+  def empty(schema: StructType): LocalRelation = LocalRelation(Seq.empty[Row], schema.toAttributes)
 }
 
 case class Distinct(child: LogicalPlan) extends UnaryLogicalPlan {

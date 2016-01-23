@@ -46,7 +46,7 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](expected: Plan, actual: Plan): Unit = {
+  private[scraper] def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit = {
     checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
   }
 

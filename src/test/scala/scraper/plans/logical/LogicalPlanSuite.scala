@@ -1,113 +1,91 @@
 package scraper.plans.logical
 
+import scala.collection.JavaConverters._
 import scala.util.{Success, Try}
+
+import org.scalacheck.{Arbitrary, Gen}
+import org.scalatest.prop.Checkers
 
 import scraper.expressions._
 import scraper.expressions.dsl._
-import scraper.plans.logical.LogicalPlanSuite.{MockExpr, MockPlan}
+import scraper.generators.genRandomPartitions
+import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
 import scraper.types._
 import scraper.{LocalCatalog, LoggingFunSuite, Row}
 
-class LogicalPlanSuite extends LoggingFunSuite with TestUtils {
-  val analyze = new Analyzer(new LocalCatalog)
+class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
+  private val analyze = new Analyzer(new LocalCatalog)
+
+  def genMockExpr: Gen[ExprNode] = Gen.sized {
+    case size if size < 2 => ExprNode(1, Nil)
+    case size =>
+      for {
+        width <- Gen choose (1, size - 1)
+        childrenSizes <- genRandomPartitions(size - 1, width)
+        children <- Gen sequence (childrenSizes map (Gen.resize(_, genMockExpr)))
+      } yield ExprNode(1, children.asScala)
+  }
+
+  implicit val argExprNode = Arbitrary(genMockExpr)
 
   test("transformExpressionDown") {
-    val plan = MockPlan(
-      MockExpr(1, Seq(
-        MockExpr(2, Seq(
-          MockExpr(4, Nil),
-          MockExpr(5, Nil)
-        )),
-        MockExpr(3, Seq(
-          MockExpr(6, Nil),
-          MockExpr(7, Nil)
-        ))
-      ))
-    )
-
-    checkPlan(
-      MockPlan(
-        MockExpr(6, Seq(
-          MockExpr(11, Seq(
-            MockExpr(4, Nil),
-            MockExpr(5, Nil)
-          )),
-          MockExpr(16, Seq(
-            MockExpr(6, Nil),
-            MockExpr(7, Nil)
-          ))
-        ))
-      ),
-      plan.transformExpressionsDown {
-        case e @ MockExpr(i, children) =>
-          e.copy(literal = Literal(children.fold(i: Expression)(_ + _).evaluated))
+    check {
+      PlanNode(_: ExprNode).transformExpressionsDown {
+        case e @ ExprNode(_, children) =>
+          e.copy(value = children.map(_.value).sum)
+      } match {
+        case plan: PlanNode =>
+          plan.expression.forall {
+            case ExprNode(value, Nil)      => value == 0
+            case ExprNode(value, children) => value == children.size
+          }
       }
-    )
+    }
   }
 
   test("transformExpressionUp") {
-    val plan = MockPlan(
-      MockExpr(1, Seq(
-        MockExpr(2, Seq(
-          MockExpr(4, Nil),
-          MockExpr(5, Nil)
-        )),
-        MockExpr(3, Seq(
-          MockExpr(6, Nil),
-          MockExpr(7, Nil)
-        ))
-      ))
-    )
-
-    checkPlan(
-      MockPlan(
-        MockExpr(28, Seq(
-          MockExpr(11, Seq(
-            MockExpr(4, Nil),
-            MockExpr(5, Nil)
-          )),
-          MockExpr(16, Seq(
-            MockExpr(6, Nil),
-            MockExpr(7, Nil)
-          ))
-        ))
-      ),
-      plan.transformExpressionsUp {
-        case e @ MockExpr(i, children) =>
-          e.copy(literal = Literal(children.fold(i: Expression)(_ + _).evaluated))
+    check {
+      PlanNode(_: ExprNode).transformExpressionsUp {
+        case e @ ExprNode(_, children) =>
+          e.copy(value = children.map(_.value).sum)
+      } match {
+        case plan: PlanNode =>
+          plan.expression.forall {
+            case ExprNode(value, _) => value == 0
+          }
       }
-    )
+    }
   }
 
   test("analyzer") {
-    val relation = LocalRelation(
-      Seq(Row(1, "a"), Row(2, "b")),
-      'a.int.! :: 'b.string.? :: Nil
-    )
+    val relation = LocalRelation.empty('a.int.! :: 'b.string.? :: Nil)
 
     checkPlan(
-      relation select ('b.string.?, ('a.int.! + 1) as 's),
-      analyze(relation select ('b, ('a + 1) as 's))
+      analyze(relation select ('b, ('a + 1) as 's)),
+      relation select ('b.string.?, ('a.int.! + 1) as 's)
+    )
+  }
+
+  test("star") {
+    val relation = LocalRelation.empty('a.int.! :: 'b.string.? :: Nil)
+
+    checkPlan(
+      analyze(relation select '*),
+      relation select ('a.int.!, 'b.string.?)
     )
   }
 }
 
 object LogicalPlanSuite {
-  case class MockExpr(literal: Literal, children: Seq[MockExpr]) extends Expression {
-    override def debugString: String = s"${getClass.getSimpleName} ${literal.debugString}"
+  case class ExprNode(value: Int, children: Seq[ExprNode]) extends Expression {
+    override def dataType: DataType = IntType
 
-    override def dataType: DataType = literal.dataType
-
-    override def evaluate(input: Row): Any = literal.evaluated
+    override def evaluate(input: Row): Any = value
 
     override lazy val strictlyTypedForm: Try[this.type] = Success(this)
   }
 
-  object MockExpr {
-    def apply(value: Int, children: Seq[MockExpr]): MockExpr = MockExpr(Literal(value), children)
-  }
-
-  case class MockPlan(expression: Expression) extends LeafLogicalPlan {
+  case class PlanNode(expression: Expression) extends LeafLogicalPlan {
     override def output: Seq[Attribute] = Nil
 
     override def nodeCaption: String = s"${getClass.getSimpleName} ${expression.nodeCaption}"
