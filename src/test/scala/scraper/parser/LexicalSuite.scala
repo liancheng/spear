@@ -1,7 +1,6 @@
 package scraper.parser
 
-import scraper.LoggingFunSuite
-import scraper.types.TestUtils
+import scraper.{TestUtils, LoggingFunSuite}
 
 class LexicalSuite extends LoggingFunSuite with TestUtils {
   val testLexical = new Lexical(Set("kw1", "kw2"))

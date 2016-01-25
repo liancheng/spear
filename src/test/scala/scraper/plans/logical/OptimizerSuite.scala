@@ -15,8 +15,7 @@ import scraper.generators.expressions._
 import Optimizer.{CNFConversion, ReduceFilters}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.types.TestUtils
-import scraper.{LocalCatalog, LoggingFunSuite}
+import scraper.{TestUtils, LocalCatalog, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private implicit def prettyExpression(expression: Expression): Pretty = Pretty {
@@ -43,7 +42,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
     check(
       forAll { predicate: Expression =>
-        val optimizedPlan = optimizer(OneRowRelation filter predicate)
+        val optimizedPlan = optimizer(SingleRowRelation filter predicate)
         val conditions = optimizedPlan.collect {
           case _ Filter condition => splitConjunction(condition)
         }.flatten
@@ -63,7 +62,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     implicit val arbPredicate = Arbitrary(genPredicate(Nil))
 
     check { (p1: Expression, p2: Expression) =>
-      val optimized = optimizer(OneRowRelation filter p1 filter p2)
+      val optimized = optimizer(SingleRowRelation filter p1 filter p2)
       val conditions = optimized.collect {
         case f: Filter => f.condition
       }

@@ -1,7 +1,5 @@
 package scraper.expressions
 
-import org.apache.commons.lang.StringEscapeUtils
-
 import scraper.Row
 import scraper.types._
 
@@ -13,7 +11,7 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
   override def debugString: String = s"$value:${dataType.sql}"
 
   override def sql: Option[String] = Some((value, dataType) match {
-    case (v: String, StringType) => '"' + StringEscapeUtils.escapeJavaScript(v) + '"'
+    case (v: String, StringType) => '"' + v.replace("\\", "\\\\").replace("\"", "\\\"") + '"'
     case (v: Byte, ByteType)     => s"CAST($v AS ${ByteType.sql})"
     case (v: Short, ShortType)   => s"CAST($v AS ${ShortType.sql})"
     case (v: Long, LongType)     => s"CAST($v AS ${LongType.sql})"
@@ -24,12 +22,6 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
 }
 
 object Literal {
-  val Null: Literal = Literal(null)
-
-  val Zero: Literal = Literal(0, IntType)
-
-  val One: Literal = Literal(1, IntType)
-
   val True: Literal = Literal(true)
 
   val False: Literal = Literal(false)

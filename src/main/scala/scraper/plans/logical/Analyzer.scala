@@ -2,7 +2,8 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
-import scraper.expressions.{Star, UnresolvedAttribute}
+import scraper.expressions.{Alias, Star, UnresolvedAttribute}
+import scraper.plans.logical.Analyzer._
 import scraper.plans.logical.patterns._
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
@@ -12,7 +13,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     // Tries to resolve the logical query plan repeatedly until it reaches the fixed-point
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ExpandStars,
-      ResolveRelations,
+      new ResolveRelations(catalog),
       ResolveReferences,
       ResolveSelfJoins,
       ApplyImplicitCasts
@@ -28,14 +29,16 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )
     super.apply(tree)
   }
+}
 
+object Analyzer {
   /**
    * This rule expands "`*`" appearing in `SELECT`.
    */
   object ExpandStars extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(Resolved(child) Project projections) =>
-        child select (projections flatMap {
+      case Unresolved(Resolved(child) Project projectList) =>
+        child select (projectList flatMap {
           case Star => child.output
           case e    => Seq(e)
         })
@@ -85,7 +88,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
-  object ResolveRelations extends Rule[LogicalPlan] {
+  class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case UnresolvedRelation(name) => catalog lookupRelation name
     }

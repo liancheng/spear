@@ -10,10 +10,9 @@ import org.scalacheck._
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
-import scraper.LoggingFunSuite
+import scraper.{TestUtils, LoggingFunSuite}
 import scraper.generators.genRandomPartitions
 import scraper.trees.TreeNodeSuite.Node
-import scraper.types.TestUtils
 
 class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   def genNode: Gen[Node] = Gen.parameterized { param =>

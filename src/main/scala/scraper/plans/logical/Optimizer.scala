@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
 import scraper.expressions
-import scraper.expressions.Literal.{Null, False, True}
+import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions._
 import scraper.expressions.dsl._
@@ -17,7 +17,6 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
       FoldConstants,
       FoldLogicalPredicates,
-      NullPropagation,
 
       CNFConversion,
       EliminateCommonPredicates,
@@ -136,12 +135,12 @@ object Optimizer {
    */
   object ReduceProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projections if projections == plan.output =>
+      case plan Project projectList if projectList == plan.output =>
         plan
 
-      case plan Project innerProjections Project outerProjections =>
-        val aliases = collectAliases(innerProjections)
-        plan select (outerProjections map (reduceAliases(aliases, _)))
+      case plan Project inner Project outer =>
+        val aliases = collectAliases(inner)
+        plan select (outer map (reduceAliases(aliases, _)))
     }
   }
 
@@ -204,8 +203,8 @@ object Optimizer {
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projections Filter condition =>
-        plan filter reduceAliases(collectAliases(projections), condition) select projections
+      case plan Project projectList Filter condition =>
+        plan filter reduceAliases(collectAliases(projectList), condition) select projectList
     }
   }
 
@@ -236,38 +235,14 @@ object Optimizer {
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Project projections =>
-        plan select projections limit n
+      case plan Limit n Project projectList =>
+        plan select projectList limit n
     }
   }
 
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => Limit(plan, If(n < m, n, m))
-    }
-  }
-
-  object NullPropagation extends Rule[LogicalPlan] {
-    def nonNullLiteral(e: Expression): Boolean = e match {
-      case Literal(null, _) => false
-      case _: Literal       => true
-      case _                => false
-    }
-
-    def nullLiteral(e: Expression): Boolean = e match {
-      case Literal(null, _) => true
-      case _                => false
-    }
-
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsDown {
-          case e: BinaryOperator if e.children.exists(nullLiteral) => Null cast e.dataType
-          case IsNull(e) if !e.nullable                            => False
-          case IsNotNull(e) if !e.nullable                         => True
-          case Coalesce(e :: Nil) if !e.nullable                   => e
-          case e @ Coalesce(Literal(null, _) :: Nil)               => Null cast e.dataType
-        }
     }
   }
 }

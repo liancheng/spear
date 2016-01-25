@@ -4,10 +4,12 @@ import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 
-import scraper.LoggingFunSuite
+import scraper.expressions.dsl._
+import scraper.expressions.functions._
 import scraper.generators.types._
 import scraper.generators.values._
-import scraper.types.{FractionalType, IntegralType, NumericType, TestUtils}
+import scraper.types._
+import scraper.{LoggingFunSuite, TestUtils}
 
 class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Checkers {
   private val genNumericLiteral: Gen[Literal] = for {
@@ -66,5 +68,13 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
         val numeric = t.numeric.asInstanceOf[Numeric[Any]]
         Negate(lit).evaluated == numeric.negate(v)
     })
+  }
+
+  test("binary arithmetic expression type check") {
+    checkStrictlyTyped(lit(1) + 1, IntType)
+    checkStrictlyTyped(lit(1L) + 1L, LongType)
+
+    checkWellTyped(lit(1) + "1", DoubleType)
+    checkWellTyped(lit(1D) + "1", DoubleType)
   }
 }

@@ -19,27 +19,27 @@ package object patterns {
     private type IntermediateResult = (Option[Seq[NamedExpression]], Seq[Expression], LogicalPlan)
 
     def unapply(plan: LogicalPlan): Option[Result] = {
-      assert(plan.resolved, {
+      require(plan.resolved, {
         val patternName = this.getClass.getSimpleName stripSuffix "$"
         s"Pattern $patternName is only available for resolved logical plans."
       })
 
-      val (maybeProjections, predicates, child) = collectProjectsAndFilters(plan)
-      Some(maybeProjections getOrElse plan.output, predicates, child)
+      val (maybeProjectList, predicates, child) = collectProjectsAndFilters(plan)
+      Some(maybeProjectList getOrElse plan.output, predicates, child)
     }
 
     private def collectProjectsAndFilters(plan: LogicalPlan): IntermediateResult = plan match {
       case unary: UnaryLogicalPlan =>
-        val (maybeChildProjections, predicates, grandChild) = collectProjectsAndFilters(unary.child)
-        val aliases = collectAliases(maybeChildProjections.toSeq.flatten)
+        val (maybeChildProjectList, predicates, grandChild) = collectProjectsAndFilters(unary.child)
+        val aliases = collectAliases(maybeChildProjectList.toSeq.flatten)
 
         plan match {
-          case _ Project projections =>
-            (Some(projections map (reduceAliases(aliases, _))), predicates, grandChild)
+          case _ Project projectList =>
+            (Some(projectList map (reduceAliases(aliases, _))), predicates, grandChild)
 
           case _ Filter condition =>
             val reducedCondition = reduceAliases(aliases, condition)
-            (maybeChildProjections, predicates ++ splitConjunction(reducedCondition), grandChild)
+            (maybeChildProjectList, predicates ++ splitConjunction(reducedCondition), grandChild)
 
           case other =>
             (None, Nil, other)
@@ -50,8 +50,8 @@ package object patterns {
     }
 
     /**
-     * Finds reducible [[Alias]]es and [[AttributeRef]]s referencing to [[Alias]]s appeared in
-     * `expressions`, and inlines/substitutes them.
+     * Finds reducible [[Alias]]es and [[AttributeRef]]s referring to [[Alias]]s appearing in
+     * `expressions`, then inlines/substitutes them.
      *
      * @param aliases A map from all known aliases to corresponding aliased expressions.
      * @param expression The target expression.

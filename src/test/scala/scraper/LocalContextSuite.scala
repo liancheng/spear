@@ -4,7 +4,7 @@ import scraper.Context._
 import scraper.LocalContextSuite.Person
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.{StringType, TestUtils}
+import scraper.types.StringType
 
 class LocalContextSuite extends LoggingFunSuite with TestUtils {
   private implicit val context = new LocalContext

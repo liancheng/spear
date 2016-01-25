@@ -37,7 +37,7 @@ trait Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
-  lazy val single: DataFrame = new DataFrame(OneRowRelation, this)
+  lazy val single: DataFrame = new DataFrame(SingleRowRelation, this)
 
   def single(first: Expression, rest: Expression*): DataFrame = single select first +: rest
 
@@ -137,7 +137,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case child Subquery _ =>
         planLater(child) :: Nil
 
-      case OneRowRelation =>
+      case SingleRowRelation =>
         physical.SingleRowRelation :: Nil
 
       case left Union right =>

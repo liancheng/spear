@@ -5,7 +5,6 @@ import org.scalatest.BeforeAndAfterAll
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
 import scraper.plans.logical.LogicalPlan
-import scraper.types.TestUtils
 
 abstract class SQLBuilderTest
   extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {

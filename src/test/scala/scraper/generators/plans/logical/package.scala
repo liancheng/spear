@@ -76,7 +76,7 @@ package object logical {
   }
 
   def genRelationFactor(input: Seq[LogicalPlan])(implicit settings: Settings): Gen[LogicalPlan] = {
-    val genBottomPlans = Gen oneOf (input :+ OneRowRelation)
+    val genBottomPlans = Gen oneOf (input :+ SingleRowRelation)
 
     Gen.sized {
       case size if size < 2 =>
@@ -106,9 +106,8 @@ package object logical {
       genExpression(plan.output)(settings)
     ))
 
-    projections = (expressions, aliases).zipped map (_ as _)
-
-  } yield plan select projections
+    projectList = (expressions, aliases).zipped map (_ as _)
+  } yield plan select projectList
 
   def genWhereClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
     Gen resize (

@@ -6,27 +6,26 @@ import scala.util.{Success, Try}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
-import scraper.expressions._
 import scraper.expressions.dsl._
+import scraper.expressions.functions._
+import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
-import scraper.types._
-import scraper.{LocalCatalog, LoggingFunSuite, Row}
+import scraper.types.{LongType, DataType, IntType}
+import scraper.{LoggingFunSuite, Row, TestUtils}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
-  private val analyze = new Analyzer(new LocalCatalog)
-
-  def genMockExpr: Gen[ExprNode] = Gen.sized {
+  def genExprNode: Gen[ExprNode] = Gen.sized {
     case size if size < 2 => ExprNode(1, Nil)
     case size =>
       for {
         width <- Gen choose (1, size - 1)
         childrenSizes <- genRandomPartitions(size - 1, width)
-        children <- Gen sequence (childrenSizes map (Gen.resize(_, genMockExpr)))
+        children <- Gen sequence (childrenSizes map (Gen.resize(_, genExprNode)))
       } yield ExprNode(1, children.asScala)
   }
 
-  implicit val argExprNode = Arbitrary(genMockExpr)
+  implicit val arbExprNode = Arbitrary(genExprNode)
 
   test("transformExpressionDown") {
     check {
@@ -57,22 +56,34 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
     }
   }
 
-  test("analyzer") {
-    val relation = LocalRelation.empty('a.int.! :: 'b.string.? :: Nil)
+  test("limit - type check") {
+    def buildLimit(e: Expression): Limit = SingleRowRelation limit e
 
-    checkPlan(
-      analyze(relation select ('b, ('a + 1) as 's)),
-      relation select ('b.string.?, ('a.int.! + 1) as 's)
-    )
+    checkStrictlyTyped(buildLimit(1))
+    checkStrictlyTyped(buildLimit(lit(1L)))
+
+    checkWellTyped(buildLimit(lit(1) + 1))
+    checkWellTyped(buildLimit(lit(1) + 1L))
+    checkWellTyped(buildLimit("1"))
+
+    assert(!buildLimit("hello").wellTyped)
+    assert(!buildLimit('a).wellTyped)
   }
 
-  test("star") {
-    val relation = LocalRelation.empty('a.int.! :: 'b.string.? :: Nil)
+  test("set operation - type check") {
+    val r1 = LocalRelation.empty('a.int.!)
+    val r2 = LocalRelation.empty('a.int.!)
+    val r3 = LocalRelation.empty('a.long.!)
+    val r4 = LocalRelation.empty('a.long.!, 'b.string.!)
 
-    checkPlan(
-      analyze(relation select '*),
-      relation select ('a.int.!, 'b.string.?)
-    )
+    checkStrictlyTyped(r1 union r2)
+    checkStrictlyTyped(r1 union (r2 select ('a cast IntType)))
+    checkStrictlyTyped(r1 union SingleRowRelation.select(1 as 'a))
+
+    checkWellTyped(r1 union r3)
+    checkWellTyped(r1 union (r4 select 'a))
+
+    assert(!(r1 union r4).wellTyped)
   }
 }
 

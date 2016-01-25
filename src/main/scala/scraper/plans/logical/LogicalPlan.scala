@@ -6,6 +6,7 @@ import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
+import scraper.expressions.Cast.promoteDataType
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
@@ -25,10 +26,12 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     }
   }
 
-  lazy val strictlyTyped: Boolean = resolved && (strictlyTypedForm.get sameOrEqual this)
+  lazy val wellTyped: Boolean = resolved && strictlyTypedForm.isSuccess
 
-  def select(projections: Seq[Expression]): Project =
-    Project(this, projections.zipWithIndex map {
+  lazy val strictlyTyped: Boolean = wellTyped && (strictlyTypedForm.get sameOrEqual this)
+
+  def select(projectList: Seq[Expression]): Project =
+    Project(this, projectList.zipWithIndex map {
       case (UnresolvedAttribute("*"), _) => Star
       case (e: NamedExpression, _)       => e
       case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
@@ -97,7 +100,7 @@ trait BinaryLogicalPlan extends LogicalPlan {
 
 case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
 
-case object OneRowRelation extends LeafLogicalPlan {
+case object SingleRowRelation extends LeafLogicalPlan {
   override val output: Seq[Attribute] = Nil
 }
 
@@ -114,7 +117,7 @@ object LocalRelation {
     LocalRelation(rows, schema.toAttributes)
   }
 
-  def empty(output: Seq[Attribute]): LocalRelation = LocalRelation(Seq.empty[Row], output)
+  def empty(output: Attribute*): LocalRelation = LocalRelation(Seq.empty[Row], output)
 
   def empty(schema: StructType): LocalRelation = LocalRelation(Seq.empty[Row], schema.toAttributes)
 }
@@ -123,14 +126,14 @@ case class Distinct(child: LogicalPlan) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }
 
-case class Project(child: LogicalPlan, projections: Seq[NamedExpression])
+case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
   extends UnaryLogicalPlan {
 
-  assert(projections.nonEmpty, "Project should have at least one expression")
+  assert(projectList.nonEmpty, "Project should have at least one expression")
 
-  override def expressions: Seq[Expression] = projections
+  override def expressions: Seq[Expression] = projectList
 
-  override lazy val output: Seq[Attribute] = projections map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
 }
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
@@ -142,8 +145,12 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
 
   override lazy val strictlyTypedForm: Try[LogicalPlan] = for {
     n <- limit.strictlyTypedForm map {
-      case IntegralType(e) if e.foldable            => e
-      case IntegralType.Implicitly(e) if e.foldable => e
+      case IntegralType(e) if e.foldable =>
+        Literal(e.evaluated)
+
+      case IntegralType.Implicitly(e) if e.foldable =>
+        Literal(promoteDataType(e, IntegralType.defaultType).evaluated)
+
       case _ =>
         throw new TypeCheckException("Limit must be an integral constant")
     }
@@ -165,7 +172,9 @@ trait SetOperator extends BinaryLogicalPlan {
 
   override lazy val strictlyTypedForm: Try[LogicalPlan] = {
     def widen(branch: LogicalPlan, types: Seq[DataType]): LogicalPlan = {
-      val projectList = (branch.output, types).zipped.map(_ cast _)
+      val projectList = (branch.output, types).zipped.map { (attribute, dataType) =>
+        attribute cast dataType as attribute.name
+      }
       // Removes redundant casts and projects
       (ReduceCasts andThen ReduceProjects)(branch select projectList)
     }

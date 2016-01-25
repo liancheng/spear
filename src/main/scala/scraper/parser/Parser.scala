@@ -104,14 +104,14 @@ class Parser extends TokenParser[LogicalPlan] {
     )
 
   private def select: Parser[LogicalPlan] = (
-    SELECT ~> DISTINCT.? ~ projections
+    SELECT ~> DISTINCT.? ~ projectList
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
     ~ (GROUP ~> BY ~> rep1sep(expression, ",")).?
     ~ (HAVING ~> predicate).?
     ~ (LIMIT ~> expression).? ^^ {
       case d ~ ps ~ rs ~ f ~ gs ~ h ~ n =>
-        val base = rs getOrElse OneRowRelation
+        val base = rs getOrElse SingleRowRelation
         val withFilter = f map (Filter(base, _)) getOrElse base
         val withProject = gs map (Aggregate(withFilter, _, ps)) getOrElse Project(withFilter, ps)
         val withDistinct = d map (_ => Distinct(withProject)) getOrElse withProject
@@ -156,7 +156,7 @@ class Parser extends TokenParser[LogicalPlan] {
     }
   )
 
-  private def projections: Parser[Seq[NamedExpression]] =
+  private def projectList: Parser[Seq[NamedExpression]] =
     rep1sep(projection | star, ",") ^^ {
       case ps =>
         ps.zipWithIndex.map {

@@ -45,7 +45,7 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
   override lazy val strictlyTypedForm: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case NumericType(e)            => Success(e)
-      case NumericType.Implicitly(e) => Success(e)
+      case NumericType.Implicitly(e) => Success(promoteDataType(e, NumericType.defaultType))
       case e                         => Failure(new TypeMismatchException(e, classOf[NumericType]))
     }
 

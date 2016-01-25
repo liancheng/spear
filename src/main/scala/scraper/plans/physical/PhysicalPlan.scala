@@ -12,8 +12,8 @@ import scraper.{JoinedRow, Row}
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]
 
-  def select(projections: Seq[Expression]): Project =
-    Project(this, projections.zipWithIndex map {
+  def select(projectList: Seq[Expression]): Project =
+    Project(this, projectList.zipWithIndex map {
       case (UnresolvedAttribute("*"), _) => Star
       case (e: NamedExpression, _)       => e
       case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
@@ -86,8 +86,8 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
   override val output: Seq[Attribute] = expressions map (_.toAttribute)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
-    val boundProjections = expressions map (bind(_, child.output))
-    Row.fromSeq(boundProjections map (_ evaluate row))
+    val boundProjectList = expressions map (bind(_, child.output))
+    Row.fromSeq(boundProjectList map (_ evaluate row))
   }
 }
 
