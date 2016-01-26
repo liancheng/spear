@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
-import scraper.expressions.{Alias, Star, UnresolvedAttribute}
+import scraper.expressions.{Star, UnresolvedAttribute}
 import scraper.plans.logical.Analyzer._
 import scraper.plans.logical.patterns._
 import scraper.trees.RulesExecutor.FixedPoint
@@ -10,7 +10,6 @@ import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
-    // Tries to resolve the logical query plan repeatedly until it reaches the fixed-point
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ExpandStars,
       new ResolveRelations(catalog),

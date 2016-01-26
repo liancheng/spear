@@ -17,7 +17,7 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
   private def fromType = child.dataType
 
   override def nullSafeEvaluate(value: Any): Any =
-    buildCast(fromType)(dataType)(value)
+    buildCast(fromType, dataType).get(value)
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm map {
@@ -130,7 +130,7 @@ object Cast {
   private val asString = (_: Any) match { case v: String => v }
 
   private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
-    case BooleanType => asString andThen booleanStrings.contains
+    case BooleanType => asString andThen (_.toLowerCase) andThen booleanStrings.contains
     case ByteType    => asString andThen (_.toByte)
     case ShortType   => asString andThen (_.toShort)
     case IntType     => asString andThen (_.toInt)
@@ -178,8 +178,9 @@ object Cast {
     case NullType    => explicitlyFromNull
   }
 
-  private val buildCast: PartialFunction[DataType, PartialFunction[DataType, Any => Any]] =
-    buildImplicitCast orElse buildExplicitCast
+  def buildCast(x: DataType, y: DataType): Option[Any => Any] = {
+    buildImplicitCast.lift(x).flatMap(_ lift y) orElse buildExplicitCast.lift(x).flatMap(_ lift y)
+  }
 
   /**
    * Returns whether type `x` can be converted to type `y` implicitly.
@@ -195,7 +196,7 @@ object Cast {
    * @note Any [[types.DataType DataType]] is considered to be [[convertible]] to itself.
    */
   def convertible(x: DataType, y: DataType): Boolean =
-    x == y || buildCast.lift(x).exists(_ isDefinedAt y)
+    x == y || buildCast(x, y).isDefined
 
   /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the

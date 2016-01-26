@@ -10,7 +10,6 @@ import scraper.expressions.Cast.promoteDataType
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
-import scraper.plans.logical.Optimizer.{ReduceCasts, ReduceProjects}
 import scraper.reflection.fieldSpecFor
 import scraper.types.{DataType, IntegralType, StructType}
 import scraper.utils._
@@ -158,28 +157,46 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
 }
 
 trait SetOperator extends BinaryLogicalPlan {
-  require(
-    left.output.map(_.name) == right.output.map(_.name),
-    s"""$nodeName branches have incompatible schemata.  Left branch:
-       |
-       |${left.schema.prettyTree}
-       |
-       |right branch:
-       |
-       |${right.schema.prettyTree}
-     """.stripMargin
-  )
+  private def checkBranchSchemata(): Unit =
+    require(
+      left.output.map(_.name) == right.output.map(_.name), {
+        val schemaDiff = sideBySide(
+          s"""Left branch
+             |${left.schema.prettyTree}
+             |""".stripMargin,
+
+          s"""Right branch
+             |${right.schema.prettyTree}
+             |""".stripMargin,
+
+          withHeader = true
+        )
+
+        s"""$nodeName branches have incompatible schemata:
+           |
+           |$schemaDiff
+           |""".stripMargin
+      }
+    )
 
   override lazy val strictlyTypedForm: Try[LogicalPlan] = {
     def widen(branch: LogicalPlan, types: Seq[DataType]): LogicalPlan = {
-      val projectList = (branch.output, types).zipped.map { (attribute, dataType) =>
-        attribute cast dataType as attribute.name
+      if ((branch.schema.fieldTypes, types).zipped.forall(_ == _)) {
+        branch
+      } else {
+        branch select branch.output.zip(types).map {
+          case (a, t) if a.dataType == t => a
+          case (a, t)                    => a cast t as a.name
+        }
       }
-      // Removes redundant casts and projects
-      (ReduceCasts andThen ReduceProjects)(branch select projectList)
     }
 
     for {
+      _ <- Try(checkBranchSchemata()).recover {
+        case cause: Throwable =>
+          throw new TypeCheckException(this, cause)
+      }
+
       lhs <- left.strictlyTypedForm
       rhs <- right.strictlyTypedForm
 

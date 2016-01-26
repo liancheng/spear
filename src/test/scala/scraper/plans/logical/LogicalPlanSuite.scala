@@ -6,13 +6,14 @@ import scala.util.{Success, Try}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
 
+import scraper.exceptions.TypeCheckException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
-import scraper.types.{LongType, DataType, IntType}
-import scraper.{LoggingFunSuite, Row, TestUtils}
+import scraper.types.{DataType, IntType}
+import scraper.{LocalCatalog, LoggingFunSuite, Row, TestUtils}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
   def genExprNode: Gen[ExprNode] = Gen.sized {
@@ -70,20 +71,22 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
     assert(!buildLimit('a).wellTyped)
   }
 
-  test("set operation - type check") {
+  test("set operator - type check") {
+    val resolve = new Analyzer(new LocalCatalog)
+
     val r1 = LocalRelation.empty('a.int.!)
     val r2 = LocalRelation.empty('a.int.!)
     val r3 = LocalRelation.empty('a.long.!)
     val r4 = LocalRelation.empty('a.long.!, 'b.string.!)
 
-    checkStrictlyTyped(r1 union r2)
-    checkStrictlyTyped(r1 union (r2 select ('a cast IntType)))
-    checkStrictlyTyped(r1 union SingleRowRelation.select(1 as 'a))
+    checkStrictlyTyped(resolve(r1 union r2))
+    checkStrictlyTyped(resolve(r1 union (r4 select ('a cast IntType as 'a))))
+    checkStrictlyTyped(resolve(r1 union SingleRowRelation.select(1 as 'a)))
 
-    checkWellTyped(r1 union r3)
-    checkWellTyped(r1 union (r4 select 'a))
+    checkWellTyped(resolve(r1 union r3))
+    checkWellTyped(resolve(r1 union (r4 select 'a)))
 
-    assert(!(r1 union r4).wellTyped)
+    intercept[TypeCheckException](resolve(r1 union r4))
   }
 }
 

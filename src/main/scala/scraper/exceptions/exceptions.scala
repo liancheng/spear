@@ -111,6 +111,12 @@ class TableNotFoundException(tableName: String, cause: Throwable)
   def this(tableName: String) = this(tableName, null)
 }
 
+class SchemaIncompatibleException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
+
+  def this(message: String) = this(message, null)
+}
+
 class SettingsValidationException(message: String, cause: Throwable)
   extends RuntimeException(message, cause) {
 
