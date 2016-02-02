@@ -17,8 +17,8 @@ abstract class SQLBuilderTest
   }
 
   override protected def afterAll(): Unit = {
-    context.catalog.removeRelation("t0")
-    context.catalog.removeRelation("t1")
+    context.catalog removeRelation "t0"
+    context.catalog removeRelation "t1"
   }
 
   protected def checkSQL(e: Expression, expectedSQL: String): Unit = {
@@ -29,7 +29,7 @@ abstract class SQLBuilderTest
         s"""Cannot convert the following expression to its SQL form:
            |
            |${e.prettyTree}
-         """.stripMargin
+           |""".stripMargin
       )
     }
 
@@ -43,7 +43,7 @@ abstract class SQLBuilderTest
              |${e.prettyTree}
              |
              |$cause
-           """.stripMargin
+             |""".stripMargin
         )
     }
   }
@@ -57,7 +57,7 @@ abstract class SQLBuilderTest
         s"""Cannot convert the following logical query plan to SQL:
            |
            |${plan.prettyTree}
-         """.stripMargin
+           |""".stripMargin
       )
     }
 
@@ -73,7 +73,7 @@ abstract class SQLBuilderTest
              |${plan.prettyTree}
              |
              |$cause
-           """.stripMargin
+             |""".stripMargin
         )
     }
 

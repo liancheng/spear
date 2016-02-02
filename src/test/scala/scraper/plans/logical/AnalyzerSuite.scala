@@ -37,12 +37,13 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
-  test("self-join not supported") {
+  test("self-join") {
     val analyze = singleBatchAnalyzer(FixedPoint.Unlimited, ResolveReferences, ResolveSelfJoins)
     val relation = LocalRelation.empty('a.int.!)
 
-    intercept[UnsupportedOperationException] {
-      analyze(relation join relation)
-    }
+    checkPlan(
+      analyze(relation join relation),
+      relation join relation.newInstance()
+    )
   }
 }

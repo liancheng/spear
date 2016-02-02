@@ -1,6 +1,8 @@
 package scraper.expressions
 
 import scala.util.{Failure, Success, Try}
+import scalaz.Scalaz._
+import scalaz._
 
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
@@ -54,6 +56,9 @@ case class Not(child: Expression) extends UnaryOperator {
   override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
   override def operator: String = "NOT"
+
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map ("(" + operator + " " + _ + ")")
 }
 
 case class If(condition: Expression, yes: Expression, no: Expression) extends Expression {

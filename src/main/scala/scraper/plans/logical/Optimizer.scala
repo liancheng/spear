@@ -59,11 +59,8 @@ object Optimizer {
    * This rule finds all foldable expressions and evaluate them to literals.
    */
   object FoldConstants extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsUp {
-          case e if e.foldable => lit(e.evaluated)
-        }
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case e if e.foldable => lit(e.evaluated)
     }
   }
 
@@ -71,21 +68,18 @@ object Optimizer {
    * This rule simplifies logical predicates containing `TRUE` and/or `FALSE`.
    */
   object FoldLogicalPredicates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsDown {
-          case True || _                 => True
-          case _ || True                 => True
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case True || _                 => True
+      case _ || True                 => True
 
-          case False && _                => False
-          case _ && False                => False
+      case False && _                => False
+      case _ && False                => False
 
-          case a && b if a sameOrEqual b => a
-          case a || b if a sameOrEqual b => a
+      case a && b if a sameOrEqual b => a
+      case a || b if a sameOrEqual b => a
 
-          case If(True, yes, _)          => yes
-          case If(False, _, no)          => no
-        }
+      case If(True, yes, _)          => yes
+      case If(False, _, no)          => no
     }
   }
 
@@ -93,26 +87,23 @@ object Optimizer {
    * This rule eliminates unnecessary [[expressions.Not Not]] operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsDown {
-          case !(!(child))                  => child
-          case !(lhs =:= rhs)               => lhs =/= rhs
-          case !(lhs =/= rhs)               => lhs =:= rhs
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case !(!(child))                  => child
+      case !(lhs =:= rhs)               => lhs =/= rhs
+      case !(lhs =/= rhs)               => lhs =:= rhs
 
-          case !(lhs > rhs)                 => lhs <= rhs
-          case !(lhs >= rhs)                => lhs < rhs
-          case !(lhs < rhs)                 => lhs >= rhs
-          case !(lhs <= rhs)                => lhs > rhs
+      case !(lhs > rhs)                 => lhs <= rhs
+      case !(lhs >= rhs)                => lhs < rhs
+      case !(lhs < rhs)                 => lhs >= rhs
+      case !(lhs <= rhs)                => lhs > rhs
 
-          case If(!(c), t, f)               => If(c, f, t)
+      case If(!(c), t, f)               => If(c, f, t)
 
-          case a && !(b) if a sameOrEqual b => False
-          case a || !(b) if a sameOrEqual b => True
+      case a && !(b) if a sameOrEqual b => False
+      case a || !(b) if a sameOrEqual b => True
 
-          case !(IsNull(child))             => IsNotNull(child)
-          case !(IsNotNull(child))          => IsNull(child)
-        }
+      case !(IsNull(child))             => IsNotNull(child)
+      case !(IsNotNull(child))          => IsNull(child)
     }
   }
 
@@ -121,12 +112,9 @@ object Optimizer {
    * [[Analyzer]] may produce redundant casts.
    */
   object ReduceCasts extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsDown {
-          case e Cast t if e.dataType == t => e
-          case e Cast _ Cast t             => e cast t
-        }
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case e Cast t if e.dataType == t => e
+      case e Cast _ Cast t             => e cast t
     }
   }
 
@@ -148,11 +136,8 @@ object Optimizer {
    * This rule reduces adjacent aliases.
    */
   object ReduceAliases extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case plan =>
-        plan transformExpressionsDown {
-          case outer @ Alias(_, Alias(_, child, _), _) => outer.copy(child = child)
-        }
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case outer @ Alias(_, Alias(_, child, _), _) => outer.copy(child = child)
     }
   }
 
@@ -172,13 +157,10 @@ object Optimizer {
   }
 
   object EliminateCommonPredicates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan =>
-        plan transformExpressionsDown {
-          case lhs && rhs if lhs == rhs            => lhs
-          case lhs || rhs if lhs == rhs            => lhs
-          case If(condition, yes, no) if yes == no => Coalesce(condition, yes)
-        }
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case lhs && rhs if lhs == rhs            => lhs
+      case lhs || rhs if lhs == rhs            => lhs
+      case If(condition, yes, no) if yes == no => Coalesce(condition, yes)
     }
   }
 

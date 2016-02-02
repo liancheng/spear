@@ -75,6 +75,8 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   override def toAttribute: Attribute = this
 
+  def newInstance(): Attribute
+
   def withNullability(nullability: Boolean): Attribute
 
   def ? : Attribute = withNullability(true)
@@ -86,6 +88,8 @@ case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNa
   override def debugString: String = s"${quote(name)}"
 
   override def sql: Option[String] = s"${quote(name)}".some
+
+  override def newInstance(): Attribute = this
 
   override def withNullability(nullability: Boolean): Attribute = this
 
@@ -122,6 +126,8 @@ case class AttributeRef(
   }
 
   override def sql: Option[String] = s"${quote(name)}".some
+
+  override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
 

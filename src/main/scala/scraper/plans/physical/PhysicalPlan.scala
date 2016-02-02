@@ -77,7 +77,7 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
 
   override def iterator: Iterator[Row] = data.iterator
 
-  override def nodeCaption: String = s"$nodeName output=$outputString"
+  override def nodeCaption: String = s"$nodeName output=$outputStrings"
 }
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])

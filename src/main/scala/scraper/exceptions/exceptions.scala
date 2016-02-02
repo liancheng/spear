@@ -28,7 +28,7 @@ class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
   def this(expression: Expression) = this(expression, null)
 }
 
-class LogicalPlanUnresolved(plan: LogicalPlan, cause: Throwable)
+class LogicalPlanUnresolvedException(plan: LogicalPlan, cause: Throwable)
   extends AnalysisException(s"Unresolved logical query plan:\n\n${plan.prettyTree}", cause) {
 
   def this(plan: LogicalPlan) = this(plan, null)

@@ -178,8 +178,10 @@ object Cast {
     case NullType    => explicitlyFromNull
   }
 
-  def buildCast(x: DataType, y: DataType): Option[Any => Any] = {
-    buildImplicitCast.lift(x).flatMap(_ lift y) orElse buildExplicitCast.lift(x).flatMap(_ lift y)
+  private def buildCast(x: DataType, y: DataType): Option[Any => Any] = {
+    val maybeImplicitCast = buildImplicitCast lift x flatMap (_ lift y)
+    val maybeExplicitCast = buildExplicitCast lift x flatMap (_ lift y)
+    maybeImplicitCast orElse maybeExplicitCast
   }
 
   /**

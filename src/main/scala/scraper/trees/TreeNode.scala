@@ -84,6 +84,15 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     buffer.toSeq
   }
 
+  def collectFirst[T](f: PartialFunction[Base, T]): Option[T] = {
+    transformDown {
+      case node if f.isDefinedAt(node) =>
+        return Some(f(node))
+    }
+
+    None
+  }
+
   /** Returns `true` if `f` is `true` for all nodes in this tree. */
   def forall(f: Base => Boolean): Boolean = {
     transformDown {

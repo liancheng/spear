@@ -26,17 +26,36 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
+  private[scraper] def assertSideBySide[T <: TreeNode[T]](
+    expected: TreeNode[T],
+    actual: TreeNode[T]
+  ): Unit = {
+    if (expected != actual) {
+      fail(sideBySide(
+        s"""Expected
+           |${expected.prettyTree}
+           |""".stripMargin,
+
+        s"""Actual
+           |${actual.prettyTree}
+           |""".stripMargin,
+
+        withHeader = true
+      ))
+    }
+  }
+
   private[scraper] def checkTree[T <: TreeNode[T]](
     expected: TreeNode[T],
     actual: TreeNode[T]
   ): Unit = {
-    assertSideBySide(expected.prettyTree, actual.prettyTree)
+    assertSideBySide(expected, actual)
   }
 
   private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
     var normalizedId = -1L
 
-    plan.transformExpressionsUp {
+    plan.transformAllExpressions {
       case e: AttributeRef =>
         normalizedId += 1
         e.copy(expressionId = ExpressionId(normalizedId))

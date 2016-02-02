@@ -198,7 +198,7 @@ object BinaryOperator {
 
 trait UnaryOperator extends UnaryExpression with Operator {
   override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map (operator + _)
+    f(child) map ("(" + operator + _ + ")")
 }
 
 trait UnevaluableExpression extends Expression {

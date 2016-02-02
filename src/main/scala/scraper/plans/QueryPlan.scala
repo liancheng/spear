@@ -9,16 +9,23 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   def output: Seq[Attribute]
 
+  lazy val outputSet: Set[Attribute] = output.toSet
+
   lazy val schema: StructType = StructType fromAttributes output
 
-  def references: Set[Attribute] = expressions.toSet.flatMap((_: Expression).references)
+  def references: Set[Attribute] = expressions.toSet flatMap ((_: Expression).references)
 
   def expressions: Seq[Expression] = productIterator.flatMap {
     case element: Expression     => Seq(element)
     case Some(e: Expression)     => Seq(e)
-    case element: Traversable[_] => element.collect { case e: Expression => e }
+    case element: Traversable[_] => element collect { case e: Expression => e }
     case _                       => Nil
   }.toSeq
+
+  def transformAllExpressions(rule: Rule): Plan = transformDown {
+    case plan: QueryPlan[_] =>
+      plan.transformExpressionsDown(rule).asInstanceOf[Plan]
+  }
 
   def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)
 
@@ -52,7 +59,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     if (argsChanged contains true) makeCopy(newArgs) else this
   }
 
-  protected def argsString: String = productIterator.toSeq map {
+  /**
+   * Returns string representations of each constructor arguments of this query plan
+   */
+  protected def argsStrings: Seq[String] = productIterator.toSeq map {
+    // Avoids duplicating string representation of child nodes.  Replaces them with `$n`.
     case arg if children contains arg =>
       s"$$${children indexOf arg}"
 
@@ -73,9 +84,16 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
     case arg =>
       arg.toString
-  } mkString ("{", ", ", "}")
+  }
 
-  protected def outputString: String = output map (_.debugString) mkString ("{", ", ", "}")
+  /**
+   * Returns string representations of each output attribute of this query plan.
+   */
+  protected def outputStrings: Seq[String] = output map (_.debugString)
 
-  override def nodeCaption: String = s"$nodeName args=$argsString output=$outputString"
+  override def nodeCaption: String = {
+    val argsString = argsStrings mkString ("[", ", ", "]")
+    val outputString = outputStrings mkString ("[", ", ", "]")
+    s"$nodeName: $argsString ==> $outputString"
+  }
 }

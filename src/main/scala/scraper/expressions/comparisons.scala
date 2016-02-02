@@ -51,7 +51,7 @@ case class Eq(left: Expression, right: Expression) extends BinaryComparison {
 case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = !ordering.equiv(lhs, rhs)
 
-  override def operator: String = "!="
+  override def operator: String = "<>"
 }
 
 case class Gt(left: Expression, right: Expression) extends BinaryComparison {
@@ -83,7 +83,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override protected def strictDataType: DataType = BooleanType
 
-  override def strictlyTypedForm: Try[Expression] = {
+  override lazy val strictlyTypedForm: Try[Expression] = {
     for {
       strictTest <- test.strictlyTypedForm
       strictList <- sequence(list map (_.strictlyTypedForm))

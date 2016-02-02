@@ -33,7 +33,9 @@ object Build extends sbt.Build {
       scalacOptions ++= Seq("-unchecked", "-deprecation"),
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
       fork := false,
-      parallelExecution in Test := false
+      parallelExecution in Test := false,
+      // Shows duration and full exception stack trace
+      testOptions in Test += Tests.Argument("-oDF")
     )
 
   lazy val consoleSettings =

@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
-import scraper.expressions.{Star, UnresolvedAttribute}
+import scraper.expressions._
 import scraper.plans.logical.Analyzer._
 import scraper.plans.logical.patterns._
 import scraper.trees.RulesExecutor.FixedPoint
@@ -14,7 +14,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ExpandStars,
       new ResolveRelations(catalog),
       ResolveReferences,
-      ResolveSelfJoins,
+      ResolveSelfJoins
+    )),
+
+    RuleBatch("Type check", FixedPoint.Unlimited, Seq(
       ApplyImplicitCasts
     ))
   )
@@ -54,7 +57,7 @@ object Analyzer {
   )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(plan) if plan.children forall (_.strictlyTyped) =>
+      case Unresolved(plan) if plan.childrenResolved =>
         plan transformExpressionsUp {
           case UnresolvedAttribute(name) =>
             def reportResolutionFailure(message: String): Nothing = {
@@ -87,6 +90,9 @@ object Analyzer {
     }
   }
 
+  /**
+   * This rule resolves unresolved relations by looking up the table name from the `catalog`.
+   */
   class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case UnresolvedRelation(name) => catalog lookupRelation name
@@ -96,9 +102,6 @@ object Analyzer {
   /**
    * This rule tries to transform all resolved logical plans operators (and expressions within them)
    * into strictly typed form by applying implicit casts when necessary.
-   *
-   * @note This rule doesn't apply implicit casts directly. Instead, it simply delegates to
-   *       [[scraper.plans.logical.LogicalPlan.strictlyTypedForm LogicalPlan.strictlyTypedForm]].
    */
   @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object ApplyImplicitCasts extends Rule[LogicalPlan] {
@@ -117,10 +120,55 @@ object Analyzer {
     }
   }
 
+  /**
+   * This rule resolves ambiguous attributes introduced by self-joins.
+   */
   object ResolveSelfJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Resolved(plan @ Join(left, right, _, _)) if left.output == right.output =>
-        throw new UnsupportedOperationException("Self-join is not supported yet")
+      case join @ Join(Resolved(left), Resolved(right), _, _) if !join.selfJoinResolved =>
+        val conflictingAttributes = left.outputSet & right.outputSet
+
+        def selfJoinInvolved(attributes: Set[Attribute]): Boolean =
+          (attributes & conflictingAttributes).nonEmpty
+
+        val newLeft = left.collectFirst {
+          // Handles relations that introduce ambiguous attributes. E.g.:
+          //
+          //   val df = table("t")
+          //   val joined = df join df
+          //
+          // Now both branches of `joined` have exactly the same set of attributes.
+          case plan: MultiInstanceRelation if selfJoinInvolved(plan.outputSet) =>
+            plan -> plan.newInstance()
+
+          // Handles projections that introduce ambiguous aliases. E.g.:
+          //
+          //   val projected = df select ('f1 as 'a)
+          //   val joined = projected join projected
+          //
+          // Now `joined` has two alias `a` with the same expression ID in both branches.
+          case plan @ Project(_, projectList) if selfJoinInvolved(collectAliases(projectList)) =>
+            plan -> plan.copy(projectList = newAliases(projectList))
+        } map {
+          case (oldPlan, newPlan) =>
+            val attributeRewrites = (oldPlan.output zip newPlan.output).toMap
+
+            left transformDown {
+              case plan if plan == oldPlan => newPlan
+            } transformAllExpressions {
+              case a: Attribute => attributeRewrites.getOrElse(a, a)
+            }
+        } getOrElse left
+
+        join.copy(left = newLeft)
+    }
+
+    def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
+      projectList.collect { case a: Alias => a.toAttribute }.toSet
+
+    def newAliases(projectList: Seq[NamedExpression]): Seq[NamedExpression] = projectList map {
+      case Alias(name, child, _) => child as name
+      case e                     => e
     }
   }
 }

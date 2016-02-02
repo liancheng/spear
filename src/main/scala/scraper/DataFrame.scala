@@ -12,7 +12,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def context: Context = queryExecution.context
 
-  private def build(f: LogicalPlan => LogicalPlan): DataFrame =
+  private def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
     new DataFrame(f(queryExecution.logicalPlan), context)
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
@@ -26,13 +26,13 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def select(first: Expression, rest: Expression*): DataFrame = this select (first +: rest)
 
-  def select(expressions: Seq[Expression]): DataFrame = build(_ select expressions)
+  def select(expressions: Seq[Expression]): DataFrame = withPlan(_ select expressions)
 
-  def filter(condition: Expression): DataFrame = build(_ filter condition)
+  def filter(condition: Expression): DataFrame = withPlan(_ filter condition)
 
   def where(condition: Expression): DataFrame = this filter condition
 
-  def limit(n: Expression): DataFrame = build(_ limit n)
+  def limit(n: Expression): DataFrame = withPlan(_ limit n)
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
@@ -47,11 +47,11 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
 
-  def orderBy(expr: Expression, exprs: Expression*): DataFrame = build {
+  def orderBy(expr: Expression, exprs: Expression*): DataFrame = withPlan {
     Sort(_, expr +: exprs map (SortOrder(_, Ascending)))
   }
 
-  def subquery(name: String): DataFrame = build(_ subquery name)
+  def subquery(name: String): DataFrame = withPlan(_ subquery name)
 
   def subquery(name: Symbol): DataFrame = subquery(name.name)
 
@@ -59,11 +59,11 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def as(name: Symbol): DataFrame = subquery(name.name)
 
-  def union(that: DataFrame): DataFrame = build(_ union that.queryExecution.logicalPlan)
+  def union(that: DataFrame): DataFrame = withPlan(_ union that.queryExecution.logicalPlan)
 
-  def intersect(that: DataFrame): DataFrame = build(_ intersect that.queryExecution.logicalPlan)
+  def intersect(that: DataFrame): DataFrame = withPlan(_ intersect that.queryExecution.logicalPlan)
 
-  def except(that: DataFrame): DataFrame = build(_ except that.queryExecution.logicalPlan)
+  def except(that: DataFrame): DataFrame = withPlan(_ except that.queryExecution.logicalPlan)
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 

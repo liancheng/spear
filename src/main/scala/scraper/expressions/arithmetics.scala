@@ -24,9 +24,7 @@ trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
     }
   } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
 
-  override lazy val dataType: DataType = whenWellTyped(strictlyTypedForm.get match {
-    case e: UnaryArithmeticOperator => e.child.dataType
-  })
+  override protected def strictDataType: DataType = child.dataType
 }
 
 case class Negate(child: Expression) extends UnaryArithmeticOperator {
@@ -139,7 +137,7 @@ abstract class GreatestLeastLike extends Expression {
 
   override protected def strictDataType: DataType = children.head.dataType
 
-  override def strictlyTypedForm: Try[Expression] = for {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChildren <- sequence(children map (_.strictlyTypedForm))
     widestType <- widestTypeOf(strictChildren map (_.dataType)) map {
       case t: OrderedType => t

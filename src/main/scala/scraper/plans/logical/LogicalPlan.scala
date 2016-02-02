@@ -1,11 +1,11 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.util.Try
+import scala.util.{Failure, Try}
 import scalaz.Scalaz._
 
 import scraper.Row
-import scraper.exceptions.{LogicalPlanUnresolved, TypeCheckException}
+import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.promoteDataType
 import scraper.expressions._
 import scraper.expressions.functions._
@@ -29,11 +29,14 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   lazy val strictlyTyped: Boolean = wellTyped && (strictlyTypedForm.get sameOrEqual this)
 
+  override protected def outputStrings: Seq[String] =
+    if (resolved) super.outputStrings else "???" :: Nil
+
   def select(projectList: Seq[Expression]): Project =
-    Project(this, projectList.zipWithIndex map {
-      case (UnresolvedAttribute("*"), _) => Star
-      case (e: NamedExpression, _)       => e
-      case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
+    Project(this, projectList map {
+      case UnresolvedAttribute("*") => Star
+      case e: NamedExpression       => e
+      case e                        => e as (e.sql getOrElse "?column?")
     })
 
   def select(first: Expression, rest: Expression*): Project = select(first +: rest)
@@ -65,18 +68,15 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def intersect(that: LogicalPlan): Intersect = Intersect(this, that)
 
   def except(that: LogicalPlan): Except = Except(this, that)
-
-  override def nodeCaption: String = if (resolved) {
-    super.nodeCaption
-  } else {
-    s"$nodeName args=$argsString"
-  }
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
-  override def output: Seq[Attribute] = throw new LogicalPlanUnresolved(this)
+  override def output: Seq[Attribute] = throw new LogicalPlanUnresolvedException(this)
 
   override def resolved: Boolean = false
+
+  override def strictlyTypedForm: Try[LogicalPlan] =
+    Failure(new LogicalPlanUnresolvedException(this))
 }
 
 trait LeafLogicalPlan extends LogicalPlan {
@@ -97,16 +97,26 @@ trait BinaryLogicalPlan extends LogicalPlan {
   override def children: Seq[LogicalPlan] = Seq(left, right)
 }
 
-case class UnresolvedRelation(name: String) extends LeafLogicalPlan with UnresolvedLogicalPlan
+trait Relation extends LeafLogicalPlan
 
-case object SingleRowRelation extends LeafLogicalPlan {
+trait MultiInstanceRelation extends Relation {
+  def newInstance(): LogicalPlan
+}
+
+case class UnresolvedRelation(name: String) extends Relation with UnresolvedLogicalPlan {
+  override def resolved: Boolean = false
+}
+
+case object SingleRowRelation extends Relation {
   override val output: Seq[Attribute] = Nil
 }
 
 case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
-  extends LeafLogicalPlan {
+  extends MultiInstanceRelation {
 
-  override def nodeCaption: String = s"$nodeName output=$outputString"
+  override protected def argsStrings: Seq[String] = Nil
+
+  override def newInstance(): LogicalPlan = copy(output = output map (_.newInstance()))
 }
 
 object LocalRelation {
@@ -263,6 +273,7 @@ case class Join(
   joinType: JoinType,
   maybeCondition: Option[Expression]
 ) extends BinaryLogicalPlan {
+
   override lazy val output: Seq[Attribute] = joinType match {
     case LeftSemi   => left.output
     case Inner      => left.output ++ right.output
@@ -271,11 +282,12 @@ case class Join(
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
 
+  lazy val selfJoinResolved: Boolean = (left.outputSet & right.outputSet).isEmpty
+
   def on(condition: Expression): Join = copy(maybeCondition = condition.some)
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
-
   override lazy val output: Seq[Attribute] = child.output
 }
 

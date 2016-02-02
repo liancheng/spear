@@ -27,7 +27,7 @@ object Coalesce {
 }
 
 case class IsNull(child: Expression) extends UnaryExpression {
-  override def strictlyTypedForm: Try[Expression] = for {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm
   } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
@@ -40,7 +40,7 @@ case class IsNull(child: Expression) extends UnaryExpression {
 }
 
 case class IsNotNull(child: Expression) extends UnaryExpression {
-  override def strictlyTypedForm: Try[Expression] = for {
+  override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm
   } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
