@@ -21,7 +21,6 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]
     assert(
       physicalPlans.nonEmpty,
       s"""Don't know how to compile the following logical query plan fragment:
-         |
          |${logicalPlan.prettyTree}
          |""".stripMargin
     )
@@ -32,7 +31,6 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]
   def apply(logicalPlan: Logical): Physical = {
     logTrace(
       s"""Planning logical query plan:
-         |
          |${logicalPlan.prettyTree}
          |""".stripMargin
     )
@@ -41,11 +39,8 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]
 
     logTrace(
       s"""Compiled logical query plan
-         |
          |${logicalPlan.prettyTree}
-         |
          |to physical query plan
-         |
          |${physicalPlan.prettyTree}
          |""".stripMargin
     )

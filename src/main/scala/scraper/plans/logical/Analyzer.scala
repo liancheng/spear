@@ -5,31 +5,56 @@ import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.plans.logical.Analyzer._
 import scraper.plans.logical.patterns._
-import scraper.trees.RulesExecutor.FixedPoint
+import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  override def batches: Seq[RuleBatch] = Seq(
-    RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
-      ExpandStars,
-      new ResolveRelations(catalog),
-      ResolveReferences,
-      ResolveSelfJoins
-    )),
+  private val resolutionBatch = RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
+    ExpandStars,
+    new ResolveRelations(catalog),
+    ResolveReferences,
+    DeduplicateReferences
+  ))
 
-    RuleBatch("Type check", FixedPoint.Unlimited, Seq(
-      ApplyImplicitCasts
-    ))
+  private val typeCheckBatch = RuleBatch("Type check", Once, Seq(
+    TypeCheck
+  ))
+
+  override def batches: Seq[RuleBatch] = Seq(
+    resolutionBatch,
+    typeCheckBatch
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logTrace(
       s"""Analyzing logical query plan:
-         |
          |${tree.prettyTree}
          |""".stripMargin
     )
     super.apply(tree)
+  }
+
+  def resolve(tree: LogicalPlan): LogicalPlan = {
+    logTrace(
+      s"""Resolving logical query plan:
+         |${tree.prettyTree}
+         |""".stripMargin
+    )
+    apply(tree, resolutionBatch :: Nil)
+  }
+
+  def typeCheck(tree: LogicalPlan): LogicalPlan = {
+    if (tree.resolved) {
+      logTrace(
+        s"""Type checking logical query plan:
+           |${tree.prettyTree}
+           |""".stripMargin
+      )
+      apply(tree, typeCheckBatch :: Nil)
+    } else {
+      // Performs full analysis for unresolved logical query plan
+      apply(tree)
+    }
   }
 }
 
@@ -63,9 +88,7 @@ object Analyzer {
             def reportResolutionFailure(message: String): Nothing = {
               throw new ResolutionFailureException(
                 s"""Failed to resolve attribute $name in logical query plan:
-                   |
                    |${plan.prettyTree}
-                   |
                    |$message
                    |""".stripMargin
               )
@@ -101,10 +124,10 @@ object Analyzer {
 
   /**
    * This rule tries to transform all resolved logical plans operators (and expressions within them)
-   * into strictly typed form by applying implicit casts when necessary.
+   * into strictly typed form.
    */
   @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
-  object ApplyImplicitCasts extends Rule[LogicalPlan] {
+  object TypeCheck extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Resolved(plan) => plan.strictlyTypedForm.get
     }
@@ -121,9 +144,19 @@ object Analyzer {
   }
 
   /**
-   * This rule resolves ambiguous attributes introduced by self-joins.
+   * This rule resolves ambiguous duplicated attributes/aliases introduced by binary logical query
+   * plan operators like [[Join]] and [[SetOperator set operators]].  For example:
+   * {{{
+   *   // Self-join, equivalent to "SELECT * FROM t INNER JOIN t":
+   *   val df = context table "t"
+   *   val joined = df join df
+   *
+   *   // Self-union, equivalent to "SELECT 1 AS a UNION ALL SELECT 1 AS a":
+   *   val df = context single (1 as 'a)
+   *   val union = df union df
+   * }}}
    */
-  object ResolveSelfJoins extends Rule[LogicalPlan] {
+  object DeduplicateReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case join @ Join(Resolved(left), Resolved(right), _, _) if !join.selfJoinResolved =>
         val conflictingAttributes = left.outputSet & right.outputSet
@@ -132,21 +165,11 @@ object Analyzer {
           (attributes & conflictingAttributes).nonEmpty
 
         val newLeft = left.collectFirst {
-          // Handles relations that introduce ambiguous attributes. E.g.:
-          //
-          //   val df = table("t")
-          //   val joined = df join df
-          //
-          // Now both branches of `joined` have exactly the same set of attributes.
+          // Handles relations that introduce ambiguous attributes
           case plan: MultiInstanceRelation if selfJoinInvolved(plan.outputSet) =>
             plan -> plan.newInstance()
 
-          // Handles projections that introduce ambiguous aliases. E.g.:
-          //
-          //   val projected = df select ('f1 as 'a)
-          //   val joined = projected join projected
-          //
-          // Now `joined` has two alias `a` with the same expression ID in both branches.
+          // Handles projections that introduce ambiguous aliases
           case plan @ Project(_, projectList) if selfJoinInvolved(collectAliases(projectList)) =>
             plan -> plan.copy(projectList = newAliases(projectList))
         } map {

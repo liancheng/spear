@@ -38,14 +38,12 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
     assert(
       tree.resolved,
       s"""Logical query plan not resolved yet:
-         |
          |${tree.prettyTree}
          |""".stripMargin
     )
 
     logTrace(
       s"""Optimizing logical query plan:
-         |
          |${tree.prettyTree}
          |""".stripMargin
     )

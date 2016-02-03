@@ -103,9 +103,7 @@ trait MultiInstanceRelation extends Relation {
   def newInstance(): LogicalPlan
 }
 
-case class UnresolvedRelation(name: String) extends Relation with UnresolvedLogicalPlan {
-  override def resolved: Boolean = false
-}
+case class UnresolvedRelation(name: String) extends Relation with UnresolvedLogicalPlan
 
 case object SingleRowRelation extends Relation {
   override val output: Seq[Attribute] = Nil

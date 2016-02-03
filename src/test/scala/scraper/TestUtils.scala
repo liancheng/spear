@@ -110,7 +110,6 @@ trait TestUtils { this: FunSuite =>
     if (!e.wellTyped) {
       fail(
         s"""Expression ${e.debugString} is not well-typed:
-           |
            |${e.prettyTree}
            |""".stripMargin
       )
@@ -120,7 +119,6 @@ trait TestUtils { this: FunSuite =>
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
-           |
            |${e.prettyTree}
            |""".stripMargin
       )
@@ -131,7 +129,6 @@ trait TestUtils { this: FunSuite =>
     if (!e.strictlyTyped) {
       fail(
         s"""Expression ${e.debugString} is not strictly-typed:
-           |
            |${e.prettyTree}
            |""".stripMargin
       )
@@ -141,7 +138,6 @@ trait TestUtils { this: FunSuite =>
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
-           |
            |${e.prettyTree}
            |""".stripMargin
       )
@@ -152,7 +148,6 @@ trait TestUtils { this: FunSuite =>
     if (!plan.wellTyped) {
       fail(
         s"""Logical plan not well-typed:
-           |
            |${plan.prettyTree}
            |""".stripMargin
       )
@@ -163,7 +158,6 @@ trait TestUtils { this: FunSuite =>
     if (!plan.wellTyped) {
       fail(
         s"""Logical plan not well-typed:
-           |
            |${plan.prettyTree}
            |""".stripMargin
       )

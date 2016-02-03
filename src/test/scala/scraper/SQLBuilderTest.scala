@@ -27,7 +27,6 @@ abstract class SQLBuilderTest
     if (maybeSQL.isEmpty) {
       fail(
         s"""Cannot convert the following expression to its SQL form:
-           |
            |${e.prettyTree}
            |""".stripMargin
       )
@@ -39,9 +38,7 @@ abstract class SQLBuilderTest
       case cause: Throwable =>
         fail(
           s"""Wrong SQL generated for the following expression:
-             |
              |${e.prettyTree}
-             |
              |$cause
              |""".stripMargin
         )
@@ -55,7 +52,6 @@ abstract class SQLBuilderTest
     if (maybeSQL.isEmpty) {
       fail(
         s"""Cannot convert the following logical query plan to SQL:
-           |
            |${plan.prettyTree}
            |""".stripMargin
       )
@@ -69,9 +65,7 @@ abstract class SQLBuilderTest
       case cause: Throwable =>
         fail(
           s"""Wrong SQL generated for the following logical query plan:
-             |
              |${plan.prettyTree}
-             |
              |$cause
              |""".stripMargin
         )

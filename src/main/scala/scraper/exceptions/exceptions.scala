@@ -40,7 +40,6 @@ class TypeCheckException(message: String, cause: Throwable)
   def this(expression: Expression, cause: Throwable) =
     this({
       s"""Expression [${expression.debugString}] doesn't pass type check:
-         |
          |${expression.prettyTree}
          |""".stripMargin
     }, cause)
@@ -50,7 +49,6 @@ class TypeCheckException(message: String, cause: Throwable)
   def this(plan: LogicalPlan, cause: Throwable) =
     this({
       s"""Logical query plan doesn't pass type check:
-         |
          |${plan.prettyTree}
          |""".stripMargin
     }, cause)
