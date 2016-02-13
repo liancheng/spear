@@ -2,7 +2,7 @@ package scraper
 
 import org.scalatest.FunSuite
 
-import scraper.expressions.{Expression, Alias, AttributeRef, ExpressionId}
+import scraper.expressions.{Alias, AttributeRef, Expression, ExpressionId}
 import scraper.plans.QueryPlan
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.TreeNode

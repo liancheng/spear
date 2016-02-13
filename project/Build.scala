@@ -20,16 +20,28 @@ object Build extends sbt.Build {
     Project("scraper-core", file("core"))
       .enablePlugins(sbtPlugins: _*)
       .settings(commonSettings)
+      .settings(libraryDependencies ++= coreDependencies)
+      // Explicitly overrides all conflicting transitive dependencies
+      .settings(dependencyOverrides ++= Dependencies.overrides)
+
+  lazy val coreDependencies = {
+    import Dependencies._
+    test ++ config ++ log4j ++ scala ++ scopt ++ scalaz ++ shapeless ++ slf4j
+  }
 
   lazy val backendLocal =
     Project("scraper-backend-local", file("backend/local"))
-      .dependsOn(core)
+      .dependsOn(core % "compile->compile;test->test")
       .enablePlugins(sbtPlugins: _*)
       .settings(commonSettings)
-      // Specifies dependencies
-      .settings(libraryDependencies ++= Dependencies.all)
+      .settings(libraryDependencies ++= backendLocalDependencies)
       // Explicitly overrides all conflicting transitive dependencies
       .settings(dependencyOverrides ++= Dependencies.overrides)
+
+  lazy val backendLocalDependencies = {
+    import Dependencies._
+    test
+  }
 
   lazy val sbtPlugins = Seq(
     // For packaging,, and Scala test coverage reporting
@@ -115,9 +127,7 @@ object Dependencies {
 
   object Versions {
     val config = "1.2.1"
-    val janino = "2.7.8"
     val log4j = "1.2.16"
-    val parquetMr = "1.8.1"
     val protobuf = "2.5.0"
     val scala = "2.11.7"
     val scalaCheck = "1.12.5"
@@ -125,7 +135,6 @@ object Dependencies {
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
     val scalaz = "7.2.0"
-    val scodecCore = "1.8.3"
     val scopt = "3.3.0"
     val shapeless = "2.2.5"
     val slf4j = "1.6.4"
@@ -135,19 +144,8 @@ object Dependencies {
     "com.typesafe" % "config" % Versions.config
   )
 
-  val janino = Seq(
-    "org.codehaus.janino" % "janino" % Versions.janino
-  )
-
   val log4j = Seq(
     "log4j" % "log4j" % Versions.log4j
-  )
-
-  val parquetMr = Seq(
-    "org.apache.parquet" % "parquet-avro" % Versions.parquetMr,
-    "org.apache.parquet" % "parquet-thrift" % Versions.parquetMr,
-    "org.apache.parquet" % "parquet-protobuf" % Versions.parquetMr,
-    "org.apache.parquet" % "parquet-hive" % Versions.parquetMr
   )
 
   val protobuf = Seq(
@@ -173,10 +171,6 @@ object Dependencies {
     "org.scalaz" %% "scalaz-core" % Versions.scalaz
   )
 
-  val scodec = Seq(
-    "org.scodec" %% "scodec-core" % Versions.scodecCore
-  )
-
   val scopt = Seq(
     "com.github.scopt" %% "scopt" % Versions.scopt
   )
@@ -192,10 +186,6 @@ object Dependencies {
   )
 
   val test = scalaCheck ++ scalaTest
-
-  val all =
-    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++ scodec ++ scopt ++ scalaz ++
-      shapeless ++ slf4j
 
   val overrides = Set.empty ++ protobuf ++ scala
 }
