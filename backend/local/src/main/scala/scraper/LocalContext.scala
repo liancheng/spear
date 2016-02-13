@@ -20,11 +20,17 @@ class LocalContext(val settings: Settings) extends Context {
 
   override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
 
-  override val analyze = new Analyzer(catalog)
+  private val analyzer = new Analyzer(catalog)
 
-  override val optimize = new Optimizer
+  override def analyze(plan: LogicalPlan): LogicalPlan = analyzer(plan)
 
-  override val plan = new LocalQueryPlanner
+  private val optimizer = new Optimizer
+
+  override def optimize(plan: LogicalPlan): LogicalPlan = optimize(plan)
+
+  private val planner = new LocalQueryPlanner
+
+  override def plan(plan: LogicalPlan): PhysicalPlan = planner(plan)
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(new QueryExecution(LocalRelation(data), this))

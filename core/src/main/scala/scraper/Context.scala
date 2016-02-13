@@ -2,10 +2,8 @@ package scraper
 
 import scraper.config.Settings
 import scraper.expressions.Expression
-import scraper.plans.QueryPlanner
 import scraper.plans.logical.{LogicalPlan, SingleRowRelation}
 import scraper.plans.physical.PhysicalPlan
-import scraper.trees.RulesExecutor
 
 trait Catalog {
   def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
@@ -24,13 +22,25 @@ trait Context {
 
   def catalog: Catalog
 
+  /**
+   * Parses given query string to a [[LogicalPlan]].
+   */
   def parse(query: String): LogicalPlan
 
-  def analyze: RulesExecutor[LogicalPlan]
+  /**
+   * Analyzes unresolved [[LogicalPlan]] into strictly-typed [[LogicalPlan]].
+   */
+  def analyze(plan: LogicalPlan): LogicalPlan
 
-  def optimize: RulesExecutor[LogicalPlan]
+  /**
+   * Optimizes a [[LogicalPlan]] into another equivalent but more performant version.
+   */
+  def optimize(plan: LogicalPlan): LogicalPlan
 
-  def plan: QueryPlanner[LogicalPlan, PhysicalPlan]
+  /**
+   * Plans a [[LogicalPlan]] into an executable [[PhysicalPlan]].
+   */
+  def plan(plan: LogicalPlan): PhysicalPlan
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
@@ -48,4 +58,3 @@ object Context {
     def q: DataFrame = context q query
   }
 }
-
