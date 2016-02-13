@@ -3,8 +3,6 @@ package scraper
 import scala.collection.{Iterable, mutable}
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import com.typesafe.config.Config
-
 import scraper.config.Settings
 import scraper.exceptions.TableNotFoundException
 import scraper.expressions.Expression

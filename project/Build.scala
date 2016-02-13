@@ -12,79 +12,93 @@ import scoverage.ScoverageSbtPlugin
 object Build extends sbt.Build {
   lazy val scraper =
     Project("scraper", file("."))
-      // For packaging
-      .enablePlugins(JavaAppPackaging)
-      // For JMH benchmarking
-      .enablePlugins(JmhPlugin)
-      // For Scala code formatting
-      .enablePlugins(SbtScalariform)
-      // For Scala test coverage reporting
-      .enablePlugins(ScoverageSbtPlugin)
-      .settings(basicSettings)
+      .aggregate(core, backendLocal)
+      .settings(commonSettings)
       .settings(consoleSettings)
-      .settings(dependencySettings)
-      .settings(scalariformSettings)
 
-  lazy val basicSettings =
-    Seq(
-      organization := "scraper",
-      version := "0.1.0-SNAPSHOT",
-      scalaVersion := Dependencies.Versions.scala,
-      scalacOptions ++= Seq("-unchecked", "-deprecation"),
-      javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
-      fork := false,
-      parallelExecution in Test := false,
-      // Shows duration and full exception stack trace
-      testOptions in Test += Tests.Argument("-oDF")
-    )
+  lazy val core =
+    Project("scraper-core", file("core"))
+      .enablePlugins(sbtPlugins: _*)
+      .settings(commonSettings)
 
-  lazy val consoleSettings =
-    Seq(
-      initialCommands in console :=
-        """import scraper.LocalContext
-          |import scraper.expressions.dsl._
-          |import scraper.expressions.functions._
-          |import scraper.types._
-          |
-          |val context = new LocalContext
-          |""".stripMargin,
+  lazy val backendLocal =
+    Project("scraper-backend-local", file("backend/local"))
+      .dependsOn(core)
+      .enablePlugins(sbtPlugins: _*)
+      .settings(commonSettings)
+      // Specifies dependencies
+      .settings(libraryDependencies ++= Dependencies.all)
+      // Explicitly overrides all conflicting transitive dependencies
+      .settings(dependencyOverrides ++= Dependencies.overrides)
 
-      initialCommands in console in Test :=
-        """import org.scalacheck.Gen
-          |import org.scalacheck.Gen._
-          |import org.scalacheck.Prop
-          |import org.scalacheck.Prop._
-          |import org.scalacheck.Test
-          |import org.scalacheck.Test._
-          |
-          |import scraper.LocalContext
-          |import scraper.expressions.dsl._
-          |import scraper.expressions.functions._
-          |import scraper._
-          |
-          |import scraper.Test._
-          |import scraper.types._
-          |import scraper.generators.expressions._
-          |import scraper.generators.plans.logical._
-          |import scraper.generators.types._
-          |import scraper.generators.values._
-          |
-          |val context = new LocalContext
-          |""".stripMargin
-    )
+  lazy val sbtPlugins = Seq(
+    // For packaging,, and Scala test coverage reporting
+    JavaAppPackaging,
+    // For JMH benchmarking
+    JmhPlugin,
+    // For Scala code formatting
+    SbtScalariform,
+    // For Scala test coverage reporting
+    ScoverageSbtPlugin
+  )
 
-  lazy val dependencySettings =
+  lazy val commonSettings =
+    basicSettings ++ generalDependencySettings ++ scalariformSettings
+
+  lazy val basicSettings = Seq(
+    organization := "scraper",
+    version := "0.1.0-SNAPSHOT",
+    scalaVersion := Dependencies.Versions.scala,
+    scalacOptions ++= Seq("-unchecked", "-deprecation"),
+    javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
+    fork := false,
+    parallelExecution in Test := false,
+    // Shows duration and full exception stack trace
+    testOptions in Test += Tests.Argument("-oDF")
+  )
+
+  lazy val generalDependencySettings =
     SbtDependencyGraph.graphSettings ++ Seq(
       // Does not copy managed dependencies into `lib_managed`
       retrieveManaged := false,
       // Enables extra resolvers
       resolvers ++= Dependencies.extraResolvers,
-      // Specifies dependencies
-      libraryDependencies ++= Dependencies.all,
       // Disables auto conflict resolution
-      conflictManager := ConflictManager.strict,
-      // Explicitly overrides all conflicting transitive dependencies
-      dependencyOverrides ++= Dependencies.overrides
+      conflictManager := ConflictManager.strict
+    )
+
+  lazy val consoleSettings = Seq(
+    initialCommands in console :=
+      """import scraper.LocalContext
+        |import scraper.expressions.dsl._
+        |import scraper.expressions.functions._
+        |import scraper.types._
+        |
+        |val context = new LocalContext
+        |""".stripMargin,
+
+    initialCommands in console in Test :=
+      """import org.scalacheck.Gen
+        |import org.scalacheck.Gen._
+        |import org.scalacheck.Prop
+        |import org.scalacheck.Prop._
+        |import org.scalacheck.Test
+        |import org.scalacheck.Test._
+        |
+        |import scraper.LocalContext
+        |import scraper.expressions.dsl._
+        |import scraper.expressions.functions._
+        |import scraper._
+        |
+        |import scraper.Test._
+        |import scraper.types._
+        |import scraper.generators.expressions._
+        |import scraper.generators.plans.logical._
+        |import scraper.generators.types._
+        |import scraper.generators.values._
+        |
+        |val context = new LocalContext
+        |""".stripMargin
     )
 
   lazy val scalariformSettings =
@@ -177,11 +191,11 @@ object Dependencies {
     "org.slf4j" % "jul-to-slf4j" % Versions.slf4j
   )
 
-  val test = Seq.empty[ModuleID]
+  val test = scalaCheck ++ scalaTest
 
   val all =
-    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++ scodec ++
-      scopt ++ scalaCheck ++ scalaTest ++ scalaz ++ shapeless ++ slf4j
+    test ++ config ++ janino ++ log4j ++ parquetMr ++ scala ++ scodec ++ scopt ++ scalaz ++
+      shapeless ++ slf4j
 
   val overrides = Set.empty ++ protobuf ++ scala
 }
