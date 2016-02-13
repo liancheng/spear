@@ -1,5 +1,7 @@
 package scraper
 
+import scraper.config.Keys
+import scraper.config.Keys.NullsLarger
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Ascending, Expression, SortOrder}
@@ -48,7 +50,11 @@ class DataFrame(val queryExecution: QueryExecution) {
   def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
 
   def orderBy(expr: Expression, exprs: Expression*): DataFrame = withPlan {
-    Sort(_, expr +: exprs map (SortOrder(_, Ascending)))
+    Sort(_, expr +: exprs map (SortOrder(_, Ascending, context.settings(NullsLarger))))
+  }
+
+  def orderBy(order: SortOrder, orders: SortOrder*): DataFrame = withPlan {
+    Sort(_, order +: orders)
   }
 
   def subquery(name: String): DataFrame = withPlan(_ subquery name)

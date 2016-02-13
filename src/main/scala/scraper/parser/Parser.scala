@@ -7,6 +7,8 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
+import scraper.config.Keys.NullsLarger
+import scraper.config.Settings
 import scraper.exceptions.ParsingException
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
@@ -46,55 +48,53 @@ abstract class TokenParser[T] extends StdTokenParsers {
   protected def start: Parser[T]
 }
 
-class Parser extends TokenParser[LogicalPlan] {
-  private val SELECT = Keyword("SELECT")
-  private val DISTINCT = Keyword("DISTINCT")
-  private val AS = Keyword("AS")
-  private val FROM = Keyword("FROM")
-  private val WHERE = Keyword("WHERE")
-  private val LIMIT = Keyword("LIMIT")
-
-  private val AND = Keyword("AND")
-  private val OR = Keyword("OR")
-  private val NOT = Keyword("NOT")
-
-  private val TRUE = Keyword("TRUE")
-  private val FALSE = Keyword("FALSE")
-
-  private val JOIN = Keyword("JOIN")
-  private val INNER = Keyword("INNER")
-  private val OUTER = Keyword("OUTER")
-  private val LEFT = Keyword("LEFT")
-  private val RIGHT = Keyword("RIGHT")
-  private val SEMI = Keyword("SEMI")
-  private val FULL = Keyword("FULL")
-  private val ON = Keyword("ON")
-
-  private val GROUP = Keyword("GROUP")
-  private val BY = Keyword("BY")
-  private val HAVING = Keyword("HAVING")
-
-  private val IS = Keyword("IS")
-  private val NULL = Keyword("NULL")
-
-  private val CAST = Keyword("CAST")
-
-  private val INT = Keyword("INT")
-  private val TINYINT = Keyword("TINYINT")
-  private val SMALLINT = Keyword("SMALLINT")
-  private val BIGINT = Keyword("BIGINT")
-  private val FLOAT = Keyword("FLOAT")
-  private val DOUBLE = Keyword("DOUBLE")
-  private val BOOLEAN = Keyword("BOOLEAN")
-  private val STRING = Keyword("STRING")
-  private val ARRAY = Keyword("ARRAY")
-  private val MAP = Keyword("MAP")
-  private val STRUCT = Keyword("STRUCT")
-
-  private val UNION = Keyword("UNION")
+class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val ALL = Keyword("ALL")
-  private val INTERSECT = Keyword("INTERSECT")
+  private val AND = Keyword("AND")
+  private val ARRAY = Keyword("ARRAY")
+  private val AS = Keyword("AS")
+  private val ASC = Keyword("ASC")
+  private val BIGINT = Keyword("BIGINT")
+  private val BOOLEAN = Keyword("BOOLEAN")
+  private val BY = Keyword("BY")
+  private val CAST = Keyword("CAST")
+  private val DESC = Keyword("DESC")
+  private val DISTINCT = Keyword("DISTINCT")
+  private val DOUBLE = Keyword("DOUBLE")
   private val EXCEPT = Keyword("EXCEPT")
+  private val FALSE = Keyword("FALSE")
+  private val FIRST = Keyword("FIRST")
+  private val FLOAT = Keyword("FLOAT")
+  private val FROM = Keyword("FROM")
+  private val FULL = Keyword("FULL")
+  private val GROUP = Keyword("GROUP")
+  private val HAVING = Keyword("HAVING")
+  private val INNER = Keyword("INNER")
+  private val INT = Keyword("INT")
+  private val INTERSECT = Keyword("INTERSECT")
+  private val IS = Keyword("IS")
+  private val JOIN = Keyword("JOIN")
+  private val LAST = Keyword("LAST")
+  private val LEFT = Keyword("LEFT")
+  private val LIMIT = Keyword("LIMIT")
+  private val MAP = Keyword("MAP")
+  private val NOT = Keyword("NOT")
+  private val NULL = Keyword("NULL")
+  private val NULLS = Keyword("NULLS")
+  private val ON = Keyword("ON")
+  private val OR = Keyword("OR")
+  private val ORDER = Keyword("ORDER")
+  private val OUTER = Keyword("OUTER")
+  private val RIGHT = Keyword("RIGHT")
+  private val SELECT = Keyword("SELECT")
+  private val SEMI = Keyword("SEMI")
+  private val SMALLINT = Keyword("SMALLINT")
+  private val STRING = Keyword("STRING")
+  private val STRUCT = Keyword("STRUCT")
+  private val TINYINT = Keyword("TINYINT")
+  private val TRUE = Keyword("TRUE")
+  private val UNION = Keyword("UNION")
+  private val WHERE = Keyword("WHERE")
 
   override protected def start: Parser[LogicalPlan] =
     select * (
@@ -107,18 +107,45 @@ class Parser extends TokenParser[LogicalPlan] {
     SELECT ~> DISTINCT.? ~ projectList
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
-    ~ (GROUP ~> BY ~> rep1sep(expression, ",")).?
+    ~ (GROUP ~ BY ~> rep1sep(expression, ",")).?
     ~ (HAVING ~> predicate).?
+    ~ (ORDER ~ BY ~> sortOrders).?
     ~ (LIMIT ~> expression).? ^^ {
-      case d ~ ps ~ rs ~ f ~ gs ~ h ~ n =>
+      case d ~ ps ~ rs ~ f ~ gs ~ h ~ o ~ n =>
         val base = rs getOrElse SingleRowRelation
-        val withFilter = f map (Filter(base, _)) getOrElse base
-        val withProject = gs map (Aggregate(withFilter, _, ps)) getOrElse Project(withFilter, ps)
-        val withDistinct = d map (_ => Distinct(withProject)) getOrElse withProject
-        val withHaving = h map (Filter(withDistinct, _)) getOrElse withProject
-        val withLimit = n map (Limit(withHaving, _)) getOrElse withHaving
+        val withFilter = f map base.filter getOrElse base
+        val withProject = gs map (withFilter.aggregate(_, ps)) getOrElse (withFilter select ps)
+        val withDistinct = d map (_ => withProject.distinct) getOrElse withProject
+        val withHaving = h map withDistinct.filter getOrElse withProject
+        val withOrder = o map withHaving.orderBy getOrElse withHaving
+        val withLimit = n map withOrder.limit getOrElse withOrder
         withLimit
     }
+  )
+
+  private def sortOrders: Parser[Seq[SortOrder]] =
+    rep1sep(sortOrder, ",")
+
+  private def sortOrder: Parser[SortOrder] =
+    expression ~ direction.? ~ nullsFirst.? ^^ {
+      case e ~ d ~ n =>
+        val direction = d getOrElse Ascending
+        val nullsLarger = n map (direction -> _) map {
+          case (Ascending, nullsFirst @ true)   => false
+          case (Ascending, nullsFirst @ false)  => true
+          case (Descending, nullsFirst @ true)  => true
+          case (Descending, nullsFirst @ false) => false
+        } getOrElse settings(NullsLarger)
+
+        SortOrder(e, direction, nullsLarger)
+    }
+
+  private def nullsFirst: Parser[Boolean] =
+    NULLS ~> (FIRST ^^^ true | LAST ^^^ false)
+
+  private def direction: Parser[SortDirection] = (
+    ASC ^^^ Ascending
+    | DESC ^^^ Descending
   )
 
   private def relations: Parser[LogicalPlan] =

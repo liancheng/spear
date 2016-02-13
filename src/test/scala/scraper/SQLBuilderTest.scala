@@ -9,7 +9,7 @@ import scraper.plans.logical.LogicalPlan
 abstract class SQLBuilderTest
   extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
 
-  protected val context = new LocalContext
+  protected val context = new LocalContext(Test.defaultSettings)
 
   override protected def beforeAll(): Unit = {
     context range 10 select ('id as 'a) registerAsTable "t0"

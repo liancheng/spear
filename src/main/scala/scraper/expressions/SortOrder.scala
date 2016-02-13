@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scala.languageFeature.higherKinds
 import scala.util.Try
 import scalaz.Scalaz._
 import scalaz._
@@ -17,7 +18,7 @@ case object Descending extends SortDirection {
   override def toString: String = "DESC"
 }
 
-case class SortOrder(child: Expression, direction: SortDirection)
+case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
   override lazy val strictlyTypedForm: Try[Expression] = for {

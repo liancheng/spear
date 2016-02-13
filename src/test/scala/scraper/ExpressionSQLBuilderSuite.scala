@@ -1,13 +1,13 @@
 package scraper
 
-import scraper.expressions.Literal
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.dsl._
+import scraper.expressions.{If, Literal}
 
 class ExpressionSQLBuilderSuite extends SQLBuilderTest {
   test("literals") {
-    checkSQL(True, "true")
-    checkSQL(False, "false")
+    checkSQL(True, "TRUE")
+    checkSQL(False, "FALSE")
     checkSQL(Literal("foo"), "\"foo\"")
     checkSQL(Literal("\"foo"), "\"\\\"foo\"")
     checkSQL(Literal(0), "0")
@@ -25,5 +25,12 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
     checkSQL('a / 'b, "(`a` / `b`)")
     checkSQL(-'a, "(-`a`)")
     checkSQL(+'a, "(+`a`)")
+  }
+
+  test("logical operators") {
+    checkSQL('a && 'b, "(`a` AND `b`)")
+    checkSQL('a || 'b, "(`a` OR `b`)")
+    checkSQL(!'a, "(NOT `a`)")
+    checkSQL(If('a, 'b, 'c), "IF(`a`, `b`, `c`)")
   }
 }

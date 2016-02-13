@@ -158,19 +158,19 @@ object Analyzer {
    */
   object DeduplicateReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case join @ Join(Resolved(left), Resolved(right), _, _) if !join.selfJoinResolved =>
+      case join @ Join(Resolved(left), Resolved(right), _, _) if !join.duplicatesResolved =>
         val conflictingAttributes = left.outputSet & right.outputSet
 
-        def selfJoinInvolved(attributes: Set[Attribute]): Boolean =
+        def hasDuplicates(attributes: Set[Attribute]): Boolean =
           (attributes & conflictingAttributes).nonEmpty
 
         val newLeft = left.collectFirst {
           // Handles relations that introduce ambiguous attributes
-          case plan: MultiInstanceRelation if selfJoinInvolved(plan.outputSet) =>
+          case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
             plan -> plan.newInstance()
 
           // Handles projections that introduce ambiguous aliases
-          case plan @ Project(_, projectList) if selfJoinInvolved(collectAliases(projectList)) =>
+          case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
             plan -> plan.copy(projectList = newAliases(projectList))
         } map {
           case (oldPlan, newPlan) =>

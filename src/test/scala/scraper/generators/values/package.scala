@@ -7,12 +7,10 @@ import org.scalacheck.Gen
 
 import scraper.Row
 import scraper.config.Settings
-import scraper.config.Settings.Key
+import scraper.generators.Keys.MaxRepetition
 import scraper.types._
 
 package object values {
-  val MaxRepetition: Key[Int] = Key("scraper.test.expressions.max-repetition").int
-
   def genValueForDataType(dataType: DataType)(implicit settings: Settings): Gen[Any] =
     dataType match {
       case t: PrimitiveType => genValueForPrimitiveType(t)

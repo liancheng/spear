@@ -41,6 +41,9 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
+  def aggregate(groupingList: Seq[Expression], aggregateList: Seq[NamedExpression]): Aggregate =
+    Aggregate(this, groupingList, aggregateList)
+
   def filter(condition: Expression): Filter = Filter(this, condition)
 
   def where(condition: Expression): Filter = filter(condition)
@@ -52,6 +55,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
 
   def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
+
+  def distinct: Distinct = Distinct(this)
 
   def subquery(name: String): Subquery = Subquery(this, name)
 
@@ -271,7 +276,6 @@ case class Join(
   joinType: JoinType,
   maybeCondition: Option[Expression]
 ) extends BinaryLogicalPlan {
-
   override lazy val output: Seq[Attribute] = joinType match {
     case LeftSemi   => left.output
     case Inner      => left.output ++ right.output
@@ -280,7 +284,7 @@ case class Join(
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
 
-  lazy val selfJoinResolved: Boolean = (left.outputSet & right.outputSet).isEmpty
+  lazy val duplicatesResolved: Boolean = (left.outputSet & right.outputSet).isEmpty
 
   def on(condition: Expression): Join = copy(maybeCondition = condition.some)
 }
@@ -294,7 +298,6 @@ case class Aggregate(
   groupingExpressions: Seq[Expression],
   aggregateExpressions: Seq[NamedExpression]
 ) extends UnaryLogicalPlan {
-
   override lazy val output: Seq[Attribute] = aggregateExpressions map (_.toAttribute)
 }
 

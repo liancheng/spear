@@ -48,7 +48,6 @@ case class Alias(
   child: Expression,
   override val expressionId: ExpressionId = newExpressionId()
 ) extends NamedExpression with UnaryExpression {
-
   override def foldable: Boolean = false
 
   override protected def strictDataType: DataType = child.dataType
@@ -113,13 +112,7 @@ case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNa
   def string: AttributeRef = this of StringType
 }
 
-case class AttributeRef(
-  name: String,
-  override val dataType: DataType,
-  override val nullable: Boolean,
-  override val expressionId: ExpressionId
-) extends Attribute with UnevaluableExpression {
-
+trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (nullable) "?" else "!"
     s"${quote(name)}#${expressionId.id}:${dataType.sql}$nullability"
@@ -127,6 +120,15 @@ case class AttributeRef(
 
   override def sql: Option[String] = s"${quote(name)}".some
 
+  def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
+}
+
+case class AttributeRef(
+  name: String,
+  override val dataType: DataType,
+  override val nullable: Boolean,
+  override val expressionId: ExpressionId
+) extends ResolvedAttribute with UnevaluableExpression {
   override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
@@ -134,8 +136,6 @@ case class AttributeRef(
   override def ? : AttributeRef = withNullability(true)
 
   override def ! : AttributeRef = withNullability(false)
-
-  def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)

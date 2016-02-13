@@ -135,6 +135,8 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 abstract class GreatestLeastLike extends Expression {
   assert(children.nonEmpty)
 
+  def nullLarger: Boolean
+
   override protected def strictDataType: DataType = children.head.dataType
 
   override lazy val strictlyTypedForm: Try[Expression] = for {
@@ -146,13 +148,13 @@ abstract class GreatestLeastLike extends Expression {
     promotedChildren = strictChildren.map(promoteDataType(_, widestType))
   } yield if (sameChildren(promotedChildren)) this else makeCopy(promotedChildren)
 
-  protected lazy val ordering = new NullSafeOrdering(strictDataType)
+  protected lazy val ordering = new NullSafeOrdering(strictDataType, nullLarger)
 }
 
-case class Greatest(children: Seq[Expression]) extends GreatestLeastLike {
+case class Greatest(children: Seq[Expression], nullLarger: Boolean) extends GreatestLeastLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
 }
 
-case class Least(children: Seq[Expression]) extends GreatestLeastLike {
+case class Least(children: Seq[Expression], nullLarger: Boolean) extends GreatestLeastLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) min ordering
 }

@@ -14,4 +14,6 @@ trait ComparisonDSL { this: Expression =>
   def =:=(that: Expression): Eq = Eq(this, that)
 
   def =/=(that: Expression): NotEq = NotEq(this, that)
+
+  def <=>(that: Expression): NullSafeEq = NullSafeEq(this, that)
 }

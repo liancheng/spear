@@ -77,7 +77,7 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
 
   override def iterator: Iterator[Row] = data.iterator
 
-  override def nodeCaption: String = s"$nodeName output=$outputStrings"
+  override protected def argsStrings: Seq[String] = Nil
 }
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
@@ -140,7 +140,6 @@ case class CartesianProduct(
   right: PhysicalPlan,
   maybeCondition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-
   private val boundCondition = maybeCondition map (BoundRef.bind(_, output)) getOrElse True
 
   def evaluateBoundCondition(input: Row): Boolean =
@@ -152,8 +151,8 @@ case class CartesianProduct(
     for {
       leftRow <- left.iterator
       rightRow <- right.iterator
-      joinedRow = JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
-    } yield JoinedRow(leftRow, rightRow)
+      joinedRow = new JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
+    } yield new JoinedRow(leftRow, rightRow)
   }
 
   def on(condition: Expression): CartesianProduct = copy(maybeCondition = condition.some)

@@ -121,7 +121,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeCaption: String = getClass.getSimpleName
 
   protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    sequence(children map f) map (_ mkString (s"$nodeName(", ", ", ")"))
+    sequence(children map f) map (_ mkString (s"${nodeName.toUpperCase}(", ", ", ")"))
 
   def debugString: String = template(_.debugString.some).get
 

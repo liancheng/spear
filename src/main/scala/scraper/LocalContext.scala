@@ -3,6 +3,9 @@ package scraper
 import scala.collection.{Iterable, mutable}
 import scala.reflect.runtime.universe.WeakTypeTag
 
+import com.typesafe.config.Config
+
+import scraper.config.Settings
 import scraper.exceptions.TableNotFoundException
 import scraper.expressions.Expression
 import scraper.parser.Parser
@@ -25,15 +28,17 @@ trait Context {
 
   type Catalog <: scraper.Catalog
 
-  private[scraper] def catalog: Catalog
+  def settings: Settings
 
-  private[scraper] def parse(query: String): LogicalPlan
+  def catalog: Catalog
 
-  private[scraper] def analyze: RulesExecutor[LogicalPlan]
+  def parse(query: String): LogicalPlan
 
-  private[scraper] def optimize: RulesExecutor[LogicalPlan]
+  def analyze: RulesExecutor[LogicalPlan]
 
-  private[scraper] def plan: QueryPlanner[LogicalPlan, PhysicalPlan]
+  def optimize: RulesExecutor[LogicalPlan]
+
+  def plan: QueryPlanner[LogicalPlan, PhysicalPlan]
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
@@ -52,20 +57,20 @@ object Context {
   }
 }
 
-class LocalContext extends Context {
+class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
 
   override type Catalog = LocalCatalog
 
-  override private[scraper] val catalog: Catalog = new Catalog
+  override val catalog: Catalog = new Catalog
 
-  override private[scraper] def parse(query: String): LogicalPlan = new Parser().parse(query)
+  override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
 
-  override private[scraper] val analyze = new Analyzer(catalog)
+  override val analyze = new Analyzer(catalog)
 
-  override private[scraper] val optimize = new Optimizer
+  override val optimize = new Optimizer
 
-  override private[scraper] val plan = new LocalQueryPlanner
+  override val plan = new LocalQueryPlanner
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(new QueryExecution(LocalRelation(data), this))

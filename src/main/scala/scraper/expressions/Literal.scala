@@ -11,13 +11,14 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
   override def debugString: String = s"$value:${dataType.sql}"
 
   override def sql: Option[String] = Some((value, dataType) match {
-    case (v: String, StringType) => '"' + v.replace("\\", "\\\\").replace("\"", "\\\"") + '"'
-    case (v: Byte, ByteType)     => s"CAST($v AS ${ByteType.sql})"
-    case (v: Short, ShortType)   => s"CAST($v AS ${ShortType.sql})"
-    case (v: Long, LongType)     => s"CAST($v AS ${LongType.sql})"
-    case (v: Float, FloatType)   => s"CAST($v AS ${FloatType.sql})"
-    case (v: Double, DoubleType) => s"CAST($v AS ${DoubleType.sql})"
-    case (v, _)                  => v.toString
+    case (v: String, StringType)   => '"' + v.replace("\\", "\\\\").replace("\"", "\\\"") + '"'
+    case (v: Boolean, BooleanType) => v.toString.toUpperCase
+    case (v: Byte, ByteType)       => s"CAST($v AS ${ByteType.sql})"
+    case (v: Short, ShortType)     => s"CAST($v AS ${ShortType.sql})"
+    case (v: Long, LongType)       => s"CAST($v AS ${LongType.sql})"
+    case (v: Float, FloatType)     => s"CAST($v AS ${FloatType.sql})"
+    case (v: Double, DoubleType)   => s"CAST($v AS ${DoubleType.sql})"
+    case (v, _)                    => v.toString
   })
 }
 

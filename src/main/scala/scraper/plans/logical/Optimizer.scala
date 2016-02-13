@@ -184,7 +184,8 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition =>
-        plan filter reduceAliases(collectAliases(projectList), condition) select projectList
+        val substitutedCondition = reduceAliases(collectAliases(projectList), condition)
+        plan filter substitutedCondition select projectList
     }
   }
 

@@ -54,6 +54,17 @@ case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
   override def operator: String = "<>"
 }
 
+case class NullSafeEq(left: Expression, right: Expression) extends BinaryComparison {
+  override def evaluate(input: Row): Any = children map (_ evaluate input) match {
+    case Seq(null, null) => true
+    case Seq(null, _)    => false
+    case Seq(_, null)    => false
+    case Seq(lhs, rhs)   => ordering.equiv(lhs, rhs)
+  }
+
+  override def operator: String = "<=>"
+}
+
 case class Gt(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.gt(lhs, rhs)
 

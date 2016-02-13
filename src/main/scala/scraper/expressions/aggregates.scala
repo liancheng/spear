@@ -78,7 +78,7 @@ abstract class MinMaxLike extends UnaryExpression with AggregateFunction {
     }
   } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
 
-  protected lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsFirst = true)
+  protected lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsLarger = true)
 
   override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = null
 

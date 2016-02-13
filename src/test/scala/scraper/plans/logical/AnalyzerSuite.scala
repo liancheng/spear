@@ -10,7 +10,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     val relation = LocalRelation.empty('a.int.!, 'b.string.?)
 
     checkPlan(
-      analyzer.resolve(relation select ('b, ('a + 1) as 's)),
+      analyzer resolve (relation select ('b, ('a + 1) as 's)),
       relation select ('b.string.?, ('a.int.! + 1) as 's)
     )
   }
@@ -19,7 +19,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     val relation = LocalRelation.empty('a.int.!, 'b.string.?)
 
     checkPlan(
-      analyzer.resolve(relation select '*),
+      analyzer resolve (relation select '*),
       relation select ('a.int.!, 'b.string.?)
     )
   }
@@ -28,8 +28,18 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     val relation = LocalRelation.empty('a.int.!)
 
     checkPlan(
-      analyzer.resolve(relation join relation),
+      analyzer resolve (relation join relation),
       relation join relation.newInstance()
+    )
+  }
+
+  test("duplicated aliases") {
+    val plan = analyzer resolve (SingleRowRelation select (1 as 'a))
+
+    checkPlan(
+      analyzer resolve (plan union plan),
+      // Not that the following two aliases have different expression IDs.
+      SingleRowRelation select (1 as 'a) union (SingleRowRelation select (1 as 'a))
     )
   }
 }

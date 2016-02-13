@@ -7,7 +7,7 @@ import scraper.expressions.functions._
 import scraper.types.StringType
 
 class LocalContextSuite extends LoggingFunSuite with TestUtils {
-  private implicit val context = new LocalContext
+  private implicit val context = new LocalContext(Test.defaultSettings)
 
   test("local data") {
     val data = Seq(1 -> "a", 2 -> "b")

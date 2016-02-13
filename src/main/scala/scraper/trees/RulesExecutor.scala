@@ -1,6 +1,6 @@
 package scraper.trees
 
-import scala.annotation.tailrec
+import scala.annotation.{unspecialized, tailrec}
 
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
 import scraper.utils.{Logging, sideBySide}

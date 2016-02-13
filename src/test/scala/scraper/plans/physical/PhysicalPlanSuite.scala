@@ -54,7 +54,7 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("sort") {
     checkPhysicalPlan(
-      r1 orderBy a1.desc,
+      r1 orderBy a1.desc(true),
       Row(2, "b"), Row(1, "a")
     )
   }
