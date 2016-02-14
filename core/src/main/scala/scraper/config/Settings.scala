@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
@@ -13,7 +14,7 @@ import scraper.exceptions.SettingsValidationException
 
 class Settings(val config: Config) {
   def apply[T](key: Key[T]): T = (key validator (key get config)).recover {
-    case cause: Throwable =>
+    case NonFatal(cause) =>
       throw new SettingsValidationException(
         s"Configured value of settings key ${key.name} didn't pass validation: ${cause.getMessage}",
         cause

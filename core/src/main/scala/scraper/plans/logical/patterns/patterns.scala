@@ -67,7 +67,7 @@ package object patterns {
         // to
         //
         //   SELECT e AS a2 FROM t
-        case a @ Alias(_, ref: AttributeRef, _) if aliases contains ref =>
+        case a @ Alias(ref: AttributeRef, _, _) if aliases contains ref =>
           a.copy(child = aliases(ref))
 
         // Alias inlining. E.g., it helps to reduce
@@ -80,7 +80,7 @@ package object patterns {
         //
         //   SELECT e AS a1 FROM t
         case ref @ AttributeRef(name, _, _, id) if aliases contains ref =>
-          Alias(name, aliases(ref), id)
+          Alias(aliases(ref), name, id)
       }.asInstanceOf[T]
 
     def collectAliases(projectList: Seq[NamedExpression]): Map[Attribute, Expression] =

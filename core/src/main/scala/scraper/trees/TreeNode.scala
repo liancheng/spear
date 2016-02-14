@@ -111,7 +111,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
-  def prettyTree: String = prettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
+  def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = toString
 
@@ -126,12 +126,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    *        For root node, `lastChildren` is empty (`Nil`).
    * @param builder The string builder used to build the tree string.
    */
-  private def prettyTree(
+  private[scraper] def buildPrettyTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
-    val corner = "\u2514"
+    val corner = "\u2570"
     val bar = "\u2574"
 
     if (depth > 0) {
@@ -143,8 +143,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder ++= "\n"
 
     if (children.nonEmpty) {
-      children.init foreach (_ prettyTree (depth + 1, lastChildren :+ false, builder))
-      children.last prettyTree (depth + 1, lastChildren :+ true, builder)
+      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
     }
 
     builder

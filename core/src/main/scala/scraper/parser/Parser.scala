@@ -188,13 +188,13 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case ps =>
         ps.zipWithIndex.map {
           case (e: NamedExpression, _) => e
-          case (e: Expression, i)      => Alias(s"col$i", e)
+          case (e: Expression, i)      => e as s"col$i"
         }
     }
 
   private def projection: Parser[Expression] =
     expression ~ (AS.? ~> ident).? ^^ {
-      case e ~ Some(a) => Alias(a, e)
+      case e ~ Some(a) => e as a
       case e ~ _       => e
     }
 

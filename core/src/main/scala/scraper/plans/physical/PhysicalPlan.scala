@@ -1,5 +1,7 @@
 package scraper.plans.physical
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scalaz.Scalaz._
 
 import scraper.expressions.BoundRef.bind
@@ -7,7 +9,7 @@ import scraper.expressions.Literal.True
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
-import scraper.{JoinedRow, Row}
+import scraper.{BasicMutableRow, JoinedRow, MutableRow, Row}
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]
@@ -163,4 +165,24 @@ case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysica
 
   override def iterator: Iterator[Row] =
     child.iterator.toArray.sorted(new RowOrdering(order, child.output)).toIterator
+}
+
+case class HashAggregate(
+  child: PhysicalPlan,
+  groupingList: Seq[GroupingAlias],
+  aggregateList: Seq[NamedExpression]
+) extends UnaryPhysicalPlan {
+  private val hashMap: mutable.HashMap[Row, MutableRow] = mutable.HashMap.empty[Row, MutableRow]
+
+  private val groupingOutput = groupingList map (_.toAttribute)
+
+  private val boundGroupingList: Seq[Expression] =
+    groupingList.map(BoundRef.bind(_, child.output))
+
+  private val boundAggregateList: Seq[Expression] =
+    aggregateList.map(BoundRef.bind(_, groupingOutput ++ child.output))
+
+  override def output: Seq[Attribute] = (groupingList ++ aggregateList) map (_.toAttribute)
+
+  override def iterator: Iterator[Row] = ???
 }

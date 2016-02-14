@@ -69,7 +69,9 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
 
   def apply(index: Int): StructField = fields(index)
 
-  def fieldTypes: Seq[DataType] = fields.map(_.dataType)
+  def length: Int = fields.length
+
+  def fieldTypes: Seq[DataType] = fields map (_.dataType)
 
   def toAttributes: Seq[AttributeRef] = fields map {
     field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())

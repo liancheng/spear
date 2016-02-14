@@ -2,97 +2,41 @@ package scraper.expressions
 
 import scala.util.Try
 
-import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.promoteDataType
-import scraper.plans.physical.NullSafeOrdering
 import scraper.types._
 import scraper.{MutableRow, Row}
 
 trait AggregateFunction extends Expression {
-  def partialResultType: DataType = dataType
+  def accumulatorSchema: StructType
 
-  def zero(row: MutableRow, ordinal: Int): Unit
+  def zero(accumulator: MutableRow): Unit
 
-  def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit
+  def partial(accumulator: MutableRow, rows: Iterator[Row]): Unit
 
-  def merge(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit =
-    partial(accumulator, ordinal, rows)
+  def merge(accumulator: MutableRow, rows: Iterator[Row]): Unit =
+    partial(accumulator, rows)
 
-  def result(accumulator: Row, ordinal: Int): Any
+  def result(accumulator: Row): Any
 }
 
 case class Count(child: Expression) extends UnaryExpression with AggregateFunction {
   override def dataType: DataType = LongType
 
+  override def accumulatorSchema: StructType = StructType('acc -> LongType.!)
+
   override lazy val strictlyTypedForm: Try[Expression] = for {
     strictChild <- child.strictlyTypedForm
   } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
-  override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = 0L
+  override def zero(row: MutableRow): Unit = row(0) = 0L
 
-  override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
-    accumulator(ordinal) = rows.length.toLong
+  override def partial(accumulator: MutableRow, rows: Iterator[Row]): Unit = {
+    accumulator(0) = rows.length.toLong
   }
 
-  override def merge(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
-    val initial = accumulator(ordinal).asInstanceOf[Long]
-    accumulator(ordinal) = initial + rows.map(_.head.asInstanceOf[Long]).sum
+  override def merge(accumulator: MutableRow, rows: Iterator[Row]): Unit = {
+    val initial = accumulator.head.asInstanceOf[Long]
+    accumulator(0) = initial + rows.map(_.head.asInstanceOf[Long]).sum
   }
 
-  override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
-}
-
-case class Sum(child: Expression) extends UnaryExpression with AggregateFunction {
-  override protected def strictDataType: DataType = child.dataType
-
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
-      case NumericType(e)            => e
-      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
-      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
-    }
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
-
-  private lazy val numeric: Numeric[Any] = dataType match {
-    case t: NumericType => t.genericNumeric
-  }
-
-  override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = numeric.zero
-
-  override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
-    numeric.plus(accumulator(ordinal), rows map child.evaluate sum numeric)
-  }
-
-  override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
-}
-
-abstract class MinMaxLike extends UnaryExpression with AggregateFunction {
-  this: Product =>
-
-  override protected def strictDataType: DataType = child.dataType
-
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
-      case OrderedType(e) => e
-      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
-    }
-  } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
-
-  protected lazy val ordering: Ordering[Any] = new NullSafeOrdering(dataType, nullsLarger = true)
-
-  override def zero(row: MutableRow, ordinal: Int): Unit = row(ordinal) = null
-
-  override def result(accumulator: Row, ordinal: Int): Any = accumulator(ordinal)
-}
-
-case class Max(child: Expression) extends MinMaxLike {
-  override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
-    accumulator(ordinal) = ordering.max(accumulator(ordinal), rows map child.evaluate max ordering)
-  }
-}
-
-case class Min(child: Expression) extends MinMaxLike {
-  override def partial(accumulator: MutableRow, ordinal: Int, rows: Iterator[Row]): Unit = {
-    accumulator(ordinal) = ordering.min(accumulator(ordinal), rows map child.evaluate min ordering)
-  }
+  override def result(accumulator: Row): Any = accumulator.head
 }

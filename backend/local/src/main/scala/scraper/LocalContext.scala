@@ -26,7 +26,7 @@ class LocalContext(val settings: Settings) extends Context {
 
   private val optimizer = new Optimizer
 
-  override def optimize(plan: LogicalPlan): LogicalPlan = optimize(plan)
+  override def optimize(plan: LogicalPlan): LogicalPlan = optimizer(plan)
 
   private val planner = new LocalQueryPlanner
 
@@ -81,23 +81,26 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
 
   object BasicOperators extends Strategy {
     override def apply(logicalPlan: LogicalPlan): Seq[PhysicalPlan] = logicalPlan match {
-      case child Project projectList =>
-        physical.Project(planLater(child), projectList) :: Nil
-
-      case child Filter condition =>
-        physical.Filter(planLater(child), condition) :: Nil
-
-      case child Limit n =>
-        physical.Limit(planLater(child), n) :: Nil
-
-      case Join(left, right, Inner, maybeCondition) =>
-        physical.CartesianProduct(planLater(left), planLater(right), maybeCondition) :: Nil
-
-      case child Sort order =>
-        physical.Sort(planLater(child), order) :: Nil
-
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
+
+      case child Project projectList =>
+        (planLater(child) select projectList) :: Nil
+
+      case child Filter condition =>
+        (planLater(child) filter condition) :: Nil
+
+      case child Limit n =>
+        (planLater(child) limit n) :: Nil
+
+      case Join(left, right, Inner, Some(condition)) =>
+        (planLater(left) cartesian planLater(right) on condition) :: Nil
+
+      case Join(left, right, Inner, _) =>
+        (planLater(left) cartesian planLater(right)) :: Nil
+
+      case child Sort order =>
+        (planLater(child) orderBy order) :: Nil
 
       case child Subquery _ =>
         planLater(child) :: Nil
@@ -106,13 +109,13 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         physical.SingleRowRelation :: Nil
 
       case left Union right =>
-        physical.Union(planLater(left), planLater(right)) :: Nil
+        (planLater(left) union planLater(right)) :: Nil
 
       case left Intersect right =>
-        physical.Intersect(planLater(left), planLater(right)) :: Nil
+        (planLater(left) intersect planLater(right)) :: Nil
 
       case left Except right =>
-        physical.Except(planLater(left), planLater(right)) :: Nil
+        (planLater(left) except planLater(right)) :: Nil
 
       case _ => Nil
     }

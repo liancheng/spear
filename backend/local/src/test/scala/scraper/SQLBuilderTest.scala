@@ -1,5 +1,7 @@
 package scraper
 
+import scala.util.control.NonFatal
+
 import org.scalatest.BeforeAndAfterAll
 
 import scraper.expressions.Expression
@@ -35,7 +37,7 @@ abstract class SQLBuilderTest
     try {
       assert(maybeSQL.get === expectedSQL)
     } catch {
-      case cause: Throwable =>
+      case NonFatal(cause) =>
         fail(
           s"""Wrong SQL generated for the following expression:
              |${e.prettyTree}
@@ -62,7 +64,7 @@ abstract class SQLBuilderTest
     try {
       assert(actualSQL === expectedSQL)
     } catch {
-      case cause: Throwable =>
+      case NonFatal(cause) =>
         fail(
           s"""Wrong SQL generated for the following logical query plan:
              |${plan.prettyTree}

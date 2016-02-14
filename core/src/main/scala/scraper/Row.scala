@@ -1,6 +1,6 @@
 package scraper
 
-import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait Row extends Seq[Any]
 
@@ -26,8 +26,8 @@ class BasicRow(values: Seq[Any]) extends Row {
   override def iterator: Iterator[Any] = values.iterator
 }
 
-class BasicMutableRow(values: mutable.ArrayBuffer[Any]) extends MutableRow {
-  def this(size: Int) = this(mutable.ArrayBuffer.fill(size)(null: Any))
+class BasicMutableRow(values: ArrayBuffer[Any]) extends MutableRow {
+  def this(size: Int) = this(ArrayBuffer.fill(size)(null: Any))
 
   override def update(ordinal: Int, value: Any): Unit = values(ordinal) = value
 

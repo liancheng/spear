@@ -114,12 +114,12 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
         |├╴gender: string?
         |├╴location: struct?
         |│ ├╴latitude: double
-        |│ └╴longitude: double
+        |│ ╰╴longitude: double
         |├╴phone-numbers: array?
-        |│ └╴element: string
-        |└╴addresses: map?
+        |│ ╰╴element: string
+        |╰╴addresses: map?
         |  ├╴key: string
-        |  └╴value: string
+        |  ╰╴value: string
         |""".stripMargin.trim,
       testSchema.prettyTree
     )

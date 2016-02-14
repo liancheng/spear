@@ -1,6 +1,9 @@
 package scraper.plans
 
-import scraper.expressions.{Attribute, Expression}
+import scala.util.{Success, Try}
+
+import scraper.expressions.{Attribute, Expression, LeafExpression, UnevaluableExpression}
+import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
 import scraper.trees.TreeNode
 import scraper.types.StructType
 
@@ -62,28 +65,34 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   /**
    * Returns string representations of each constructor arguments of this query plan
    */
-  protected def argsStrings: Seq[String] = productIterator.toSeq map {
-    // Avoids duplicating string representation of child nodes.  Replaces them with `$n`.
-    case arg if children contains arg =>
-      s"$$${children indexOf arg}"
+  protected def argsStrings: Seq[String] = {
+    def expressionHolder(e: Expression): String = s"$$expr{${expressions indexOf e}}"
 
-    case arg: Seq[_] =>
-      arg.map {
-        case e: Expression => e.debugString
-        case _             => arg.toString
-      } mkString ("[", ", ", "]")
+    def childHolder(child: Plan): String = s"$$child{${children indexOf child}}"
 
-    case arg: Some[_] =>
-      arg.map {
-        case e: Expression => e.debugString
-        case _             => arg.toString
-      } mkString ("Some(", "", ")")
+    productIterator.toSeq map {
+      // Avoids duplicating string representation of child nodes.  Replaces them with `$n`.
+      case arg if children contains arg =>
+        childHolder(arg.asInstanceOf[Plan])
 
-    case arg: Expression =>
-      arg.debugString
+      case arg: Seq[_] =>
+        arg.map {
+          case e: Expression => expressionHolder(e)
+          case _             => arg.toString
+        } mkString ("Seq(", ", ", ")")
 
-    case arg =>
-      arg.toString
+      case arg: Some[_] =>
+        arg.map {
+          case e: Expression => expressionHolder(e)
+          case _             => arg.toString
+        } mkString ("Some(", "", ")")
+
+      case arg: Expression =>
+        expressionHolder(arg)
+
+      case arg =>
+        arg.toString
+    }
   }
 
   /**
@@ -92,8 +101,54 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   protected def outputStrings: Seq[String] = output map (_.debugString)
 
   override def nodeCaption: String = {
-    val argsString = argsStrings mkString ("[", ", ", "]")
+    val argsString = argsStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
     s"$nodeName: $argsString ==> $outputString"
+  }
+
+  override private[scraper] def buildPrettyTree(
+    depth: Int, lastChildren: scala.Seq[Boolean], builder: scala.StringBuilder
+  ): scala.StringBuilder = {
+    val pipe = "\u2502"
+    val tee = "\u251c"
+    val corner = "\u2570"
+    val bar = "\u2574"
+
+    if (depth > 0) {
+      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
+      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
+    }
+
+    builder ++= nodeCaption
+    builder ++= "\n"
+
+    if (expressions.nonEmpty) {
+      ExpressionContainer(expressions map ExpressionString).buildPrettyTree(
+        depth + 2, lastChildren :+ children.isEmpty :+ true, builder
+      )
+    }
+
+    if (children.nonEmpty) {
+      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
+    }
+
+    builder
+  }
+}
+
+object QueryPlan {
+  private case class ExpressionContainer(children: Seq[Expression])
+    extends Expression with UnevaluableExpression {
+
+    override def strictlyTypedForm: Try[Expression] = Success(this)
+
+    override def nodeCaption: String = "Expressions"
+  }
+
+  private case class ExpressionString(child: Expression)
+    extends LeafExpression with UnevaluableExpression {
+
+    override def nodeCaption: String = child.debugString
   }
 }

@@ -16,12 +16,17 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     DeduplicateReferences
   ))
 
+  private val cleanupBatch = RuleBatch("Cleanup", Once, Seq(
+    CleanupGeneratedOutput
+  ))
+
   private val typeCheckBatch = RuleBatch("Type check", Once, Seq(
     TypeCheck
   ))
 
   override def batches: Seq[RuleBatch] = Seq(
     resolutionBatch,
+    cleanupBatch,
     typeCheckBatch
   )
 
@@ -40,7 +45,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
          |${tree.prettyTree}
          |""".stripMargin
     )
-    apply(tree, resolutionBatch :: Nil)
+    apply(tree, resolutionBatch :: cleanupBatch :: Nil)
   }
 
   def typeCheck(tree: LogicalPlan): LogicalPlan = {
@@ -190,8 +195,23 @@ object Analyzer {
       projectList.collect { case a: Alias => a.toAttribute }.toSet
 
     def newAliases(projectList: Seq[NamedExpression]): Seq[NamedExpression] = projectList map {
-      case Alias(name, child, _) => child as name
+      case Alias(child, name, _) => child as name
       case e                     => e
+    }
+  }
+
+  /**
+   * This rule removes outermost generated output attributes by applying an optional projection.
+   */
+  object CleanupGeneratedOutput extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree match {
+      case _ if tree.output exists isGenerated => tree select (tree.output filterNot isGenerated)
+      case _                                   => tree
+    }
+
+    private def isGenerated(e: Expression): Boolean = e match {
+      case _: GeneratedNamedExpression => true
+      case _                           => false
     }
   }
 }

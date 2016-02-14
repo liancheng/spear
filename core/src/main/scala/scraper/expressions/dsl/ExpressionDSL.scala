@@ -10,9 +10,9 @@ trait ExpressionDSL
   with ComparisonDSL
   with LogicalOperatorDSL { this: Expression =>
 
-  def as(alias: String): Alias = Alias(alias, this)
+  def as(alias: String): Alias = Alias(this, alias)
 
-  def as(alias: Symbol): Alias = Alias(alias.name, this)
+  def as(alias: Symbol): Alias = Alias(this, alias.name)
 
   def cast(dataType: DataType): Cast = Cast(this, dataType)
 

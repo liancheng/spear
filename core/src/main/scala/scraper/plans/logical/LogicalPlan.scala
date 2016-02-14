@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
+import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 import scalaz.Scalaz._
 
@@ -42,7 +43,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
   def aggregate(groupingList: Seq[Expression], aggregateList: Seq[NamedExpression]): Aggregate =
-    Aggregate(this, groupingList, aggregateList)
+    Aggregate(this, groupingList map (GroupingAlias(_)), aggregateList)
 
   def filter(condition: Expression): Filter = Filter(this, condition)
 
@@ -60,7 +61,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def subquery(name: String): Subquery = Subquery(this, name)
 
-  def join(that: LogicalPlan): LogicalPlan = Join(this, that, Inner, None)
+  def join(that: LogicalPlan): Join = Join(this, that, Inner, None)
 
   def leftJoin(that: LogicalPlan): Join = Join(this, that, LeftOuter, None)
 
@@ -206,7 +207,7 @@ trait SetOperator extends BinaryLogicalPlan {
 
     for {
       _ <- Try(checkBranchSchemata()).recover {
-        case cause: Throwable =>
+        case NonFatal(cause) =>
           throw new TypeCheckException(this, cause)
       }
 
@@ -295,10 +296,10 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 
 case class Aggregate(
   child: LogicalPlan,
-  groupingExpressions: Seq[Expression],
-  aggregateExpressions: Seq[NamedExpression]
+  groupingList: Seq[GroupingAlias],
+  aggregateList: Seq[NamedExpression]
 ) extends UnaryLogicalPlan {
-  override lazy val output: Seq[Attribute] = aggregateExpressions map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = (groupingList ++ aggregateList) map (_.toAttribute)
 }
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {

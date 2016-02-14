@@ -21,6 +21,8 @@ trait NamedExpression extends Expression {
   def toAttribute: Attribute
 }
 
+trait GeneratedNamedExpression extends NamedExpression
+
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
   override def expressionId: ExpressionId = throw new ExpressionUnresolvedException(this)
 }
@@ -44,8 +46,8 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 }
 
 case class Alias(
-  name: String,
   child: Expression,
+  name: String,
   override val expressionId: ExpressionId = newExpressionId()
 ) extends NamedExpression with UnaryExpression {
   override def foldable: Boolean = false
@@ -67,6 +69,26 @@ case class Alias(
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
+}
+
+case class GroupingAlias(
+  child: Expression,
+  override val expressionId: ExpressionId = newExpressionId()
+) extends NamedExpression with UnaryExpression with GeneratedNamedExpression {
+  require(child.resolved)
+
+  override lazy val strictlyTypedForm: Try[GroupingAlias] = for {
+    e <- child.strictlyTypedForm
+  } yield if (e sameOrEqual child) this else copy(child = e)
+
+  override def name: String = GroupingAlias.Prefix + expressionId.id
+
+  override def toAttribute: Attribute =
+    GroupingAttribute(child.dataType, child.nullable, expressionId)
+}
+
+object GroupingAlias {
+  val Prefix = "@group"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
@@ -132,10 +154,18 @@ case class AttributeRef(
   override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
+}
 
-  override def ? : AttributeRef = withNullability(true)
+case class GroupingAttribute(
+  override val dataType: DataType,
+  override val nullable: Boolean,
+  override val expressionId: ExpressionId
+) extends ResolvedAttribute with UnevaluableExpression {
+  override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
-  override def ! : AttributeRef = withNullability(false)
+  override def withNullability(nullable: Boolean): GroupingAttribute = copy(nullable = nullable)
+
+  override val name: String = GroupingAlias.Prefix + expressionId.id
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)
@@ -155,7 +185,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 object BoundRef {
   def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = {
     expression.transformUp {
-      case ref: AttributeRef =>
+      case ref: ResolvedAttribute =>
         val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
         if (ordinal == -1) {
           throw new ResolutionFailureException({

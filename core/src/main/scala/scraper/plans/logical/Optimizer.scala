@@ -135,7 +135,7 @@ object Optimizer {
    */
   object ReduceAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case outer @ Alias(_, Alias(_, child, _), _) => outer.copy(child = child)
+      case outer @ Alias(Alias(child, _, _), _, _) => outer.copy(child = child)
     }
   }
 
