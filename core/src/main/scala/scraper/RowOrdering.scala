@@ -1,6 +1,5 @@
-package scraper.plans.physical
+package scraper
 
-import scraper.Row
 import scraper.expressions._
 import scraper.types.{DataType, OrderedType}
 

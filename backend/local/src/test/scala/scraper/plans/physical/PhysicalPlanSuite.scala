@@ -1,7 +1,8 @@
 package scraper.plans.physical
 
 import scraper.expressions.dsl._
-import scraper.{TestUtils, LoggingFunSuite, Row}
+import scraper.local.plans.physical.dsl._
+import scraper.{LoggingFunSuite, Row, TestUtils}
 
 class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   private val Seq(a1, b1) = Seq('a.int.!, 'b.string.?)

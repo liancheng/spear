@@ -1,7 +1,8 @@
 package scraper.plans.logical
 
 import scraper.expressions.dsl._
-import scraper.{LocalCatalog, LoggingFunSuite, TestUtils}
+import scraper.local.LocalCatalog
+import scraper.{LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   private val analyzer = new Analyzer(new LocalCatalog)

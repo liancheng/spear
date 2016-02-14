@@ -13,9 +13,10 @@ import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.generators.expressions._
 import Optimizer.{CNFConversion, ReduceFilters}
+import scraper.local.LocalCatalog
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{TestUtils, LocalCatalog, LoggingFunSuite}
+import scraper.{TestUtils, LoggingFunSuite}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private implicit def prettyExpression(expression: Expression): Pretty = Pretty {

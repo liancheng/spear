@@ -1,15 +1,17 @@
-package scraper
+package scraper.local
 
 import scala.collection.{Iterable, mutable}
 import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings
 import scraper.exceptions.TableNotFoundException
+import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
-import scraper.plans.{QueryPlanner, physical}
+import scraper.plans.{QueryExecution, QueryPlanner, physical}
 import scraper.types.{LongType, StructType}
+import scraper.{Catalog, Context, DataFrame, Row}
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
@@ -72,7 +74,7 @@ class LocalCatalog extends Catalog {
 }
 
 class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
-  extends plans.QueryExecution
+  extends QueryExecution
 
 class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
   override def strategies: Seq[Strategy] = Seq(

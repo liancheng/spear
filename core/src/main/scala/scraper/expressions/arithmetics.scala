@@ -2,10 +2,9 @@ package scraper.expressions
 
 import scala.util.{Failure, Success, Try}
 
-import scraper.Row
+import scraper.{NullSafeOrdering, Row}
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
-import scraper.plans.physical.NullSafeOrdering
 import scraper.types._
 import scraper.utils._
 

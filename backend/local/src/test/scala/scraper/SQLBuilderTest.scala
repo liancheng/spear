@@ -6,6 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
+import scraper.local.LocalContext
 import scraper.plans.logical.LogicalPlan
 
 abstract class SQLBuilderTest

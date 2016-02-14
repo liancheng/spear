@@ -11,9 +11,10 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
+import scraper.local.LocalCatalog
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
 import scraper.types.{DataType, IntType}
-import scraper.{LocalCatalog, LoggingFunSuite, Row, TestUtils}
+import scraper.{LoggingFunSuite, Row, TestUtils}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
   def genExprNode: Gen[ExprNode] = Gen.sized {
