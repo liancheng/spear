@@ -1,6 +1,7 @@
 package scraper.plans.physical
 
 import scraper.expressions.dsl._
+import scraper.local.plans.physical.LocalRelation
 import scraper.local.plans.physical.dsl._
 import scraper.{LoggingFunSuite, Row, TestUtils}
 
@@ -17,6 +18,13 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   private val r2 = LocalRelation(
     Seq(Row(1, "a"), Row(3, "c")),
     Seq(a2, b2)
+  )
+
+  private val Seq(a3, b3) = Seq('a.int.!, 'b.string.?)
+
+  private val r3 = LocalRelation(
+    Seq(Row(1: Integer, "a"), Row(3: Integer, "c"), Row(null: Integer, "b"), Row(4: Integer, null)),
+    Seq(a3, b3)
   )
 
   def checkPhysicalPlan(plan: PhysicalPlan, expected: Traversable[Row]): Unit = {
@@ -55,8 +63,33 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("sort") {
     checkPhysicalPlan(
-      r1 orderBy a1.desc(true),
+      r1 orderBy a1.desc,
       Row(2, "b"), Row(1, "a")
+    )
+
+    checkPhysicalPlan(
+      r1 orderBy a1.asc,
+      Row(1, "a"), Row(2, "b")
+    )
+
+    checkPhysicalPlan(
+      r3 orderBy a3.asc.nullsFirst,
+      Row(null: Integer, "b"), Row(1: Integer, "a"), Row(3: Integer, "c"), Row(4: Integer, null)
+    )
+
+    checkPhysicalPlan(
+      r3 orderBy a3.asc.nullsLast,
+      Row(1: Integer, "a"), Row(3: Integer, "c"), Row(4: Integer, null), Row(null: Integer, "b")
+    )
+
+    checkPhysicalPlan(
+      r3 orderBy b3.desc.nullsFirst,
+      Row(4: Integer, null), Row(3: Integer, "c"), Row(null: Integer, "b"), Row(1: Integer, "a")
+    )
+
+    checkPhysicalPlan(
+      r3 orderBy b3.desc.nullsLast,
+      Row(3: Integer, "c"), Row(null: Integer, "b"), Row(1: Integer, "a"), Row(4: Integer, null)
     )
   }
 

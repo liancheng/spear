@@ -5,11 +5,12 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings
 import scraper.exceptions.TableNotFoundException
+import scraper.local.plans.physical
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
-import scraper.plans.{QueryExecution, QueryPlanner, physical}
+import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.types.{LongType, StructType}
 import scraper.{Catalog, Context, DataFrame, Row}
 
@@ -108,7 +109,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         planLater(child) :: Nil
 
       case SingleRowRelation =>
-        physical.SingleRowRelation :: Nil
+        scraper.plans.physical.SingleRowRelation :: Nil
 
       case left Union right =>
         (planLater(left) union planLater(right)) :: Nil
