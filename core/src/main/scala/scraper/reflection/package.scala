@@ -62,4 +62,25 @@ package object reflection {
     case t if t <:< DoubleTpe  => DoubleType.!
     case t if t <:< NullTpe    => NullType.?
   }
+
+  def constructorParams(clazz: Class[_]): List[Symbol] = {
+    val selfType = runtimeMirror(clazz.getClassLoader).staticClass(clazz.getName).selfType
+    constructorParams(selfType)
+  }
+
+  def constructorParams(tpe: Type): List[Symbol] = {
+    val constructorSymbol = tpe.member(termNames.CONSTRUCTOR)
+
+    val constructor = if (constructorSymbol.isMethod) {
+      constructorSymbol.asMethod
+    } else {
+      constructorSymbol.asTerm.alternatives find { symbol =>
+        symbol.isMethod && symbol.asMethod.isPrimaryConstructor
+      } map (_.asMethod) getOrElse {
+        throw new ScalaReflectionException(s"Type $tpe doesn't have a primary constructor")
+      }
+    }
+
+    constructor.paramLists.flatten
+  }
 }

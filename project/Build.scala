@@ -61,7 +61,7 @@ object Build extends sbt.Build {
     organization := "scraper",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := Dependencies.Versions.scala,
-    scalacOptions ++= Seq("-unchecked", "-deprecation"),
+    scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g"),
     fork := false,
     parallelExecution in Test := false,

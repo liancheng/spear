@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scala.languageFeature.higherKinds
+import scala.language.higherKinds
 import scala.util.Try
 import scalaz.Scalaz._
 import scalaz._

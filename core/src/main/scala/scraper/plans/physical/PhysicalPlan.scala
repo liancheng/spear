@@ -37,11 +37,3 @@ case object SingleRowRelation extends LeafPhysicalPlan {
 
   override val output: Seq[Attribute] = Nil
 }
-
-case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
-  extends LeafPhysicalPlan {
-
-  override def iterator: Iterator[Row] = data.iterator
-
-  override protected def argsStrings: Seq[String] = Nil
-}

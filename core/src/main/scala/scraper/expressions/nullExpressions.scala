@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scala.language.higherKinds
 import scala.util.Try
 import scalaz.Applicative
 import scalaz.Scalaz._

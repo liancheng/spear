@@ -4,6 +4,7 @@ import scala.util.{Success, Try}
 
 import scraper.expressions.{Attribute, Expression, LeafExpression, UnevaluableExpression}
 import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
+import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
 
@@ -65,13 +66,18 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   /**
    * Returns string representations of each constructor arguments of this query plan
    */
-  protected def argsStrings: Seq[String] = {
+  protected def argStrings: Seq[String] = {
+    // Avoids duplicating string representation of expression nodes.  Replaces them with `$expr{n}`,
+    // where `n` is the index or the expression.
     def expressionHolder(e: Expression): String = s"$$expr{${expressions indexOf e}}"
 
-    def childHolder(child: Plan): String = s"$$child{${children indexOf child}}"
+    // Avoids duplicating string representation of child nodes.  Replaces them with `$plan{n}`,
+    // where `n` is the index or the child.
+    def childHolder(child: Plan): String = s"$$plan{${children indexOf child}}"
 
-    productIterator.toSeq map {
-      // Avoids duplicating string representation of child nodes.  Replaces them with `$n`.
+    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
+
+    val argValues = productIterator.toSeq map {
       case arg if children contains arg =>
         childHolder(arg.asInstanceOf[Plan])
 
@@ -79,7 +85,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         arg.map {
           case e: Expression => expressionHolder(e)
           case _             => arg.toString
-        } mkString ("Seq(", ", ", ")")
+        } mkString ("[", ", ", "]")
 
       case arg: Some[_] =>
         arg.map {
@@ -93,6 +99,8 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
       case arg =>
         arg.toString
     }
+
+    (argNames, argValues).zipped map (_ + "=" + _)
   }
 
   /**
@@ -101,7 +109,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   protected def outputStrings: Seq[String] = output map (_.debugString)
 
   override def nodeCaption: String = {
-    val argsString = argsStrings mkString ", "
+    val argsString = argStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
     s"$nodeName: $argsString ==> $outputString"
   }

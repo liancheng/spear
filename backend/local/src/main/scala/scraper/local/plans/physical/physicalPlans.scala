@@ -5,8 +5,16 @@ import scala.collection.mutable
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
 import scraper.expressions._
-import scraper.plans.physical.{BinaryPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
+import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 import scraper.{JoinedRow, MutableRow, Row, RowOrdering}
+
+case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
+  extends LeafPhysicalPlan {
+
+  override def iterator: Iterator[Row] = data.iterator
+
+  override protected def argStrings: Seq[String] = Nil
+}
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
   extends UnaryPhysicalPlan {

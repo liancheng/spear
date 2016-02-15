@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scala.language.higherKinds
 import scala.util.{Failure, Success, Try}
 import scalaz.Scalaz._
 import scalaz._

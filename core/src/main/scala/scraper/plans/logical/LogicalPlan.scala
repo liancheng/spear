@@ -11,6 +11,7 @@ import scraper.expressions.Cast.promoteDataType
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
+import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
 import scraper.types.{DataType, IntegralType, StructType}
 import scraper.utils._
@@ -30,8 +31,10 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   lazy val strictlyTyped: Boolean = wellTyped && (strictlyTypedForm.get sameOrEqual this)
 
-  override protected def outputStrings: Seq[String] =
-    if (resolved) super.outputStrings else "???" :: Nil
+  override protected def outputStrings: Seq[String] = this match {
+    case Unresolved(_) => "???" :: Nil
+    case _             => super.outputStrings
+  }
 
   def select(projectList: Seq[Expression]): Project =
     Project(this, projectList map {
@@ -118,7 +121,7 @@ case object SingleRowRelation extends Relation {
 case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
   extends MultiInstanceRelation {
 
-  override protected def argsStrings: Seq[String] = Nil
+  override protected def argStrings: Seq[String] = Nil
 
   override def newInstance(): LogicalPlan = copy(output = output map (_.newInstance()))
 }
