@@ -32,6 +32,16 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
 
   override def nullable: Boolean = child.nullable
 
+  def nullsFirst: SortOrder = direction match {
+    case Ascending  => copy(nullsLarger = false)
+    case Descending => copy(nullsLarger = true)
+  }
+
+  def nullsLast: SortOrder = direction match {
+    case Ascending  => copy(nullsLarger = true)
+    case Descending => copy(nullsLarger = false)
+  }
+
   def isAscending: Boolean = direction == Ascending
 
   override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =

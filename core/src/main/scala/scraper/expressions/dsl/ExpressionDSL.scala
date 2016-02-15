@@ -20,9 +20,9 @@ trait ExpressionDSL
 
   def notNull: IsNotNull = IsNotNull(this)
 
-  def asc(nullsLarger: Boolean): SortOrder = SortOrder(this, Ascending, nullsLarger)
+  def asc: SortOrder = SortOrder(this, Ascending, nullsLarger = true)
 
-  def desc(nullsLarger: Boolean): SortOrder = SortOrder(this, Descending, nullsLarger)
+  def desc: SortOrder = SortOrder(this, Descending, nullsLarger = true)
 
   def in(list: Seq[Expression]): In = In(this, list)
 
