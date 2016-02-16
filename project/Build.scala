@@ -12,7 +12,7 @@ import scoverage.ScoverageSbtPlugin
 object Build extends sbt.Build {
   lazy val scraper =
     Project("scraper", file("."))
-      .aggregate(core, backendLocal)
+      .aggregate(core, localExecution)
       .settings(commonSettings)
       .settings(consoleSettings)
 
@@ -24,21 +24,21 @@ object Build extends sbt.Build {
       // Explicitly overrides all conflicting transitive dependencies
       .settings(dependencyOverrides ++= Dependencies.overrides)
 
+  lazy val localExecution =
+    Project("scraper-execution-local", file("execution/local"))
+      .dependsOn(core % "compile->compile;test->test")
+      .enablePlugins(sbtPlugins: _*)
+      .settings(commonSettings)
+      .settings(libraryDependencies ++= localExecutionDependencies)
+      // Explicitly overrides all conflicting transitive dependencies
+      .settings(dependencyOverrides ++= Dependencies.overrides)
+
   lazy val coreDependencies = {
     import Dependencies._
     test ++ config ++ log4j ++ scala ++ scopt ++ scalaz ++ shapeless ++ slf4j
   }
 
-  lazy val backendLocal =
-    Project("scraper-backend-local", file("backend/local"))
-      .dependsOn(core % "compile->compile;test->test")
-      .enablePlugins(sbtPlugins: _*)
-      .settings(commonSettings)
-      .settings(libraryDependencies ++= backendLocalDependencies)
-      // Explicitly overrides all conflicting transitive dependencies
-      .settings(dependencyOverrides ++= Dependencies.overrides)
-
-  lazy val backendLocalDependencies = {
+  lazy val localExecutionDependencies = {
     import Dependencies._
     test
   }

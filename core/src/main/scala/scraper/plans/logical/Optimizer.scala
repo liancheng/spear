@@ -30,7 +30,8 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
       PushFiltersThroughProjects,
       PushFiltersThroughJoins,
-      PushProjectsThroughLimits
+      PushProjectsThroughLimits,
+      PushLimitsThroughUnion
     ))
   )
 
@@ -224,6 +225,13 @@ object Optimizer {
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => Limit(plan, If(n < m, n, m))
+    }
+  }
+
+  object PushLimitsThroughUnion extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case (left Union right) Limit n =>
+        left limit n union (right limit n) limit n
     }
   }
 }

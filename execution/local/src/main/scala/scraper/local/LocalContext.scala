@@ -12,7 +12,7 @@ import scraper.plans.logical._
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.types.{LongType, StructType}
-import scraper.{Catalog, Context, DataFrame, Row}
+import scraper._
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
@@ -47,7 +47,7 @@ class LocalContext(val settings: Settings) extends Context {
   def range(end: Long): DataFrame = range(0, end)
 
   def range(begin: Long, end: Long): DataFrame = {
-    val rows = (begin until end).map(Row.apply(_))
+    val rows = begin until end map (Row apply _)
     val output = StructType('id -> LongType.!).toAttributes
     new DataFrame(LocalRelation(rows, output), this)
   }
