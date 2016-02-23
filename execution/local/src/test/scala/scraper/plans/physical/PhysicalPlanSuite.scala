@@ -1,8 +1,8 @@
 package scraper.plans.physical
 
 import scraper.expressions.dsl._
-import scraper.local.plans.physical.LocalRelation
 import scraper.local.plans.physical.dsl._
+import scraper.local.plans.physical.{LocalRelation, Sort}
 import scraper.{LoggingFunSuite, Row, TestUtils}
 
 class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
@@ -23,12 +23,26 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   private val Seq(a3, b3) = Seq('a.int.!, 'b.string.?)
 
   private val r3 = LocalRelation(
-    Seq(Row(1: Integer, "a"), Row(3: Integer, "c"), Row(null: Integer, "b"), Row(4: Integer, null)),
+    Seq(
+      Row(1: Integer, "a"),
+      Row(3: Integer, "c"),
+      Row(null: Integer, "b"),
+      Row(4: Integer, null)
+    ),
     Seq(a3, b3)
   )
 
-  def checkPhysicalPlan(plan: PhysicalPlan, expected: Traversable[Row]): Unit = {
-    assert(plan.iterator.toSeq === expected.toSeq)
+  def checkPhysicalPlan(plan: PhysicalPlan, expectedRows: Traversable[Row]): Unit = {
+    val planOrdered = plan.collectFirst { case _: Sort => }.nonEmpty
+
+    if (planOrdered) {
+      assert(plan.iterator.toSeq === expectedRows.toSeq)
+    } else {
+      val sort = Sort(_: PhysicalPlan, plan.output map (_.asc))
+      val actual = sort(plan).iterator.toSeq
+      val expected = sort(LocalRelation(expectedRows.toIterable, plan.output)).iterator.toSeq
+      assert(actual === expected)
+    }
   }
 
   def checkPhysicalPlan(plan: PhysicalPlan, first: Row, rest: Row*): Unit = {
@@ -56,8 +70,19 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("limit") {
     checkPhysicalPlan(
+      r1 limit 0,
+      Nil
+    )
+
+    checkPhysicalPlan(
       r1 limit 1,
       Row(1, "a")
+    )
+
+    checkPhysicalPlan(
+      r1 limit 3,
+      Row(1, "a"),
+      Row(2, "b")
     )
   }
 
@@ -74,22 +99,34 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
     checkPhysicalPlan(
       r3 orderBy a3.asc.nullsFirst,
-      Row(null: Integer, "b"), Row(1: Integer, "a"), Row(3: Integer, "c"), Row(4: Integer, null)
+      Row(null: Integer, "b"),
+      Row(1: Integer, "a"),
+      Row(3: Integer, "c"),
+      Row(4: Integer, null)
     )
 
     checkPhysicalPlan(
       r3 orderBy a3.asc.nullsLast,
-      Row(1: Integer, "a"), Row(3: Integer, "c"), Row(4: Integer, null), Row(null: Integer, "b")
+      Row(1: Integer, "a"),
+      Row(3: Integer, "c"),
+      Row(4: Integer, null),
+      Row(null: Integer, "b")
     )
 
     checkPhysicalPlan(
       r3 orderBy b3.desc.nullsFirst,
-      Row(4: Integer, null), Row(3: Integer, "c"), Row(null: Integer, "b"), Row(1: Integer, "a")
+      Row(4: Integer, null),
+      Row(3: Integer, "c"),
+      Row(null: Integer, "b"),
+      Row(1: Integer, "a")
     )
 
     checkPhysicalPlan(
       r3 orderBy b3.desc.nullsLast,
-      Row(3: Integer, "c"), Row(null: Integer, "b"), Row(1: Integer, "a"), Row(4: Integer, null)
+      Row(3: Integer, "c"),
+      Row(null: Integer, "b"),
+      Row(1: Integer, "a"),
+      Row(4: Integer, null)
     )
   }
 
