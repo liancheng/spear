@@ -7,7 +7,7 @@ import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
-import scraper.expressions.Cast.promoteDataType
+import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
@@ -196,20 +196,25 @@ trait SetOperator extends BinaryLogicalPlan {
       }
     )
 
-  override lazy val strictlyTypedForm: Try[LogicalPlan] = {
-    def widen(branch: LogicalPlan, types: Seq[DataType]): LogicalPlan = {
-      if ((branch.schema.fieldTypes, types).zipped.forall(_ == _)) {
-        branch
+  private def alignBranches(branches: Seq[LogicalPlan]): Try[Seq[LogicalPlan]] = {
+    // Casts output attributes of a given logical plan to target data types when necessary
+    def align(plan: LogicalPlan, targetTypes: Seq[DataType]): LogicalPlan =
+      if (plan.schema.fieldTypes == targetTypes) {
+        plan
       } else {
-        branch select branch.output.zip(types).map {
+        plan select (plan.output zip targetTypes map {
           case (a, t) if a.dataType == t => a
           case (a, t)                    => a cast t as a.name
-        }
+        })
       }
-    }
 
+    for (widenedTypes <- sequence(branches.map(_.schema.fieldTypes).transpose map widestTypeOf))
+      yield branches.map(align(_, widenedTypes))
+  }
+
+  override lazy val strictlyTypedForm: Try[LogicalPlan] = {
     for {
-      _ <- Try(checkBranchSchemata()).recover {
+      _ <- Try(checkBranchSchemata()) recover {
         case NonFatal(cause) =>
           throw new TypeCheckException(this, cause)
       }
@@ -217,16 +222,8 @@ trait SetOperator extends BinaryLogicalPlan {
       lhs <- left.strictlyTypedForm
       rhs <- right.strictlyTypedForm
 
-      lhsTypes = left.schema.fieldTypes
-      rhsTypes = right.schema.fieldTypes
-
-      widenedTypes <- sequence((lhsTypes, rhsTypes).zipped map (_ widest _))
-
-      widenedLhs = widen(lhs, widenedTypes)
-      widenedRhs = widen(rhs, widenedTypes)
-
-      newChildren = widenedLhs :: widenedRhs :: Nil
-    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+      alignedBranches <- alignBranches(lhs :: rhs :: Nil)
+    } yield if (sameChildren(alignedBranches)) this else makeCopy(alignedBranches)
   }
 }
 
