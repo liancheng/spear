@@ -131,7 +131,7 @@ case class IsNaN(child: Expression) extends UnaryExpression {
   }
 }
 
-abstract class GreatestLeastLike extends Expression {
+abstract class GreatestLike extends Expression {
   assert(children.nonEmpty)
 
   def nullLarger: Boolean
@@ -150,10 +150,10 @@ abstract class GreatestLeastLike extends Expression {
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullLarger)
 }
 
-case class Greatest(children: Seq[Expression], nullLarger: Boolean) extends GreatestLeastLike {
+case class Greatest(children: Seq[Expression], nullLarger: Boolean) extends GreatestLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
 }
 
-case class Least(children: Seq[Expression], nullLarger: Boolean) extends GreatestLeastLike {
+case class Least(children: Seq[Expression], nullLarger: Boolean) extends GreatestLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) min ordering
 }
