@@ -10,7 +10,7 @@ import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
-import scraper.utils.sequence
+import scraper.utils._
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def foldable: Boolean = children.forall(_.foldable)
@@ -125,13 +125,15 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def debugString: String = template(_.debugString.some).get
 
-  def sql: Option[String] = template(_.sql)
+  def sql: Try[String] = template(_.sql)
 
   override def toString: String = debugString
 }
 
 trait NonSQLExpression extends Expression {
-  override def sql: Option[String] = None
+  override def sql: Try[String] = Failure(new UnsupportedOperationException(
+    s"Expression $debugString doesn't have a SQL representation"
+  ))
 }
 
 trait LeafExpression extends Expression {

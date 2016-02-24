@@ -25,25 +25,15 @@ abstract class SQLBuilderTest
   }
 
   protected def checkSQL(e: Expression, expectedSQL: String): Unit = {
-    val maybeSQL = e.sql
-
-    if (maybeSQL.isEmpty) {
-      fail(
-        s"""Cannot convert the following expression to its SQL form:
-           |${e.prettyTree}
-           |""".stripMargin
-      )
-    }
-
     try {
-      assert(maybeSQL.get === expectedSQL)
+      assert(e.sql.get === expectedSQL)
     } catch {
       case NonFatal(cause) =>
         fail(
           s"""Wrong SQL generated for the following expression:
              |${e.prettyTree}
-             |$cause
-             |""".stripMargin
+             |""".stripMargin,
+          cause
         )
     }
   }

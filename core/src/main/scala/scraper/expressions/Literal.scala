@@ -1,5 +1,7 @@
 package scraper.expressions
 
+import scala.util.{Success, Try}
+
 import scraper.Row
 import scraper.types._
 
@@ -10,7 +12,7 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
 
   override def debugString: String = s"$value:${dataType.sql}"
 
-  override def sql: Option[String] = Some((value, dataType) match {
+  override def sql: Try[String] = Success((value, dataType) match {
     case (v: String, StringType)   => '"' + v.replace("\\", "\\\\").replace("\"", "\\\"") + '"'
     case (v: Boolean, BooleanType) => v.toString.toUpperCase
     case (v: Byte, ByteType)       => s"CAST($v AS ${ByteType.sql})"

@@ -2,8 +2,10 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.util.Try
+import scala.language.higherKinds
+import scala.util.{Success, Try}
 import scalaz.Scalaz._
+import scalaz._
 
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
@@ -40,9 +42,8 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override def debugString: String = "*"
-
-  override def sql: Option[String] = "*".some
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    implicitly[Applicative[T]] point "*"
 }
 
 case class Alias(
@@ -62,9 +63,9 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"(${child.debugString} AS ${quote(name)}#${expressionId.id})"
+  override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionId.id}"
 
-  override def sql: Option[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
+  override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
   override lazy val strictlyTypedForm: Try[Alias] = for {
     e <- child.strictlyTypedForm
@@ -85,10 +86,13 @@ case class GroupingAlias(
 
   override def toAttribute: Attribute =
     GroupingAttribute(child.dataType, child.nullable, expressionId)
+
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    f(child) map (childString => s"$childString AS ${quote(name)}")
 }
 
 object GroupingAlias {
-  val Prefix = "@group"
+  val Prefix = "group$"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
@@ -106,9 +110,8 @@ trait Attribute extends NamedExpression with LeafExpression {
 }
 
 case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
-  override def debugString: String = s"${quote(name)}"
-
-  override def sql: Option[String] = s"${quote(name)}".some
+  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
+    implicitly[Applicative[T]].point(quote(name))
 
   override def newInstance(): Attribute = this
 
@@ -140,7 +143,7 @@ trait ResolvedAttribute extends Attribute {
     s"${quote(name)}#${expressionId.id}:${dataType.sql}$nullability"
   }
 
-  override def sql: Option[String] = s"${quote(name)}".some
+  override def sql: Try[String] = Success(s"${quote(name)}")
 
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
 }
@@ -152,6 +155,10 @@ case class AttributeRef(
   override val expressionId: ExpressionId
 ) extends ResolvedAttribute with UnevaluableExpression {
   override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
+
+  override def ? : AttributeRef = withNullability(true)
+
+  override def ! : AttributeRef = withNullability(false)
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
 }
@@ -179,7 +186,10 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override def evaluate(input: Row): Any = input(ordinal)
 
-  override def debugString: String = name
+  override def debugString: String = {
+    val nullability = if (nullable) "?" else "!"
+    name + ":" + dataType.sql + nullability
+  }
 }
 
 object BoundRef {
