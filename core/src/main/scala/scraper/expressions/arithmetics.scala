@@ -123,10 +123,10 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 
   override def evaluate(input: Row): Any = {
     val value = child evaluate input
-    if (value == null) false else dataType match {
-      case DoubleType => value.asInstanceOf[Double].isNaN
-      case FloatType  => value.asInstanceOf[Float].isNaN
-      case _          => false
+    if (value == null) false else (value, dataType) match {
+      case (v: Double, DoubleType) => v.isNaN
+      case (v: Float, FloatType)   => v.isNaN
+      case _                       => false
     }
   }
 }
