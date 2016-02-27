@@ -74,9 +74,9 @@ case class Except(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysica
 case class CartesianProduct(
   left: PhysicalPlan,
   right: PhysicalPlan,
-  maybeCondition: Option[Expression]
+  condition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-  private val boundCondition = maybeCondition map (BoundRef.bind(_, output)) getOrElse True
+  private val boundCondition = condition map (BoundRef.bind(_, output)) getOrElse True
 
   def evaluateBoundCondition(input: Row): Boolean =
     boundCondition.evaluate(input) match { case result: Boolean => result }
@@ -91,7 +91,7 @@ case class CartesianProduct(
     } yield new JoinedRow(leftRow, rightRow)
   }
 
-  def on(condition: Expression): CartesianProduct = copy(maybeCondition = Some(condition))
+  def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {

@@ -2,7 +2,6 @@ package scraper.types
 
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
-import scalaz.Scalaz._
 
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.implicitlyConvertible
@@ -40,18 +39,18 @@ trait DataType { self =>
   def sql: String
 
   def unapply(e: Expression): Option[Expression] = e match {
-    case _ if e.dataType == this => e.some
+    case _ if e.dataType == this => Some(e)
     case _                       => None
   }
 
   object Implicitly {
     def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t narrowerThan self => e.some
+      case t if t narrowerThan self => Some(e)
       case _                        => None
     }
 
     def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t narrowerThan self => t.some
+      case t if t narrowerThan self => Some(t)
       case _                        => None
     }
   }
@@ -148,7 +147,7 @@ trait OrderedType { this: DataType =>
 
 object OrderedType {
   def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: OrderedType => e.some
+    case _: OrderedType => Some(e)
     case _              => None
   }
 }
@@ -157,7 +156,7 @@ trait PrimitiveType extends DataType
 
 object PrimitiveType {
   def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: PrimitiveType => e.some
+    case _: PrimitiveType => Some(e)
     case _                => None
   }
 }

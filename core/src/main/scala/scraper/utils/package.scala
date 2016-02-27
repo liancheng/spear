@@ -27,11 +27,11 @@ package object utils {
 
     header.map {
       case (lhsLine, rhsLine) =>
-        rtrim(s"# $lhsLine : $rhsLine")
+        rtrim(s"# $lhsLine \u2502 $rhsLine")
     } ++ contents.map {
       case (lhsLine, rhsLine) =>
         val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) "!" else " "
-        rtrim(s"$diffIndicator $lhsLine : $rhsLine")
+        rtrim(s"$diffIndicator $lhsLine \u2502 $rhsLine")
     }
   } mkString ("\n", "\n", "")
 

@@ -1,7 +1,8 @@
 package scraper.plans.logical
 
+import scraper.plans.logical.dsl._
 import scraper.Catalog
-import scraper.exceptions.{AnalysisException, ResolutionFailureException}
+import scraper.exceptions.{IllegalAggregationException, AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.plans.logical.Analyzer._
 import scraper.plans.logical.patterns._
@@ -13,6 +14,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     ExpandStars,
     new ResolveRelations(catalog),
     ResolveReferences,
+    ResolveAggregates,
     DeduplicateReferences
   ))
 
@@ -212,6 +214,27 @@ object Analyzer {
     private def isGenerated(e: Expression): Boolean = e match {
       case _: GeneratedNamedExpression => true
       case _                           => false
+    }
+  }
+
+  object ResolveAggregates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case Resolved(plan @ Aggregate(child, groupingList, aggregateList)) =>
+        val groupingSubstitutions = groupingList.map {
+          a => a.child -> a.toAttribute
+        }.toMap
+
+        val substitutedAggs = aggregateList map {
+          _.transformDown {
+            case e => groupingSubstitutions.getOrElse(e, e)
+          }.transformDown {
+            case a: GroupingAttribute => a
+            case a: AggregateFunction => a
+            case a: Attribute         => throw new IllegalAggregationException(a, groupingList)
+          }.asInstanceOf[NamedExpression]
+        }
+
+        plan.copy(aggregateList = substitutedAggs)
     }
   }
 }

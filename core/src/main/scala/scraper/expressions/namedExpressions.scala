@@ -75,7 +75,7 @@ case class Alias(
 case class GroupingAlias(
   child: Expression,
   override val expressionId: ExpressionId = newExpressionId()
-) extends NamedExpression with UnaryExpression with GeneratedNamedExpression {
+) extends UnaryExpression with GeneratedNamedExpression {
   require(child.resolved)
 
   override lazy val strictlyTypedForm: Try[GroupingAlias] = for {

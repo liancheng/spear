@@ -17,6 +17,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def nullable: Boolean = true
 
+  def pure: Boolean = children forall (_.pure)
+
   def resolved: Boolean = childrenResolved
 
   def childrenResolved: Boolean = children forall (_.resolved)
@@ -108,7 +110,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    * @see [[strictlyTypedForm]]
    */
-  protected def strictDataType: DataType = throw new ContractBrokenException(
+  protected def strictDataType: DataType = throw new BrokenContractException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )
 
@@ -128,6 +130,36 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def sql: Try[String] = template(_.sql)
 
   override def toString: String = debugString
+}
+
+trait StatefulExpression[State] extends Expression {
+  private var state: Option[State] = None
+
+  override def pure: Boolean = false
+
+  override def foldable: Boolean = false
+
+  override protected def makeCopy(args: Seq[AnyRef]): Expression = {
+    state.foreach(throw new BrokenContractException(
+      "Stateful expression cannot be copied after initialization"
+    ))
+    super.makeCopy(args)
+  }
+
+  protected def initialState: State
+
+  protected def statefulEvaluate(state: State, input: Row): (Any, State)
+
+  override def evaluate(input: Row): Any = {
+    if (state.isEmpty) {
+      state = Some(initialState)
+    }
+
+    val (result, newState) = statefulEvaluate(state.get, input)
+    state = Some(newState)
+
+    result
+  }
 }
 
 trait NonSQLExpression extends Expression {
@@ -150,7 +182,7 @@ trait UnaryExpression extends Expression {
   override def children: Seq[Expression] = Seq(child)
 
   protected def nullSafeEvaluate(value: Any): Any =
-    throw new ContractBrokenException(
+    throw new BrokenContractException(
       s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 
@@ -167,7 +199,7 @@ trait BinaryExpression extends Expression {
   override def children: Seq[Expression] = Seq(left, right)
 
   def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
-    throw new ContractBrokenException(
+    throw new BrokenContractException(
       s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 
@@ -182,7 +214,7 @@ trait BinaryExpression extends Expression {
 }
 
 object BinaryExpression {
-  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = (e.left, e.right).some
+  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = Some((e.left, e.right))
 }
 
 trait Operator { this: Expression =>
@@ -195,7 +227,7 @@ trait BinaryOperator extends BinaryExpression with Operator {
 }
 
 object BinaryOperator {
-  def unapply(e: BinaryOperator): Option[(Expression, Expression)] = (e.left, e.right).some
+  def unapply(e: BinaryOperator): Option[(Expression, Expression)] = Some((e.left, e.right))
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {

@@ -1,9 +1,26 @@
 package scraper
 
+import scala.language.existentials
+
 import scraper.config.Settings
 import scraper.expressions.Expression
 import scraper.plans.logical.{LogicalPlan, SingleRowRelation}
 import scraper.plans.physical.PhysicalPlan
+
+case class FunctionInfo(
+  name: String,
+  functionClass: Class[_ <: Expression],
+  description: String,
+  builder: Seq[Expression] => Expression
+)
+
+trait FunctionRegistry {
+  def registerFunction(fn: FunctionInfo): Unit
+
+  def removeFunction(name: String): Unit
+
+  def lookupFunction(name: String): FunctionInfo
+}
 
 trait Catalog {
   def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
@@ -23,22 +40,25 @@ trait Context {
   def catalog: Catalog
 
   /**
-   * Parses given query string to a [[LogicalPlan]].
+   * Parses given query string to a [[scraper.plans.logical.LogicalPlan logical plan]].
    */
   def parse(query: String): LogicalPlan
 
   /**
-   * Analyzes unresolved [[LogicalPlan]] into strictly-typed [[LogicalPlan]].
+   * Analyzes an unresolved [[scraper.plans.logical.LogicalPlan logical plan]] and outputs its
+   * strictly-typed version.
    */
   def analyze(plan: LogicalPlan): LogicalPlan
 
   /**
-   * Optimizes a [[LogicalPlan]] into another equivalent but more performant version.
+   * Optimizes a resolved [[scraper.plans.logical.LogicalPlan logical plan]] into another equivalent
+   * but more performant version.
    */
   def optimize(plan: LogicalPlan): LogicalPlan
 
   /**
-   * Plans a [[LogicalPlan]] into an executable [[PhysicalPlan]].
+   * Plans a [[scraper.plans.logical.LogicalPlan logical plan]] into an executable
+   * [[scraper.plans.physical.PhysicalPlan physical plan]].
    */
   def plan(plan: LogicalPlan): PhysicalPlan
 

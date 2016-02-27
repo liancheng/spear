@@ -2,6 +2,7 @@ package scraper.plans.logical
 
 import scraper.expressions.dsl._
 import scraper.local.LocalCatalog
+import scraper.plans.logical.dsl._
 import scraper.{LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {

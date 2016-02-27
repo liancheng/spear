@@ -6,6 +6,7 @@ import scraper.expressions.functions._
 import scraper.expressions.{Ascending, Expression, SortOrder}
 import scraper.plans.QueryExecution
 import scraper.plans.logical._
+import scraper.plans.logical.dsl._
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
@@ -111,5 +112,5 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
   }
 } with DataFrame(join, left.context) {
   def on(condition: Expression): DataFrame =
-    new DataFrame(join.copy(maybeCondition = Some(condition)), context)
+    new DataFrame(join.copy(condition = Some(condition)), context)
 }

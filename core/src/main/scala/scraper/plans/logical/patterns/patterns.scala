@@ -6,10 +6,10 @@ import scraper.expressions._
 
 package object patterns {
   /**
-   * A pattern that matches any number of altering project or filter operators on top of another
-   * relational operator, extracting top level projections, predicate conditions of all filter
-   * operators, and the relational operator underneath. [[Alias Aliases]] are inline-ed/substituted
-   * when possible.
+   * A pattern that matches any number of altering pure project or filter operators on top of
+   * another relational operator, extracting top level projections, predicate conditions of all
+   * filter operators, and the relational operator underneath. [[Alias Aliases]] are inlined when
+   * possible.
    *
    * @note This pattern is only available for resolved logical plans.
    */
@@ -34,11 +34,11 @@ package object patterns {
         val aliases = collectAliases(maybeChildProjectList.toSeq.flatten)
 
         plan match {
-          case _ Project projectList =>
-            (Some(projectList map (reduceAliases(aliases, _))), predicates, grandChild)
+          case _ Project projectList if projectList forall (_.pure) =>
+            (Some(projectList map (inlineAliases(aliases, _))), predicates, grandChild)
 
-          case _ Filter condition =>
-            val reducedCondition = reduceAliases(aliases, condition)
+          case _ Filter condition if condition.pure =>
+            val reducedCondition = inlineAliases(aliases, condition)
             (maybeChildProjectList, predicates ++ splitConjunction(reducedCondition), grandChild)
 
           case other =>
@@ -50,15 +50,14 @@ package object patterns {
     }
 
     /**
-     * Finds reducible [[Alias]]es and [[AttributeRef]]s referring to [[Alias]]s appearing in
-     * `expressions`, then inlines/substitutes them.
+     * Inlines all known `aliases` appearing in `expression`.
      *
-     * @param aliases A map from all known aliases to corresponding aliased expressions.
+     * @param aliases A map from known aliases to corresponding aliased expressions.
      * @param expression The target expression.
      */
-    def reduceAliases[T <: Expression](aliases: Map[Attribute, Expression], expression: T): T =
+    def inlineAliases[T <: Expression](aliases: Map[Attribute, Expression], expression: T): T =
       expression.transformUp {
-        // Alias substitution. E.g., it helps to reduce
+        // Removes redundant aliases. E.g., it helps to reduce
         //
         //   SELECT a1 AS a2 FROM (
         //     SELECT e AS a1 FROM t
@@ -70,19 +69,36 @@ package object patterns {
         case a @ Alias(ref: AttributeRef, _, _) if aliases contains ref =>
           a.copy(child = aliases(ref))
 
-        // Alias inlining. E.g., it helps to reduce
+        // Alias inlining. E.g., it helps to transform the following plan tree
         //
-        //   SELECT a1 FROM (
-        //     SELECT e AS a1 FROM t
-        //   )
+        //   Filter a1 > 10
+        //    Project (f1 + 1) AS a1
+        //     Relation f1:INT!
         //
         // to
         //
-        //   SELECT e AS a1 FROM t
+        //   Filter ((f1 + 1) AS a1) > 10
+        //    Project (f1 + 1) AS a1
+        //     Relation f1:INT!
+        //
+        // so that we can push down the predicate:
+        //
+        //   Project (f1 + 1) AS a1
+        //    Filter (f1 + 1) AS a1 > 10
+        //     Relation f1:INT!
         case ref @ AttributeRef(name, _, _, id) if aliases contains ref =>
           Alias(aliases(ref), name, id)
       }.asInstanceOf[T]
 
+    /**
+     * Inlines all aliases found in `input` expression that are defined in `fields`.
+     */
+    def inlineAliases[T <: Expression](fields: Seq[NamedExpression], input: T): T =
+      inlineAliases(collectAliases(fields), input)
+
+    /**
+     * Builds a map from all aliases found in `projectList` to corresponding aliased expressions
+     */
     def collectAliases(projectList: Seq[NamedExpression]): Map[Attribute, Expression] =
       projectList.collect { case a: Alias => a.toAttribute -> a.child }.toMap
   }

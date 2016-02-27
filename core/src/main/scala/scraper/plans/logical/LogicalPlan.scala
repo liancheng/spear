@@ -3,14 +3,13 @@ package scraper.plans.logical
 import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
-import scalaz.Scalaz._
 
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions._
-import scraper.expressions.functions._
 import scraper.plans.QueryPlan
+import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
 import scraper.types.{DataType, IntegralType, StructType}
@@ -35,48 +34,6 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     case Unresolved(_) => "???" :: Nil
     case _             => super.outputStrings
   }
-
-  def select(projectList: Seq[Expression]): Project =
-    Project(this, projectList map {
-      case UnresolvedAttribute("*") => Star
-      case e: NamedExpression       => e
-      case e                        => e as (e.sql getOrElse "?column?")
-    })
-
-  def select(first: Expression, rest: Expression*): Project = select(first +: rest)
-
-  def aggregate(groupingList: Seq[Expression], aggregateList: Seq[NamedExpression]): Aggregate =
-    Aggregate(this, groupingList map (GroupingAlias(_)), aggregateList)
-
-  def filter(condition: Expression): Filter = Filter(this, condition)
-
-  def where(condition: Expression): Filter = filter(condition)
-
-  def limit(n: Expression): Limit = Limit(this, n)
-
-  def limit(n: Int): Limit = this limit lit(n)
-
-  def orderBy(order: Seq[SortOrder]): Sort = Sort(this, order)
-
-  def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
-
-  def distinct: Distinct = Distinct(this)
-
-  def subquery(name: String): Subquery = Subquery(this, name)
-
-  def join(that: LogicalPlan): Join = Join(this, that, Inner, None)
-
-  def leftJoin(that: LogicalPlan): Join = Join(this, that, LeftOuter, None)
-
-  def rightJoin(that: LogicalPlan): Join = Join(this, that, RightOuter, None)
-
-  def outerJoin(that: LogicalPlan): Join = Join(this, that, FullOuter, None)
-
-  def union(that: LogicalPlan): Union = Union(this, that)
-
-  def intersect(that: LogicalPlan): Intersect = Intersect(this, that)
-
-  def except(that: LogicalPlan): Except = Except(this, that)
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
@@ -190,7 +147,6 @@ trait SetOperator extends BinaryLogicalPlan {
         )
 
         s"""$nodeName branches have incompatible schemata:
-           |
            |$schemaDiff
            |""".stripMargin
       }
@@ -275,7 +231,7 @@ case class Join(
   left: LogicalPlan,
   right: LogicalPlan,
   joinType: JoinType,
-  maybeCondition: Option[Expression]
+  condition: Option[Expression]
 ) extends BinaryLogicalPlan {
   override lazy val output: Seq[Attribute] = joinType match {
     case LeftSemi   => left.output
@@ -287,7 +243,7 @@ case class Join(
 
   lazy val duplicatesResolved: Boolean = (left.outputSet & right.outputSet).isEmpty
 
-  def on(condition: Expression): Join = copy(maybeCondition = condition.some)
+  def on(condition: Expression): Join = copy(condition = Some(condition))
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {

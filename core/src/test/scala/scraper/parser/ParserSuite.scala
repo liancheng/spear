@@ -1,6 +1,7 @@
 package scraper.parser
 
 import scraper.expressions.dsl._
+import scraper.plans.logical.dsl._
 import scraper.plans.logical.{LogicalPlan, SingleRowRelation, UnresolvedRelation}
 import scraper.{LoggingFunSuite, Test, TestUtils}
 

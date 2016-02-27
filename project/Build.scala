@@ -12,12 +12,11 @@ import scoverage.ScoverageSbtPlugin
 object Build extends sbt.Build {
   lazy val scraper =
     Project("scraper", file("."))
-      .aggregate(core, localExecution)
+      .aggregate(core, localExecution, repl)
       .settings(commonSettings)
-      .settings(consoleSettings)
 
   lazy val core =
-    Project("scraper-core", file("core"))
+    Project("core", file("core"))
       .enablePlugins(sbtPlugins: _*)
       .settings(commonSettings)
       .settings(libraryDependencies ++= coreDependencies)
@@ -25,7 +24,7 @@ object Build extends sbt.Build {
       .settings(dependencyOverrides ++= Dependencies.overrides)
 
   lazy val localExecution =
-    Project("scraper-execution-local", file("execution/local"))
+    Project("execution-local", file("execution/local"))
       .dependsOn(core % "compile->compile;test->test")
       .enablePlugins(sbtPlugins: _*)
       .settings(commonSettings)
@@ -33,9 +32,19 @@ object Build extends sbt.Build {
       // Explicitly overrides all conflicting transitive dependencies
       .settings(dependencyOverrides ++= Dependencies.overrides)
 
+  lazy val repl =
+    Project("repl", file("repl"))
+      .dependsOn(core % "compile->compile;test->test")
+      .dependsOn(localExecution % "compile->compile;test->test")
+      .enablePlugins(sbtPlugins: _*)
+      .settings(commonSettings)
+      .settings(libraryDependencies ++= Dependencies.ammonite)
+      // Explicitly overrides all conflicting transitive dependencies
+      .settings(dependencyOverrides ++= Dependencies.overrides)
+
   lazy val coreDependencies = {
     import Dependencies._
-    test ++ config ++ log4j ++ scala ++ scopt ++ scalaz ++ shapeless ++ slf4j
+    test ++ config ++ log4j ++ scala ++ scopt ++ scalaz ++ slf4j
   }
 
   lazy val localExecutionDependencies = {
@@ -44,7 +53,7 @@ object Build extends sbt.Build {
   }
 
   lazy val sbtPlugins = Seq(
-    // For packaging,, and Scala test coverage reporting
+    // For packaging
     JavaAppPackaging,
     // For JMH benchmarking
     JmhPlugin,
@@ -79,40 +88,6 @@ object Build extends sbt.Build {
       conflictManager := ConflictManager.strict
     )
 
-  lazy val consoleSettings = Seq(
-    initialCommands in console :=
-      """import scraper.LocalContext
-        |import scraper.expressions.dsl._
-        |import scraper.expressions.functions._
-        |import scraper.types._
-        |
-        |val context = new LocalContext
-        |""".stripMargin,
-
-    initialCommands in console in Test :=
-      """import org.scalacheck.Gen
-        |import org.scalacheck.Gen._
-        |import org.scalacheck.Prop
-        |import org.scalacheck.Prop._
-        |import org.scalacheck.Test
-        |import org.scalacheck.Test._
-        |
-        |import scraper.LocalContext
-        |import scraper.expressions.dsl._
-        |import scraper.expressions.functions._
-        |import scraper._
-        |
-        |import scraper.Test._
-        |import scraper.types._
-        |import scraper.generators.expressions._
-        |import scraper.generators.plans.logical._
-        |import scraper.generators.types._
-        |import scraper.generators.values._
-        |
-        |val context = new LocalContext
-        |""".stripMargin
-    )
-
   lazy val scalariformSettings =
     SbtScalariform.scalariformSettings ++ Seq(
       preferences := PreferencesImporterExporter.loadPreferences("scalariform.properties")
@@ -126,6 +101,7 @@ object Dependencies {
   )
 
   object Versions {
+    val ammonite = "0.5.5"
     val config = "1.2.1"
     val log4j = "1.2.16"
     val protobuf = "2.5.0"
@@ -136,9 +112,12 @@ object Dependencies {
     val scalaTest = "2.2.5"
     val scalaz = "7.2.0"
     val scopt = "3.3.0"
-    val shapeless = "2.2.5"
     val slf4j = "1.6.4"
   }
+
+  val ammonite = Seq(
+    "com.lihaoyi" % "ammonite-repl_2.11.7" % Versions.ammonite
+  )
 
   val config = Seq(
     "com.typesafe" % "config" % Versions.config
@@ -173,10 +152,6 @@ object Dependencies {
 
   val scopt = Seq(
     "com.github.scopt" %% "scopt" % Versions.scopt
-  )
-
-  val shapeless = Seq(
-    "com.chuusai" %% "shapeless" % Versions.shapeless
   )
 
   val slf4j = Seq(

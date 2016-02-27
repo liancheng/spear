@@ -13,6 +13,7 @@ import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
 import scraper.local.LocalCatalog
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
+import scraper.plans.logical.dsl._
 import scraper.types.{DataType, IntType}
 import scraper.{LoggingFunSuite, Row, TestUtils}
 

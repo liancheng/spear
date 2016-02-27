@@ -12,11 +12,12 @@ import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.generators.expressions._
-import Optimizer.{CNFConversion, ReduceFilters}
 import scraper.local.LocalCatalog
+import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters}
+import scraper.plans.logical.dsl._
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{TestUtils, LoggingFunSuite}
+import scraper.{LoggingFunSuite, TestUtils}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private implicit def prettyExpression(expression: Expression): Pretty = Pretty {
@@ -59,7 +60,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     )
   }
 
-  testRule(ReduceFilters, FixedPoint.Unlimited) { optimizer =>
+  testRule(MergeFilters, FixedPoint.Unlimited) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(Nil))
 
     check { (p1: Expression, p2: Expression) =>

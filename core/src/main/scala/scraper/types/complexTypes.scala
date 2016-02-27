@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 
 import scraper.expressions.NamedExpression.newExpressionId
 import scraper.expressions.{Attribute, AttributeRef}
+import scraper.utils.quote
 
 trait ComplexType extends DataType
 
@@ -87,7 +88,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
   def rename(firstName: String, restNames: String*): StructType = this rename firstName +: restNames
 
   override def sql: String = {
-    val fieldsString = fields map (f => s"${f.name}: ${f.dataType.sql}") mkString ", "
+    val fieldsString = fields map (f => s"${quote(f.name)}: ${f.dataType.sql}") mkString ", "
     s"STRUCT<$fieldsString>"
   }
 }

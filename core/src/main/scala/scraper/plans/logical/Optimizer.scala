@@ -8,7 +8,8 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.logical
 import scraper.plans.logical.Optimizer._
-import scraper.plans.logical.patterns.PhysicalOperation.{collectAliases, reduceAliases}
+import scraper.plans.logical.dsl._
+import scraper.plans.logical.patterns.PhysicalOperation.inlineAliases
 import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
 
@@ -23,10 +24,10 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
       ReduceAliases,
       ReduceCasts,
-      ReduceFilters,
+      MergeFilters,
       ReduceLimits,
       ReduceNegations,
-      ReduceProjects,
+      MergeProjects,
 
       PushFiltersThroughProjects,
       PushFiltersThroughJoins,
@@ -120,14 +121,13 @@ object Optimizer {
   /**
    * This rule reduces adjacent projects.  Aliases are also inlined/substituted when possible.
    */
-  object ReduceProjects extends Rule[LogicalPlan] {
+  object MergeProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList if projectList == plan.output =>
         plan
 
-      case plan Project inner Project outer =>
-        val aliases = collectAliases(inner)
-        plan select (outer map (reduceAliases(aliases, _)))
+      case plan Project innerList Project outerList =>
+        plan select (outerList map (inlineAliases(innerList, _)))
     }
   }
 
@@ -136,7 +136,7 @@ object Optimizer {
    */
   object ReduceAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case outer @ Alias(Alias(child, _, _), _, _) => outer.copy(child = child)
+      case outer @ Alias(inner: Alias, _, _) => outer.copy(child = inner.child)
     }
   }
 
@@ -166,7 +166,7 @@ object Optimizer {
   /**
    * This rule combines adjacent [[logical.Filter Filter]]s into a single [[logical.Filter Filter]].
    */
-  object ReduceFilters extends Rule[LogicalPlan] {
+  object MergeFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Filter inner Filter outer => plan filter (inner && outer)
     }
@@ -184,8 +184,8 @@ object Optimizer {
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projectList Filter condition =>
-        val substitutedCondition = reduceAliases(collectAliases(projectList), condition)
+      case plan Project projectList Filter condition if projectList forall (_.pure) =>
+        val substitutedCondition = inlineAliases(projectList, condition)
         plan filter substitutedCondition select projectList
     }
   }
@@ -196,21 +196,26 @@ object Optimizer {
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (join @ Join(left, right, Inner, maybeCondition)) Filter condition =>
-        val (leftPredicates, rest) = splitConjunction(toCNF(condition)).partition {
+        // Finds predicates that only reference attribute(s) of the left branch.  The filter
+        // condition predicate is turned into CNF first so that we can push as many predicates as
+        // possible.
+        val (leftPredicates, rest) = splitConjunction(toCNF(condition)) partition {
           _.references subsetOf left.references
         }
 
-        val (rightPredicates, commonPredicates) = rest.partition {
+        // Finds predicates that only reference attribute(s) of the right branch and predicates
+        // that reference attributes of both branches.
+        val (rightPredicates, commonPredicates) = rest partition {
           _.references subsetOf right.references
         }
 
-        def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan) =
+        def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
           predicates reduceOption (_ && _) map plan.filter getOrElse plan
 
         join.copy(
           left = applyPredicates(leftPredicates, left),
           right = applyPredicates(rightPredicates, right),
-          maybeCondition = (maybeCondition ++ commonPredicates) reduceOption (_ && _)
+          condition = (maybeCondition ++ commonPredicates) reduceOption (_ && _)
         )
     }
   }

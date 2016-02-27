@@ -3,16 +3,17 @@ package scraper.local
 import scala.collection.{Iterable, mutable}
 import scala.reflect.runtime.universe.WeakTypeTag
 
+import scraper._
 import scraper.config.Settings
 import scraper.exceptions.TableNotFoundException
 import scraper.local.plans.physical
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
+import scraper.plans.logical.dsl._
 import scraper.plans.physical.PhysicalPlan
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.types.{LongType, StructType}
-import scraper._
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution

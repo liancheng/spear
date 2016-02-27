@@ -1,13 +1,13 @@
 package scraper.exceptions
 
-import scraper.expressions.Expression
+import scraper.expressions.{GroupingAlias, Expression}
 import scraper.plans.logical.LogicalPlan
 import scraper.types.DataType
 import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
-class ContractBrokenException(message: String, cause: Throwable)
+class BrokenContractException(message: String, cause: Throwable)
   extends RuntimeException(message, cause) {
 
   def this(message: String) = this(message, null)
@@ -113,6 +113,21 @@ class SchemaIncompatibleException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
   def this(message: String) = this(message, null)
+}
+
+class IllegalAggregationException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
+
+  def this(expression: Expression, groupingList: Seq[GroupingAlias], cause: Throwable) =
+    this(
+      s"""Expression $expression is neither an aggregate function nor a member of group by list
+         |${groupingList mkString ("[", ", ", "]")}
+       """.straight,
+      cause
+    )
+
+  def this(expression: Expression, groupingList: Seq[GroupingAlias]) =
+    this(expression, groupingList, null)
 }
 
 class SettingsValidationException(message: String, cause: Throwable)
