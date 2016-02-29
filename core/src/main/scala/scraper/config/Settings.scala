@@ -3,7 +3,6 @@ package scraper.config
 import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 
@@ -35,21 +34,23 @@ object Settings {
 
   object Key {
     case class KeyBuilder(name: String) {
-      def boolean: Key[Boolean] = Key(name, _ getBoolean name)
-      def number: Key[Number] = Key(name, _ getNumber name)
-      def string: Key[String] = Key(name, _ getString name)
-      def int: Key[Int] = Key(name, _ getInt name)
-      def long: Key[Long] = Key(name, _ getLong name)
-      def double: Key[Double] = Key(name, _ getDouble name)
-      def anyref: Key[AnyRef] = Key(name, _ getAnyRef name)
+      def boolean: Key[Boolean] = Key[Boolean](name, _ getBoolean name)
+      def number: Key[Number] = Key[Number](name, _ getNumber name)
+      def string: Key[String] = Key[String](name, _ getString name)
+      def int: Key[Int] = Key[Int](name, _ getInt name)
+      def long: Key[Long] = Key[Long](name, _ getLong name)
+      def double: Key[Double] = Key[Double](name, _ getDouble name)
+      def anyref: Key[AnyRef] = Key[AnyRef](name, _ getAnyRef name)
 
-      def nanos: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.NANOSECONDS) nanos)
-      def micros: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.MICROSECONDS) micros)
-      def millis: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.MICROSECONDS) millis)
-      def seconds: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.MICROSECONDS) seconds)
-      def minutes: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.MINUTES) minutes)
-      def hours: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.HOURS) hours)
-      def days: Key[Duration] = Key(name, _ getDuration (name, TimeUnit.DAYS) days)
+      private def duration(config: Config, unit: TimeUnit): Long = config getDuration (name, unit)
+
+      def nanos: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.NANOSECONDS).nanos)
+      def micros: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.MICROSECONDS).micros)
+      def millis: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.MILLISECONDS).millis)
+      def seconds: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.SECONDS).seconds)
+      def minutes: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.MINUTES).minutes)
+      def hours: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.HOURS).hours)
+      def days: Key[Duration] = Key[Duration](name, duration(_, TimeUnit.DAYS).days)
     }
 
     def apply(name: String): KeyBuilder = KeyBuilder(name)

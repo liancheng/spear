@@ -42,9 +42,7 @@ package object logical {
       joinNum + 1,
       Gen.resize(relationFactorSize, genRelationFactor(input)(settings))
     )
-  } yield (tails foldLeft head) {
-    Join(_, _, Inner, None)
-  }
+  } yield (tails foldLeft head) { _ join _ }
 
   def genRelationFactor(input: Seq[LogicalPlan])(implicit settings: Settings): Gen[LogicalPlan] = {
     val genBottomPlans = Gen.oneOf(input :+ SingleRowRelation)
@@ -57,7 +55,7 @@ package object logical {
         val genSubquery = for {
           plan <- Gen.resize(size - 1, Gen.lzy(genLogicalPlan(input)(settings)))
           name <- genIdentifier
-        } yield Subquery(plan, name)
+        } yield plan subquery name
 
         Gen.oneOf(genSubquery, genBottomPlans)
     }

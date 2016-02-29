@@ -14,9 +14,6 @@ package object dsl {
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
-    def aggregate(groupingList: Seq[Expression], aggregateList: Seq[NamedExpression]): Aggregate =
-      Aggregate(plan, groupingList map (GroupingAlias(_)), aggregateList)
-
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
     def where(condition: Expression): Filter = filter(condition)
@@ -33,6 +30,12 @@ package object dsl {
 
     def subquery(name: String): Subquery = Subquery(plan, name)
 
+    def subquery(name: Symbol): Subquery = plan subquery name.name
+
+    def as(name: String): Subquery = plan subquery name
+
+    def as(name: Symbol): Subquery = plan as name.name
+
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
     def leftJoin(that: LogicalPlan): Join = Join(plan, that, LeftOuter, None)
@@ -46,5 +49,19 @@ package object dsl {
     def intersect(that: LogicalPlan): Intersect = Intersect(plan, that)
 
     def except(that: LogicalPlan): Except = Except(plan, that)
+
+    def groupBy(groupingList: Seq[Expression]): GroupedLogicalPlan =
+      new GroupedLogicalPlan(plan, groupingList)
+
+    def groupBy(first: Expression, rest: Expression*): GroupedLogicalPlan =
+      new GroupedLogicalPlan(plan, first +: rest)
+  }
+
+  class GroupedLogicalPlan(plan: LogicalPlan, groupingList: Seq[Expression]) {
+    def agg(aggregateList: Seq[NamedExpression]): Aggregate =
+      Aggregate(plan, groupingList map (GroupingAlias(_)), aggregateList)
+
+    def agg(first: NamedExpression, rest: NamedExpression*): Aggregate =
+      Aggregate(plan, groupingList map (GroupingAlias(_)), first +: rest)
   }
 }

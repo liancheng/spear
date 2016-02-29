@@ -115,7 +115,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case d ~ ps ~ rs ~ f ~ gs ~ h ~ o ~ n =>
         val base = rs getOrElse SingleRowRelation
         val withFilter = f map base.filter getOrElse base
-        val withProject = gs map (withFilter.aggregate(_, ps)) getOrElse (withFilter select ps)
+        val withProject = gs map (withFilter.groupBy(_).agg(ps)) getOrElse (withFilter select ps)
         val withDistinct = d map (_ => withProject.distinct) getOrElse withProject
         val withHaving = h map withDistinct.filter getOrElse withProject
         val withOrder = o map withHaving.orderBy getOrElse withHaving
