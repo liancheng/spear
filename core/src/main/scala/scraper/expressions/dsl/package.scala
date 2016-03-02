@@ -2,6 +2,8 @@ package scraper.expressions
 
 import scala.language.implicitConversions
 
+import scraper.config.Settings
+import scraper.parser.Parser
 import scraper.types._
 
 package object dsl {
@@ -23,6 +25,11 @@ package object dsl {
 
   implicit def `Symbol->UnresolvedAttribute`(name: Symbol): UnresolvedAttribute =
     UnresolvedAttribute(name.name)
+
+  implicit class StringToUnresolvedAttribute(sc: StringContext) {
+    def $(args: Any*): UnresolvedAttribute =
+      new Parser(Settings.empty).parseAttribute(sc.s(args: _*))
+  }
 
   trait BinaryOperatorPattern[T <: BinaryExpression] {
     def unapply(op: T): Option[(Expression, Expression)] = Some((op.left, op.right))
