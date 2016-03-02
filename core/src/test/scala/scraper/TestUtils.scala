@@ -2,7 +2,7 @@ package scraper
 
 import org.scalatest.FunSuite
 
-import scraper.expressions.{Alias, AttributeRef, Expression, ExpressionId}
+import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.LogicalPlan
 import scraper.trees.TreeNode
@@ -53,16 +53,24 @@ trait TestUtils { this: FunSuite =>
   }
 
   private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    var normalizedId = -1L
+    val allIdExpressions = plan.collect {
+      case node =>
+        node.expressions.map {
+          case e: Alias             => e: NamedExpression
+          case e: AttributeRef      => e: NamedExpression
+          case e: GroupingAlias     => e: NamedExpression
+          case e: GroupingAttribute => e: NamedExpression
+          case e                    => e
+        }
+    }.flatten
+
+    val rewrites = allIdExpressions.zipWithIndex.toMap
 
     plan.transformAllExpressions {
-      case e: AttributeRef =>
-        normalizedId += 1
-        e.copy(expressionId = ExpressionId(normalizedId))
-
-      case e: Alias =>
-        normalizedId += 1
-        e.copy(expressionId = ExpressionId(normalizedId))
+      case e: Alias             => e.copy(expressionId = ExpressionId(rewrites(e)))
+      case e: AttributeRef      => e.copy(expressionId = ExpressionId(rewrites(e)))
+      case e: GroupingAlias     => e.copy(expressionId = ExpressionId(rewrites(e)))
+      case e: GroupingAttribute => e.copy(expressionId = ExpressionId(rewrites(e)))
     }
   }
 
