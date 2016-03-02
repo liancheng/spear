@@ -103,6 +103,7 @@ object Dependencies {
   object Versions {
     val ammonite = "0.5.5"
     val config = "1.2.1"
+    val jline = "2.12.1"
     val log4j = "1.2.16"
     val protobuf = "2.5.0"
     val scala = "2.11.7"
@@ -121,6 +122,10 @@ object Dependencies {
 
   val config = Seq(
     "com.typesafe" % "config" % Versions.config
+  )
+
+  val jline = Seq(
+    "jline" % "jline" % Versions.jline
   )
 
   val log4j = Seq(
@@ -162,5 +167,5 @@ object Dependencies {
 
   val test = scalaCheck ++ scalaTest
 
-  val overrides = Set.empty ++ protobuf ++ scala
+  val overrides = Set.empty ++ jline ++ protobuf ++ scala
 }
