@@ -49,13 +49,12 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
 
-  def orderBy(expr: Expression, exprs: Expression*): DataFrame = withPlan {
-    Sort(_, expr +: exprs map (SortOrder(_, Ascending, context.settings(NullsLarger))))
+  def orderBy(first: Expression, rest: Expression*): DataFrame = {
+    val sortOrders = first +: rest map (SortOrder(_, Ascending, context.settings(NullsLarger)))
+    withPlan(Sort(_, sortOrders))
   }
 
-  def orderBy(order: SortOrder, orders: SortOrder*): DataFrame = withPlan {
-    Sort(_, order +: orders)
-  }
+  def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = withPlan(Sort(_, first +: rest))
 
   def subquery(name: String): DataFrame = withPlan(_ subquery name)
 
