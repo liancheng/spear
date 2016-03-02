@@ -83,13 +83,11 @@ case class CartesianProduct(
 
   override def output: Seq[Attribute] = left.output ++ right.output
 
-  override def iterator: Iterator[Row] = {
-    for {
-      leftRow <- left.iterator
-      rightRow <- right.iterator
-      joinedRow = new JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
-    } yield new JoinedRow(leftRow, rightRow)
-  }
+  override def iterator: Iterator[Row] = for {
+    leftRow <- left.iterator
+    rightRow <- right.iterator
+    joinedRow = new JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
+  } yield new JoinedRow(leftRow, rightRow)
 
   def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
 }
