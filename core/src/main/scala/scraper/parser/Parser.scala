@@ -144,10 +144,8 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def nullsFirst: Parser[Boolean] =
     NULLS ~> (FIRST ^^^ true | LAST ^^^ false)
 
-  private def direction: Parser[SortDirection] = (
-    ASC ^^^ Ascending
-    | DESC ^^^ Descending
-  )
+  private def direction: Parser[SortDirection] =
+    ASC ^^^ Ascending | DESC ^^^ Descending
 
   private def relations: Parser[LogicalPlan] =
     relation * ("," ^^^ (Join(_: LogicalPlan, _: LogicalPlan, Inner, None)))
@@ -156,10 +154,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     joinedRelation | relationFactor
 
   private def joinedRelation: Parser[LogicalPlan] =
-    relationFactor ~ (joinType.? ~ (JOIN ~> relationFactor) ~ joinCondition.?).+ ^^ {
+    relationFactor ~ ((joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.?).+ ^^ {
       case r ~ joins =>
-        joins.foldLeft(r) {
-          case (lhs, t ~ rhs ~ c) => Join(lhs, rhs, t getOrElse Inner, c)
+        (joins foldLeft r) {
+          case (lhs, t ~ rhs ~ c) =>
+            Join(lhs, rhs, t getOrElse Inner, c)
         }
     }
 
