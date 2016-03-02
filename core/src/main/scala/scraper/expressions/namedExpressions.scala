@@ -89,6 +89,11 @@ case class GroupingAlias(
 
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
     f(child) map (childString => s"$childString AS ${quote(name)}")
+
+  def rewriteGroupingExpression(expression: NamedExpression): NamedExpression =
+    expression.transformDown {
+      case e if e == child => this.toAttribute
+    }.asInstanceOf[NamedExpression]
 }
 
 object GroupingAlias {
