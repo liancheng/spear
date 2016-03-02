@@ -28,6 +28,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       ReduceLimits,
       ReduceNegations,
       MergeProjects,
+      EliminateSubqueries,
 
       PushFiltersThroughProjects,
       PushFiltersThroughJoins,
@@ -237,6 +238,14 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (left Union right) Limit n =>
         left limit n union (right limit n) limit n
+    }
+  }
+
+  object EliminateSubqueries extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case child Subquery _ => child
+    } transformAllExpressions {
+      case ref: AttributeRef => ref.copy(qualifiers = Set.empty)
     }
   }
 }
