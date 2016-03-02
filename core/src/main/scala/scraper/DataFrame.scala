@@ -3,7 +3,7 @@ package scraper
 import scraper.config.Keys.NullsLarger
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.{Ascending, Expression, SortOrder}
+import scraper.expressions._
 import scraper.plans.QueryExecution
 import scraper.plans.logical._
 import scraper.plans.logical.dsl._
@@ -14,7 +14,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def context: Context = queryExecution.context
 
-  private def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
+  private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
     new DataFrame(f(queryExecution.logicalPlan), context)
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
@@ -70,6 +70,11 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def except(that: DataFrame): DataFrame = withPlan(_ except that.queryExecution.logicalPlan)
 
+  def groupBy(groupingList: Seq[Expression]): GroupedData =
+    new GroupedData(this, groupingList map (GroupingAlias(_)))
+
+  def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
+
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
   def registerAsTable(tableName: String): Unit =
@@ -112,4 +117,11 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
 } with DataFrame(join, left.context) {
   def on(condition: Expression): DataFrame =
     new DataFrame(join.copy(condition = Some(condition)), context)
+}
+
+class GroupedData(df: DataFrame, groupingList: Seq[GroupingAlias]) {
+  def agg(aggregateList: Seq[NamedExpression]): DataFrame =
+    df.withPlan(Aggregate(_, groupingList, aggregateList))
+
+  def agg(first: NamedExpression, rest: NamedExpression*): DataFrame = agg(first +: rest)
 }
