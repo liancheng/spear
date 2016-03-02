@@ -2,6 +2,7 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.Set
 import scala.language.higherKinds
 import scala.util.{Success, Try}
 import scalaz.Scalaz._
@@ -114,9 +115,13 @@ trait Attribute extends NamedExpression with LeafExpression {
   def ! : Attribute = withNullability(false)
 }
 
-case class UnresolvedAttribute(name: String) extends Attribute with UnresolvedNamedExpression {
+case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
+  extends Attribute with UnresolvedNamedExpression {
+
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    implicitly[Applicative[T]].point(quote(name))
+    implicitly[Applicative[T]].point {
+      (qualifier.toSeq :+ name) map quote mkString "."
+    }
 
   override def newInstance(): Attribute = this
 
@@ -157,8 +162,17 @@ case class AttributeRef(
   name: String,
   override val dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionId
+  override val expressionId: ExpressionId,
+  qualifiers: Set[String] = Set.empty[String]
 ) extends ResolvedAttribute with UnevaluableExpression {
+
+  override def equals(other: Any): Boolean = other match {
+    case that: AttributeRef => this.expressionId == that.expressionId
+    case _                  => false
+  }
+
+  override def hashCode(): Int = expressionId.id.hashCode()
+
   override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
   override def ? : AttributeRef = withNullability(true)
@@ -166,6 +180,15 @@ case class AttributeRef(
   override def ! : AttributeRef = withNullability(false)
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
+
+  override def debugString: String = {
+    val qualifierPrefix = (qualifiers map quote).toList match {
+      case Nil           => ""
+      case single :: Nil => single + "."
+      case multiple      => multiple mkString ("{", "|", "}.")
+    }
+    qualifierPrefix + super.debugString
+  }
 }
 
 case class GroupingAttribute(

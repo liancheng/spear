@@ -81,6 +81,15 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Seq(Row("b", 1), Row("f", 2), Row("a", 3), Row("d", 4), Row("c", 5))
     )
   }
+
+  test("self-join") {
+    val df = context range 2
+
+    checkDataFrame(
+      df as 'a join (df as 'b) on $"a.id" =:= $"b.id",
+      Seq(Row(0, 0), Row(1, 1))
+    )
+  }
 }
 
 object LocalContextSuite {

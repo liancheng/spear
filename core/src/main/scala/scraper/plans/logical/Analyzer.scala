@@ -14,8 +14,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     ExpandStars,
     new ResolveRelations(catalog),
     ResolveReferences,
-    ResolveAggregates,
-    DeduplicateReferences
+    DeduplicateReferences,
+    ResolveAggregates
   ))
 
   private val cleanupBatch = RuleBatch("Cleanup", Once, Seq(
@@ -89,32 +89,37 @@ object Analyzer {
   )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(plan) if plan.childrenResolved =>
-        plan transformExpressionsUp {
-          case UnresolvedAttribute(name) =>
-            def reportResolutionFailure(message: String): Nothing = {
-              throw new ResolutionFailureException(
-                s"""Failed to resolve attribute $name in logical query plan:
-                   |${plan.prettyTree}
-                   |$message
-                   |""".stripMargin
-              )
-            }
+      case Unresolved(plan) if plan.duplicatesResolved =>
+        resolveReferences(plan)
+    }
 
-            val candidates = plan.children flatMap (_.output) filter (_.name == name)
+    def resolveReferences(plan: LogicalPlan): LogicalPlan = plan transformExpressionsUp {
+      case UnresolvedAttribute(name, qualifier) =>
+        def reportResolutionFailure(message: String): Nothing = {
+          throw new ResolutionFailureException(
+            s"""Failed to resolve attribute $name in logical query plan:
+                |${plan.prettyTree}
+                |$message
+                |""".stripMargin
+          )
+        }
 
-            candidates match {
-              case Seq(attribute) =>
-                attribute
+        val candidates = plan.children flatMap (_.output) filter {
+          case a: AttributeRef => a.name == name && (qualifier.toSet subsetOf a.qualifiers)
+          case _               => false
+        }
 
-              case Nil =>
-                reportResolutionFailure("No candidate input attribute(s) found")
+        candidates match {
+          case Seq(attribute) =>
+            attribute
 
-              case _ =>
-                reportResolutionFailure {
-                  val list = candidates map (_.debugString) mkString ", "
-                  s"Multiple ambiguous input attributes found: $list"
-                }
+          case Nil =>
+            reportResolutionFailure("No candidate input attribute(s) found")
+
+          case _ =>
+            reportResolutionFailure {
+              val list = candidates map (_.debugString) mkString ", "
+              s"Multiple ambiguous input attributes found: $list"
             }
         }
     }
@@ -165,32 +170,41 @@ object Analyzer {
    */
   object DeduplicateReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case join @ Join(Resolved(left), Resolved(right), _, _) if !join.duplicatesResolved =>
-        val conflictingAttributes = left.outputSet & right.outputSet
+      case plan if plan.childrenResolved && !plan.duplicatesResolved =>
+        plan match {
+          case node: Join      => node.copy(right = deduplicateRight(node.left, node.right))
+          case node: Union     => node.copy(right = deduplicateRight(node.left, node.right))
+          case node: Intersect => node.copy(right = deduplicateRight(node.left, node.right))
+          case node: Except    => node.copy(right = deduplicateRight(node.left, node.right))
+        }
+    }
 
-        def hasDuplicates(attributes: Set[Attribute]): Boolean =
-          (attributes & conflictingAttributes).nonEmpty
+    def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
+      val conflictingAttributes = left.outputSet & right.outputSet
 
-        val newLeft = left.collectFirst {
-          // Handles relations that introduce ambiguous attributes
-          case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
-            plan -> plan.newInstance()
+      def hasDuplicates(attributes: Set[Attribute]): Boolean =
+        (attributes & conflictingAttributes).nonEmpty
 
-          // Handles projections that introduce ambiguous aliases
-          case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
-            plan -> plan.copy(projectList = newAliases(projectList))
-        } map {
-          case (oldPlan, newPlan) =>
-            val attributeRewrites = (oldPlan.output zip newPlan.output).toMap
+      right collectFirst {
+        // Handles relations that introduce ambiguous attributes
+        case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
+          plan -> plan.newInstance()
 
-            left transformDown {
-              case plan if plan == oldPlan => newPlan
-            } transformAllExpressions {
-              case a: Attribute => attributeRewrites.getOrElse(a, a)
-            }
-        } getOrElse left
+        // Handles projections that introduce ambiguous aliases
+        case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
+          plan -> plan.copy(projectList = newAliases(projectList))
 
-        join.copy(left = newLeft)
+        // TODO Handles aggregations that introduce ambiguous aliases and grouping attributes
+      } map {
+        case (oldPlan, newPlan) =>
+          val attributeRewrites = (oldPlan.output zip newPlan.output).toMap
+
+          right transformDown {
+            case plan if plan == oldPlan => newPlan
+          } transformAllExpressions {
+            case a: Attribute => attributeRewrites.getOrElse(a, a)
+          }
+      } getOrElse right
     }
 
     def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =

@@ -50,6 +50,13 @@ abstract class TokenParser[T] extends StdTokenParsers {
 }
 
 class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
+  def parseAttribute(input: String): UnresolvedAttribute = synchronized {
+    phrase(attribute)(new lexical.Scanner(input)) match {
+      case Success(a, _)  => a
+      case failureOrError => throw new ParsingException(failureOrError.toString)
+    }
+  }
+
   private val ALL = Keyword("ALL")
   private val AND = Keyword("AND")
   private val ARRAY = Keyword("ARRAY")
@@ -249,10 +256,16 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def primary: Parser[Expression] = (
     literal
-    | ident ^^ UnresolvedAttribute
+    | attribute
     | cast
     | "(" ~> expression <~ ")"
   )
+
+  private def attribute: Parser[UnresolvedAttribute] =
+    (ident <~ ".").? ~ ident ^^ {
+      case qualifier ~ name =>
+        UnresolvedAttribute(name, qualifier)
+    }
 
   private def literal: Parser[Literal] = (
     numericLiteral

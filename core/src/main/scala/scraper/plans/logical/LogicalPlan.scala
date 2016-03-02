@@ -16,7 +16,11 @@ import scraper.types.{DataType, IntegralType, StructType}
 import scraper.utils._
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
-  def resolved: Boolean = (expressions forall (_.resolved)) && childrenResolved
+  def resolved: Boolean = (expressions forall (_.resolved)) && duplicatesResolved
+
+  lazy val duplicatesResolved: Boolean = childrenResolved && (
+    children.length < 2 || children.map(_.outputSet).reduce(_ & _).isEmpty
+  )
 
   def childrenResolved: Boolean = children forall (_.resolved)
 
@@ -241,13 +245,14 @@ case class Join(
     case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
   }
 
-  lazy val duplicatesResolved: Boolean = (left.outputSet & right.outputSet).isEmpty
-
   def on(condition: Expression): Join = copy(condition = Some(condition))
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
-  override lazy val output: Seq[Attribute] = child.output
+  override lazy val output: Seq[Attribute] = child.output map {
+    case a: AttributeRef => a.copy(qualifiers = a.qualifiers + alias)
+    case a: Attribute    => a
+  }
 }
 
 case class Aggregate(

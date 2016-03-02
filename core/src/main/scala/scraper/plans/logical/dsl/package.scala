@@ -7,9 +7,10 @@ package object dsl {
   implicit class LogicalPlanDsl(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList map {
-        case UnresolvedAttribute("*") => Star
-        case e: NamedExpression       => e
-        case e                        => e as (e.sql getOrElse "?column?")
+        // TODO Handle qualified star
+        case UnresolvedAttribute("*", _) => Star
+        case e: NamedExpression          => e
+        case e                           => e as (e.sql getOrElse "?column?")
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)

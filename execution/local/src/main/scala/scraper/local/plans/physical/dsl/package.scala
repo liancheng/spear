@@ -8,9 +8,10 @@ package object dsl {
   implicit class PhysicalPlanDsl(plan: PhysicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList.zipWithIndex map {
-        case (UnresolvedAttribute("*"), _) => Star
-        case (e: NamedExpression, _)       => e
-        case (e, ordinal)                  => e as (e.sql getOrElse s"col$ordinal")
+        // TODO Handle qualified star
+        case (UnresolvedAttribute("*", _), _) => Star
+        case (e: NamedExpression, _)          => e
+        case (e, ordinal)                     => e as (e.sql getOrElse s"col$ordinal")
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
