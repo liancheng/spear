@@ -86,6 +86,11 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val df = context range 2
 
     checkDataFrame(
+      df as 'a join (df as 'b),
+      Seq(Row(0, 0), Row(0, 1), Row(1, 0), Row(1, 1))
+    )
+
+    checkDataFrame(
       df as 'a join (df as 'b) on $"a.id" =:= $"b.id",
       Seq(Row(0, 0), Row(1, 1))
     )
