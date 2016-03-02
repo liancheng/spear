@@ -25,13 +25,15 @@ package object utils {
 
     def rtrim(str: String): String = str.replaceAll("\\s+$", "")
 
+    val pipe = "\u2502"
+
     header.map {
       case (lhsLine, rhsLine) =>
-        rtrim(s"# $lhsLine \u2502 $rhsLine")
+        rtrim(s"# $lhsLine $pipe $rhsLine")
     } ++ contents.map {
       case (lhsLine, rhsLine) =>
         val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) "!" else " "
-        rtrim(s"$diffIndicator $lhsLine \u2502 $rhsLine")
+        rtrim(s"$diffIndicator $lhsLine $pipe $rhsLine")
     }
   } mkString ("\n", "\n", "")
 

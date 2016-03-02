@@ -69,7 +69,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("sort") {
-    val df = context.lift(Seq("a" -> 3, "b" -> 1, "f" -> 2, "d" -> 4, "c" -> 5), "i", "j")
+    val df = context lift (Seq("a" -> 3, "b" -> 1, "f" -> 2, "d" -> 4, "c" -> 5), "i", "j")
 
     checkDataFrame(
       df orderBy 'i,

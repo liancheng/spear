@@ -21,7 +21,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   def expressions: Seq[Expression] = productIterator.flatMap {
     case element: Expression     => Seq(element)
-    case Some(e: Expression)     => Seq(e)
+    case element: Option[_]      => element collect { case e: Expression => e }
     case element: Traversable[_] => element collect { case e: Expression => e }
     case _                       => Nil
   }.toSeq

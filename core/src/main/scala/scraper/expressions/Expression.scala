@@ -13,7 +13,7 @@ import scraper.types.DataType
 import scraper.utils._
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
-  def foldable: Boolean = children.forall(_.foldable)
+  def foldable: Boolean = children forall (_.foldable)
 
   def nullable: Boolean = true
 
@@ -23,7 +23,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def childrenResolved: Boolean = children forall (_.resolved)
 
-  def references: Set[Attribute] = children.toSet.flatMap((_: Expression).references)
+  def references: Set[Attribute] = children.toSet flatMap ((_: Expression).references)
 
   /**
    * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] is
