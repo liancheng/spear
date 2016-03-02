@@ -312,11 +312,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def arrayType: Parser[ArrayType] =
-    ARRAY ~ "<" ~> dataType <~ ">" ^^ (ArrayType(_))
+    ARRAY ~ "<" ~> dataType <~ ">" ^^ (t => ArrayType(t.?))
 
   private def mapType: Parser[MapType] =
     MAP ~ "<" ~> dataType ~ ("," ~> dataType) <~ ">" ^^ {
-      case kt ~ vt => MapType(kt, vt)
+      case kt ~ vt => MapType(kt, vt.?)
     }
 
   private def structType: Parser[StructType] =
@@ -324,7 +324,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def structField: Parser[StructField] =
     ident ~ (":" ~> dataType) ^^ {
-      case i ~ t => StructField(i, t)
+      case i ~ t => StructField(i, t.?)
     }
 }
 
@@ -353,7 +353,7 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     }
 
     // Back-quoted identifiers
-    | '`' ~> chrExcept('`', '\n', EofCh).* <~ '`' ^^ {
+    | '`' ~> (chrExcept('`', '\n', EofCh) | ('`' ~ '`') ^^^ '`').* <~ '`' ^^ {
       case cs => Identifier(cs.mkString)
     }
 
