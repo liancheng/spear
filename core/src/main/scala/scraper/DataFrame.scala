@@ -106,6 +106,54 @@ class DataFrame(val queryExecution: QueryExecution) {
   }
 
   def explain(extended: Boolean = true): Unit = println(explanation(extended))
+
+  def show(rowCount: Int = 20, truncate: Boolean = true): Unit =
+    println(showString(rowCount, truncate))
+
+  private def showString(rowCount: Int = 20, truncate: Boolean = true): String = {
+    val truncated = limit(rowCount + 1).toArray
+    val hasMoreData = truncated.length > rowCount
+    val data = truncated take rowCount
+
+    val builder = StringBuilder.newBuilder
+
+    val rows = schema.fields.map(_.name) +: data.map { row =>
+      row.map { cell =>
+        val content = cell match {
+          case null => "NULL"
+          case _    => cell.toString
+        }
+
+        if (truncate && content.length > 20) (content take 17) + "..." else content
+      }
+    }.toSeq
+
+    val columnWidths = rows.transpose map { column =>
+      column.map(_.length).max
+    }
+
+    val sep = columnWidths map ("-" * _) mkString ("+", "+", "+\n")
+
+    def displayRow(row: Seq[String]): String = {
+      row zip columnWidths map {
+        case (name, width) => name padTo (width, ' ')
+      } mkString ("|", "|", "|\n")
+    }
+
+    val body = rows map displayRow
+
+    builder ++= sep
+    builder ++= body.head
+    builder ++= sep
+    body.tail foreach builder.append
+    builder ++= sep
+
+    if (hasMoreData) {
+      builder ++= s"Only showing top $rowCount row(s)"
+    }
+
+    builder.toString()
+  }
 }
 
 class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) extends {
