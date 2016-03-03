@@ -240,7 +240,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def termExpression: Parser[Expression] = (
     "-" ~> productExpression ^^ Negate
     | productExpression * (
-      "+" ^^^ Add
+      "+" ^^^ Plus
       | "-" ^^^ Minus
     )
   )

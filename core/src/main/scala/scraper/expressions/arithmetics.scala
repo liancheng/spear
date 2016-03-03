@@ -71,7 +71,7 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
   override protected def strictDataType: DataType = left.dataType
 }
 
-case class Add(left: Expression, right: Expression) extends BinaryArithmeticOperator {
+case class Plus(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = numeric.plus(lhs, rhs)
 
   override def operator: String = "+"

@@ -26,7 +26,7 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
   test("add") {
     check(forAll(genNumericLiteralPair) {
       case (a @ Literal(_, t: NumericType), b) =>
-        Add(a, b).evaluated == t.genericNumeric.plus(a.value, b.value)
+        Plus(a, b).evaluated == t.genericNumeric.plus(a.value, b.value)
     })
   }
 

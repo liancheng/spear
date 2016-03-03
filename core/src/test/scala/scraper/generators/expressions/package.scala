@@ -69,7 +69,7 @@ package object expressions extends Logging {
 
         genProduct = genProductExpression(input, outputSpec)(settings)
         genNegate = Gen resize (size - 1, genProduct map Negate)
-        genTerm = genUnaryOrBinary(genProduct, Add, Minus)
+        genTerm = genUnaryOrBinary(genProduct, Plus, Minus)
 
         term <- size match {
           case 1 => genProduct
