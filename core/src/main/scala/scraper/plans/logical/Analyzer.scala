@@ -35,6 +35,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logTrace(
       s"""Analyzing logical query plan:
+         |
          |${tree.prettyTree}
          |""".stripMargin
     )
@@ -44,6 +45,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   def resolve(tree: LogicalPlan): LogicalPlan = {
     logTrace(
       s"""Resolving logical query plan:
+         |
          |${tree.prettyTree}
          |""".stripMargin
     )
@@ -54,6 +56,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     if (tree.resolved) {
       logTrace(
         s"""Type checking logical query plan:
+           |
            |${tree.prettyTree}
            |""".stripMargin
       )
