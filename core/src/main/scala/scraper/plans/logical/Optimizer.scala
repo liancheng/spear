@@ -245,7 +245,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Subquery _ => child
     } transformAllExpressions {
-      case ref: AttributeRef => ref.copy(qualifiers = Set.empty)
+      case ref: AttributeRef => ref.copy(qualifier = None)
     }
   }
 }

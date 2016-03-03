@@ -250,7 +250,7 @@ case class Join(
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output map {
-    case a: AttributeRef => a.copy(qualifiers = a.qualifiers + alias)
+    case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
 }

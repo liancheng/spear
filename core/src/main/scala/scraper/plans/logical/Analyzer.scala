@@ -105,7 +105,7 @@ object Analyzer {
         }
 
         val candidates = plan.children flatMap (_.output) filter {
-          case a: AttributeRef => a.name == name && (qualifier.toSet subsetOf a.qualifiers)
+          case a: AttributeRef => a.name == name && (qualifier.toSet subsetOf a.qualifier.toSet)
           case _               => false
         }
 

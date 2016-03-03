@@ -2,7 +2,6 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.collection.Set
 import scala.language.higherKinds
 import scala.util.{Success, Try}
 import scalaz.Scalaz._
@@ -163,7 +162,7 @@ case class AttributeRef(
   override val dataType: DataType,
   override val nullable: Boolean,
   override val expressionId: ExpressionId,
-  qualifiers: Set[String] = Set.empty[String]
+  qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
   override def equals(other: Any): Boolean = other match {
@@ -181,14 +180,7 @@ case class AttributeRef(
 
   override def withNullability(nullable: Boolean): AttributeRef = copy(nullable = nullable)
 
-  override def debugString: String = {
-    val qualifierPrefix = (qualifiers map quote).toList match {
-      case Nil           => ""
-      case single :: Nil => single + "."
-      case multiple      => multiple mkString ("{", "|", "}.")
-    }
-    qualifierPrefix + super.debugString
-  }
+  override def debugString: String = ((qualifier.toSeq map quote) :+ super.debugString) mkString "."
 }
 
 case class GroupingAttribute(
