@@ -193,9 +193,9 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def projectList: Parser[Seq[NamedExpression]] =
     rep1sep(projection | star, ",") ^^ {
       case ps =>
-        ps.zipWithIndex.map {
-          case (e: NamedExpression, _) => e
-          case (e: Expression, i)      => e as s"col$i"
+        ps.map {
+          case e: NamedExpression => e
+          case e: Expression      => e as "?column?"
         }
     }
 
