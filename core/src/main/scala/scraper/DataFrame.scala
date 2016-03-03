@@ -115,8 +115,6 @@ class DataFrame(val queryExecution: QueryExecution) {
     val hasMoreData = truncated.length > rowCount
     val data = truncated take rowCount
 
-    val builder = StringBuilder.newBuilder
-
     val rows = schema.fields.map(_.name) +: data.map { row =>
       row.map { cell =>
         val content = cell match {
@@ -128,25 +126,50 @@ class DataFrame(val queryExecution: QueryExecution) {
       }
     }.toSeq
 
+    tabulate(rows, rowCount, truncate, hasMoreData)
+  }
+
+  private def tabulate(
+    rows: Seq[Seq[String]], rowCount: Int, truncate: Boolean, hasMoreData: Boolean
+  ): String = {
+    val builder = StringBuilder.newBuilder
+
     val columnWidths = rows.transpose map { column =>
       column.map(_.length).max
     }
 
-    val sep = columnWidths map ("-" * _) mkString ("+", "+", "+\n")
+    val bar = "\u2500"
+    val pipe = "\u2502"
+    val doubleBar = "\u2550"
+    val cross = "\u256a"
+
+    val topLeft = "\u250c"
+    val topRight = "\u2510"
+    val bottomLeft = "\u2514"
+    val bottomRight = "\u2518"
+
+    val leftTee = "\u255e"
+    val rightTee = "\u2561"
+    val topTee = "\u252c"
+    val bottomTee = "\u2534"
+
+    val topSep = columnWidths map (bar * _) mkString (topLeft, topTee, topRight + "\n")
+    val middleSep = columnWidths map (doubleBar * _) mkString (leftTee, cross, rightTee + "\n")
+    val bottomSep = columnWidths map (bar * _) mkString (bottomLeft, bottomTee, bottomRight + "\n")
 
     def displayRow(row: Seq[String]): String = {
       row zip columnWidths map {
         case (name, width) => name padTo (width, ' ')
-      } mkString ("|", "|", "|\n")
+      } mkString (pipe, pipe, pipe + "\n")
     }
 
     val body = rows map displayRow
 
-    builder ++= sep
+    builder ++= topSep
     builder ++= body.head
-    builder ++= sep
+    builder ++= middleSep
     body.tail foreach builder.append
-    builder ++= sep
+    builder ++= bottomSep
 
     if (hasMoreData) {
       builder ++= s"Only showing top $rowCount row(s)"
