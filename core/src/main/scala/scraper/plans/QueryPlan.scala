@@ -2,8 +2,8 @@ package scraper.plans
 
 import scala.util.{Success, Try}
 
-import scraper.expressions.{Attribute, Expression, UnevaluableExpression}
-import scraper.plans.QueryPlan.ExpressionContainer
+import scraper.expressions.{Attribute, Expression, LeafExpression, UnevaluableExpression}
+import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
 import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
@@ -131,7 +131,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     builder ++= "\n"
 
     if (expressions.nonEmpty) {
-      ExpressionContainer(expressions).buildPrettyTree(
+      ExpressionContainer(expressions map ExpressionString).buildPrettyTree(
         depth + 2, lastChildren :+ children.isEmpty :+ true, builder
       )
     }
@@ -152,5 +152,11 @@ object QueryPlan {
     override def strictlyTypedForm: Try[Expression] = Success(this)
 
     override def nodeCaption: String = "Expressions"
+  }
+
+  private case class ExpressionString(child: Expression)
+    extends LeafExpression with UnevaluableExpression {
+
+    override def nodeCaption: String = child.debugString
   }
 }
