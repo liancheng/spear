@@ -133,43 +133,39 @@ class DataFrame(val queryExecution: QueryExecution) {
     rows: Seq[Seq[String]], rowCount: Int, truncate: Boolean, hasMoreData: Boolean
   ): String = {
     val builder = StringBuilder.newBuilder
-
-    val columnWidths = rows.transpose map { column =>
-      column.map(_.length).max
-    }
+    val columnWidths = rows.transpose map (_.map(_.length).max)
 
     val bar = "\u2500"
+    val thickBar = "\u2550"
     val pipe = "\u2502"
-    val doubleBar = "\u2550"
-    val cross = "\u256a"
+    val cross = "\u253c"
 
-    val topLeft = "\u250c"
-    val topRight = "\u2510"
-    val bottomLeft = "\u2514"
-    val bottomRight = "\u2518"
+    val upperLeft = "\u2552"
+    val upperRight = "\u2555"
+    val lowerLeft = "\u2558"
+    val lowerRight = "\u255b"
 
-    val leftTee = "\u255e"
-    val rightTee = "\u2561"
-    val topTee = "\u252c"
-    val bottomTee = "\u2534"
+    val leftTee = "\u251c"
+    val rightTee = "\u2524"
+    val upperTee = "\u2564"
+    val lowerTee = "\u2567"
 
-    val topSep = columnWidths map (bar * _) mkString (topLeft, topTee, topRight + "\n")
-    val middleSep = columnWidths map (doubleBar * _) mkString (leftTee, cross, rightTee + "\n")
-    val bottomSep = columnWidths map (bar * _) mkString (bottomLeft, bottomTee, bottomRight + "\n")
+    val upper = columnWidths map (thickBar * _) mkString (upperLeft, upperTee, upperRight + "\n")
+    val middle = columnWidths map (bar * _) mkString (leftTee, cross, rightTee + "\n")
+    val lower = columnWidths map (thickBar * _) mkString (lowerLeft, lowerTee, lowerRight + "\n")
 
-    def displayRow(row: Seq[String]): String = {
-      row zip columnWidths map {
-        case (name, width) => name padTo (width, ' ')
-      } mkString (pipe, pipe, pipe + "\n")
-    }
+    def displayRow(row: Seq[String]): String = row zip columnWidths map {
+      case (name, width) if truncate => " " * (width - name.length) + name
+      case (name, width)             => name padTo (width, ' ')
+    } mkString (pipe, pipe, pipe + "\n")
 
     val body = rows map displayRow
 
-    builder ++= topSep
+    builder ++= upper
     builder ++= body.head
-    builder ++= middleSep
+    builder ++= middle
     body.tail foreach builder.append
-    builder ++= bottomSep
+    builder ++= lower
 
     if (hasMoreData) {
       builder ++= s"Only showing top $rowCount row(s)"
