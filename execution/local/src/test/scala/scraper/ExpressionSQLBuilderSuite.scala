@@ -24,7 +24,6 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
     checkSQL('a * 'b, "(`a` * `b`)")
     checkSQL('a / 'b, "(`a` / `b`)")
     checkSQL(-'a, "(-`a`)")
-    checkSQL(+'a, "(+`a`)")
   }
 
   test("logical operators") {
