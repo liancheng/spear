@@ -2,7 +2,7 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.NamedExpression.newExpressionId
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.{Attribute, AttributeRef}
 import scraper.utils.quote
 
@@ -75,7 +75,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
   def fieldTypes: Seq[DataType] = fields map (_.dataType)
 
   def toAttributes: Seq[AttributeRef] = fields map {
-    field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionId())
+    field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionID())
   }
 
   def rename(fieldNames: Seq[String]): StructType = {

@@ -87,7 +87,7 @@ package object patterns {
         //    Filter (f1 + 1) AS a1 > 10
         //     Relation f1:INT!
         case ref: AttributeRef if aliases contains ref =>
-          Alias(aliases(ref), ref.name, ref.expressionId)
+          Alias(aliases(ref), ref.name, ref.expressionID)
       }.asInstanceOf[T]
 
     /**

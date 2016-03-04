@@ -9,7 +9,7 @@ import scalaz._
 
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.newExpressionId
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
 import scraper.utils._
 
@@ -18,7 +18,7 @@ case class ExpressionID(id: Long)
 trait NamedExpression extends Expression {
   def name: String
 
-  def expressionId: ExpressionID
+  def expressionID: ExpressionID
 
   def toAttribute: Attribute
 }
@@ -26,13 +26,13 @@ trait NamedExpression extends Expression {
 trait GeneratedNamedExpression extends NamedExpression
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
-  override def expressionId: ExpressionID = throw new ExpressionUnresolvedException(this)
+  override def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
 }
 
 object NamedExpression {
-  private val currentId = new AtomicLong(0L)
+  private val currentID = new AtomicLong(0L)
 
-  def newExpressionId(): ExpressionID = ExpressionID(currentId.getAndIncrement())
+  def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
 }
@@ -49,7 +49,7 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 case class Alias(
   child: Expression,
   name: String,
-  override val expressionId: ExpressionID = newExpressionId()
+  override val expressionID: ExpressionID = newExpressionID()
 ) extends NamedExpression with UnaryExpression {
   override def foldable: Boolean = false
 
@@ -58,12 +58,12 @@ case class Alias(
   override def evaluate(input: Row): Any = child.evaluate(input)
 
   override lazy val toAttribute: Attribute = if (child.resolved) {
-    AttributeRef(name, child.dataType, child.nullable, expressionId)
+    AttributeRef(name, child.dataType, child.nullable, expressionID)
   } else {
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionId.id}"
+  override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
@@ -74,7 +74,7 @@ case class Alias(
 
 case class GroupingAlias(
   child: Expression,
-  override val expressionId: ExpressionID = newExpressionId()
+  override val expressionID: ExpressionID = newExpressionID()
 ) extends UnaryExpression with GeneratedNamedExpression {
   require(child.resolved)
 
@@ -82,10 +82,10 @@ case class GroupingAlias(
     e <- child.strictlyTypedForm
   } yield if (e sameOrEqual child) this else copy(child = e)
 
-  override def name: String = GroupingAlias.Prefix + expressionId.id
+  override def name: String = GroupingAlias.Prefix + expressionID.id
 
   override def toAttribute: Attribute =
-    GroupingAttribute(child.dataType, child.nullable, expressionId)
+    GroupingAttribute(child.dataType, child.nullable, expressionID)
 
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
     f(child) map (childString => s"$childString AS ${quote(name)}")
@@ -127,7 +127,7 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
   override def withNullability(nullability: Boolean): Attribute = this
 
   def of(dataType: DataType): AttributeRef =
-    AttributeRef(name, dataType, nullable = true, newExpressionId())
+    AttributeRef(name, dataType, nullable = true, newExpressionID())
 
   def boolean: AttributeRef = this of BooleanType
 
@@ -149,7 +149,7 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
 trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (nullable) "?" else "!"
-    s"${quote(name)}#${expressionId.id}:${dataType.sql}$nullability"
+    s"${quote(name)}#${expressionID.id}:${dataType.sql}$nullability"
   }
 
   override def sql: Try[String] = Success(s"${quote(name)}")
@@ -161,18 +161,18 @@ case class AttributeRef(
   name: String,
   override val dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionID,
+  override val expressionID: ExpressionID,
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
   override def equals(other: Any): Boolean = other match {
-    case that: AttributeRef => this.expressionId == that.expressionId
+    case that: AttributeRef => this.expressionID == that.expressionID
     case _                  => false
   }
 
-  override def hashCode(): Int = expressionId.id.hashCode()
+  override def hashCode(): Int = expressionID.id.hashCode()
 
-  override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
+  override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
 
   override def ? : AttributeRef = withNullability(true)
 
@@ -186,13 +186,13 @@ case class AttributeRef(
 case class GroupingAttribute(
   override val dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionID
+  override val expressionID: ExpressionID
 ) extends ResolvedAttribute with UnevaluableExpression {
-  override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
+  override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
 
   override def withNullability(nullable: Boolean): GroupingAttribute = copy(nullable = nullable)
 
-  override val name: String = GroupingAlias.Prefix + expressionId.id
+  override val name: String = GroupingAlias.Prefix + expressionID.id
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val nullable: Boolean)
@@ -202,7 +202,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 
-  override def expressionId: ExpressionID = throw new UnsupportedOperationException
+  override def expressionID: ExpressionID = throw new UnsupportedOperationException
 
   override def evaluate(input: Row): Any = input(ordinal)
 
@@ -216,7 +216,7 @@ object BoundRef {
   def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = {
     expression.transformUp {
       case ref: ResolvedAttribute =>
-        val ordinal = input.indexWhere(_.expressionId == ref.expressionId)
+        val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
         if (ordinal == -1) {
           throw new ResolutionFailureException({
             val inputAttributes = input.map(_.nodeCaption).mkString(", ")
