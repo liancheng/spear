@@ -67,10 +67,10 @@ trait TestUtils { this: FunSuite =>
     val rewrites = allIdExpressions.zipWithIndex.toMap
 
     plan.transformAllExpressions {
-      case e: Alias             => e.copy(expressionId = ExpressionId(rewrites(e)))
-      case e: AttributeRef      => e.copy(expressionId = ExpressionId(rewrites(e)))
-      case e: GroupingAlias     => e.copy(expressionId = ExpressionId(rewrites(e)))
-      case e: GroupingAttribute => e.copy(expressionId = ExpressionId(rewrites(e)))
+      case e: Alias             => e.copy(expressionId = ExpressionID(rewrites(e)))
+      case e: AttributeRef      => e.copy(expressionId = ExpressionID(rewrites(e)))
+      case e: GroupingAlias     => e.copy(expressionId = ExpressionID(rewrites(e)))
+      case e: GroupingAttribute => e.copy(expressionId = ExpressionID(rewrites(e)))
     }
   }
 

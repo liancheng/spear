@@ -5,7 +5,7 @@ import scraper.expressions.functions._
 import scraper.plans.physical.PhysicalPlan
 
 package object dsl {
-  implicit class PhysicalPlanDsl(plan: PhysicalPlan) {
+  implicit class PhysicalPlanDSL(plan: PhysicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList.zipWithIndex map {
         // TODO Handle qualified star

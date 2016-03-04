@@ -13,12 +13,12 @@ import scraper.expressions.NamedExpression.newExpressionId
 import scraper.types._
 import scraper.utils._
 
-case class ExpressionId(id: Long)
+case class ExpressionID(id: Long)
 
 trait NamedExpression extends Expression {
   def name: String
 
-  def expressionId: ExpressionId
+  def expressionId: ExpressionID
 
   def toAttribute: Attribute
 }
@@ -26,13 +26,13 @@ trait NamedExpression extends Expression {
 trait GeneratedNamedExpression extends NamedExpression
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
-  override def expressionId: ExpressionId = throw new ExpressionUnresolvedException(this)
+  override def expressionId: ExpressionID = throw new ExpressionUnresolvedException(this)
 }
 
 object NamedExpression {
   private val currentId = new AtomicLong(0L)
 
-  def newExpressionId(): ExpressionId = ExpressionId(currentId.getAndIncrement())
+  def newExpressionId(): ExpressionID = ExpressionID(currentId.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
 }
@@ -49,7 +49,7 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 case class Alias(
   child: Expression,
   name: String,
-  override val expressionId: ExpressionId = newExpressionId()
+  override val expressionId: ExpressionID = newExpressionId()
 ) extends NamedExpression with UnaryExpression {
   override def foldable: Boolean = false
 
@@ -74,7 +74,7 @@ case class Alias(
 
 case class GroupingAlias(
   child: Expression,
-  override val expressionId: ExpressionId = newExpressionId()
+  override val expressionId: ExpressionID = newExpressionId()
 ) extends UnaryExpression with GeneratedNamedExpression {
   require(child.resolved)
 
@@ -161,7 +161,7 @@ case class AttributeRef(
   name: String,
   override val dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionId,
+  override val expressionId: ExpressionID,
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
@@ -186,7 +186,7 @@ case class AttributeRef(
 case class GroupingAttribute(
   override val dataType: DataType,
   override val nullable: Boolean,
-  override val expressionId: ExpressionId
+  override val expressionId: ExpressionID
 ) extends ResolvedAttribute with UnevaluableExpression {
   override def newInstance(): Attribute = copy(expressionId = NamedExpression.newExpressionId())
 
@@ -202,7 +202,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 
-  override def expressionId: ExpressionId = throw new UnsupportedOperationException
+  override def expressionId: ExpressionID = throw new UnsupportedOperationException
 
   override def evaluate(input: Row): Any = input(ordinal)
 
