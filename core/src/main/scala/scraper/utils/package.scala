@@ -1,6 +1,6 @@
 package scraper
 
-import scala.language.{higherKinds, postfixOps}
+import scala.language.higherKinds
 import scala.util.Try
 import scalaz.Scalaz._
 import scalaz._
@@ -12,8 +12,8 @@ package object utils {
     val lhsLines = lhs split "\n"
     val rhsLines = rhs split "\n"
 
-    val lhsWidth = lhsLines map (_.length) max
-    val rhsWidth = rhsLines map (_.length) max
+    val lhsWidth = (lhsLines map (_.length)).max
+    val rhsWidth = (rhsLines map (_.length)).max
 
     val height = lhsLines.length max rhsLines.length
     val paddedLhs = lhsLines map (_ padTo (lhsWidth, ' ')) padTo (height, " " * lhsWidth)
@@ -54,11 +54,10 @@ package object utils {
   implicit class StraightString(string: String) {
     def straight: String = straight('|', " ")
 
-    def straight(joiner: String): String =
-      string stripMargin '|' split "\n" mkString joiner
+    def straight(joiner: String): String = straight('|', joiner)
 
     def straight(marginChar: Char, joiner: String): String =
-      string stripMargin marginChar split "\n" mkString joiner trim
+      ((string stripMargin marginChar).lines mkString joiner).trim
   }
 
   /**
