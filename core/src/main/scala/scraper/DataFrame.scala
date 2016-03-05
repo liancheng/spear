@@ -86,6 +86,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def foreach(f: Row => Unit): Unit = iterator foreach f
 
+  def showSchema(): Unit = println(schema.prettyTree)
+
   def explanation(extended: Boolean = true): String = if (extended) {
     s"""# Logical plan
        |${queryExecution.logicalPlan.prettyTree}
