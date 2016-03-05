@@ -35,6 +35,26 @@ object NamedExpression {
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
+
+  case class UnquotedAttribute(named: Attribute) extends LeafExpression with UnevaluableExpression {
+    override def resolved: Boolean = named.resolved
+
+    override def dataType: DataType = named.dataType
+
+    override def nullable: Boolean = named.nullable
+
+    override def sql: Try[String] = Try(named.name)
+  }
+
+  def named(expression: Expression): NamedExpression = expression match {
+    case e: NamedExpression =>
+      e
+
+    case e =>
+      e as e.transformDown {
+        case a: Attribute => UnquotedAttribute(a)
+      }.sql.getOrElse("?column?")
+  }
 }
 
 case object Star extends LeafExpression with UnresolvedNamedExpression {
