@@ -12,7 +12,7 @@ import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.generators.expressions._
-import scraper.local.LocalCatalog
+import scraper.local.InMemoryCatalog
 import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters}
 import scraper.plans.logical.dsl._
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
@@ -28,7 +28,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     rule: Rule[LogicalPlan], endCondition: EndCondition
   )(f: (LogicalPlan => LogicalPlan) => Unit): Unit = {
     test(rule.getClass.getSimpleName stripSuffix "$") {
-      val analyzer = new Analyzer(new LocalCatalog)
+      val analyzer = new Analyzer(new InMemoryCatalog)
       val optimizer = new RulesExecutor[LogicalPlan] {
         override def batches: Seq[RuleBatch] = Seq(
           RuleBatch("TestBatch", endCondition, rule :: Nil)

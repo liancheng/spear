@@ -11,7 +11,7 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
-import scraper.local.LocalCatalog
+import scraper.local.InMemoryCatalog
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, IntType}
@@ -74,7 +74,7 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("set operator - type check") {
-    val resolve = new Analyzer(new LocalCatalog)
+    val resolve = new Analyzer(new InMemoryCatalog)
 
     val r1 = LocalRelation.empty('a.int.!)
     val r2 = LocalRelation.empty('a.int.!)

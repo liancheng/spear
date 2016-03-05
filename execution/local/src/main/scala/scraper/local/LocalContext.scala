@@ -18,7 +18,7 @@ import scraper.types.{LongType, StructType}
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
 
-  override type Catalog = LocalCatalog
+  override type Catalog = InMemoryCatalog
 
   override val catalog: Catalog = new Catalog
 
@@ -60,7 +60,7 @@ class LocalContext(val settings: Settings) extends Context {
   override def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
 }
 
-class LocalCatalog extends Catalog {
+class InMemoryCatalog extends Catalog {
   private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
 
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =

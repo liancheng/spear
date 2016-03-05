@@ -1,12 +1,12 @@
 package scraper.plans.logical
 
 import scraper.expressions.dsl._
-import scraper.local.LocalCatalog
+import scraper.local.InMemoryCatalog
 import scraper.plans.logical.dsl._
 import scraper.{LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {
-  private val analyzer = new Analyzer(new LocalCatalog)
+  private val analyzer = new Analyzer(new InMemoryCatalog)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
