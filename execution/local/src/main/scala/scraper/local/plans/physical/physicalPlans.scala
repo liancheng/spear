@@ -110,12 +110,23 @@ case class HashAggregate(
   private val groupingOutput = groupingList map (_.toAttribute)
 
   private val boundGroupingList: Seq[Expression] =
-    groupingList.map(BoundRef.bind(_, child.output))
+    groupingList.map(bind(_, child.output))
 
   private val boundAggregateList: Seq[Expression] =
-    aggregateList.map(BoundRef.bind(_, groupingOutput ++ child.output))
+    aggregateList.map(bind(_, groupingOutput ++ child.output))
 
   override def output: Seq[Attribute] = (groupingList ++ aggregateList) map (_.toAttribute)
 
-  override def iterator: Iterator[Row] = ???
+  override def iterator: Iterator[Row] = {
+    child.iterator foreach { row =>
+      val key = Row.fromSeq(boundGroupingList map (_ evaluate row))
+
+      hashMap.getOrElseUpdate(key, {
+        // This is where AggregateFunction.zero should be called
+        ???
+      })
+    }
+
+    ???
+  }
 }

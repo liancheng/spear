@@ -10,10 +10,9 @@ trait AggregateFunction extends Expression {
 
   def zero(accumulator: MutableRow): Unit
 
-  def partial(accumulator: MutableRow, rows: Iterator[Row]): Unit
+  def accumulate(accumulator: MutableRow, row: Row): Unit
 
-  def merge(accumulator: MutableRow, rows: Iterator[Row]): Unit =
-    partial(accumulator, rows)
+  def merge(into: MutableRow, from: Row): Unit
 
   def result(accumulator: Row): Any
 }
@@ -29,13 +28,14 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
 
   override def zero(row: MutableRow): Unit = row(0) = 0L
 
-  override def partial(accumulator: MutableRow, rows: Iterator[Row]): Unit = {
-    accumulator(0) = rows.length.toLong
+  override def accumulate(accumulator: MutableRow, row: Row): Unit = {
+    val current = accumulator.head.asInstanceOf[Long]
+    accumulator(0) = current + 1L
   }
 
-  override def merge(accumulator: MutableRow, rows: Iterator[Row]): Unit = {
-    val initial = accumulator.head.asInstanceOf[Long]
-    accumulator(0) = initial + rows.map(_.head.asInstanceOf[Long]).sum
+  override def merge(into: MutableRow, from: Row): Unit = {
+    val current = into.head.asInstanceOf[Long]
+    into(0) = current + from.head.asInstanceOf[Long]
   }
 
   override def result(accumulator: Row): Any = accumulator.head
