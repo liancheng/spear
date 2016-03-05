@@ -32,10 +32,17 @@ trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpressio
 object NamedExpression {
   private val currentID = new AtomicLong(0L)
 
+  private val AnonymousColumnName = "?column?"
+
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
 
+  /**
+   * Auxiliary class only used for removing back-ticks from auto-generated column names.  For
+   * example, for expression `id + 1`, we'd like to generate column name `(id + 1)` instead of
+   * `(&#96;id&#96; + 1)`.
+   */
   case class UnquotedAttribute(named: Attribute) extends LeafExpression with UnevaluableExpression {
     override def resolved: Boolean = named.resolved
 
@@ -46,14 +53,14 @@ object NamedExpression {
     override def sql: Try[String] = Try(named.name)
   }
 
-  def named(expression: Expression): NamedExpression = expression match {
-    case e: NamedExpression =>
-      e
+  def named(expression: Expression): NamedExpression = {
+    def rewrite(e: Expression): Expression =
+      e.transformDown { case a: Attribute => UnquotedAttribute(a) }
 
-    case e =>
-      e as e.transformDown {
-        case a: Attribute => UnquotedAttribute(a)
-      }.sql.getOrElse("?column?")
+    expression match {
+      case e: NamedExpression => e
+      case e                  => e as (rewrite(e).sql getOrElse AnonymousColumnName)
+    }
   }
 }
 

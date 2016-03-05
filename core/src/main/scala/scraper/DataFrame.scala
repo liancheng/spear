@@ -135,6 +135,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     rows: Seq[Seq[String]], rowCount: Int, truncate: Boolean, hasMoreData: Boolean
   ): String = {
     val builder = StringBuilder.newBuilder
+
+    // TODO This is slow for large datasets
     val columnWidths = rows.transpose map (_.map(_.length).max)
 
     val bar = "\u2500"
