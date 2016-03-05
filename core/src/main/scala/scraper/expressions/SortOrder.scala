@@ -44,6 +44,13 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
 
   def isAscending: Boolean = direction == Ascending
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map (_ + s" $direction")
+  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] = {
+    val nullsFirstOrLast = (direction, nullsLarger) match {
+      case (Ascending, false) => "FIRST"
+      case (Descending, true) => "FIRST"
+      case _                  => "LAST"
+    }
+
+    f(child) map (_ + s" $direction NULLS $nullsFirstOrLast")
+  }
 }
