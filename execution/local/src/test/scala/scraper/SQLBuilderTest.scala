@@ -15,8 +15,8 @@ abstract class SQLBuilderTest
   protected val context = new LocalContext(Test.defaultSettings)
 
   override protected def beforeAll(): Unit = {
-    context range 10 select ('id as 'a) registerAsTable "t0"
-    context range 10 select ('id as 'b) registerAsTable "t1"
+    context range 10 select ('id as 'a) asTable "t0"
+    context range 10 select ('id as 'b) asTable "t1"
   }
 
   override protected def afterAll(): Unit = {

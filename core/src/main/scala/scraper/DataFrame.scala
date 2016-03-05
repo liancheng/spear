@@ -77,7 +77,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
-  def registerAsTable(tableName: String): Unit =
+  def asTable(tableName: String): Unit =
     context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
   def toSeq: Seq[Row] = iterator.toSeq

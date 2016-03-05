@@ -33,7 +33,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   )
 
   test("mixed") {
-    people filter 'age =/= 21 registerAsTable "people"
+    people filter 'age =/= 21 asTable "people"
 
     checkDataFrame("SELECT name FROM people".q, Seq(
       Row("Alice"),
