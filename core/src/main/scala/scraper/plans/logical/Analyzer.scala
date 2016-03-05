@@ -33,7 +33,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
-    logTrace(
+    logDebug(
       s"""Analyzing logical query plan:
          |
          |${tree.prettyTree}
@@ -43,7 +43,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   def resolve(tree: LogicalPlan): LogicalPlan = {
-    logTrace(
+    logDebug(
       s"""Resolving logical query plan:
          |
          |${tree.prettyTree}
@@ -54,7 +54,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   def typeCheck(tree: LogicalPlan): LogicalPlan = {
     if (tree.resolved) {
-      logTrace(
+      logDebug(
         s"""Type checking logical query plan:
            |
            |${tree.prettyTree}
@@ -101,9 +101,9 @@ object Analyzer {
         def reportResolutionFailure(message: String): Nothing = {
           throw new ResolutionFailureException(
             s"""Failed to resolve attribute $name in logical query plan:
-                |${plan.prettyTree}
-                |$message
-                |""".stripMargin
+               |${plan.prettyTree}
+               |$message
+               |""".stripMargin
           )
         }
 

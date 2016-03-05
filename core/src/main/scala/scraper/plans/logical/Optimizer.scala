@@ -46,7 +46,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
          |""".stripMargin
     )
 
-    logTrace(
+    logDebug(
       s"""Optimizing logical query plan:
          |
          |${tree.prettyTree}

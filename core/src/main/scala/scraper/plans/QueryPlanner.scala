@@ -30,7 +30,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]
   }
 
   def apply(logicalPlan: Logical): Physical = {
-    logTrace(
+    logDebug(
       s"""Planning logical query plan:
          |
          |${logicalPlan.prettyTree}
@@ -39,7 +39,7 @@ trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]
 
     val physicalPlan = plan(logicalPlan)
 
-    logTrace(
+    logDebug(
       s"""Compiled logical query plan
          |
          |${logicalPlan.prettyTree}

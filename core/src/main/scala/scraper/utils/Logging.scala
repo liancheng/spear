@@ -12,7 +12,7 @@ trait Logging {
   }
 
   protected def logDebug(message: => String): Unit = {
-    if (logger.isInfoEnabled) {
+    if (logger.isDebugEnabled) {
       logger.debug(message)
     }
   }
