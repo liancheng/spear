@@ -15,7 +15,7 @@ import scraper.utils._
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def foldable: Boolean = children forall (_.foldable)
 
-  def nullable: Boolean = true
+  def nullable: Boolean = children exists (_.nullable)
 
   def pure: Boolean = children forall (_.pure)
 
@@ -231,6 +231,8 @@ object BinaryOperator {
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {
+  override def nullable: Boolean = child.nullable
+
   override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     f(child) map ("(" + operator + _ + ")")
 }
