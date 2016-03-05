@@ -149,16 +149,6 @@ object Analyzer {
   }
 
   /**
-   * This rule eliminates all [[scraper.plans.logical.Subquery Subquery]] operators, since they are
-   * only used to provide scoping information during analysis phase.
-   */
-  object EliminateSubqueries extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Subquery _ => plan
-    }
-  }
-
-  /**
    * This rule resolves ambiguous duplicated attributes/aliases introduced by binary logical query
    * plan operators like [[Join]] and [[SetOperator set operators]].  For example:
    * {{{

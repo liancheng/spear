@@ -243,6 +243,10 @@ object Optimizer {
     }
   }
 
+  /**
+   * This rule eliminates all [[scraper.plans.logical.Subquery Subquery]] operators, since they are
+   * only used to provide scoping information during analysis phase.
+   */
   object EliminateSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Subquery _ => child
