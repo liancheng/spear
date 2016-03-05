@@ -110,9 +110,9 @@ class DataFrame(val queryExecution: QueryExecution) {
   def explain(extended: Boolean = true): Unit = println(explanation(extended))
 
   def show(rowCount: Int = 20, truncate: Boolean = true): Unit =
-    println(showString(rowCount, truncate))
+    println(tabulate(rowCount, truncate))
 
-  private def showString(rowCount: Int = 20, truncate: Boolean = true): String = {
+  private def tabulate(rowCount: Int = 20, truncate: Boolean = true): String = {
     val truncated = limit(rowCount + 1).toArray
     val hasMoreData = truncated.length > rowCount
     val data = truncated take rowCount
