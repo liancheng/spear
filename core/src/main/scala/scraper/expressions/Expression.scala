@@ -241,7 +241,7 @@ trait UnevaluableExpression extends Expression {
   override def evaluate(input: Row): Any = throw new ExpressionUnevaluableException(this)
 }
 
-trait UnresolvedExpression extends Expression with UnevaluableExpression {
+trait UnresolvedExpression extends Expression with UnevaluableExpression with NonSQLExpression {
   override def dataType: DataType = throw new ExpressionUnresolvedException(this)
 
   override def strictlyTypedForm: Try[Expression] =
