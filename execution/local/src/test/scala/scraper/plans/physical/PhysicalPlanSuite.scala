@@ -56,7 +56,7 @@ class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
     )
 
     checkPhysicalPlan(
-      r1 select a1 + 1,
+      r1 select (a1 + 1 as 'f),
       Row(2), Row(3)
     )
   }

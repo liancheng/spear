@@ -19,22 +19,22 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
   extends UnaryPhysicalPlan {
 
-  override val output: Seq[Attribute] = expressions map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = expressions map (_.toAttribute)
+
+  private lazy val boundProjectList = expressions map (bind(_, child.output))
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
-    val boundProjectList = expressions map (bind(_, child.output))
     Row.fromSeq(boundProjectList map (_ evaluate row))
   }
 }
 
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
-  override val output: Seq[Attribute] = child.output
+  override lazy val output: Seq[Attribute] = child.output
 
-  override def iterator: Iterator[Row] = {
-    val boundCondition = bind(condition, child.output)
-    child.iterator filter { row =>
-      (boundCondition evaluate row).asInstanceOf[Boolean]
-    }
+  private lazy val boundCondition = bind(condition, child.output)
+
+  override def iterator: Iterator[Row] = child.iterator filter { row =>
+    (boundCondition evaluate row).asInstanceOf[Boolean]
   }
 }
 
@@ -76,10 +76,10 @@ case class CartesianProduct(
   right: PhysicalPlan,
   condition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-  private val boundCondition = condition map (BoundRef.bind(_, output)) getOrElse True
+  private lazy val boundCondition = condition map (bind(_, output)) getOrElse True
 
   def evaluateBoundCondition(input: Row): Boolean =
-    boundCondition.evaluate(input) match { case result: Boolean => result }
+    boundCondition evaluate input match { case result: Boolean => result }
 
   override def output: Seq[Attribute] = left.output ++ right.output
 
@@ -95,8 +95,9 @@ case class CartesianProduct(
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
   override def output: Seq[Attribute] = child.output
 
-  override def iterator: Iterator[Row] =
-    child.iterator.toArray.sorted(new RowOrdering(order, child.output)).toIterator
+  private lazy val rowOrdering = new RowOrdering(order, child.output)
+
+  override def iterator: Iterator[Row] = child.iterator.toArray.sorted(rowOrdering).toIterator
 }
 
 case class HashAggregate(

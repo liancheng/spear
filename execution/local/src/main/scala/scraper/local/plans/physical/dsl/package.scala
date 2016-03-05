@@ -6,15 +6,9 @@ import scraper.plans.physical.PhysicalPlan
 
 package object dsl {
   implicit class PhysicalPlanDSL(plan: PhysicalPlan) {
-    def select(projectList: Seq[Expression]): Project =
-      Project(plan, projectList.zipWithIndex map {
-        // TODO Handle qualified star
-        case (UnresolvedAttribute("*", _), _) => Star
-        case (e: NamedExpression, _)          => e
-        case (e, ordinal)                     => e as (e.sql getOrElse s"col$ordinal")
-      })
+    def select(projectList: Seq[NamedExpression]): Project = Project(plan, projectList)
 
-    def select(first: Expression, rest: Expression*): Project = select(first +: rest)
+    def select(first: NamedExpression, rest: NamedExpression*): Project = select(first +: rest)
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
