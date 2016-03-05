@@ -198,18 +198,18 @@ object Optimizer {
    */
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (join @ Join(left, right, Inner, maybeCondition)) Filter condition =>
+      case (join @ Join(left, right, Inner, joinCondition)) Filter filterCondition =>
         // Finds predicates that only reference attribute(s) of the left branch.  The filter
         // condition predicate is turned into CNF first so that we can push as many predicates as
         // possible.
-        val (leftPredicates, rest) = splitConjunction(toCNF(condition)) partition {
-          _.references subsetOf left.references
+        val (leftPredicates, rest) = splitConjunction(toCNF(filterCondition)) partition {
+          _.references subsetOf left.outputSet
         }
 
         // Finds predicates that only reference attribute(s) of the right branch and predicates
         // that reference attributes of both branches.
         val (rightPredicates, commonPredicates) = rest partition {
-          _.references subsetOf right.references
+          _.references subsetOf right.outputSet
         }
 
         def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
@@ -218,7 +218,7 @@ object Optimizer {
         join.copy(
           left = applyPredicates(leftPredicates, left),
           right = applyPredicates(rightPredicates, right),
-          condition = (maybeCondition ++ commonPredicates) reduceOption (_ && _)
+          condition = (joinCondition ++ commonPredicates) reduceOption (_ && _)
         )
     }
   }

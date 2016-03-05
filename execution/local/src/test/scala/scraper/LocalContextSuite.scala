@@ -2,6 +2,7 @@ package scraper
 
 import scraper.Context._
 import scraper.LocalContextSuite.Person
+import scraper.exceptions.TableNotFoundException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.local.LocalContext
@@ -26,6 +27,19 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     checkDataFrame("SELECT 1 AS a".q, Row(1))
   }
 
+  test("table") {
+    withTable("t") {
+      context range 2 asTable "t"
+
+      checkDataFrame(
+        context table "t",
+        Row(0), Row(1)
+      )
+    }
+
+    intercept[TableNotFoundException](context table "non-existed")
+  }
+
   private val people = context lift Seq(
     Person("Alice", 20),
     Person("Bob", 21),
@@ -35,17 +49,17 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   test("mixed") {
     people filter 'age =/= 21 asTable "people"
 
-    checkDataFrame("SELECT name FROM people".q, Seq(
-      Row("Alice"),
-      Row("Chris")
-    ))
+    checkDataFrame(
+      "SELECT name FROM people".q,
+      Row("Alice"), Row("Chris")
+    )
 
     (people filter 'age =/= 21 select ('name, 'age)).queryExecution.analyzedPlan
 
-    checkDataFrame("SELECT * FROM people".q, Seq(
-      Row("Alice", 20),
-      Row("Chris", 22)
-    ))
+    checkDataFrame(
+      "SELECT * FROM people".q,
+      Row("Alice", 20), Row("Chris", 22)
+    )
   }
 
   test("resolution") {
@@ -59,26 +73,28 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
 
     checkDataFrame(
       left join right,
-      Seq(Row(0, "1"), Row(0, "2"), Row(1, "1"), Row(1, "2"))
+      Row(0, "1"), Row(0, "2"), Row(1, "1"), Row(1, "2")
     )
 
     checkDataFrame(
       left join right on 'id > 0,
-      Seq(Row(1, "1"), Row(1, "2"))
+      Row(1, "1"), Row(1, "2")
     )
   }
 
   test("sort") {
-    val df = context lift (Seq("a" -> 3, "b" -> 1, "f" -> 2, "d" -> 4, "c" -> 5), "i", "j")
+    val df = context
+      .lift(Seq("a" -> 3, "b" -> 1, "f" -> 2, "d" -> 4, "c" -> 5))
+      .rename("i", "j")
 
     checkDataFrame(
       df orderBy 'i,
-      Seq(Row("a", 3), Row("b", 1), Row("c", 5), Row("d", 4), Row("f", 2))
+      Row("a", 3), Row("b", 1), Row("c", 5), Row("d", 4), Row("f", 2)
     )
 
     checkDataFrame(
       df orderBy 'j,
-      Seq(Row("b", 1), Row("f", 2), Row("a", 3), Row("d", 4), Row("c", 5))
+      Row("b", 1), Row("f", 2), Row("a", 3), Row("d", 4), Row("c", 5)
     )
   }
 
@@ -87,12 +103,21 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
 
     checkDataFrame(
       df as 'a join (df as 'b),
-      Seq(Row(0, 0), Row(0, 1), Row(1, 0), Row(1, 1))
+      Row(0, 0), Row(0, 1), Row(1, 0), Row(1, 1)
     )
 
     checkDataFrame(
       df as 'a join (df as 'b) on $"a.id" =:= $"b.id",
-      Seq(Row(0, 0), Row(1, 1))
+      Row(0, 0), Row(1, 1)
+    )
+  }
+
+  test("filter over join") {
+    val df = context range 3
+
+    checkDataFrame(
+      df as 'a join (df as 'b) on $"a.id" =:= $"b.id" where $"b.id" > 0,
+      Row(1, 1), Row(2, 2)
     )
   }
 }

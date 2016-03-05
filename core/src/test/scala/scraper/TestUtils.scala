@@ -81,14 +81,12 @@ trait TestUtils { this: FunSuite =>
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)
 
-  def checkDataFrame(ds: DataFrame, expected: Row): Unit =
-    checkDataFrame(ds, expected :: Nil)
+  def checkDataFrame(ds: DataFrame, first: Row, rest: Row*): Unit =
+    checkDataFrame(ds, first +: rest)
 
-  def checkDataFrame(ds: DataFrame, expected: => Seq[Row]): Unit = {
+  def checkDataFrame(ds: DataFrame, expected: Seq[Row]): Unit = {
     val actual = ds.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
-      val explanation = ds.explanation(extended = true)
-
       val answerDiff = sideBySide(
         s"""Expected answer:
            |${expected mkString "\n"}
@@ -108,7 +106,7 @@ trait TestUtils { this: FunSuite =>
            |
            |Query plan details:
            |
-           |$explanation
+           |${ds explanation (extended = true)}
            |""".stripMargin
       )
     }
@@ -184,4 +182,11 @@ trait TestUtils { this: FunSuite =>
       )
     }
   }
+
+  def withTable(context: Context, name: String)(f: => Unit): Unit = try f finally {
+    context.catalog.removeRelation(name)
+  }
+
+  def withTable(name: String)(f: => Unit)(implicit context: Context): Unit =
+    withTable(context, name)(f)
 }

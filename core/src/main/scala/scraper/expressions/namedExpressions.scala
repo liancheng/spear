@@ -103,6 +103,8 @@ object GroupingAlias {
 trait Attribute extends NamedExpression with LeafExpression {
   override def foldable: Boolean = false
 
+  override lazy val references: Set[Attribute] = Set(this)
+
   override def toAttribute: Attribute = this
 
   def newInstance(): Attribute
