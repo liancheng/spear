@@ -25,7 +25,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testParser(
     "SELECT 1",
-    singleRow select (1 as "?column?")
+    singleRow select (1 as "1")
   )
 
   testParser(

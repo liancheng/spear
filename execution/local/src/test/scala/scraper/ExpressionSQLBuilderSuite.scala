@@ -19,18 +19,25 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
   }
 
   test("arithmetic expressions") {
-    checkSQL('a + 'b, "(`a` + `b`)")
-    checkSQL('a - 'b, "(`a` - `b`)")
-    checkSQL('a * 'b, "(`a` * `b`)")
-    checkSQL('a / 'b, "(`a` / `b`)")
-    checkSQL(-'a, "(-`a`)")
+    val a = 'a.int
+    val b = 'b.int
+
+    checkSQL(a + b, "(`a` + `b`)")
+    checkSQL(a - b, "(`a` - `b`)")
+    checkSQL(a * b, "(`a` * `b`)")
+    checkSQL(a / b, "(`a` / `b`)")
+    checkSQL(-a, "(-`a`)")
   }
 
   test("logical operators") {
-    checkSQL('a && 'b, "(`a` AND `b`)")
-    checkSQL('a || 'b, "(`a` OR `b`)")
-    checkSQL(!'a, "(NOT `a`)")
-    checkSQL(If('a, 'b, 'c), "IF(`a`, `b`, `c`)")
+    val a = 'a.boolean
+    val b = 'b.boolean
+    val c = 'c.boolean
+
+    checkSQL(a && b, "(`a` AND `b`)")
+    checkSQL(a || b, "(`a` OR `b`)")
+    checkSQL(!a, "(NOT `a`)")
+    checkSQL(If(a, b, c), "IF(`a`, `b`, `c`)")
   }
 
   test("non-SQL expressions") {
