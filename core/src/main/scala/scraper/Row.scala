@@ -47,10 +47,8 @@ class JoinedRow(row1: Row, row2: Row) extends Row {
   override def iterator: Iterator[Any] = row1.iterator ++ row2.iterator
 }
 
-class RowSlice(row: Row, begin: Int, end: Int) extends Row {
-  require(begin >= 0 && end >= begin && end <= row.length)
-
-  override val length: Int = end - begin
+class RowSlice(row: Row, begin: Int, override val length: Int) extends Row {
+  require(begin >= 0 && length >= 0 && begin + length <= row.length)
 
   override def apply(ordinal: Int): Any = {
     require(ordinal < length)
@@ -60,8 +58,8 @@ class RowSlice(row: Row, begin: Int, end: Int) extends Row {
   override def iterator: Iterator[Any] = row.iterator.slice(begin, begin + length)
 }
 
-class MutableRowSlice(row: MutableRow, begin: Int, end: Int)
-  extends RowSlice(row, begin, end) with MutableRow {
+class MutableRowSlice(row: MutableRow, begin: Int, length: Int)
+  extends RowSlice(row, begin, length) with MutableRow {
 
   def update(ordinal: Int, value: Any): Unit = row(begin + ordinal) = value
 }
