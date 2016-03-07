@@ -17,6 +17,7 @@ trait AggregateFunction extends Expression {
   def result(accumulator: Row): Any
 }
 
+// TODO How to handle NULL?
 case class Count(child: Expression) extends UnaryExpression with AggregateFunction {
   override def dataType: DataType = LongType
 
