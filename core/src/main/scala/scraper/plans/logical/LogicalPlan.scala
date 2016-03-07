@@ -7,6 +7,7 @@ import scala.util.{Failure, Try}
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.dsl._
@@ -19,7 +20,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def resolved: Boolean = (expressions forall (_.resolved)) && duplicatesResolved
 
   lazy val duplicatesResolved: Boolean = childrenResolved && (
-    children.length < 2 || children.map(_.outputSet).reduce(_ & _).isEmpty
+    children.length < 2 || (children map (_.outputSet) reduce intersectByID).isEmpty
   )
 
   def childrenResolved: Boolean = children forall (_.resolved)

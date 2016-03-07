@@ -1,10 +1,11 @@
 package scraper.plans.logical
 
-import scraper.plans.logical.dsl._
 import scraper.Catalog
-import scraper.exceptions.{IllegalAggregationException, AnalysisException, ResolutionFailureException}
+import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
+import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.Analyzer._
+import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns._
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
@@ -173,10 +174,10 @@ object Analyzer {
     }
 
     def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
-      val conflictingAttributes = left.outputSet & right.outputSet
+      val conflictingAttributes = intersectByID(left.outputSet, right.outputSet)
 
       def hasDuplicates(attributes: Set[Attribute]): Boolean =
-        (attributes & conflictingAttributes).nonEmpty
+        intersectByID(attributes, conflictingAttributes).nonEmpty
 
       right collectFirst {
         // Handles relations that introduce ambiguous attributes
@@ -190,12 +191,12 @@ object Analyzer {
         // TODO Handles aggregations that introduce ambiguous aliases and grouping attributes
       } map {
         case (oldPlan, newPlan) =>
-          val attributeRewrites = (oldPlan.output zip newPlan.output).toMap
+          val attributeRewrites = (oldPlan.output map (_.expressionID) zip newPlan.output).toMap
 
           right transformDown {
             case plan if plan == oldPlan => newPlan
           } transformAllExpressions {
-            case a: Attribute => attributeRewrites.getOrElse(a, a)
+            case a: Attribute => attributeRewrites getOrElse (a.expressionID, a)
           }
       } getOrElse right
     }

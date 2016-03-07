@@ -186,6 +186,13 @@ trait ResolvedAttribute extends Attribute {
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, nullable)
 }
 
+object ResolvedAttribute {
+  def intersectByID(lhs: Set[Attribute], rhs: Set[Attribute]): Set[Attribute] = {
+    require(lhs.forall(_.resolved) && rhs.forall(_.resolved))
+    lhs filter (a => rhs exists (_.expressionID == a.expressionID))
+  }
+}
+
 case class AttributeRef(
   name: String,
   override val dataType: DataType,
@@ -193,13 +200,6 @@ case class AttributeRef(
   override val expressionID: ExpressionID,
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
-
-  override def equals(other: Any): Boolean = other match {
-    case that: AttributeRef => this.expressionID == that.expressionID
-    case _                  => false
-  }
-
-  override def hashCode(): Int = expressionID.id.hashCode()
 
   override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
 
