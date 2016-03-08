@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scala.language.higherKinds
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 import scalaz.Scalaz._
 import scalaz._
 
@@ -55,7 +55,11 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * On the other hand, `a + CAST(1 AS LONG)` is strictly typed because both branches are of type
    * `LONG`.
    */
-  def strictlyTypedForm: Try[Expression]
+  def strictlyTypedForm: Try[Expression] = Try {
+    this transformChildrenUp {
+      case e: Expression => e.strictlyTypedForm.get
+    }
+  }
 
   /**
    * Indicates whether this [[Expression]] is strictly typed.
@@ -170,8 +174,6 @@ trait NonSQLExpression extends Expression {
 
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
-
-  override def strictlyTypedForm: Try[Expression] = Success(this)
 
   override def nodeCaption: String = debugString
 }

@@ -1,7 +1,6 @@
 package scraper.plans.logical
 
 import scala.collection.JavaConverters._
-import scala.util.{Success, Try}
 
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
@@ -97,8 +96,6 @@ object LogicalPlanSuite {
     override def dataType: DataType = IntType
 
     override def evaluate(input: Row): Any = value
-
-    override lazy val strictlyTypedForm: Try[this.type] = Success(this)
   }
 
   case class PlanNode(expression: Expression) extends LeafLogicalPlan {

@@ -27,6 +27,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     rule applyOrElse (childrenTransformed, identity[Base])
   }
 
+  def transformChildrenDown(rule: PartialFunction[Base, Base]): Base =
+    this transformChildren (rule, _ transformDown _)
+
+  def transformChildrenUp(rule: PartialFunction[Base, Base]): Base =
+    this transformChildren (rule, _ transformUp _)
+
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
     // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
     // equivalent to the original one

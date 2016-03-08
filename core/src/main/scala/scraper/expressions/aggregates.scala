@@ -1,7 +1,5 @@
 package scraper.expressions
 
-import scala.util.Try
-
 import scraper.types._
 import scraper.{MutableRow, Row}
 
@@ -22,10 +20,6 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
   override def dataType: DataType = LongType
 
   override def accumulatorSchema: StructType = StructType('acc -> LongType.!)
-
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
 
   override def zero(row: MutableRow): Unit = row(0) = 0L
 

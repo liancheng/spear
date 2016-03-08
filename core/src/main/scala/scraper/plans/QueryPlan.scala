@@ -1,7 +1,5 @@
 package scraper.plans
 
-import scala.util.{Success, Try}
-
 import scraper.expressions.{Attribute, Expression, LeafExpression, UnevaluableExpression}
 import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
 import scraper.reflection.constructorParams
@@ -148,8 +146,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 object QueryPlan {
   private case class ExpressionContainer(children: Seq[Expression])
     extends Expression with UnevaluableExpression {
-
-    override def strictlyTypedForm: Try[Expression] = Success(this)
 
     override def nodeCaption: String = "Expressions"
   }

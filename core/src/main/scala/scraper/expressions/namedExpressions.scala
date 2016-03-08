@@ -93,22 +93,12 @@ case class Alias(
   override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
-
-  override lazy val strictlyTypedForm: Try[Alias] = for {
-    e <- child.strictlyTypedForm
-  } yield if (e sameOrEqual child) this else copy(child = e)
 }
 
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
 ) extends UnaryExpression with GeneratedNamedExpression {
-  require(child.resolved)
-
-  override lazy val strictlyTypedForm: Try[GroupingAlias] = for {
-    e <- child.strictlyTypedForm
-  } yield if (e sameOrEqual child) this else copy(child = e)
-
   override def name: String = GroupingAlias.Prefix + expressionID.id
 
   override def toAttribute: Attribute =
