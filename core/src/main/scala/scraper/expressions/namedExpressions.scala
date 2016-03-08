@@ -53,6 +53,7 @@ object NamedExpression {
     override def sql: Try[String] = Try(named.name)
   }
 
+  // TODO Replace this with `UnresolvedAlias`
   def named(expression: Expression): NamedExpression = {
     def rewrite(e: Expression): Expression =
       e.transformDown { case a: Attribute => UnquotedAttribute(a) }
@@ -106,11 +107,6 @@ case class GroupingAlias(
 
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
     f(child) map (childString => s"$childString AS ${quote(name)}")
-
-  def rewriteGroupingExpression(expression: NamedExpression): NamedExpression =
-    expression.transformDown {
-      case e if e == child => this.toAttribute
-    }.asInstanceOf[NamedExpression]
 }
 
 object GroupingAlias {

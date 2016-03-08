@@ -242,7 +242,7 @@ object Analyzer {
           }.asInstanceOf[NamedExpression]
         }
 
-        plan.copy(aggregateList = substitutedAggs)
+        plan.copy(projectList = substitutedAggs)
     }
   }
 }
