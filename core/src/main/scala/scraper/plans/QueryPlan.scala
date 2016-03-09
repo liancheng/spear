@@ -1,6 +1,6 @@
 package scraper.plans
 
-import scraper.expressions.{Attribute, Expression, LeafExpression, UnevaluableExpression}
+import scraper.expressions._
 import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
 import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
@@ -13,9 +13,13 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   lazy val outputSet: Set[Attribute] = output.toSet
 
+  lazy val outputIDSet: Set[ExpressionID] = outputSet map (_.expressionID)
+
   lazy val schema: StructType = StructType fromAttributes output
 
-  def references: Set[Attribute] = expressions.toSet flatMap ((_: Expression).references)
+  lazy val references: Set[Attribute] = expressions.toSet flatMap ((_: Expression).references)
+
+  lazy val referenceIDs: Set[ExpressionID] = references map (_.expressionID)
 
   def expressions: Seq[Expression] = productIterator.flatMap {
     case element: Expression     => Seq(element)
