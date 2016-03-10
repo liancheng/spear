@@ -1,9 +1,10 @@
 package scraper
 
 import scraper.config.Keys.NullsLarger
+import scraper.exceptions.ResolutionFailureException
+import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions._
 import scraper.plans.QueryExecution
 import scraper.plans.logical._
 import scraper.plans.logical.dsl._
@@ -18,6 +19,13 @@ class DataFrame(val queryExecution: QueryExecution) {
     new DataFrame(f(queryExecution.logicalPlan), context)
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
+
+  def apply(column: String): Attribute =
+    queryExecution.analyzedPlan.output find (_.name == column) getOrElse {
+      throw new ResolutionFailureException(s"Failed to resolve column name $column")
+    }
+
+  def apply(column: Symbol): Attribute = this(column.name)
 
   def rename(newNames: String*): DataFrame = {
     assert(newNames.length == schema.fields.length)
