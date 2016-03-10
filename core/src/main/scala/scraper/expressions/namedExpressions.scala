@@ -25,6 +25,13 @@ trait NamedExpression extends Expression {
 
 trait GeneratedNamedExpression extends NamedExpression
 
+trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression
+
+trait GeneratedAttribute
+  extends GeneratedNamedExpression
+  with ResolvedAttribute
+  with UnevaluableExpression
+
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
   override def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
 }
@@ -99,7 +106,7 @@ case class Alias(
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
-) extends UnaryExpression with GeneratedNamedExpression {
+) extends GeneratedAlias {
   override def name: String = GroupingAlias.Prefix + expressionID.id
 
   override def toAttribute: Attribute =
@@ -202,7 +209,7 @@ case class GroupingAttribute(
   override val dataType: DataType,
   override val nullable: Boolean,
   override val expressionID: ExpressionID
-) extends ResolvedAttribute with UnevaluableExpression {
+) extends GeneratedAttribute {
   override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
 
   override def withNullability(nullable: Boolean): GroupingAttribute = copy(nullable = nullable)
