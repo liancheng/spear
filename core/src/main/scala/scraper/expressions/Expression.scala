@@ -254,4 +254,8 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
     Failure(new ExpressionUnevaluableException(this))
 
   override def resolved: Boolean = false
+
+  override def sql: Try[String] = Failure(new UnsupportedOperationException(
+    s"Unresolved expression $debugString doesn't have a SQL representation"
+  ))
 }
