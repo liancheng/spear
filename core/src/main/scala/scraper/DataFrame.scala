@@ -48,14 +48,14 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def join(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, Inner)
 
-  def join(right: DataFrame, joinType: JoinType): DataFrame =
+  def join(right: DataFrame, joinType: JoinType): JoinedDataFrame =
     new JoinedDataFrame(this, right, joinType)
 
-  def leftJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, LeftOuter)
+  def leftJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, LeftOuter)
 
-  def rightJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, RightOuter)
+  def rightJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, RightOuter)
 
-  def outerJoin(right: DataFrame): DataFrame = new JoinedDataFrame(this, right, FullOuter)
+  def outerJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, FullOuter)
 
   def orderBy(first: Expression, rest: Expression*): DataFrame = {
     val sortOrders = first +: rest map (SortOrder(_, Ascending, context.settings(NullsLarger)))
