@@ -2,6 +2,7 @@ package scraper
 
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
+import scraper.expressions.GeneratedNamedExpression.Grouping
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -79,7 +80,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def except(that: DataFrame): DataFrame = withPlan(_ except that.queryExecution.logicalPlan)
 
   def groupBy(groupingList: Seq[Expression]): GroupedData =
-    new GroupedData(this, groupingList map (GroupingAlias(_)))
+    new GroupedData(this, groupingList map GroupingAlias.apply)
 
   def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
 

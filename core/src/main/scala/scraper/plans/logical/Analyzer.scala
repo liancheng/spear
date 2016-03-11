@@ -239,7 +239,7 @@ object Analyzer {
           _.transformDown {
             case e => groupingSubstitutions.getOrElse(e, e)
           }.transformDown {
-            case a: GroupingAttribute => a
+            case GroupingAttribute(a) => a
             case a: AggregateFunction => a
             case a: Attribute         => throw new IllegalAggregationException(a, groupingList)
           }.asInstanceOf[NamedExpression]

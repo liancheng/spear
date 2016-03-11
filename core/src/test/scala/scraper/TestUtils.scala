@@ -56,21 +56,21 @@ trait TestUtils { this: FunSuite =>
     val allIdExpressions = plan.collect {
       case node =>
         node.expressions.map {
-          case e: Alias             => e: NamedExpression
-          case e: AttributeRef      => e: NamedExpression
-          case e: GroupingAlias     => e: NamedExpression
-          case e: GroupingAttribute => e: NamedExpression
-          case e                    => e
+          case e: Alias                 => e: NamedExpression
+          case e: AttributeRef          => e: NamedExpression
+          case e: GeneratedAlias[_]     => e: NamedExpression
+          case e: GeneratedAttribute[_] => e: NamedExpression
+          case e                        => e
         }
     }.flatten
 
     val rewrites = allIdExpressions.zipWithIndex.toMap
 
     plan.transformAllExpressions {
-      case e: Alias             => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: AttributeRef      => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GroupingAlias     => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GroupingAttribute => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: Alias                 => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: AttributeRef          => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: GeneratedAlias[_]     => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: GeneratedAttribute[_] => e.copy(expressionID = ExpressionID(rewrites(e)))
     }
   }
 
