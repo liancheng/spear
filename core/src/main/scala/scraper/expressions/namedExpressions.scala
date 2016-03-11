@@ -223,14 +223,27 @@ trait GeneratedNamedExpression extends NamedExpression {
 }
 
 object GeneratedNamedExpression {
+  /**
+   * Indicates the purpose of a [[GeneratedNamedExpression]].
+   */
   sealed trait Purpose {
+    /**
+     * Name prefix of a [[GeneratedNamedExpression]].  The full name is in the format of
+     * `&lt;prefix&gt;#&lt;expression-ID&gt;`.
+     */
     val prefix: String
   }
 
+  /**
+   * Marks [[GeneratedNamedExpression]]s used to wrap/reference grouping expressions.
+   */
   case object ForGrouping extends Purpose {
     override val prefix: String = "group"
   }
 
+  /**
+   * Marks [[GeneratedNamedExpression]]s used to wrap/reference aggregate functions.
+   */
   case object ForAggregation extends Purpose {
     override val prefix: String = "agg"
   }
