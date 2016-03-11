@@ -9,7 +9,7 @@ import scalaz._
 
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
-import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
+import scraper.expressions.GeneratedNamedExpression.Purpose
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
 import scraper.utils._
@@ -258,30 +258,4 @@ case class GeneratedAttribute[P <: Purpose](
 
   override def withNullability(nullable: Boolean): GeneratedAttribute[P] =
     copy(isNullable = nullable)
-}
-
-object GroupingAlias {
-  def apply(child: Expression): GroupingAlias =
-    GeneratedAlias(ForGrouping, child, newExpressionID())
-
-  def unapply(e: GeneratedAlias[_]): Option[GroupingAlias] =
-    if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAlias]) else None
-}
-
-object GroupingAttribute {
-  def unapply(e: GeneratedAttribute[_]): Option[GroupingAttribute] =
-    if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAttribute]) else None
-}
-
-object AggregateAlias {
-  def apply(child: AggregateFunction): AggregateAlias =
-    GeneratedAlias(ForAggregation, child, newExpressionID())
-
-  def unapply(e: GeneratedAlias[_]): Option[AggregateAlias] =
-    if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAlias]) else None
-}
-
-object AggregateAttribute {
-  def unapply(e: GeneratedAttribute[_]): Option[AggregateAttribute] =
-    if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAttribute]) else None
 }
