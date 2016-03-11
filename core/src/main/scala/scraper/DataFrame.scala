@@ -2,7 +2,7 @@ package scraper
 
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
-import scraper.expressions.GeneratedNamedExpression.Grouping
+import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._

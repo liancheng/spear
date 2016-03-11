@@ -9,7 +9,7 @@ import scalaz._
 
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
-import scraper.expressions.GeneratedNamedExpression.{Grouping, Purpose}
+import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
 import scraper.utils._
@@ -227,11 +227,11 @@ object GeneratedNamedExpression {
     val prefix: String
   }
 
-  case object Grouping extends Purpose {
+  case object ForGrouping extends Purpose {
     override val prefix: String = "group"
   }
 
-  case object Aggregation extends Purpose {
+  case object ForAggregation extends Purpose {
     override val prefix: String = "agg"
   }
 }
@@ -261,12 +261,12 @@ case class GeneratedAttribute[P <: Purpose](
 }
 
 object GroupingAlias {
-  def apply(child: Expression): GeneratedAlias[Grouping.type] =
-    GeneratedAlias(Grouping, child, newExpressionID())
+  def apply(child: Expression): GroupingAlias =
+    GeneratedAlias(ForGrouping, child, newExpressionID())
 
-  def unapply(e: Expression): Option[GeneratedAlias[Grouping.type]] = e match {
-    case a: GeneratedAlias[_] if a.purpose == Grouping =>
-      Some(a.asInstanceOf[GeneratedAlias[Grouping.type]])
+  def unapply(e: Expression): Option[GroupingAlias] = e match {
+    case a: GeneratedAlias[_] if a.purpose == ForGrouping =>
+      Some(a.asInstanceOf[GroupingAlias])
 
     case _ =>
       None
@@ -274,9 +274,32 @@ object GroupingAlias {
 }
 
 object GroupingAttribute {
-  def unapply(e: Expression): Option[GeneratedAttribute[Grouping.type]] = e match {
-    case a: GeneratedAttribute[_] if a.purpose == Grouping =>
-      Some(a.asInstanceOf[GeneratedAttribute[Grouping.type]])
+  def unapply(e: Expression): Option[GroupingAttribute] = e match {
+    case a: GeneratedAttribute[_] if a.purpose == ForGrouping =>
+      Some(a.asInstanceOf[GroupingAttribute])
+
+    case _ =>
+      None
+  }
+}
+
+object AggregateAlias {
+  def apply(child: Expression): AggregateAlias =
+    GeneratedAlias(ForAggregation, child, newExpressionID())
+
+  def unapply(e: Expression): Option[AggregateAlias] = e match {
+    case a: GeneratedAlias[_] if a.purpose == ForAggregation =>
+      Some(a.asInstanceOf[AggregateAlias])
+
+    case _ =>
+      None
+  }
+}
+
+object AggregateAttribute {
+  def unapply(e: Expression): Option[AggregateAttribute] = e match {
+    case a: GeneratedAttribute[_] if a.purpose == ForAggregation =>
+      Some(a.asInstanceOf[AggregateAttribute])
 
     case _ =>
       None
