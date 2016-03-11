@@ -2,7 +2,6 @@ package scraper
 
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
-import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -200,8 +199,7 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
 }
 
 class GroupedData(df: DataFrame, groupingList: Seq[GroupingAlias]) {
-  def agg(aggregateList: Seq[NamedExpression]): DataFrame =
-    df.withPlan(Aggregate(_, groupingList, aggregateList))
+  def agg(aggregateList: Seq[NamedExpression]): DataFrame = ???
 
   def agg(first: NamedExpression, rest: NamedExpression*): DataFrame = agg(first +: rest)
 }

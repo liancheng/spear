@@ -259,7 +259,7 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 case class Aggregate(
   child: LogicalPlan,
   groupingList: Seq[GroupingAlias],
-  projectList: Seq[NamedExpression]
+  projectList: Seq[AggregateAlias]
 ) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = (groupingList ++ projectList) map (_.toAttribute)
 }

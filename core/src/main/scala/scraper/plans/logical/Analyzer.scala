@@ -230,24 +230,11 @@ object Analyzer {
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case Resolved(child Project projectList) if projectList exists isAggregation =>
+        // TODO Turns projection with aggregate function(s) into aggregation
         ???
 
       case Resolved(plan @ Aggregate(child, groupingList, projectList)) =>
-        val groupingSubstitutions = groupingList.map {
-          a => a.child -> a.toAttribute
-        }.toMap
-
-        val substitutedAggs = projectList map {
-          _.transformDown {
-            case e => groupingSubstitutions.getOrElse(e, e)
-          }.transformDown {
-            case GroupingAttribute(a) => a
-            case a: AggregateFunction => a
-            case a: Attribute         => throw new IllegalAggregationException(a, groupingList)
-          }.asInstanceOf[NamedExpression]
-        }
-
-        plan.copy(projectList = substitutedAggs)
+        ???
     }
 
     def isAggregation(e: NamedExpression): Boolean = e.exists {

@@ -59,10 +59,8 @@ package object dsl {
   }
 
   class GroupedLogicalPlan(plan: LogicalPlan, groupingList: Seq[Expression]) {
-    def agg(aggregateList: Seq[NamedExpression]): Aggregate =
-      Aggregate(plan, groupingList map (GroupingAlias(_)), aggregateList)
+    def agg(aggregateList: Seq[NamedExpression]): Aggregate = ???
 
-    def agg(first: NamedExpression, rest: NamedExpression*): Aggregate =
-      Aggregate(plan, groupingList map (GroupingAlias(_)), first +: rest)
+    def agg(first: NamedExpression, rest: NamedExpression*): Aggregate = agg(first +: rest)
   }
 }
