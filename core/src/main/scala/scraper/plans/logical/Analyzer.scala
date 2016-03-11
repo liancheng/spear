@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
 import scraper.Catalog
-import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
+import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedAttribute}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
@@ -189,8 +189,6 @@ object Analyzer {
         // Handles projections that introduce ambiguous aliases
         case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
           plan -> plan.copy(projectList = newAliases(projectList))
-
-        // TODO Handles aggregations that introduce ambiguous aliases and grouping attributes
       } map {
         case (oldPlan, newPlan) =>
           val attributeRewrites = (oldPlan.output map (_.expressionID) zip newPlan.output).toMap
@@ -229,18 +227,31 @@ object Analyzer {
 
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Resolved(child Project projectList) if projectList exists isAggregation =>
-        // TODO Turns projection with aggregate function(s) into aggregation
-        ???
+      case Resolved(child Project projectList) if projectList exists containsAggregation =>
+        child groupBy Nil agg projectList
 
-      case Resolved(plan @ Aggregate(child, groupingList, projectList)) =>
-        ???
+      case UnresolvedAggregate(Resolved(child), groupingList, projectList) =>
+        val aggs = projectList.flatMap(_ collect { case a: AggregateFunction => a }).distinct
+        val aggAliases = aggs map AggregationAlias.apply
+        val aggRewrites = (aggs, aggAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+
+        val groupingAliases = groupingList map GroupingAlias.apply
+        val groupingRewrites =
+          (groupingList, groupingAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+
+        val rewrittenProjectList = projectList map {
+          _ transformDown {
+            case e => aggRewrites orElse groupingRewrites applyOrElse (e, identity[Expression])
+          }
+        }
+
+        // TODO Validates `rewrittenProjectList`
+
+        Aggregate(child, groupingAliases, aggAliases) select rewrittenProjectList
     }
 
-    def isAggregation(e: NamedExpression): Boolean = e.exists {
-      case _: AggregateFunction => true
-      case _                    => false
-    }
+    def containsAggregation(e: NamedExpression): Boolean =
+      e.collectFirst { case _: AggregateFunction => () }.nonEmpty
   }
 
   object ResolveAliases extends Rule[LogicalPlan] {
@@ -250,6 +261,7 @@ object Analyzer {
 
       case UnresolvedAlias(Resolved(child: Expression)) =>
         // Uses `UnquotedAttribute` to eliminate back-ticks and in generated alias names.
+        // TODO Also replaces literal strings to `UnquotedAttributes` to eliminate double-quotes
         def rewrite(e: Expression): Expression = e.transformDown {
           case a: Attribute => UnquotedAttribute(a)
         }

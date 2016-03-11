@@ -25,6 +25,11 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   def isChildrenResolved: Boolean = children forall (_.isResolved)
 
+  /**
+   * Tries to return a copy of this plan node where all expressions are strictly-typed.
+   *
+   * @see [[Expression.strictlyTyped]]
+   */
   def strictlyTyped: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
       case e => e.strictlyTyped.get
@@ -256,10 +261,16 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
   }
 }
 
+case class UnresolvedAggregate(
+  child: LogicalPlan,
+  groupingList: Seq[Expression],
+  projectList: Seq[NamedExpression]
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+
 case class Aggregate(
   child: LogicalPlan,
   groupingList: Seq[GroupingAlias],
-  projectList: Seq[AggregateAlias]
+  projectList: Seq[AggregationAlias]
 ) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = (groupingList ++ projectList) map (_.toAttribute)
 }

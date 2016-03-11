@@ -21,20 +21,20 @@ package object expressions {
       if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAttribute]) else None
   }
 
-  type AggregateAlias = GeneratedAlias[ForAggregation.type]
+  type AggregationAlias = GeneratedAlias[ForAggregation.type]
 
-  object AggregateAlias {
-    def apply(child: AggregateFunction): AggregateAlias =
+  object AggregationAlias {
+    def apply(child: AggregateFunction): AggregationAlias =
       GeneratedAlias(ForAggregation, child, newExpressionID())
 
-    def unapply(e: GeneratedAlias[_]): Option[AggregateAlias] =
-      if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAlias]) else None
+    def unapply(e: GeneratedAlias[_]): Option[AggregationAlias] =
+      if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregationAlias]) else None
   }
 
-  type AggregateAttribute = GeneratedAttribute[ForAggregation.type]
+  type AggregationAttribute = GeneratedAttribute[ForAggregation.type]
 
-  object AggregateAttribute {
-    def unapply(e: GeneratedAttribute[_]): Option[AggregateAttribute] =
-      if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAttribute]) else None
+  object AggregationAttribute {
+    def unapply(e: GeneratedAttribute[_]): Option[AggregationAttribute] =
+      if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregationAttribute]) else None
   }
 }
