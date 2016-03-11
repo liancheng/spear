@@ -47,8 +47,10 @@ class LocalContext(val settings: Settings) extends Context {
 
   def range(end: Long): DataFrame = range(0, end)
 
-  def range(begin: Long, end: Long): DataFrame = {
-    val rows = begin until end map (Row apply _)
+  def range(begin: Long, end: Long): DataFrame = range(begin, end, 1L)
+
+  def range(begin: Long, end: Long, step: Long): DataFrame = {
+    val rows = begin until end by step map (Row apply _)
     val output = StructType('id -> LongType.!).toAttributes
     new DataFrame(LocalRelation(rows, output), this)
   }

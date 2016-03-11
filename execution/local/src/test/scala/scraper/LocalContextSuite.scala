@@ -19,6 +19,23 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
+  test("range") {
+    checkDataFrame(
+      context range 3,
+      Row(0), Row(1), Row(2)
+    )
+
+    checkDataFrame(
+      context range (1, 4),
+      Row(1), Row(2), Row(3)
+    )
+
+    checkDataFrame(
+      context range (1, 6, 2),
+      Row(1), Row(3), Row(5)
+    )
+  }
+
   test("single row relation") {
     checkDataFrame(context single (1 as 'a) select 'a, Row(1))
   }
