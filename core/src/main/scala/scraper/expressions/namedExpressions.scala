@@ -31,7 +31,7 @@ trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpressio
 object NamedExpression {
   private val currentID = new AtomicLong(0L)
 
-  private val AnonymousColumnName = "?column?"
+  val AnonymousColumnName = "?column?"
 
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
@@ -50,17 +50,6 @@ object NamedExpression {
     override def isNullable: Boolean = named.isNullable
 
     override def sql: Try[String] = Try(named.name)
-  }
-
-  // TODO Replace this with `UnresolvedAlias`
-  def named(expression: Expression): NamedExpression = {
-    def rewrite(e: Expression): Expression =
-      e.transformDown { case a: Attribute => UnquotedAttribute(a) }
-
-    expression match {
-      case e: NamedExpression => e
-      case e                  => e as (rewrite(e).sql getOrElse AnonymousColumnName)
-    }
   }
 }
 
@@ -93,6 +82,19 @@ case class Alias(
   override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
+}
+
+case class UnresolvedAlias(child: Expression)
+  extends NamedExpression
+  with UnaryExpression
+  with UnresolvedNamedExpression
+  with UnevaluableExpression {
+
+  override def name: String = throw new ExpressionUnresolvedException(this)
+
+  override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
+
+  override def debugString: String = s"${child.debugString} AS ???"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

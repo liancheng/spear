@@ -2,6 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
+import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedAttribute}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.Analyzer._
@@ -16,6 +17,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     new ResolveRelations(catalog),
     ResolveReferences,
     DeduplicateReferences,
+    ResolveAliases,
     ResolveAggregates
   ))
 
@@ -251,6 +253,20 @@ object Analyzer {
     def isAggregation(e: NamedExpression): Boolean = e.exists {
       case _: AggregateFunction => true
       case _                    => false
+    }
+  }
+
+  object ResolveAliases extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case UnresolvedAlias(Resolved(child: NamedExpression)) =>
+        child
+
+      case UnresolvedAlias(Resolved(child: Expression)) =>
+        // Uses `UnquotedAttribute` to eliminate back-ticks and in generated alias names.
+        def rewrite(e: Expression): Expression = e.transformDown {
+          case a: Attribute => UnquotedAttribute(a)
+        }
+        child as (rewrite(child).sql getOrElse AnonymousColumnName)
     }
   }
 }

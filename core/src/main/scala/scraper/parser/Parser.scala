@@ -11,7 +11,6 @@ import scraper.config.Keys.NullsLarger
 import scraper.config.Settings
 import scraper.exceptions.ParsingException
 import scraper.expressions.Literal.{False, True}
-import scraper.expressions.NamedExpression.named
 import scraper.expressions._
 import scraper.plans.logical._
 import scraper.plans.logical.dsl._
@@ -196,7 +195,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case ps =>
         ps.map {
           case e: NamedExpression => e
-          case e: Expression      => named(e)
+          case e: Expression      => UnresolvedAlias(e)
         }
     }
 

@@ -1,6 +1,5 @@
 package scraper.plans.logical
 
-import scraper.expressions.NamedExpression.named
 import scraper.expressions._
 import scraper.expressions.functions._
 
@@ -11,7 +10,7 @@ package object dsl {
         // TODO Handle qualified star
         case UnresolvedAttribute("*", _) => Star
         case e: NamedExpression          => e
-        case e                           => named(e)
+        case e                           => UnresolvedAlias(e)
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
