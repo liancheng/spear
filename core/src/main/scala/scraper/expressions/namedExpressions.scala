@@ -223,7 +223,7 @@ trait GeneratedNamedExpression extends NamedExpression {
 }
 
 object GeneratedNamedExpression {
-  trait Purpose {
+  sealed trait Purpose {
     val prefix: String
   }
 
