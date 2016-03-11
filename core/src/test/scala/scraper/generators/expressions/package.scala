@@ -106,7 +106,7 @@ package object expressions extends Logging {
     settings: Settings
   ): Gen[Expression] = {
     val candidates = input.filter { e =>
-      e.nullable == outputSpec.nullable && e.dataType == outputSpec.dataType
+      e.isNullable == outputSpec.nullable && e.dataType == outputSpec.dataType
     }
 
     val genLeaf = if (candidates.nonEmpty) {
@@ -287,7 +287,7 @@ package object expressions extends Logging {
     case e =>
       def stripLeaves(e: Expression): Expression = e transformDown {
         case child if !child.isLeaf && child.children.forall(_.isLeaf) =>
-          genLiteral(FieldSpec(child.dataType, child.nullable))(settings).sample.get
+          genLiteral(FieldSpec(child.dataType, child.isNullable))(settings).sample.get
       }
 
       val OutputType = e.dataType

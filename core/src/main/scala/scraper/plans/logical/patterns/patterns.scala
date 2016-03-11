@@ -19,7 +19,7 @@ package object patterns {
     private type IntermediateResult = (Option[Seq[NamedExpression]], Seq[Expression], LogicalPlan)
 
     def unapply(plan: LogicalPlan): Option[Result] = {
-      require(plan.resolved, {
+      require(plan.isResolved, {
         val patternName = this.getClass.getSimpleName stripSuffix "$"
         s"Pattern $patternName is only available for resolved logical plans."
       })
@@ -34,10 +34,10 @@ package object patterns {
         val aliases = collectAliases(maybeChildProjectList.toSeq.flatten)
 
         plan match {
-          case _ Project projectList if projectList forall (_.pure) =>
+          case _ Project projectList if projectList forall (_.isPure) =>
             (Some(projectList map (inlineAliases(aliases, _))), predicates, grandChild)
 
-          case _ Filter condition if condition.pure =>
+          case _ Filter condition if condition.isPure =>
             val reducedCondition = inlineAliases(aliases, condition)
             (maybeChildProjectList, predicates ++ splitConjunction(reducedCondition), grandChild)
 
@@ -105,15 +105,16 @@ package object patterns {
 
   /** A simple pattern that matches resolved [[LogicalPlan]]s and [[expressions.Expression]]s */
   object Resolved {
-    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (_.resolved)
+    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (_.isResolved)
 
-    def unapply(expression: Expression): Option[Expression] = Some(expression) filter (_.resolved)
+    def unapply(expression: Expression): Option[Expression] = Some(expression) filter (_.isResolved)
   }
 
   /** A simple pattern that matches unresolved [[LogicalPlan]]s and [[expressions.Expression]]s */
   object Unresolved {
-    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (!_.resolved)
+    def unapply(plan: LogicalPlan): Option[LogicalPlan] = Some(plan) filter (!_.isResolved)
 
-    def unapply(expression: Expression): Option[Expression] = Some(expression) filter (!_.resolved)
+    def unapply(expression: Expression): Option[Expression] =
+      Some(expression) filter (!_.isResolved)
   }
 }

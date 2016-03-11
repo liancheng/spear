@@ -13,7 +13,7 @@ import scraper.types.{BooleanType, DataType}
 trait BinaryLogicalPredicate extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
-  override lazy val strictlyTypedForm: Try[Expression] = {
+  override lazy val strictlyTyped: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case BooleanType.Implicitly(e) => Success(promoteDataType(e, BooleanType))
       case e => Failure(
@@ -22,8 +22,8 @@ trait BinaryLogicalPredicate extends BinaryOperator {
     }
 
     for {
-      lhs <- left.strictlyTypedForm flatMap checkBranch
-      rhs <- right.strictlyTypedForm flatMap checkBranch
+      lhs <- left.strictlyTyped flatMap checkBranch
+      rhs <- right.strictlyTyped flatMap checkBranch
       newChildren = lhs :: rhs :: Nil
     } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
   }
@@ -47,8 +47,8 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
 case class Not(child: Expression) extends UnaryOperator {
   override def dataType: DataType = BooleanType
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    e <- child.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    e <- child.strictlyTyped map {
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
@@ -67,14 +67,14 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
 
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
-  override lazy val strictlyTypedForm: Try[If] = for {
-    strictCondition <- condition.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[If] = for {
+    strictCondition <- condition.strictlyTyped map {
       case BooleanType.Implicitly(e) => promoteDataType(e, BooleanType)
       case e                         => throw new TypeMismatchException(e, BooleanType.getClass)
     }
 
-    strictYes <- yes.strictlyTypedForm
-    strictNo <- no.strictlyTypedForm
+    strictYes <- yes.strictlyTyped
+    strictNo <- no.strictlyTyped
     finalType <- strictYes.dataType widest strictNo.dataType
 
     promotedYes = promoteDataType(strictYes, finalType)

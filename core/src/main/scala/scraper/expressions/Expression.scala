@@ -13,15 +13,15 @@ import scraper.types.DataType
 import scraper.utils._
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
-  def foldable: Boolean = children forall (_.foldable)
+  def isFoldable: Boolean = children forall (_.isFoldable)
 
-  def nullable: Boolean = children exists (_.nullable)
+  def isNullable: Boolean = children exists (_.isNullable)
 
-  def pure: Boolean = children forall (_.pure)
+  def isPure: Boolean = children forall (_.isPure)
 
-  def resolved: Boolean = childrenResolved
+  def isResolved: Boolean = isChildrenResolved
 
-  def childrenResolved: Boolean = children forall (_.resolved)
+  def isChildrenResolved: Boolean = children forall (_.isResolved)
 
   def references: Set[Attribute] = children.toSet flatMap ((_: Expression).references)
 
@@ -57,45 +57,45 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * On the other hand, `a + CAST(1 AS LONG)` is strictly typed because both branches are of type
    * `LONG`.
    */
-  def strictlyTypedForm: Try[Expression] = Try {
+  def strictlyTyped: Try[Expression] = Try {
     this transformChildrenUp {
-      case e: Expression => e.strictlyTypedForm.get
+      case e: Expression => e.strictlyTyped.get
     }
   }
 
   /**
    * Indicates whether this [[Expression]] is strictly typed.
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
-  lazy val strictlyTyped: Boolean = wellTyped && (strictlyTypedForm.get sameOrEqual this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get sameOrEqual this)
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
    * [[scraper.exceptions.TypeCheckException TypeCheckException]].
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
   @throws[TypeCheckException]("If this expression is not strictly typed")
   protected def whenStrictlyTyped[T](value: => T): T =
-    if (strictlyTyped) value else throw new TypeCheckException(this)
+    if (isStrictlyTyped) value else throw new TypeCheckException(this)
 
   /**
    * Indicates whether this [[Expression]] is well typed.
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
-  lazy val wellTyped: Boolean = resolved && strictlyTypedForm.isSuccess
+  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
    * [[scraper.exceptions.TypeCheckException TypeCheckException]].
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
   @throws[TypeCheckException]("If this expression is not well typed")
   protected def whenWellTyped[T](value: => T): T =
-    if (wellTyped) value else throw new TypeCheckException(this)
+    if (isWellTyped) value else throw new TypeCheckException(this)
 
   /**
    * Returns the data type of this [[Expression]] if it's well typed, or throws
@@ -106,15 +106,15 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * [[Expression]] is well typed.  But subclasses may override this method directly if the
    * expression data type is fixed (e.g. comparisons and predicates).
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
-  def dataType: DataType = whenWellTyped(strictlyTypedForm.get.strictDataType)
+  def dataType: DataType = whenWellTyped(strictlyTyped.get.strictDataType)
 
   /**
    * Returns the data type of a strictly typed [[Expression]]. This method is only called when this
    * [[Expression]] is strictly typed.
    *
-   * @see [[strictlyTypedForm]]
+   * @see [[strictlyTyped]]
    */
   protected def strictDataType: DataType = throw new BrokenContractException(
     s"${getClass.getName} must override either dataType or strictDataType."
@@ -141,9 +141,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 trait StatefulExpression[State] extends Expression {
   private var state: Option[State] = None
 
-  override def pure: Boolean = false
+  override def isPure: Boolean = false
 
-  override def foldable: Boolean = false
+  override def isFoldable: Boolean = false
 
   override protected def makeCopy(args: Seq[AnyRef]): Expression = {
     state.foreach(throw new BrokenContractException(
@@ -235,14 +235,14 @@ object BinaryOperator {
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {
-  override def nullable: Boolean = child.nullable
+  override def isNullable: Boolean = child.isNullable
 
   override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
     f(child) map ("(" + operator + _ + ")")
 }
 
 trait UnevaluableExpression extends Expression {
-  override def foldable: Boolean = false
+  override def isFoldable: Boolean = false
 
   override def evaluate(input: Row): Any = throw new ExpressionUnevaluableException(this)
 }
@@ -250,10 +250,10 @@ trait UnevaluableExpression extends Expression {
 trait UnresolvedExpression extends Expression with UnevaluableExpression with NonSQLExpression {
   override def dataType: DataType = throw new ExpressionUnresolvedException(this)
 
-  override def strictlyTypedForm: Try[Expression] =
+  override def strictlyTyped: Try[Expression] =
     Failure(new ExpressionUnevaluableException(this))
 
-  override def resolved: Boolean = false
+  override def isResolved: Boolean = false
 
   override def sql: Try[String] = Failure(new UnsupportedOperationException(
     s"Unresolved expression $debugString doesn't have a SQL representation"

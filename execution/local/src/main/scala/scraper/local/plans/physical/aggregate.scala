@@ -48,7 +48,7 @@ case class HashAggregate(
 
     val aggOutput = boundAggFunctions.zipWithIndex.map {
       case (f, i) =>
-        UnresolvedAttribute(s"agg$i") of f.dataType withNullability f.nullable
+        UnresolvedAttribute(s"agg$i") of f.dataType withNullability f.isNullable
     }
 
     val rewriteAgg = boundAggFunctions.zip(aggOutput).toMap

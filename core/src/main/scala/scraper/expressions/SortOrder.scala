@@ -21,8 +21,8 @@ case object Descending extends SortDirection {
 case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    strictChild <- child.strictlyTyped map {
       case OrderedType(e) => e
       case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
@@ -30,7 +30,7 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
 
   override def dataType: DataType = child.dataType
 
-  override def nullable: Boolean = child.nullable
+  override def isNullable: Boolean = child.isNullable
 
   def nullsFirst: SortOrder = direction match {
     case Ascending  => copy(nullsLarger = false)

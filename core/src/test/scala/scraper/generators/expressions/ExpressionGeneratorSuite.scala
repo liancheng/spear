@@ -10,6 +10,6 @@ import scraper.expressions.Expression
 class ExpressionGeneratorSuite extends LoggingFunSuite with Checkers with TestUtils {
   test("strictness") {
     implicit val arbExpression = Arbitrary(genExpression(Nil))
-    check((_: Expression).strictlyTyped)
+    check((_: Expression).isStrictlyTyped)
   }
 }

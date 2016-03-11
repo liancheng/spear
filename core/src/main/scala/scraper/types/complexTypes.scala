@@ -99,5 +99,5 @@ object StructType {
   def apply(first: StructField, rest: StructField*): StructType = StructType(first +: rest)
 
   def fromAttributes(attributes: Seq[Attribute]): StructType =
-    StructType(attributes.map(a => StructField(a.name, a.dataType, a.nullable)))
+    StructType(attributes.map(a => StructField(a.name, a.dataType, a.isNullable)))
 }

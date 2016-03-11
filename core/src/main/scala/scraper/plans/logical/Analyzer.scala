@@ -54,7 +54,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   def typeCheck(tree: LogicalPlan): LogicalPlan = {
-    if (tree.resolved) {
+    if (tree.isResolved) {
       logDebug(
         s"""Type checking logical query plan:
            |
@@ -93,7 +93,7 @@ object Analyzer {
   )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Unresolved(plan) if plan.duplicatesResolved =>
+      case Unresolved(plan) if plan.isDeduplicated =>
         resolveReferences(plan)
     }
 
@@ -145,7 +145,7 @@ object Analyzer {
   @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object TypeCheck extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Resolved(plan) => plan.strictlyTypedForm.get
+      case Resolved(plan) => plan.strictlyTyped.get
     }
   }
 
@@ -164,7 +164,7 @@ object Analyzer {
    */
   object DeduplicateReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan if plan.childrenResolved && !plan.duplicatesResolved =>
+      case plan if plan.isChildrenResolved && !plan.isDeduplicated =>
         plan match {
           case node: Join      => node.copy(right = deduplicateRight(node.left, node.right))
           case node: Union     => node.copy(right = deduplicateRight(node.left, node.right))

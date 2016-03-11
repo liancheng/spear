@@ -6,7 +6,7 @@ import scraper.Row
 import scraper.types._
 
 case class Literal(value: Any, override val dataType: PrimitiveType) extends LeafExpression {
-  override def nullable: Boolean = value == null
+  override def isNullable: Boolean = value == null
 
   override def evaluate(input: Row): Any = value
 

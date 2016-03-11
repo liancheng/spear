@@ -15,8 +15,8 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    strictChild <- child.strictlyTyped map {
       case NumericType(e)            => e
       case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
@@ -39,7 +39,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override lazy val strictlyTypedForm: Try[Expression] = {
+  override lazy val strictlyTyped: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case NumericType(e)            => Success(e)
       case NumericType.Implicitly(e) => Success(promoteDataType(e, NumericType.defaultType))
@@ -47,8 +47,8 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
     }
 
     for {
-      lhs <- left.strictlyTypedForm flatMap checkBranch
-      rhs <- right.strictlyTypedForm flatMap checkBranch
+      lhs <- left.strictlyTyped flatMap checkBranch
+      rhs <- right.strictlyTyped flatMap checkBranch
 
       // Figures out the final data type of this arithmetic expression. Basically there are two
       // cases:
@@ -103,8 +103,8 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    strictChild <- child.strictlyTyped map {
       case FractionalType(e)            => e
       case FractionalType.Implicitly(e) => e
       case e =>
@@ -138,8 +138,8 @@ abstract class GreatestLike extends Expression {
 
   override protected def strictDataType: DataType = children.head.dataType
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChildren <- sequence(children map (_.strictlyTypedForm))
+  override lazy val strictlyTyped: Try[Expression] = for {
+    strictChildren <- sequence(children map (_.strictlyTyped))
     widestType <- widestTypeOf(strictChildren map (_.dataType)) map {
       case t: OrderedType => t
       case t              => throw new TypeMismatchException(this, classOf[OrderedType])

@@ -68,8 +68,8 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
     checkWellTyped(buildLimit(lit(1) + 1L))
     checkWellTyped(buildLimit("1"))
 
-    assert(!buildLimit("hello").wellTyped)
-    assert(!buildLimit('a).wellTyped)
+    assert(!buildLimit("hello").isWellTyped)
+    assert(!buildLimit('a).isWellTyped)
   }
 
   test("set operator - type check") {

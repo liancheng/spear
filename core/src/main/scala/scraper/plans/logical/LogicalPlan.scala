@@ -17,23 +17,23 @@ import scraper.types.{DataType, IntegralType, StructType}
 import scraper.utils._
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
-  def resolved: Boolean = (expressions forall (_.resolved)) && duplicatesResolved
+  def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
 
-  lazy val duplicatesResolved: Boolean = childrenResolved && (
+  lazy val isDeduplicated: Boolean = isChildrenResolved && (
     children.length < 2 || (children map (_.outputSet) reduce intersectByID).isEmpty
   )
 
-  def childrenResolved: Boolean = children forall (_.resolved)
+  def isChildrenResolved: Boolean = children forall (_.isResolved)
 
-  def strictlyTypedForm: Try[LogicalPlan] = Try {
+  def strictlyTyped: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
-      case e => e.strictlyTypedForm.get
+      case e => e.strictlyTyped.get
     }
   }
 
-  lazy val wellTyped: Boolean = resolved && strictlyTypedForm.isSuccess
+  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
-  lazy val strictlyTyped: Boolean = wellTyped && (strictlyTypedForm.get sameOrEqual this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get sameOrEqual this)
 
   override protected def outputStrings: Seq[String] = this match {
     case Unresolved(_) => "???" :: Nil
@@ -44,9 +44,9 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 trait UnresolvedLogicalPlan extends LogicalPlan {
   override def output: Seq[Attribute] = throw new LogicalPlanUnresolvedException(this)
 
-  override def resolved: Boolean = false
+  override def isResolved: Boolean = false
 
-  override def strictlyTypedForm: Try[LogicalPlan] =
+  override def strictlyTyped: Try[LogicalPlan] =
     Failure(new LogicalPlanUnresolvedException(this))
 }
 
@@ -121,12 +121,12 @@ case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogica
 case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override lazy val strictlyTypedForm: Try[LogicalPlan] = for {
-    n <- limit.strictlyTypedForm map {
-      case IntegralType(e) if e.foldable =>
+  override lazy val strictlyTyped: Try[LogicalPlan] = for {
+    n <- limit.strictlyTyped map {
+      case IntegralType(e) if e.isFoldable =>
         Literal(e.evaluated)
 
-      case IntegralType.Implicitly(e) if e.foldable =>
+      case IntegralType.Implicitly(e) if e.isFoldable =>
         Literal(promoteDataType(e, IntegralType.defaultType).evaluated)
 
       case _ =>
@@ -173,15 +173,15 @@ trait SetOperator extends BinaryLogicalPlan {
       yield branches.map(align(_, widenedTypes))
   }
 
-  override lazy val strictlyTypedForm: Try[LogicalPlan] = {
+  override lazy val strictlyTyped: Try[LogicalPlan] = {
     for {
       _ <- Try(checkBranchSchemata()) recover {
         case NonFatal(cause) =>
           throw new TypeCheckException(this, cause)
       }
 
-      lhs <- left.strictlyTypedForm
-      rhs <- right.strictlyTypedForm
+      lhs <- left.strictlyTyped
+      rhs <- right.strictlyTyped
 
       alignedBranches <- alignBranches(lhs :: rhs :: Nil)
     } yield if (sameChildren(alignedBranches)) this else makeCopy(alignedBranches)
@@ -192,7 +192,7 @@ case class Union(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
   override lazy val output: Seq[Attribute] =
     left.output.zip(right.output).map {
       case (a1, a2) =>
-        a1.withNullability(a1.nullable || a2.nullable)
+        a1.withNullability(a1.isNullable || a2.isNullable)
     }
 }
 
@@ -200,7 +200,7 @@ case class Intersect(left: LogicalPlan, right: LogicalPlan) extends SetOperator 
   override lazy val output: Seq[Attribute] =
     left.output.zip(right.output).map {
       case (a1, a2) =>
-        a1.withNullability(a1.nullable && a2.nullable)
+        a1.withNullability(a1.isNullable && a2.isNullable)
     }
 }
 

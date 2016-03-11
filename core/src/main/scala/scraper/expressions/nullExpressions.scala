@@ -12,8 +12,8 @@ import scraper.types.{BooleanType, DataType}
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
 
-  override lazy val strictlyTypedForm: Try[Coalesce] = for {
-    strictChildren <- Try(children map (_.strictlyTypedForm.get))
+  override lazy val strictlyTyped: Try[Coalesce] = for {
+    strictChildren <- Try(children map (_.strictlyTyped.get))
     finalType <- widestTypeOf(strictChildren map (_.dataType))
     promotedChildren = children.map(promoteDataType(_, finalType))
   } yield if (sameChildren(promotedChildren)) this else copy(children = promotedChildren)

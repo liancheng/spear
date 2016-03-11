@@ -39,7 +39,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
     assert(
-      tree.resolved,
+      tree.isResolved,
       s"""Logical query plan not resolved yet:
          |
          |${tree.prettyTree}
@@ -63,7 +63,7 @@ object Optimizer {
    */
   object FoldConstants extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case e if e.foldable => lit(e.evaluated)
+      case e if e.isFoldable => lit(e.evaluated)
     }
   }
 
@@ -187,7 +187,7 @@ object Optimizer {
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projectList Filter condition if projectList forall (_.pure) =>
+      case plan Project projectList Filter condition if projectList forall (_.isPure) =>
         val substitutedCondition = inlineAliases(projectList, condition)
         plan filter substitutedCondition select projectList
     }

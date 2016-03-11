@@ -19,8 +19,8 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
   override def nullSafeEvaluate(value: Any): Any =
     buildCast(fromType, dataType).get(value)
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    strictChild <- child.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    strictChild <- child.strictlyTyped map {
       case e if convertible(e.dataType, dataType) => e
       case e =>
         throw new TypeCastException(e.dataType, dataType)

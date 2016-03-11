@@ -19,13 +19,13 @@ trait BinaryComparison extends BinaryOperator {
     }
   }
 
-  override lazy val strictlyTypedForm: Try[Expression] = for {
-    lhs <- left.strictlyTypedForm map {
+  override lazy val strictlyTyped: Try[Expression] = for {
+    lhs <- left.strictlyTyped map {
       case OrderedType(e) => e
       case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
 
-    rhs <- right.strictlyTypedForm map {
+    rhs <- right.strictlyTyped map {
       case OrderedType(e) => e
       case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
@@ -56,7 +56,7 @@ case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
 }
 
 case class NullSafeEq(left: Expression, right: Expression) extends BinaryComparison {
-  override def nullable: Boolean = false
+  override def isNullable: Boolean = false
 
   override def evaluate(input: Row): Any = children map (_ evaluate input) match {
     case Seq(null, null) => true
@@ -97,10 +97,10 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override protected def strictDataType: DataType = BooleanType
 
-  override lazy val strictlyTypedForm: Try[Expression] = {
+  override lazy val strictlyTyped: Try[Expression] = {
     for {
-      strictTest <- test.strictlyTypedForm
-      strictList <- sequence(list map (_.strictlyTypedForm))
+      strictTest <- test.strictlyTyped
+      strictList <- sequence(list map (_.strictlyTyped))
 
       testType = strictTest.dataType
 

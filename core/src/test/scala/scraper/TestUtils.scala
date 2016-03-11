@@ -113,7 +113,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkWellTyped(e: Expression, dataType: DataType): Unit = {
-    if (!e.wellTyped) {
+    if (!e.isWellTyped) {
       fail(
         s"""Expression ${e.debugString} is not well-typed:
            |${e.prettyTree}
@@ -121,7 +121,7 @@ trait TestUtils { this: FunSuite =>
       )
     }
 
-    val actualType = e.strictlyTypedForm.get.dataType
+    val actualType = e.strictlyTyped.get.dataType
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
@@ -132,7 +132,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkStrictlyTyped(e: Expression, dataType: DataType): Unit = {
-    if (!e.strictlyTyped) {
+    if (!e.isStrictlyTyped) {
       fail(
         s"""Expression ${e.debugString} is not strictly-typed:
            |${e.prettyTree}
@@ -140,7 +140,7 @@ trait TestUtils { this: FunSuite =>
       )
     }
 
-    val actualType = e.strictlyTypedForm.get.dataType
+    val actualType = e.strictlyTyped.get.dataType
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
@@ -151,7 +151,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkWellTyped(plan: LogicalPlan): Unit = {
-    if (!plan.wellTyped) {
+    if (!plan.isWellTyped) {
       fail(
         s"""Logical plan not well-typed:
            |${plan.prettyTree}
@@ -161,7 +161,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkStrictlyTyped(plan: LogicalPlan): Unit = {
-    if (!plan.wellTyped) {
+    if (!plan.isWellTyped) {
       fail(
         s"""Logical plan not well-typed:
            |${plan.prettyTree}
@@ -169,7 +169,7 @@ trait TestUtils { this: FunSuite =>
       )
     }
 
-    if (!plan.strictlyTyped) {
+    if (!plan.isStrictlyTyped) {
       fail(
         s"""Logical plan is well typed but not strictly-typed:
            |
@@ -177,7 +177,7 @@ trait TestUtils { this: FunSuite =>
            |${plan.prettyTree}
            |
            |# Well-typed logical plan:
-           |${plan.strictlyTypedForm.get.prettyTree}
+           |${plan.strictlyTyped.get.prettyTree}
            |""".stripMargin
       )
     }

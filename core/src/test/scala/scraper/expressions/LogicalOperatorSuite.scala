@@ -6,9 +6,9 @@ import scraper.{TestUtils, LoggingFunSuite}
 
 class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("a AND b") {
-    assert(And(Literal(true), Literal(0L)).wellTyped === false)
-    assert(And(Literal(true), Literal(0)).wellTyped === true)
-    assert(And(Literal(true), Literal(false)).strictlyTyped === true)
+    assert(And(Literal(true), Literal(0L)).isWellTyped === false)
+    assert(And(Literal(true), Literal(0)).isWellTyped === true)
+    assert(And(Literal(true), Literal(false)).isStrictlyTyped === true)
 
     check { (a: Boolean, b: Boolean) =>
       And(Literal(a), Literal(b)).evaluated == (a && b)
@@ -16,9 +16,9 @@ class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers 
   }
 
   test("a OR b") {
-    assert(Or(Literal(true), Literal(0L)).wellTyped === false)
-    assert(Or(Literal(true), Literal(0)).wellTyped === true)
-    assert(Or(Literal(true), Literal(false)).strictlyTyped === true)
+    assert(Or(Literal(true), Literal(0L)).isWellTyped === false)
+    assert(Or(Literal(true), Literal(0)).isWellTyped === true)
+    assert(Or(Literal(true), Literal(false)).isStrictlyTyped === true)
 
     check { (a: Boolean, b: Boolean) =>
       Or(Literal(a), Literal(b)).evaluated == (a || b)
@@ -26,9 +26,9 @@ class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers 
   }
 
   test("NOT a") {
-    assert(Not(Literal(0L)).wellTyped === false)
-    assert(Not(Literal(0)).wellTyped === true)
-    assert(Not(Literal(true)).strictlyTyped === true)
+    assert(Not(Literal(0L)).isWellTyped === false)
+    assert(Not(Literal(0)).isWellTyped === true)
+    assert(Not(Literal(true)).isStrictlyTyped === true)
 
     check { a: Boolean =>
       Not(Literal(a)).evaluated == !a
