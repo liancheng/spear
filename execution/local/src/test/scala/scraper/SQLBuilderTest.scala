@@ -3,11 +3,9 @@ package scraper
 import scala.util.control.NonFatal
 
 import org.scalatest.BeforeAndAfterAll
-
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
 import scraper.local.LocalContext
-import scraper.plans.logical.LogicalPlan
 
 abstract class SQLBuilderTest
   extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
@@ -36,38 +34,5 @@ abstract class SQLBuilderTest
           cause
         )
     }
-  }
-
-  protected def checkSQL(plan: LogicalPlan, expectedSQL: String): Unit = {
-    val builder = new SQLBuilder(plan, context)
-    val maybeSQL = builder.build()
-
-    if (maybeSQL.isEmpty) {
-      fail(
-        s"""Cannot convert the following logical query plan to SQL:
-           |${plan.prettyTree}
-           |""".stripMargin
-      )
-    }
-
-    val actualSQL = maybeSQL.get
-
-    try {
-      assert(actualSQL === expectedSQL)
-    } catch {
-      case NonFatal(cause) =>
-        fail(
-          s"""Wrong SQL generated for the following logical query plan:
-             |${plan.prettyTree}
-             |$cause
-             |""".stripMargin
-        )
-    }
-
-    checkDataFrame(context.q(actualSQL), new DataFrame(plan, context))
-  }
-
-  protected def checkSQL(df: DataFrame, expectedSQL: String): Unit = {
-    checkSQL(df.queryExecution.analyzedPlan, expectedSQL)
   }
 }
