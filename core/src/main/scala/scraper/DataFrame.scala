@@ -199,8 +199,8 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
 }
 
 class GroupedData(df: DataFrame, groupingList: Seq[GroupingAlias]) {
-  def agg(projectList: Seq[NamedExpression]): DataFrame =
-    df.withPlan(UnresolvedAggregate(_, groupingList, projectList))
+  def agg(projectList: Seq[Expression]): DataFrame =
+    df.withPlan(UnresolvedAggregate(_, groupingList, projectList map UnresolvedAlias))
 
-  def agg(first: NamedExpression, rest: NamedExpression*): DataFrame = agg(first +: rest)
+  def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }

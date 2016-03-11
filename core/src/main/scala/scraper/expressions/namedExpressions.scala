@@ -259,6 +259,12 @@ case class GeneratedAlias[P <: Purpose] private[scraper] (
 
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
     f(child) map (childString => s"$childString AS ${quote(name)}")
+
+  override def dataType: DataType = child.dataType
+
+  override def isNullable: Boolean = child.isNullable
+
+  override def isFoldable: Boolean = false
 }
 
 case class GeneratedAttribute[P <: Purpose](

@@ -85,8 +85,9 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
       case arg: Seq[_] =>
         arg.map {
-          case e: Expression => expressionHolder(e)
-          case _             => arg.toString
+          case e: Expression                        => expressionHolder(e)
+          case plan: Plan if children contains plan => childHolder(plan)
+          case _                                    => arg.toString
         } mkString ("[", ", ", "]")
 
       case arg: Some[_] =>

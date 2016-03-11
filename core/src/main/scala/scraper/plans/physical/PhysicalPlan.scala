@@ -37,3 +37,9 @@ case object SingleRowRelation extends LeafPhysicalPlan {
 
   override val output: Seq[Attribute] = Nil
 }
+
+case class Unimplemented(input: Seq[PhysicalPlan], output: Seq[Attribute]) extends PhysicalPlan {
+  override def children: Seq[PhysicalPlan] = input
+
+  override def iterator: Iterator[Row] = ???
+}
