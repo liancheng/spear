@@ -264,44 +264,24 @@ object GroupingAlias {
   def apply(child: Expression): GroupingAlias =
     GeneratedAlias(ForGrouping, child, newExpressionID())
 
-  def unapply(e: Expression): Option[GroupingAlias] = e match {
-    case a: GeneratedAlias[_] if a.purpose == ForGrouping =>
-      Some(a.asInstanceOf[GroupingAlias])
-
-    case _ =>
-      None
-  }
+  def unapply(e: GeneratedAlias[_]): Option[GroupingAlias] =
+    if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAlias]) else None
 }
 
 object GroupingAttribute {
-  def unapply(e: Expression): Option[GroupingAttribute] = e match {
-    case a: GeneratedAttribute[_] if a.purpose == ForGrouping =>
-      Some(a.asInstanceOf[GroupingAttribute])
-
-    case _ =>
-      None
-  }
+  def unapply(e: GeneratedAttribute[_]): Option[GroupingAttribute] =
+    if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAttribute]) else None
 }
 
 object AggregateAlias {
-  def apply(child: Expression): AggregateAlias =
+  def apply(child: AggregateFunction): AggregateAlias =
     GeneratedAlias(ForAggregation, child, newExpressionID())
 
-  def unapply(e: Expression): Option[AggregateAlias] = e match {
-    case a: GeneratedAlias[_] if a.purpose == ForAggregation =>
-      Some(a.asInstanceOf[AggregateAlias])
-
-    case _ =>
-      None
-  }
+  def unapply(e: GeneratedAlias[_]): Option[AggregateAlias] =
+    if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAlias]) else None
 }
 
 object AggregateAttribute {
-  def unapply(e: Expression): Option[AggregateAttribute] = e match {
-    case a: GeneratedAttribute[_] if a.purpose == ForAggregation =>
-      Some(a.asInstanceOf[AggregateAttribute])
-
-    case _ =>
-      None
-  }
+  def unapply(e: GeneratedAttribute[_]): Option[AggregateAttribute] =
+    if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregateAttribute]) else None
 }
