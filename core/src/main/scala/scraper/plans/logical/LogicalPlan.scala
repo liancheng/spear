@@ -28,7 +28,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   /**
    * Tries to return a copy of this plan node where all expressions are strictly-typed.
    *
-   * @see [[Expression.strictlyTyped]]
+   * @see [[scraper.expressions.Expression.strictlyTyped]]
    */
   def strictlyTyped: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
