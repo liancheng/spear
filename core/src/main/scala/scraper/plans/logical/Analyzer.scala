@@ -231,21 +231,33 @@ object Analyzer {
         child groupBy Nil agg projectList
 
       case UnresolvedAggregate(Resolved(child), groupingList, projectList) =>
+        // Aliases all found aggregate functions with `AggregationAlias` and builds rewriting map.
         val aggs = projectList.flatMap(_ collect { case a: AggregateFunction => a }).distinct
         val aggAliases = aggs map AggregationAlias.apply
         val aggRewrites = (aggs, aggAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
 
+        // Aliases all grouping expressions with `GroupingAlias` and builds rewriting map.
         val groupingAliases = groupingList map GroupingAlias.apply
         val groupingRewrites =
           (groupingList, groupingAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
 
+        // Replaces all occurrences of aggregate functions and grouping expressions with
+        // corresponding generated attributes.
         val rewrittenProjectList = projectList map {
           _ transformDown {
             case e => aggRewrites orElse groupingRewrites applyOrElse (e, identity[Expression])
           }
         }
 
-        // TODO Validates `rewrittenProjectList`
+        // Reports invalid aggregation expressions if any.  Project list of an `UnresolvedAggregate`
+        // should only consist of aggregation functions, grouping expressions, and literals.  After
+        // rewriting aggregation functions and grouping expressions to `AggregationAttribute`s and
+        // `GroupingAttribute`s, no `AttributeRef`s should exist in the rewritten project list.
+        rewrittenProjectList filter {
+          _.collectFirst { case _: AttributeRef => () }.nonEmpty
+        } foreach {
+          e => throw new IllegalAggregationException(e, groupingAliases)
+        }
 
         Aggregate(child, groupingAliases, aggAliases) select rewrittenProjectList
     }
