@@ -8,9 +8,9 @@ import scraper.expressions.{AggregateFunction, GroupingAlias, NamedExpression, _
 import scraper.plans.physical.{PhysicalPlan, UnaryPhysicalPlan}
 
 case class HashAggregate(
-  child: PhysicalPlan,
-  groupingList: Seq[GroupingAlias],
-  projectList: Seq[NamedExpression]
+                          child: PhysicalPlan,
+                          groupingList: Seq[GroupingAlias],
+                          aggregateList: Seq[AggregationAlias]
 ) extends UnaryPhysicalPlan {
   type AccumulatorMap = Map[AggregateFunction, MutableRow]
 
@@ -22,9 +22,9 @@ case class HashAggregate(
   private val boundGroupingList: Seq[GroupingAlias] = groupingList map (bind(_, child.output))
 
   private val boundAggregateList: Seq[NamedExpression] =
-    projectList map (bind(_, groupingOutput ++ child.output))
+    aggregateList map (bind(_, groupingOutput ++ child.output))
 
-  override def output: Seq[Attribute] = (groupingList ++ projectList) map (_.toAttribute)
+  override def output: Seq[Attribute] = (groupingList ++ aggregateList) map (_.toAttribute)
 
   private def allocateAccumulators(
     aggs: Seq[AggregateFunction]
@@ -72,7 +72,7 @@ case class HashAggregate(
       }
     }
 
-    val resultRow = new BasicMutableRow(projectList.length)
+    val resultRow = new BasicMutableRow(aggregateList.length)
     val boundRewrittenAggList = rewrittenAggList.map(bind(_, groupingOutput ++ aggOutput))
 
     hashMap.iterator.map {
