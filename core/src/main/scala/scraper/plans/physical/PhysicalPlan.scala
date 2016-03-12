@@ -38,8 +38,12 @@ case object SingleRowRelation extends LeafPhysicalPlan {
   override val output: Seq[Attribute] = Nil
 }
 
-case class Unimplemented(input: Seq[PhysicalPlan], output: Seq[Attribute]) extends PhysicalPlan {
-  override def nodeName: String = "???"
+case class NotImplemented(
+  input: Seq[PhysicalPlan], output: Seq[Attribute]
+)(logicalPlanNodeName: String)
+  extends PhysicalPlan {
+
+  override def nodeName: String = s"*$logicalPlanNodeName NOT IMPLEMENTED*"
 
   override def children: Seq[PhysicalPlan] = input
 

@@ -11,7 +11,7 @@ import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
 import scraper.plans.logical.dsl._
-import scraper.plans.physical.{Unimplemented, PhysicalPlan}
+import scraper.plans.physical.{NotImplemented, PhysicalPlan}
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.types.{LongType, StructType}
 
@@ -124,7 +124,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         (planLater(left) except planLater(right)) :: Nil
 
       case plan =>
-        Unimplemented(plan.children map planLater, plan.output) :: Nil
+        NotImplemented(plan.children map planLater, plan.output)(plan.nodeName) :: Nil
     }
   }
 }
