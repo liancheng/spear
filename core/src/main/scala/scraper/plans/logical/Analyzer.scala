@@ -215,17 +215,18 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         child groupBy Nil agg projectList
 
       // Resolves an `UnresolvedAggregate` into a `Project` over an `Aggregate`
-      case UnresolvedAggregate(Resolved(child), keys, fields) =>
+      case UnresolvedAggregate(Resolved(child), keys, projectList) =>
         // Aliases all grouping keys
         val keyAliases = keys map GroupingAlias.apply
         val rewriteKeys = (keys, keyAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
 
         // Aliases all found aggregate functions
-        val aggAliases = collectAggregation(fields) map AggregationAlias.apply
-        val rewriteAggs = (fields, aggAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+        val aggs = collectAggregation(projectList)
+        val aggAliases = aggs map AggregationAlias.apply
+        val rewriteAggs = (aggs, aggAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
 
         // Replaces grouping keys and aggregate functions in projected fields
-        val rewrittenFields = fields map (_ transformDown {
+        val rewrittenProjectList = projectList map (_ transformDown {
           case e => rewriteKeys orElse rewriteAggs applyOrElse (e, identity[Expression])
         })
 
@@ -234,13 +235,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         // function calls.  After rewriting aggregation functions and grouping keys to
         // `AggregationAttribute`s and `GroupingAttribute`s, no `AttributeRef`s should exist in the
         // rewritten project list.
-        rewrittenFields filter {
+        rewrittenProjectList filter {
           _.collectFirst { case _: AttributeRef => () }.nonEmpty
         } foreach {
           e => throw new IllegalAggregationException(e, keyAliases)
         }
 
-        Aggregate(child, keyAliases, aggAliases) select rewrittenFields
+        Aggregate(child, keyAliases, aggAliases) select rewrittenProjectList
     }
   }
 
