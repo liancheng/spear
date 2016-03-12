@@ -19,6 +19,8 @@ trait AggregateFunction extends Expression {
 case class Count(child: Expression) extends UnaryExpression with AggregateFunction {
   override def dataType: DataType = LongType
 
+  override def isNullable: Boolean = false
+
   override def accumulatorSchema: StructType = StructType('acc -> LongType.!)
 
   override def zero(row: MutableRow): Unit = row(0) = 0L
