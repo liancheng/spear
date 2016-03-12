@@ -84,6 +84,10 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
 
+  def agg(projectList: Seq[Expression]): DataFrame = this groupBy Nil agg projectList
+
+  def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
+
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
   def asTable(tableName: String): Unit =
