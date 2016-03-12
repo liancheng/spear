@@ -279,6 +279,6 @@ case class Aggregate(
   override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 }
 
-case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
+case class Sort(child: LogicalPlan, orders: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }
