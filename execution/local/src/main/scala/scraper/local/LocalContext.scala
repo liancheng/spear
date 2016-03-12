@@ -5,7 +5,8 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper._
 import scraper.config.Settings
-import scraper.exceptions.TableNotFoundException
+import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
+import scraper.expressions.Count
 import scraper.local.plans.physical
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
@@ -63,7 +64,21 @@ class LocalContext(val settings: Settings) extends Context {
 }
 
 class InMemoryCatalog extends Catalog {
+  override val functionRegistry: FunctionRegistry = new FunctionRegistry {
+    private val functions: mutable.Map[String, FunctionInfo] =
+      mutable.Map.empty[String, FunctionInfo]
+
+    override def lookupFunction(name: String): FunctionInfo =
+      functions.getOrElse(name.toLowerCase, throw new FunctionNotFoundException(name))
+
+    override def registerFunction(fn: FunctionInfo): Unit = functions(fn.name.toLowerCase) = fn
+
+    override def removeFunction(name: String): Unit = functions -= name
+  }
+
   private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
+
+  functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
 
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan

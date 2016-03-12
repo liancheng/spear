@@ -10,9 +10,18 @@ import scraper.plans.physical.PhysicalPlan
 case class FunctionInfo(
   name: String,
   functionClass: Class[_ <: Expression],
-  description: String,
   builder: Seq[Expression] => Expression
 )
+
+object FunctionInfo {
+  def apply[F <: Expression](
+    functionClass: Class[F],
+    builder: Expression => Expression
+  ): FunctionInfo = {
+    val name = (functionClass.getSimpleName stripSuffix "$").toUpperCase
+    FunctionInfo(name, functionClass, (args: Seq[Expression]) => builder(args.head))
+  }
+}
 
 trait FunctionRegistry {
   def registerFunction(fn: FunctionInfo): Unit
@@ -23,6 +32,8 @@ trait FunctionRegistry {
 }
 
 trait Catalog {
+  val functionRegistry: FunctionRegistry
+
   def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
 
   def removeRelation(tableName: String): Unit

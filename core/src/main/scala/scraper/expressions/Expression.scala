@@ -129,7 +129,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeCaption: String = getClass.getSimpleName
 
   protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    sequence(children map f) map (_ mkString (s"${nodeName.toUpperCase}(", ", ", ")"))
+    sequence(children map f) map (_ mkString (s"$nodeName(", ", ", ")"))
 
   def debugString: String = template(_.debugString.some).get
 
@@ -250,6 +250,8 @@ trait UnevaluableExpression extends Expression {
 trait UnresolvedExpression extends Expression with UnevaluableExpression with NonSQLExpression {
   override def dataType: DataType = throw new ExpressionUnresolvedException(this)
 
+  override def isNullable: Boolean = throw new ExpressionUnevaluableException(this)
+
   override def strictlyTyped: Try[Expression] =
     Failure(new ExpressionUnevaluableException(this))
 
@@ -258,4 +260,8 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
   override def sql: Try[String] = Failure(new UnsupportedOperationException(
     s"Unresolved expression $debugString doesn't have a SQL representation"
   ))
+}
+
+case class UnresolvedFunction(name: String, args: Seq[Expression]) extends UnresolvedExpression {
+  override def children: Seq[Expression] = args
 }

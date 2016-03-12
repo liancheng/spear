@@ -256,6 +256,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def primary: Parser[Expression] = (
     literal
+    | function
     | attribute
     | cast
     | "(" ~> expression <~ ")"
@@ -305,6 +306,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def cast: Parser[Cast] =
     CAST ~ "(" ~> expression ~ (AS ~> dataType) <~ ")" ^^ { case e ~ t => Cast(e, t) }
+
+  private def function: Parser[Expression] =
+    ident ~ ("(" ~> repsep(expression, ",") <~ ")") ^^ {
+      case functionName ~ args => UnresolvedFunction(functionName, args)
+    }
 
   private def dataType: Parser[DataType] = (
     primitiveType

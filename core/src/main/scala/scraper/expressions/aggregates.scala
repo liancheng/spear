@@ -26,8 +26,10 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
   override def zero(row: MutableRow): Unit = row(0) = 0L
 
   override def accumulate(buffer: MutableRow, row: Row): Unit = {
-    val current = buffer.head.asInstanceOf[Long]
-    buffer(0) = current + 1L
+    if (child.evaluate(row) != null) {
+      val current = buffer.head.asInstanceOf[Long]
+      buffer(0) = current + 1L
+    }
   }
 
   override def merge(into: MutableRow, from: Row): Unit = {

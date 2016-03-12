@@ -18,7 +18,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ExpandStars,
       ResolveReferences,
       DeduplicateReferences,
-      ResolveAliases
+      ResolveAliases,
+      new ResolveFunctions(catalog)
     ))
 
   private val planResolutionBatch =
@@ -211,6 +212,14 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         case Literal(lit: String, StringType) => UnquotedName(lit)
       }
       child as (rewrite(child).sql getOrElse AnonymousColumnName)
+    }
+  }
+
+  class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
+        val fnInfo = catalog.functionRegistry.lookupFunction(name)
+        fnInfo.builder(args)
     }
   }
 

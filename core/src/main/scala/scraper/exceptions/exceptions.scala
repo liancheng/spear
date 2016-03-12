@@ -109,6 +109,12 @@ class TableNotFoundException(tableName: String, cause: Throwable)
   def this(tableName: String) = this(tableName, null)
 }
 
+class FunctionNotFoundException(name: String, cause: Throwable)
+  extends AnalysisException(s"Function $name not found", cause) {
+
+  def this(name: String) = this(name, null)
+}
+
 class SchemaIncompatibleException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
