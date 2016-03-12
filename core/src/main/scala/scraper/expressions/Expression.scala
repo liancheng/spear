@@ -68,7 +68,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    * @see [[strictlyTyped]]
    */
-  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get sameOrEqual this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
 
   /**
    * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a

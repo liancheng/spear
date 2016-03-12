@@ -26,7 +26,7 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
       case OrderedType(e) => e
       case e              => throw new TypeMismatchException(e, classOf[OrderedType])
     }
-  } yield if (strictChild sameOrEqual child) this else copy(child = strictChild)
+  } yield if (strictChild same child) this else copy(child = strictChild)
 
   override def dataType: DataType = child.dataType
 

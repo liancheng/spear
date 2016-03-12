@@ -40,7 +40,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   protected def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
     def applyRule(e: Expression): (Expression, Boolean) = {
       val transformed = next(e, rule)
-      if (e sameOrEqual transformed) e -> false else transformed -> true
+      if (e same transformed) e -> false else transformed -> true
     }
 
     val (newArgs, argsChanged) = productIterator.map {

@@ -9,13 +9,13 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def children: Seq[Base]
 
   protected def sameChildren(newChildren: Seq[Base]): Boolean =
-    (newChildren, children).zipped forall (_ sameOrEqual _)
+    (newChildren, children).zipped forall (_ same _)
 
   /**
    * Returns whether this [[nodeCaption]] and `that` point to the same reference or equal
    * to each other.
    */
-  def sameOrEqual(that: Base): Boolean = (this eq that) || this == that
+  def same(that: Base): Boolean = (this eq that) || this == that
 
   def transformDown(rule: PartialFunction[Base, Base]): Base = {
     val selfTransformed = rule applyOrElse (this, identity[Base])
@@ -38,7 +38,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     // equivalent to the original one
     def applyRule(tree: Base): (Base, Boolean) = {
       val transformed = next(tree, rule)
-      if (tree sameOrEqual transformed) tree -> false else transformed -> true
+      if (tree same transformed) tree -> false else transformed -> true
     }
 
     val (newArgs, argsChanged) = productIterator.map {

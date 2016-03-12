@@ -21,7 +21,7 @@ trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
       case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
-  } yield if (strictChild sameOrEqual child) this else makeCopy(strictChild :: Nil)
+  } yield if (strictChild same child) this else makeCopy(strictChild :: Nil)
 
   override protected def strictDataType: DataType = child.dataType
 }
@@ -117,7 +117,7 @@ case class IsNaN(child: Expression) extends UnaryExpression {
     }
 
     promotedChild = promoteDataType(strictChild, finalType)
-  } yield if (promotedChild sameOrEqual child) this else copy(child = promotedChild)
+  } yield if (promotedChild same child) this else copy(child = promotedChild)
 
   override def dataType: DataType = BooleanType
 

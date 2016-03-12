@@ -38,7 +38,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
 
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
-  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get sameOrEqual this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
 
   override protected def outputStrings: Seq[String] = this match {
     case Unresolved(_) => "???" :: Nil
@@ -141,7 +141,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
       case _ =>
         throw new TypeCheckException("Limit must be an integral constant")
     }
-  } yield if (n sameOrEqual limit) this else copy(limit = n)
+  } yield if (n same limit) this else copy(limit = n)
 }
 
 trait SetOperator extends BinaryLogicalPlan {

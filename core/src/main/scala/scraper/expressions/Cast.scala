@@ -25,7 +25,7 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
       case e =>
         throw new TypeCastException(e.dataType, dataType)
     }
-  } yield if (strictChild sameOrEqual child) this else this.copy(child = strictChild)
+  } yield if (strictChild same child) this else this.copy(child = strictChild)
 }
 
 object Cast {

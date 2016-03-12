@@ -31,7 +31,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) 
 
     @tailrec def untilFixedPoint(rules: Seq[Rule[Base]], tree: Base, maxIterations: Int): Base = {
       val transformed = executeRules(rules, tree)
-      if (transformed.sameOrEqual(tree) || maxIterations == 1) {
+      if (transformed.same(tree) || maxIterations == 1) {
         transformed
       } else {
         untilFixedPoint(rules, transformed, maxIterations - 1)
@@ -55,7 +55,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) 
   def apply(tree: Base, batches: Seq[RuleBatch]): Base = batches.foldLeft(tree) { executeBatch }
 
   private def logTransformation(transformation: String, before: Base, after: Base): Unit = {
-    if (before sameOrEqual after) {
+    if (before same after) {
       logTrace(s"Applied $transformation, nothing changed")
     } else {
       logTrace {

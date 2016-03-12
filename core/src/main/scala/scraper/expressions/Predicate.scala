@@ -24,12 +24,12 @@ object Predicate {
 
   private object CNFConversion extends Rule[Expression] {
     override def apply(tree: Expression): Expression = tree transformDown {
-      case !(!(x))                   => x
-      case !(x || y)                 => !x && !y
-      case !(x && y)                 => !x || !y
-      case (x && y) || z             => (x || z) && (y || z)
-      case x || (y && z)             => (x || y) && (x || z)
-      case x && y if x sameOrEqual y => x
+      case !(!(x))            => x
+      case !(x || y)          => !x && !y
+      case !(x && y)          => !x || !y
+      case (x && y) || z      => (x || z) && (y || z)
+      case x || (y && z)      => (x || y) && (x || z)
+      case x && y if x same y => x
     }
   }
 }

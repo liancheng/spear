@@ -72,17 +72,17 @@ object Optimizer {
    */
   object FoldLogicalPredicates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case True || _                 => True
-      case _ || True                 => True
+      case True || _          => True
+      case _ || True          => True
 
-      case False && _                => False
-      case _ && False                => False
+      case False && _         => False
+      case _ && False         => False
 
-      case a && b if a sameOrEqual b => a
-      case a || b if a sameOrEqual b => a
+      case a && b if a same b => a
+      case a || b if a same b => a
 
-      case If(True, yes, _)          => yes
-      case If(False, _, no)          => no
+      case If(True, yes, _)   => yes
+      case If(False, _, no)   => no
     }
   }
 
@@ -91,22 +91,22 @@ object Optimizer {
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case !(!(child))                  => child
-      case !(lhs =:= rhs)               => lhs =/= rhs
-      case !(lhs =/= rhs)               => lhs =:= rhs
+      case !(!(child))           => child
+      case !(lhs =:= rhs)        => lhs =/= rhs
+      case !(lhs =/= rhs)        => lhs =:= rhs
 
-      case !(lhs > rhs)                 => lhs <= rhs
-      case !(lhs >= rhs)                => lhs < rhs
-      case !(lhs < rhs)                 => lhs >= rhs
-      case !(lhs <= rhs)                => lhs > rhs
+      case !(lhs > rhs)          => lhs <= rhs
+      case !(lhs >= rhs)         => lhs < rhs
+      case !(lhs < rhs)          => lhs >= rhs
+      case !(lhs <= rhs)         => lhs > rhs
 
-      case If(!(c), t, f)               => If(c, f, t)
+      case If(!(c), t, f)        => If(c, f, t)
 
-      case a && !(b) if a sameOrEqual b => False
-      case a || !(b) if a sameOrEqual b => True
+      case a && !(b) if a same b => False
+      case a || !(b) if a same b => True
 
-      case !(IsNull(child))             => IsNotNull(child)
-      case !(IsNotNull(child))          => IsNull(child)
+      case !(IsNull(child))      => IsNotNull(child)
+      case !(IsNotNull(child))   => IsNull(child)
     }
   }
 
