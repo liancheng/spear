@@ -216,7 +216,7 @@ object BoundRef {
   }
 }
 
-trait GeneratedNamedExpression extends NamedExpression {
+sealed trait GeneratedNamedExpression extends NamedExpression {
   val purpose: Purpose
 
   override def name: String = purpose.prefix + "#" + expressionID.id
