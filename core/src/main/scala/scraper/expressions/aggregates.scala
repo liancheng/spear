@@ -4,15 +4,15 @@ import scraper.types._
 import scraper.{MutableRow, Row}
 
 trait AggregateFunction extends Expression {
-  def accumulatorSchema: StructType
+  def bufferSchema: StructType
 
-  def zero(accumulator: MutableRow): Unit
+  def zero(buffer: MutableRow): Unit
 
-  def accumulate(accumulator: MutableRow, row: Row): Unit
+  def accumulate(buffer: MutableRow, row: Row): Unit
 
   def merge(into: MutableRow, from: Row): Unit
 
-  def result(accumulator: Row): Any
+  def result(buffer: Row): Any
 }
 
 // TODO How to handle NULL?
@@ -21,13 +21,13 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
 
   override def isNullable: Boolean = false
 
-  override def accumulatorSchema: StructType = StructType('acc -> LongType.!)
+  override def bufferSchema: StructType = StructType('count -> LongType.!)
 
   override def zero(row: MutableRow): Unit = row(0) = 0L
 
-  override def accumulate(accumulator: MutableRow, row: Row): Unit = {
-    val current = accumulator.head.asInstanceOf[Long]
-    accumulator(0) = current + 1L
+  override def accumulate(buffer: MutableRow, row: Row): Unit = {
+    val current = buffer.head.asInstanceOf[Long]
+    buffer(0) = current + 1L
   }
 
   override def merge(into: MutableRow, from: Row): Unit = {
@@ -35,5 +35,5 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
     into(0) = current + from.head.asInstanceOf[Long]
   }
 
-  override def result(accumulator: Row): Any = accumulator.head
+  override def result(buffer: Row): Any = buffer.head
 }
