@@ -7,7 +7,7 @@ package object dsl {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList map {
-        // TODO Handle qualified star
+        // TODO Handles qualified star
         case UnresolvedAttribute("*", _) => Star
         case e: NamedExpression          => e
         case e                           => UnresolvedAlias(e)
