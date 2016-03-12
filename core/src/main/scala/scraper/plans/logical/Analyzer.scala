@@ -23,6 +23,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   private val planResolutionBatch =
     RuleBatch("Plan resolution", FixedPoint.Unlimited, Seq(
+      GlobalAggregates,
       ResolveAggregates,
       ResolveHavingConditions,
       ResolveOrderBysOverAggregates
@@ -213,12 +214,17 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
-  object ResolveAggregates extends Rule[LogicalPlan] {
+  object GlobalAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      // Converts a `Project` with aggregate function(s) into `UnresolvedAggregate`
+      // Converts a `Project` with aggregate function(s) into an `UnresolvedAggregate` without any
+      // grouping keys.
       case Resolved(child Project projectList) if projectList exists containsAggregation =>
         child groupBy Nil agg projectList
+    }
+  }
 
+  object ResolveAggregates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Resolves an `UnresolvedAggregate` into a `Project` over an `Aggregate`
       case UnresolvedAggregate(Resolved(child), keys, projectList) =>
         // Aliases all grouping keys
@@ -252,9 +258,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ResolveHavingConditions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan @ (_ Filter Resolved(_)) =>
-        plan
-
       case Resolved((agg: Aggregate) Project projectList) Filter Unresolved(havingCondition) =>
         // Constructs a single field `UnresolvedAggregate` to resolve having condition recursively
         // and obtain aliased aggregate functions referenced by resolved having condition.
@@ -278,7 +281,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object ResolveOrderBysOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Only handles unresolved sort orders
-      case plan @ (_ Sort orders) if orders forall (_.isResolved) =>
+      case plan: Sort if plan.orders forall (_.isResolved) =>
         plan
 
       case Resolved((agg: Aggregate) Project projectList) Sort orders =>
