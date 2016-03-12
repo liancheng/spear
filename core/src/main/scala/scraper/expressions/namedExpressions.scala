@@ -176,7 +176,7 @@ case class AttributeRef(
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
-  override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
+  override def newInstance(): Attribute = copy(expressionID = newExpressionID())
 
   override def ? : AttributeRef = withNullability(true)
 
@@ -278,7 +278,7 @@ case class GeneratedAttribute[P <: Purpose](
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
 ) extends GeneratedNamedExpression with ResolvedAttribute with UnevaluableExpression {
-  override def newInstance(): Attribute = copy(expressionID = NamedExpression.newExpressionID())
+  override def newInstance(): Attribute = copy(expressionID = newExpressionID())
 
   override def withNullability(nullable: Boolean): GeneratedAttribute[P] =
     copy(isNullable = nullable)
