@@ -58,10 +58,12 @@ package object dsl {
   }
 
   class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
-    def agg(projectList: Seq[NamedExpression]): UnresolvedAggregate =
-      UnresolvedAggregate(plan, keys, projectList)
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate =
+      UnresolvedAggregate(plan, keys, projectList map {
+        case e: NamedExpression => e
+        case e                  => UnresolvedAlias(e)
+      })
 
-    def agg(first: NamedExpression, rest: NamedExpression*): UnresolvedAggregate =
-      agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
 }
