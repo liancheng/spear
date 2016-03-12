@@ -288,18 +288,3 @@ case class GeneratedAttribute[P <: Purpose] private[scraper] (
   override def withNullability(nullable: Boolean): GeneratedAttribute[P] =
     copy(isNullable = nullable)
 }
-
-object GeneratedAttribute {
-  def rewrite[P <: Purpose, E <: Expression](
-    purpose: P, expressions: Seq[Expression]
-  )(
-    toReplace: Seq[E]
-  ): (Seq[GeneratedAlias[P, E]], Seq[Expression]) = {
-    val aliases = toReplace.map(GeneratedAlias(purpose, _))
-    val rewritten = {
-      val rewrites = (toReplace, aliases).zipped.map((_: Expression) -> _.toAttribute).toMap
-      expressions map (_ transformDown { case e => rewrites getOrElse (e, e) })
-    }
-    (aliases, rewritten)
-  }
-}
