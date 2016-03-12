@@ -35,8 +35,8 @@ case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysi
 
   private lazy val boundCondition = bind(condition, child.output)
 
-  override def iterator: Iterator[Row] = child.iterator filter { row =>
-    (boundCondition evaluate row).asInstanceOf[Boolean]
+  override def iterator: Iterator[Row] = child.iterator filter {
+    boundCondition.evaluate(_).asInstanceOf[Boolean]
   }
 }
 
