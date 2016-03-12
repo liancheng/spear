@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedAttribute}
+import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.Analyzer._
@@ -10,6 +10,7 @@ import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns._
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
+import scraper.types.StringType
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   private val expressionResolutionBatch =
@@ -283,7 +284,8 @@ object Analyzer {
         // Uses `UnquotedAttribute` to eliminate back-ticks and in generated alias names.
         // TODO Also replaces literal strings to `UnquotedAttributes` to eliminate double-quotes
         def rewrite(e: Expression): Expression = e.transformDown {
-          case a: Attribute => UnquotedAttribute(a)
+          case a: Attribute                     => UnquotedName(a)
+          case Literal(lit: String, StringType) => new UnquotedName(lit)
         }
         child as (rewrite(child).sql getOrElse AnonymousColumnName)
     }

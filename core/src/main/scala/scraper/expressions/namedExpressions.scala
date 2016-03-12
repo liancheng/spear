@@ -11,6 +11,7 @@ import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.GeneratedNamedExpression.Purpose
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.functions._
 import scraper.types._
 import scraper.utils._
 
@@ -38,11 +39,15 @@ object NamedExpression {
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
 
   /**
-   * Auxiliary class only used for removing back-ticks from auto-generated column names.  For
-   * example, for expression `id + 1`, we'd like to generate column name `(id + 1)` instead of
-   * `(&#96;id&#96; + 1)`.
+   * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
+   * names.  For example, for expression `id + 1`, we'd like to generate column name `(id + 1)`
+   * instead of `(&#96;id&#96; + 1)`.
    */
-  case class UnquotedAttribute(named: Attribute) extends LeafExpression with UnevaluableExpression {
+  case class UnquotedName(named: NamedExpression)
+    extends LeafExpression with UnevaluableExpression {
+
+    def this(stringLiteral: String) = this(lit(stringLiteral) as stringLiteral)
+
     override def isResolved: Boolean = named.isResolved
 
     override def dataType: DataType = named.dataType
