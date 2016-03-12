@@ -46,8 +46,6 @@ object NamedExpression {
   case class UnquotedName(named: NamedExpression)
     extends LeafExpression with UnevaluableExpression {
 
-    def this(stringLiteral: String) = this(lit(stringLiteral) as stringLiteral)
-
     override def isResolved: Boolean = named.isResolved
 
     override def dataType: DataType = named.dataType
@@ -55,6 +53,11 @@ object NamedExpression {
     override def isNullable: Boolean = named.isNullable
 
     override def sql: Try[String] = Try(named.name)
+  }
+
+  object UnquotedName {
+    def apply(stringLiteral: String): UnquotedName =
+      UnquotedName(lit(stringLiteral) as stringLiteral)
   }
 }
 
@@ -87,6 +90,8 @@ case class Alias(
   override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
+
+  def newInstance(): Alias = copy(expressionID = newExpressionID())
 }
 
 case class UnresolvedAlias(child: Expression)
@@ -240,23 +245,23 @@ object GeneratedNamedExpression {
   }
 
   /**
-   * Marks [[GeneratedNamedExpression]]s used to wrap/reference grouping expressions.
+   * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
     override val prefix: String = "group"
   }
 
   /**
-   * Marks [[GeneratedNamedExpression]]s used to wrap/reference aggregate functions.
+   * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
     override val prefix: String = "agg"
   }
 }
 
-case class GeneratedAlias[P <: Purpose] private[scraper] (
+case class GeneratedAlias[P <: Purpose, E <: Expression] private[scraper] (
   purpose: P,
-  child: Expression,
+  child: E,
   override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedNamedExpression with UnaryExpression {
   override def toAttribute: Attribute =
@@ -272,7 +277,7 @@ case class GeneratedAlias[P <: Purpose] private[scraper] (
   override def isFoldable: Boolean = false
 }
 
-case class GeneratedAttribute[P <: Purpose](
+case class GeneratedAttribute[P <: Purpose] private[scraper] (
   purpose: P,
   override val dataType: DataType,
   override val isNullable: Boolean,
@@ -282,4 +287,19 @@ case class GeneratedAttribute[P <: Purpose](
 
   override def withNullability(nullable: Boolean): GeneratedAttribute[P] =
     copy(isNullable = nullable)
+}
+
+object GeneratedAttribute {
+  def rewrite[P <: Purpose, E <: Expression](
+    purpose: P, expressions: Seq[Expression]
+  )(
+    toReplace: Seq[E]
+  ): (Seq[GeneratedAlias[P, E]], Seq[Expression]) = {
+    val aliases = toReplace.map(GeneratedAlias(purpose, _))
+    val rewritten = {
+      val rewrites = (toReplace, aliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+      expressions map (_ transformDown { case e => rewrites getOrElse (e, e) })
+    }
+    (aliases, rewritten)
+  }
 }

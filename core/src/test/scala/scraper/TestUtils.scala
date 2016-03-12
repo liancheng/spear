@@ -58,7 +58,7 @@ trait TestUtils { this: FunSuite =>
         node.expressions.map {
           case e: Alias                 => e: NamedExpression
           case e: AttributeRef          => e: NamedExpression
-          case e: GeneratedAlias[_]     => e: NamedExpression
+          case e: GeneratedAlias[_, _]  => e: NamedExpression
           case e: GeneratedAttribute[_] => e: NamedExpression
           case e                        => e
         }
@@ -69,7 +69,7 @@ trait TestUtils { this: FunSuite =>
     plan.transformAllExpressions {
       case e: Alias                 => e.copy(expressionID = ExpressionID(rewrites(e)))
       case e: AttributeRef          => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GeneratedAlias[_]     => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: GeneratedAlias[_, _]  => e.copy(expressionID = ExpressionID(rewrites(e)))
       case e: GeneratedAttribute[_] => e.copy(expressionID = ExpressionID(rewrites(e)))
     }
   }

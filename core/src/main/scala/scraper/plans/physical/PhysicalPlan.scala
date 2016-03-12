@@ -47,5 +47,7 @@ case class NotImplemented(
 
   override def children: Seq[PhysicalPlan] = input
 
-  override def iterator: Iterator[Row] = ???
+  override def iterator: Iterator[Row] = throw new UnsupportedOperationException(
+    s"$logicalPlanNodeName is not implemented yet"
+  )
 }

@@ -80,7 +80,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def except(that: DataFrame): DataFrame = withPlan(_ except that.queryExecution.logicalPlan)
 
-  def groupBy(groupingList: Seq[Expression]): GroupedData = new GroupedData(this, groupingList)
+  def groupBy(keys: Seq[Expression]): GroupedData = new GroupedData(this, keys)
 
   def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
 
@@ -199,9 +199,9 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
     new DataFrame(join.copy(condition = Some(condition)), context)
 }
 
-class GroupedData(df: DataFrame, groupingList: Seq[Expression]) {
+class GroupedData(df: DataFrame, keys: Seq[Expression]) {
   def agg(projectList: Seq[Expression]): DataFrame =
-    df.withPlan(UnresolvedAggregate(_, groupingList, projectList map UnresolvedAlias))
+    df.withPlan(UnresolvedAggregate(_, keys, projectList map UnresolvedAlias))
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }

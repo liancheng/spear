@@ -267,16 +267,16 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 
 case class UnresolvedAggregate(
   child: LogicalPlan,
-  groupingList: Seq[Expression],
+  keys: Seq[Expression],
   projectList: Seq[NamedExpression]
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
 case class Aggregate(
   child: LogicalPlan,
-  groupingList: Seq[GroupingAlias],
-  projectList: Seq[AggregationAlias]
+  keys: Seq[GroupingAlias],
+  functions: Seq[AggregationAlias]
 ) extends UnaryLogicalPlan {
-  override lazy val output: Seq[Attribute] = (groupingList ++ projectList) map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 }
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {

@@ -4,13 +4,13 @@ import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping
 import scraper.expressions.NamedExpression.newExpressionID
 
 package object expressions {
-  type GroupingAlias = GeneratedAlias[ForGrouping.type]
+  type GroupingAlias = GeneratedAlias[ForGrouping.type, Expression]
 
   object GroupingAlias {
     def apply(child: Expression): GroupingAlias =
       GeneratedAlias(ForGrouping, child, newExpressionID())
 
-    def unapply(e: GeneratedAlias[_]): Option[GroupingAlias] =
+    def unapply(e: GeneratedAlias[_, _]): Option[GroupingAlias] =
       if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAlias]) else None
   }
 
@@ -21,13 +21,13 @@ package object expressions {
       if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAttribute]) else None
   }
 
-  type AggregationAlias = GeneratedAlias[ForAggregation.type]
+  type AggregationAlias = GeneratedAlias[ForAggregation.type, AggregateFunction]
 
   object AggregationAlias {
     def apply(child: AggregateFunction): AggregationAlias =
       GeneratedAlias(ForAggregation, child, newExpressionID())
 
-    def unapply(e: GeneratedAlias[_]): Option[AggregationAlias] =
+    def unapply(e: GeneratedAlias[_, _]): Option[AggregationAlias] =
       if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregationAlias]) else None
   }
 

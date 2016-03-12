@@ -51,16 +51,15 @@ package object dsl {
 
     def except(that: LogicalPlan): Except = Except(plan, that)
 
-    def groupBy(groupingList: Seq[Expression]): GroupedLogicalPlan =
-      new GroupedLogicalPlan(plan, groupingList)
+    def groupBy(keys: Seq[Expression]): GroupedLogicalPlan = new GroupedLogicalPlan(plan, keys)
 
     def groupBy(first: Expression, rest: Expression*): GroupedLogicalPlan =
       new GroupedLogicalPlan(plan, first +: rest)
   }
 
-  class GroupedLogicalPlan(plan: LogicalPlan, groupingList: Seq[Expression]) {
+  class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
     def agg(projectList: Seq[NamedExpression]): UnresolvedAggregate =
-      UnresolvedAggregate(plan, groupingList, projectList)
+      UnresolvedAggregate(plan, keys, projectList)
 
     def agg(first: NamedExpression, rest: NamedExpression*): UnresolvedAggregate =
       agg(first +: rest)
