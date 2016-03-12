@@ -75,6 +75,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
+   * This rule resolves unresolved relations by looking up the table name from the `catalog`.
+   */
+  class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+      case UnresolvedRelation(name) => catalog lookupRelation name
+    }
+  }
+
+  /**
    * This rule expands "`*`" appearing in `SELECT`.
    */
   object ExpandStars extends Rule[LogicalPlan] {
@@ -135,26 +144,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule resolves unresolved relations by looking up the table name from the `catalog`.
-   */
-  class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case UnresolvedRelation(name) => catalog lookupRelation name
-    }
-  }
-
-  /**
-   * This rule tries to transform all resolved logical plans operators (and expressions within them)
-   * into strictly typed form.
-   */
-  @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
-  object TypeCheck extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-      case Resolved(plan) => plan.strictlyTyped.get
-    }
-  }
-
-  /**
    * This rule resolves ambiguous duplicated attributes/aliases introduced by binary logical query
    * plan operators like [[Join]] and [[SetOperator set operators]].  For example:
    * {{{
@@ -205,6 +194,22 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
             case a: Attribute => attributeRewrites getOrElse (a.expressionID, a)
           }
       } getOrElse right
+    }
+  }
+
+  object ResolveAliases extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case UnresolvedAlias(Resolved(child: NamedExpression)) => child
+      case UnresolvedAlias(Resolved(child: Expression))      => applyAlias(child)
+    }
+
+    private def applyAlias(child: Expression): NamedExpression = {
+      // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
+      def rewrite(e: Expression): Expression = e.transformDown {
+        case a: AttributeRef                  => UnquotedName(a)
+        case Literal(lit: String, StringType) => UnquotedName(lit)
+      }
+      child as (rewrite(child).sql getOrElse AnonymousColumnName)
     }
   }
 
@@ -300,18 +305,14 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
-  object ResolveAliases extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case UnresolvedAlias(Resolved(child: NamedExpression)) =>
-        child
-
-      case UnresolvedAlias(Resolved(child: Expression)) =>
-        // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
-        def rewrite(e: Expression): Expression = e.transformDown {
-          case a: AttributeRef                  => UnquotedName(a)
-          case Literal(lit: String, StringType) => UnquotedName(lit)
-        }
-        child as (rewrite(child).sql getOrElse AnonymousColumnName)
+  /**
+   * This rule tries to transform all resolved logical plans operators (and expressions within them)
+   * into strictly typed form.
+   */
+  @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
+  object TypeCheck extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+      case Resolved(plan) => plan.strictlyTyped.get
     }
   }
 
