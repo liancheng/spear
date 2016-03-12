@@ -88,7 +88,11 @@ case object SingleRowRelation extends Relation {
 case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
   extends MultiInstanceRelation {
 
-  override protected def argStrings: Seq[String] = "<local-data>" :: Nil
+  // Overrides this to avoid showing individual local data entry
+  override protected def argStrings: Seq[String] = Seq(
+    "<local-data>",
+    output map (_.debugString) mkString ("[", ",", "]")
+  )
 
   override def newInstance(): LogicalPlan = copy(output = output map (_.newInstance()))
 }
