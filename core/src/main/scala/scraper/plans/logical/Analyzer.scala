@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
 import scraper.Catalog
-import scraper.exceptions.{AnalysisException, ResolutionFailureException}
+import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedAttribute}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
@@ -12,25 +12,33 @@ import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  private val resolutionBatch = RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
-    ExpandStars,
-    new ResolveRelations(catalog),
-    ResolveReferences,
-    DeduplicateReferences,
-    ResolveAliases,
-    ResolveAggregates
-  ))
+  private val expressionResolutionBatch =
+    RuleBatch("Expression resolution", FixedPoint.Unlimited, Seq(
+      new ResolveRelations(catalog),
+      ExpandStars,
+      ResolveReferences,
+      DeduplicateReferences,
+      ResolveAliases
+    ))
 
-  private val cleanupBatch = RuleBatch("Cleanup", Once, Seq(
-    CleanupGeneratedOutput
-  ))
+  private val planResolutionBatch =
+    RuleBatch("Plan resolution", FixedPoint.Unlimited, Seq(
+      ResolveAggregates
+    ))
 
-  private val typeCheckBatch = RuleBatch("Type check", Once, Seq(
-    TypeCheck
-  ))
+  private val cleanupBatch =
+    RuleBatch("Cleanup", Once, Seq(
+      CleanupGeneratedOutput
+    ))
+
+  private val typeCheckBatch =
+    RuleBatch("Type check", Once, Seq(
+      TypeCheck
+    ))
 
   override def batches: Seq[RuleBatch] = Seq(
-    resolutionBatch,
+    expressionResolutionBatch,
+    planResolutionBatch,
     cleanupBatch,
     typeCheckBatch
   )
@@ -52,7 +60,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
          |${tree.prettyTree}
          |""".stripMargin
     )
-    apply(tree, resolutionBatch :: cleanupBatch :: Nil)
+    apply(tree, expressionResolutionBatch :: planResolutionBatch :: cleanupBatch :: Nil)
   }
 
   def typeCheck(tree: LogicalPlan): LogicalPlan = {
