@@ -33,6 +33,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
       PushFiltersThroughProjects,
       PushFiltersThroughJoins,
+      PushFiltersThroughAggregates,
       PushProjectsThroughLimits,
       PushLimitsThroughUnions
     ))
@@ -214,13 +215,54 @@ object Optimizer {
         }
 
         def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
-          predicates reduceOption (_ && _) map plan.filter getOrElse plan
+          predicates reduceOption And map plan.filter getOrElse plan
 
         join.copy(
           left = applyPredicates(leftPredicates, left),
           right = applyPredicates(rightPredicates, right),
-          condition = (joinCondition ++ commonPredicates) reduceOption (_ && _)
+          condition = (joinCondition ++ commonPredicates) reduceOption And
         )
+    }
+  }
+
+  object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan @ ((agg @ Aggregate(child, _, _)) Filter condition) =>
+        val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
+          _.collectFirst { case AggregationAttribute(_) => () }.isEmpty
+        }
+
+        logTrace({
+          val pushDownList = pushDown mkString ("[", ", ", "]")
+          s"Pushing down predicates $pushDownList through aggregation"
+        })
+
+        if (pushDown.isEmpty) {
+          plan
+        } else {
+          // Expands grouping attributes to original grouping key expressions
+          val expandedPushDown = expandGroupingKeys(pushDown, agg)
+          val newAgg = agg.copy(child = child filter (expandedPushDown reduce And))
+          if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
+        }
+    }
+
+    def expandGroupingKeys(expressions: Seq[Expression], plan: LogicalPlan): Seq[Expression] = {
+      val keys = expressions.flatMap(_ collect { case GroupingAttribute(a) => a }).distinct
+
+      val expandedKeys = keys.map { g =>
+        plan.collect {
+          case node => node.expressions
+        }.flatten.collectFirst {
+          case GroupingAlias(a) if a.expressionID == g.expressionID => a.child
+        }.get
+      }
+
+      val rewrite = keys.zip(expandedKeys).toMap
+
+      expressions.map(_ transformDown {
+        case GroupingAttribute(a) => rewrite(a)
+      })
     }
   }
 
