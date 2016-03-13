@@ -71,40 +71,42 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   protected def argStrings: Seq[String] = {
     // Avoids duplicating string representation of expression nodes.  Replaces them with `$expr{n}`,
     // where `n` is the index or the expression.
-    def expressionHolder(e: Expression): String = s"$$expr{${expressions indexOf e}}"
+    def expressionHolder(e: Expression): String = s"$$${expressions indexOf e}"
 
-    // Avoids duplicating string representation of child nodes.  Replaces them with `$plan{n}`,
-    // where `n` is the index or the child.
-    def childHolder(child: Plan): String = s"$$plan{${children indexOf child}}"
+    // String representations of values of all constructor arguments except those that are children
+    // of this query plan.
+    val argValues = productIterator.toSeq map {
+      case arg if children contains arg =>
+        None
+
+      case arg: Seq[_] =>
+        Some {
+          arg flatMap {
+            case e: Expression                  => Some(expressionHolder(e))
+            case plan if children contains plan => None
+            case _                              => Some(arg.toString)
+          } mkString ("[", ", ", "]")
+        }
+
+      case arg: Some[_] =>
+        Some {
+          arg flatMap {
+            case e: Expression                  => Some(expressionHolder(e))
+            case plan if children contains plan => None
+            case _                              => Some(arg.toString)
+          } mkString ("Some(", "", ")")
+        }
+
+      case arg: Expression =>
+        Some(expressionHolder(arg))
+
+      case arg =>
+        Some(arg.toString)
+    }
 
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
 
-    val argValues = productIterator.toSeq map {
-      case arg if children contains arg =>
-        childHolder(arg.asInstanceOf[Plan])
-
-      case arg: Seq[_] =>
-        arg.map {
-          case e: Expression                  => expressionHolder(e)
-          case plan if children contains plan => childHolder(plan.asInstanceOf[Plan])
-          case _                              => arg.toString
-        } mkString ("[", ", ", "]")
-
-      case arg: Some[_] =>
-        arg.map {
-          case e: Expression                  => expressionHolder(e)
-          case plan if children contains plan => childHolder(plan.asInstanceOf[Plan])
-          case _                              => arg.toString
-        } mkString ("Some(", "", ")")
-
-      case arg: Expression =>
-        expressionHolder(arg)
-
-      case arg =>
-        arg.toString
-    }
-
-    (argNames, argValues).zipped map (_ + "=" + _)
+    argNames zip argValues collect { case (name, Some(arg)) => s"$name=$arg" }
   }
 
   /**
@@ -135,7 +137,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     builder ++= "\n"
 
     if (expressions.nonEmpty) {
-      ExpressionContainer(expressions map ExpressionString).buildPrettyTree(
+      val expressionStrings = expressions.zipWithIndex.map {
+        case (expression, index) => ExpressionString(expression, index)
+      }
+
+      ExpressionContainer(expressionStrings).buildPrettyTree(
         depth + 2, lastChildren :+ children.isEmpty :+ true, builder
       )
     }
@@ -156,9 +162,9 @@ object QueryPlan {
     override def nodeCaption: String = "Expressions"
   }
 
-  private case class ExpressionString(child: Expression)
+  private case class ExpressionString(child: Expression, index: Int)
     extends LeafExpression with UnevaluableExpression {
 
-    override def nodeCaption: String = child.debugString
+    override def nodeCaption: String = s"$$$index: ${child.debugString}"
   }
 }
