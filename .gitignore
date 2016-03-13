@@ -5,3 +5,4 @@ project/target/
 target/
 *.iml
 drafts/
+logs/

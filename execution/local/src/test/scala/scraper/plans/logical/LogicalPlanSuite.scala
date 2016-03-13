@@ -27,7 +27,9 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
       } yield ExprNode(1, children.asScala)
   }
 
-  implicit val arbExprNode = Arbitrary(genExprNode)
+  implicit private val arbExprNode = Arbitrary(genExprNode)
+
+  private val resolve = new Analyzer(new InMemoryCatalog)
 
   test("transformExpressionDown") {
     check {
@@ -73,8 +75,6 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("set operator - type check") {
-    val resolve = new Analyzer(new InMemoryCatalog)
-
     val r1 = LocalRelation.empty('a.int.!)
     val r2 = LocalRelation.empty('a.int.!)
     val r3 = LocalRelation.empty('a.long.!)
@@ -88,6 +88,24 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
     checkWellTyped(resolve(r1 union (r4 select 'a)))
 
     intercept[TypeCheckException](resolve(r1 union r4))
+  }
+
+  test("aggregation without grouping key") {
+    val r = LocalRelation.empty('a.int.!, 'b.string.?)
+
+    checkStrictlyTyped(resolve(r agg count('a)))
+    checkStrictlyTyped(resolve(r groupBy 'a agg count('a)))
+    checkStrictlyTyped(resolve(r groupBy 'a agg count('b)))
+  }
+
+  test("having condition containing aggregate function - #1") {
+    val r = LocalRelation.empty('a.int.!, 'b.int.!)
+    checkStrictlyTyped(resolve(r agg count('a) filter count('a) / 2 =:= 0))
+  }
+
+  test("having condition containing aggregate function - #2") {
+    val r = LocalRelation.empty('a.int.!, 'b.int.!)
+    checkStrictlyTyped(resolve(r groupBy 'b agg count('a) filter (count('a) / 2 =:= 0 and 'b > 1)))
   }
 }
 
