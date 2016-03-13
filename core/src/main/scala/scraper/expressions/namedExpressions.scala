@@ -229,7 +229,7 @@ object BoundRef {
 sealed trait GeneratedNamedExpression extends NamedExpression {
   val purpose: Purpose
 
-  override def name: String = purpose.prefix + "#" + expressionID.id
+  override def name: String = purpose.name
 }
 
 object GeneratedNamedExpression {
@@ -237,38 +237,33 @@ object GeneratedNamedExpression {
    * Indicates the purpose of a [[GeneratedNamedExpression]].
    */
   sealed trait Purpose {
-    /**
-     * Name prefix of a [[GeneratedNamedExpression]].  The full name is in the format of
-     * `&lt;prefix&gt;#&lt;expression-ID&gt;`.
-     */
-    val prefix: String
+    val name: String
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
-    override val prefix: String = "group"
+    override val name: String = "group"
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override val prefix: String = "agg"
+    override val name: String = "agg"
   }
 }
 
 case class GeneratedAlias[P <: Purpose, E <: Expression] private[scraper] (
   purpose: P,
   child: E,
-  override val expressionID: ExpressionID = newExpressionID()
+  override val expressionID: ExpressionID
 ) extends GeneratedNamedExpression with UnaryExpression {
   override def toAttribute: Attribute =
     GeneratedAttribute(purpose, child.dataType, child.isNullable, expressionID)
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    f(child) map (childString => s"$childString AS ${quote(name)}")
+  override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
 
   override def dataType: DataType = child.dataType
 
