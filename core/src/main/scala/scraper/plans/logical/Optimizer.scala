@@ -17,6 +17,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
       FoldConstants,
+      FoldConstantFilters,
       FoldLogicalPredicates,
 
       CNFConversion,
