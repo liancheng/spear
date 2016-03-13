@@ -80,22 +80,20 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         None
 
       case arg: Seq[_] =>
-        Some {
-          arg flatMap {
-            case e: Expression                  => Some(expressionHolder(e))
-            case plan if children contains plan => None
-            case _                              => Some(arg.toString)
-          } mkString ("[", ", ", "]")
+        val values = arg flatMap {
+          case e: Expression                  => Some(expressionHolder(e))
+          case plan if children contains plan => None
+          case _                              => Some(arg.toString)
         }
+        if (values.isEmpty) None else Some(values)
 
       case arg: Some[_] =>
-        Some {
-          arg flatMap {
-            case e: Expression                  => Some(expressionHolder(e))
-            case plan if children contains plan => None
-            case _                              => Some(arg.toString)
-          } mkString ("Some(", "", ")")
+        val value = arg flatMap {
+          case e: Expression                  => Some(expressionHolder(e))
+          case plan if children contains plan => None
+          case _                              => Some(arg.toString)
         }
+        if (value.isEmpty) None else value mkString ("Some(", "", ")")
 
       case arg: Expression =>
         Some(expressionHolder(arg))
