@@ -41,7 +41,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
 
   override protected def outputStrings: Seq[String] = this match {
-    case Unresolved(_) => "???" :: Nil
+    case Unresolved(_) => "?output?" :: Nil
     case _             => super.outputStrings
   }
 }
