@@ -121,6 +121,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def nodeCaption: String = toString
 
+  override def toString: String = "\n" + prettyTree
+
   def nodeName: String = getClass.getSimpleName stripSuffix "$"
 
   /**
