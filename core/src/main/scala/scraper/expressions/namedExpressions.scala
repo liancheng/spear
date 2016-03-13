@@ -4,7 +4,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.language.higherKinds
 import scala.util.{Success, Try}
-import scalaz.Scalaz._
 import scalaz._
 
 import scraper.Row
@@ -104,7 +103,7 @@ case class UnresolvedAlias(child: Expression)
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override def debugString: String = s"${child.debugString} AS ???"
+  override def debugString: String = s"${child.debugString} AS ?alias?"
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

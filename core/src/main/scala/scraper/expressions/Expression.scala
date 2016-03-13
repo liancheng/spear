@@ -129,7 +129,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeCaption: String = getClass.getSimpleName
 
   protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    sequence(children map f) map (_ mkString (s"$nodeName(", ", ", ")"))
+    sequence(children map f) map (_ mkString (s"${nodeName.toUpperCase}(", ", ", ")"))
 
   def debugString: String = template(_.debugString.some).get
 
@@ -264,4 +264,6 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
 
 case class UnresolvedFunction(name: String, args: Seq[Expression]) extends UnresolvedExpression {
   override def children: Seq[Expression] = args
+
+  override def nodeName: String = "UNRESOLVED_FUNCTION"
 }

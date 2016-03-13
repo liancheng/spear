@@ -29,7 +29,7 @@ package object utils {
 
     header.map {
       case (lhsLine, rhsLine) =>
-        rtrim(s"# $lhsLine $pipe $rhsLine")
+        rtrim(s"# $lhsLine # $rhsLine")
     } ++ contents.map {
       case (lhsLine, rhsLine) =>
         val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) "!" else " "

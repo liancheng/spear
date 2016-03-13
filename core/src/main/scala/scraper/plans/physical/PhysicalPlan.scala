@@ -43,7 +43,7 @@ case class NotImplemented(
 )(logicalPlanNodeName: String)
   extends PhysicalPlan {
 
-  override def nodeName: String = s"*$logicalPlanNodeName NOT IMPLEMENTED*"
+  override def nodeName: String = s"?$logicalPlanNodeName?"
 
   override def children: Seq[PhysicalPlan] = input
 
