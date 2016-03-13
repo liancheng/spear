@@ -269,7 +269,12 @@ case class UnresolvedAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression]
-) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan {
+  def unaliasedKeys: Seq[Expression] = keys map {
+    case GroupingAlias(a) => a.child
+    case e                => e
+  }
+}
 
 case class Aggregate(
   child: LogicalPlan,

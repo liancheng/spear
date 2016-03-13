@@ -7,8 +7,10 @@ package object expressions {
   type GroupingAlias = GeneratedAlias[ForGrouping.type, Expression]
 
   object GroupingAlias {
-    def apply(child: Expression): GroupingAlias =
-      GeneratedAlias(ForGrouping, child, newExpressionID())
+    def apply(child: Expression): GroupingAlias = child match {
+      case GroupingAlias(a) => a
+      case _                => GeneratedAlias(ForGrouping, child, newExpressionID())
+    }
 
     def unapply(e: GeneratedAlias[_, _]): Option[GroupingAlias] =
       if (e.purpose == ForGrouping) Some(e.asInstanceOf[GroupingAlias]) else None
@@ -24,8 +26,10 @@ package object expressions {
   type AggregationAlias = GeneratedAlias[ForAggregation.type, AggregateFunction]
 
   object AggregationAlias {
-    def apply(child: AggregateFunction): AggregationAlias =
-      GeneratedAlias(ForAggregation, child, newExpressionID())
+    def apply(child: AggregateFunction): AggregationAlias = child match {
+      case AggregationAlias(a) => a
+      case _                   => GeneratedAlias(ForAggregation, child, newExpressionID())
+    }
 
     def unapply(e: GeneratedAlias[_, _]): Option[AggregationAlias] =
       if (e.purpose == ForAggregation) Some(e.asInstanceOf[AggregationAlias]) else None

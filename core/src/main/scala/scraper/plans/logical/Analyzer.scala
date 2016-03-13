@@ -197,6 +197,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           }
       } getOrElse right
     }
+
+    private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
+      projectList.collect { case a: Alias => a.toAttribute }.toSet
   }
 
   object ResolveAliases extends Rule[LogicalPlan] {
@@ -227,23 +230,30 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Converts a `Project` with aggregate function(s) into an `UnresolvedAggregate` without any
       // grouping keys.
-      case Resolved(child Project projectList) if projectList exists containsAggregation =>
+      case Resolved(child Project projectList) if containsAggregation(projectList) =>
         child groupBy Nil agg projectList
     }
+
+    private def containsAggregation(expressions: Seq[Expression]): Boolean =
+      expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
   }
 
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Resolves an `UnresolvedAggregate` into a `Project` over an `Aggregate`
-      case UnresolvedAggregate(Resolved(child), keys, projectList) =>
+      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList) =>
         // Aliases all grouping keys
         val keyAliases = keys map GroupingAlias.apply
-        val rewriteKeys = (keys, keyAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+        // TODO Ugly trick, eliminate it!
+        // The analyzer can be invoked recursively when, for example, resolving having conditions.
+        // Thus, the grouping keys may already be aliased. Here we must use the original unaliased
+        // grouping keys.
+        val rewriteKeys = agg.unaliasedKeys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
         val aggs = collectAggregation(projectList)
         val aggAliases = aggs map AggregationAlias.apply
-        val rewriteAggs = (aggs, aggAliases).zipped.map((_: Expression) -> _.toAttribute).toMap
+        val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
         // Replaces grouping keys and aggregate functions in projected fields
         val rewrittenProjectList = projectList map (_ transformDown {
@@ -263,6 +273,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
         Aggregate(child, keyAliases, aggAliases) select rewrittenProjectList
     }
+
+    private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
+      expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
   }
 
   object ResolveHavingConditions extends Rule[LogicalPlan] {
@@ -274,14 +287,24 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val (aggAliases, resolvedHavingCondition) = {
           val Aggregate(child, keys, _) = agg
           val plan = child groupBy keys agg UnresolvedAlias(havingCondition)
+
+          logDebug(
+            s"""Resolving having condition $havingCondition recursively using the following plan:
+               |
+               |${plan.prettyTree}
+               |""".stripMargin
+          )
+
           resolve(plan) match {
-            case Aggregate(_, _, aliases) Project fields => aliases -> fields.head
+            case Aggregate(_, _, aliases) Project Seq(Alias(condition, _, _)) =>
+              (aliases, condition)
           }
         }
 
+        logDebug(s"Resolved having condition $havingCondition into $resolvedHavingCondition")
+
         agg
           .copy(functions = agg.functions ++ aggAliases)
-          .select(projectList ++ (aggAliases map (_.toAttribute)))
           .filter(resolvedHavingCondition)
           .select(projectList)
     }
@@ -300,6 +323,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val (aggAliases, resolvedOrderByExpressions) = {
           val Aggregate(child, keys, _) = agg
           val plan = child groupBy keys agg (orders map (_.child) map UnresolvedAlias)
+
+          logDebug({
+            val ordersList = orders mkString ("[", ", ", "]")
+            s"""Resolving having condition $ordersList recursively using the following plan:
+               |
+               |${plan.prettyTree}
+               |""".stripMargin
+          })
+
           resolve(plan) match {
             case Aggregate(_, _, aliases) Project fields => aliases -> fields
           }
@@ -311,7 +343,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
         agg
           .copy(functions = agg.functions ++ aggAliases)
-          .select(projectList ++ (aggAliases map (_.toAttribute)))
           .orderBy(resolvedOrders)
           .select(projectList)
     }
@@ -327,19 +358,4 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case Resolved(plan) => plan.strictlyTyped.get
     }
   }
-
-  /**
-   * Returns `true` if `expression` contains at least one [[AggregateFunction]].
-   */
-  private def containsAggregation(expression: Expression): Boolean =
-    expression.collectFirst { case _: AggregateFunction => () }.nonEmpty
-
-  /**
-   * Collects all distinct aggregate functions in `expressions`.
-   */
-  private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
-    expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
-
-  private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
-    projectList.collect { case a: Alias => a.toAttribute }.toSet
 }
