@@ -126,8 +126,8 @@ class IllegalAggregationException(message: String, cause: Throwable)
 
   def this(expression: Expression, keys: Seq[GroupingAlias], cause: Throwable) =
     this(
-      s"""Expression $expression is neither an aggregate function nor a grouping key
-         |${keys mkString ("[", ", ", "]")}
+      s"""Expression ${expression.sql.get} is neither an aggregate function nor a grouping key
+         |${keys map (_.sql.get) mkString ("[", ", ", "]")}
        """.straight,
       cause
     )
