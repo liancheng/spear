@@ -50,7 +50,10 @@ trait GeneratedAttribute
   extends GeneratedNamedExpression
   with ResolvedAttribute
   with LeafExpression
-  with UnevaluableExpression
+  with UnevaluableExpression {
+
+  override def debugString: String = "g:" + super.debugString
+}
 
 case class GroupingAlias private (
   child: Expression,
