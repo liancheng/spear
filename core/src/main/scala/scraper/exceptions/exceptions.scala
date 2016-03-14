@@ -1,6 +1,6 @@
 package scraper.exceptions
 
-import scraper.expressions.{GroupingAlias, Expression}
+import scraper.expressions.{Expression, GroupingAlias}
 import scraper.plans.logical.LogicalPlan
 import scraper.types.DataType
 import scraper.utils._

@@ -229,7 +229,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan @ ((agg: Aggregate) Filter condition) if agg.functions forall (_.isPure) =>
         val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
-          _.collectFirst { case AggregationAttribute(_) => () }.isEmpty
+          _.collectFirst { case _: AggregationAttribute => () }.isEmpty
         }
 
         logTrace({
@@ -248,20 +248,20 @@ object Optimizer {
     }
 
     def expandGroupingKeys(expressions: Seq[Expression], plan: LogicalPlan): Seq[Expression] = {
-      val keys = expressions.flatMap(_ collect { case GroupingAttribute(a) => a }).distinct
+      val keys = expressions.flatMap(_ collect { case a: GroupingAttribute => a }).distinct
 
       val expandedKeys = keys.map { g =>
         plan.collect {
           case node => node.expressions
         }.flatten.collectFirst {
-          case GroupingAlias(a) if a.expressionID == g.expressionID => a.child
+          case a: GroupingAlias if a.expressionID == g.expressionID => a.child
         }.get
       }
 
       val rewrite = keys.zip(expandedKeys).toMap
 
       expressions.map(_ transformDown {
-        case GroupingAttribute(a) => rewrite(a)
+        case a: GroupingAttribute => rewrite(a)
       })
     }
   }

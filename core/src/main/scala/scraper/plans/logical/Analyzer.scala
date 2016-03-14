@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName}
+import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName, newExpressionID}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.dsl._
