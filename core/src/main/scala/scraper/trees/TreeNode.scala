@@ -117,7 +117,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
-  def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
+  def prettyTree: String =
+    buildPrettyTree(isRoot = true, 0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = toString
 
@@ -135,7 +136,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * @param builder The string builder used to build the tree string.
    */
   private[scraper] def buildPrettyTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+    isRoot: Boolean, depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
@@ -144,15 +145,20 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     if (depth > 0) {
       lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
-      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
+      builder ++= ((lastChildren.last, isRoot) match {
+        case (false, true)  => s"$pipe "
+        case (false, false) => s"$tee$bar"
+        case (true, true)   => s"  "
+        case (true, false)  => s"$corner$bar"
+      })
     }
 
     builder ++= nodeCaption
     builder ++= "\n"
 
     if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
-      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
+      children.init foreach (_ buildPrettyTree (false, depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (false, depth + 1, lastChildren :+ true, builder)
     }
 
     builder

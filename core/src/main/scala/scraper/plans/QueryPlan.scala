@@ -85,7 +85,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
           case plan if children contains plan => None
           case _                              => Some(arg.toString)
         }
-        if (values.isEmpty) None else Some(values)
+        if (values.isEmpty) None else Some(values mkString ("[", ", ", "]"))
 
       case arg: Some[_] =>
         val value = arg flatMap {
@@ -93,7 +93,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
           case plan if children contains plan => None
           case _                              => Some(arg.toString)
         }
-        if (value.isEmpty) None else value mkString ("Some(", "", ")")
+        if (value.isEmpty) None else Some(value mkString ("Some(", "", ")"))
 
       case arg: Expression =>
         Some(expressionHolder(arg))
@@ -119,7 +119,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   }
 
   override private[scraper] def buildPrettyTree(
-    depth: Int, lastChildren: scala.Seq[Boolean], builder: scala.StringBuilder
+    isRoot: Boolean, depth: Int, lastChildren: scala.Seq[Boolean], builder: scala.StringBuilder
   ): scala.StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
@@ -128,7 +128,12 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
     if (depth > 0) {
       lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
-      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
+      builder ++= ((lastChildren.last, isRoot) match {
+        case (false, true)  => s"$pipe "
+        case (false, false) => s"$tee$bar"
+        case (true, true)   => s"  "
+        case (true, false)  => s"$corner$bar"
+      })
     }
 
     builder ++= nodeCaption
@@ -140,13 +145,13 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
       }
 
       ExpressionContainer(expressionStrings).buildPrettyTree(
-        depth + 2, lastChildren :+ children.isEmpty :+ true, builder
+        isRoot = true, depth + 1, lastChildren :+ children.isEmpty, builder
       )
     }
 
     if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
-      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
+      children.init foreach (_ buildPrettyTree (false, depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (false, depth + 1, lastChildren :+ true, builder)
     }
 
     builder
