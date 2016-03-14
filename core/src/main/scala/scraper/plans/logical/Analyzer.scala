@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName}
+import scraper.expressions.NamedExpression.{newExpressionID, AnonymousColumnName, UnquotedName}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.dsl._
@@ -183,7 +183,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         // Handles projections that introduce ambiguous aliases
         case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
           plan -> plan.copy(projectList = projectList map {
-            case a: Alias => a.newInstance()
+            case a: Alias => a withID newExpressionID()
             case e        => e
           })
       } map {

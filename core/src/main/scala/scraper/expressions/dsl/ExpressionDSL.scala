@@ -2,6 +2,7 @@ package scraper.expressions.dsl
 
 import scala.language.implicitConversions
 
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions._
 import scraper.types.DataType
 
@@ -10,9 +11,9 @@ trait ExpressionDSL
   with ComparisonDSL
   with LogicalOperatorDSL { this: Expression =>
 
-  def as(alias: String): Alias = Alias(this, alias)
+  def as(alias: String): Alias = Alias(this, alias, newExpressionID())
 
-  def as(alias: Symbol): Alias = Alias(this, alias.name)
+  def as(alias: Symbol): Alias = Alias(this, alias.name, newExpressionID())
 
   def cast(dataType: DataType): Cast = Cast(this, dataType)
 

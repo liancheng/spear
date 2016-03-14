@@ -43,7 +43,7 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
 
   override def isFoldable: Boolean = false
 
-  def newInstance(id: ExpressionID = newExpressionID()): GeneratedAlias
+  def withID(id: ExpressionID): GeneratedAlias
 }
 
 trait GeneratedAttribute
@@ -62,8 +62,7 @@ case class GroupingAlias private (
   override def toAttribute: GroupingAttribute =
     GroupingAttribute(child.dataType, child.isNullable, expressionID)
 
-  override def newInstance(id: ExpressionID): GeneratedAlias =
-    copy(expressionID = newExpressionID())
+  override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
 }
 
 object GroupingAlias {
@@ -81,10 +80,7 @@ case class GroupingAttribute(
 
   override val purpose: Purpose = ForGrouping
 
-  override def newInstance(id: ExpressionID): Attribute = copy(expressionID = newExpressionID())
-
-  override def withNullability(nullable: Boolean): GroupingAttribute =
-    copy(isNullable = nullable)
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
 case class AggregationAlias private (
@@ -97,8 +93,7 @@ case class AggregationAlias private (
   override def toAttribute: AggregationAttribute =
     AggregationAttribute(child.dataType, child.isNullable, expressionID)
 
-  override def newInstance(id: ExpressionID): GeneratedAlias =
-    copy(expressionID = newExpressionID())
+  override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
 }
 
 object AggregationAlias {
@@ -113,8 +108,5 @@ case class AggregationAttribute(
 
   override val purpose: Purpose = ForAggregation
 
-  override def newInstance(id: ExpressionID): Attribute = copy(expressionID = newExpressionID())
-
-  override def withNullability(nullable: Boolean): AggregationAttribute =
-    copy(isNullable = nullable)
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }

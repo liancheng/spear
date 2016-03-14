@@ -62,13 +62,13 @@ trait TestUtils { this: FunSuite =>
         }
     }.flatten
 
-    val rewrites = allIdExpressions.zipWithIndex.toMap
+    val rewrite = allIdExpressions.zipWithIndex.toMap
 
     plan.transformAllExpressions {
-      case e: Alias              => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: AttributeRef       => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GeneratedAlias     => e.newInstance(id = ExpressionID(rewrites(e)))
-      case e: GeneratedAttribute => e.newInstance(id = ExpressionID(rewrites(e)))
+      case e: Alias              => e withID ExpressionID(rewrite(e))
+      case e: AttributeRef       => e withID ExpressionID(rewrite(e))
+      case e: GeneratedAlias     => e withID ExpressionID(rewrite(e))
+      case e: GeneratedAttribute => e withID ExpressionID(rewrite(e))
     }
   }
 

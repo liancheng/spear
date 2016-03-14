@@ -71,7 +71,7 @@ case object Star extends LeafExpression with UnresolvedNamedExpression {
 case class Alias(
   child: Expression,
   name: String,
-  override val expressionID: ExpressionID = newExpressionID()
+  override val expressionID: ExpressionID
 ) extends NamedExpression with UnaryExpression {
   override def isFoldable: Boolean = false
 
@@ -89,7 +89,7 @@ case class Alias(
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
-  def newInstance(): Alias = copy(expressionID = newExpressionID())
+  def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
 
 case class UnresolvedAlias(child: Expression)
@@ -112,9 +112,9 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   override def toAttribute: Attribute = this
 
-  def newInstance(id: ExpressionID = newExpressionID()): Attribute
+  def withID(id: ExpressionID): Attribute
 
-  def withNullability(nullability: Boolean): Attribute
+  def withNullability(nullability: Boolean): Attribute = this
 
   def ? : Attribute = withNullability(true)
 
@@ -129,9 +129,7 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
       (qualifier.toSeq :+ name) map quote mkString "."
     }
 
-  override def newInstance(id: ExpressionID = newExpressionID()): Attribute = this
-
-  override def withNullability(nullability: Boolean): Attribute = this
+  override def withID(id: ExpressionID): Attribute = this
 
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, isNullable = true, newExpressionID())
@@ -179,7 +177,7 @@ case class AttributeRef(
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
-  override def newInstance(id: ExpressionID): Attribute = copy(expressionID = newExpressionID())
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 
   override def ? : AttributeRef = withNullability(true)
 

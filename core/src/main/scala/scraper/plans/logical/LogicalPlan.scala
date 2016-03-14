@@ -7,6 +7,7 @@ import scala.util.{Failure, Try}
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.QueryPlan
@@ -91,7 +92,7 @@ case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
   // Overrides this to avoid showing individual local data entry
   override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
 
-  override def newInstance(): LogicalPlan = copy(output = output map (_.newInstance()))
+  override def newInstance(): LogicalPlan = copy(output = output map (_ withID newExpressionID()))
 
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
