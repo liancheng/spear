@@ -156,6 +156,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder ++= nodeCaption
     builder ++= "\n"
 
+    buildVirtualTreeNodes(depth, lastChildren, builder)
+
     if (children.nonEmpty) {
       children.init foreach (_ buildPrettyTree (false, depth + 1, lastChildren :+ false, builder))
       children.last buildPrettyTree (false, depth + 1, lastChildren :+ true, builder)
@@ -163,6 +165,16 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     builder
   }
+
+  /**
+   * Callback used to add virtual nodes other than [[TreeNode]] children to the built tree string.
+   * This is used to display expression virtual nodes in query plan trees.
+   *
+   * @see [[TreeNode.buildPrettyTree]] for more details.
+   */
+  protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = ()
 
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 

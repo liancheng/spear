@@ -1,7 +1,7 @@
 package scraper.plans
 
 import scraper.expressions._
-import scraper.plans.QueryPlan.{ExpressionContainer, ExpressionString}
+import scraper.plans.QueryPlan.ExpressionString
 import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
@@ -118,53 +118,20 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     s"$nodeName: $argsString ==> $outputString"
   }
 
-  override private[scraper] def buildPrettyTree(
-    isRoot: Boolean, depth: Int, lastChildren: scala.Seq[Boolean], builder: scala.StringBuilder
-  ): scala.StringBuilder = {
-    val pipe = "\u2502"
-    val tee = "\u251c"
-    val corner = "\u2570"
-    val bar = "\u2574"
-
-    if (depth > 0) {
-      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
-      builder ++= ((lastChildren.last, isRoot) match {
-        case (false, true)  => s"$pipe "
-        case (false, false) => s"$tee$bar"
-        case (true, true)   => s"  "
-        case (true, false)  => s"$corner$bar"
-      })
+  override protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = if (expressions.nonEmpty) {
+    val expressionStrings = expressions.zipWithIndex.map {
+      case (expression, index) => ExpressionString(expression, index)
     }
 
-    builder ++= nodeCaption
-    builder ++= "\n"
-
-    if (expressions.nonEmpty) {
-      val expressionStrings = expressions.zipWithIndex.map {
-        case (expression, index) => ExpressionString(expression, index)
-      }
-
-      ExpressionContainer(expressionStrings).buildPrettyTree(
-        isRoot = true, depth + 1, lastChildren :+ children.isEmpty, builder
-      )
+    expressionStrings.foreach {
+      _.buildPrettyTree(isRoot = false, depth + 1, lastChildren :+ children.isEmpty, builder)
     }
-
-    if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (false, depth + 1, lastChildren :+ false, builder))
-      children.last buildPrettyTree (false, depth + 1, lastChildren :+ true, builder)
-    }
-
-    builder
   }
 }
 
 object QueryPlan {
-  private case class ExpressionContainer(children: Seq[Expression])
-    extends Expression with UnevaluableExpression {
-
-    override def nodeCaption: String = "Expressions"
-  }
-
   private case class ExpressionString(child: Expression, index: Int)
     extends LeafExpression with UnevaluableExpression {
 
