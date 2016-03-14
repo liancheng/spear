@@ -247,10 +247,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Having condition must be resolved first
-      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) => agg
+      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) =>
+        agg
 
       // Sort ordering must be resolved first
-      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved)        => agg
+      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved) =>
+        agg
 
       case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
         // Aliases all grouping keys
@@ -258,7 +260,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
-        val aggs = collectAggregation(projectList)
+        val aggs = collectAggregation(projectList ++ condition ++ ordering)
         val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
