@@ -1,5 +1,7 @@
 package scraper.plans
 
+import scala.collection.mutable.ArrayBuffer
+
 import scraper.expressions._
 import scraper.plans.QueryPlan.ExpressionString
 import scraper.reflection.constructorParams
@@ -63,6 +65,27 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     }.toSeq.unzip
 
     if (argsChanged contains true) makeCopy(newArgs) else this
+  }
+
+  def collectFromAllExpressions[T](rule: PartialFunction[Expression, T]): Seq[T] = {
+    val builder = ArrayBuffer.newBuilder[T]
+
+    transformAllExpressions {
+      case e if rule isDefinedAt e =>
+        builder += rule(e)
+        e
+    }
+
+    builder.result()
+  }
+
+  def collectFirstFromAllExpressions[T](rule: PartialFunction[Expression, T]): Option[T] = {
+    transformAllExpressions {
+      case e if rule isDefinedAt e =>
+        return Some(rule(e))
+    }
+
+    None
   }
 
   // TODO We can probably replace this with annotation tricks

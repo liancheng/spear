@@ -247,14 +247,24 @@ object Optimizer {
         }
     }
 
+    def expandGroupingKeys(expression: Expression, plan: LogicalPlan): Expression = {
+      val keys = expression.collect { case a: GroupingAttribute => a }.distinct
+
+      val expandedKeys = keys.map {
+        case GroupingAttribute(_, _, id) =>
+          plan.collectFirstFromAllExpressions { case GroupingAlias(child, `id`) => child }.get
+      }
+
+      val rewrite = (keys zip expandedKeys).toMap
+      expression transformDown { case a: GroupingAttribute => rewrite(a) }
+    }
+
     def expandGroupingKeys(expressions: Seq[Expression], plan: LogicalPlan): Seq[Expression] = {
       val keys = expressions.flatMap(_ collect { case a: GroupingAttribute => a }).distinct
 
       val expandedKeys = keys.map { g =>
-        plan.collect {
-          case node => node.expressions
-        }.flatten.collectFirst {
-          case a: GroupingAlias if a.expressionID == g.expressionID => a.child
+        plan.collectFirstFromAllExpressions {
+          case GroupingAlias(child, id) if id == g.expressionID => child
         }.get
       }
 

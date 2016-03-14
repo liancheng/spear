@@ -14,10 +14,10 @@ import scraper.types.StringType
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   private val resolutionBatch =
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
-      new ResolveRelations(catalog),
-      ResolveReferences,
+      ResolveRelations,
       ExpandStars,
-      new ResolveFunctions(catalog),
+      ResolveReferences,
+      ResolveFunctions,
       ResolveAliases,
       DeduplicateReferences,
 
@@ -75,7 +75,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   /**
    * This rule resolves unresolved relations by looking up the table name from the `catalog`.
    */
-  class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
+  object ResolveRelations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case UnresolvedRelation(name) => catalog lookupRelation name
     }
@@ -200,21 +200,17 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ResolveAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case AutoAlias(Resolved(child: NamedExpression)) => child
-      case AutoAlias(Resolved(child: Expression))      => applyAlias(child)
-    }
-
-    private def applyAlias(child: Expression): NamedExpression = {
-      // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
-      def rewrite(e: Expression): Expression = e.transformDown {
-        case a: AttributeRef                  => UnquotedName(a)
-        case Literal(lit: String, StringType) => UnquotedName(lit)
-      }
-      child as (rewrite(child).sql getOrElse AnonymousColumnName)
+      case AutoAlias(Resolved(child: Expression)) =>
+        // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
+        val newChild = child.transformDown {
+          case a: AttributeRef                  => UnquotedName(a)
+          case Literal(lit: String, StringType) => UnquotedName(lit)
+        }
+        child as (newChild.sql getOrElse AnonymousColumnName)
     }
   }
 
-  class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
+  object ResolveFunctions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
         val fnInfo = catalog.functionRegistry.lookupFunction(name)
