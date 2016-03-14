@@ -2,8 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.AutoAlias.named
-import scraper.expressions.NamedExpression.{newExpressionID, AnonymousColumnName, UnquotedName}
+import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName, newExpressionID}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.dsl._
@@ -13,22 +12,16 @@ import scraper.trees.{Rule, RulesExecutor}
 import scraper.types.StringType
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  private val expressionResolutionBatch =
-    RuleBatch("Expression resolution", FixedPoint.Unlimited, Seq(
+  private val resolutionBatch =
+    RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
       ExpandStars,
       ResolveReferences,
       DeduplicateReferences,
       ResolveAliases,
-      new ResolveFunctions(catalog)
-    ))
-
-  private val planResolutionBatch =
-    RuleBatch("Plan resolution", FixedPoint.Unlimited, Seq(
+      new ResolveFunctions(catalog),
       GlobalAggregates,
-      ResolveAggregates,
-      ResolveHavingConditions,
-      ResolveOrderBysOverAggregates
+      ResolveAggregates
     ))
 
   private val typeCheckBatch =
@@ -37,8 +30,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     ))
 
   override def batches: Seq[RuleBatch] = Seq(
-    expressionResolutionBatch,
-    planResolutionBatch,
+    resolutionBatch,
     typeCheckBatch
   )
 
@@ -59,7 +51,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
          |${tree.prettyTree}
          |""".stripMargin
     )
-    apply(tree, expressionResolutionBatch :: planResolutionBatch :: Nil)
+    apply(tree, resolutionBatch :: Nil)
   }
 
   def typeCheck(tree: LogicalPlan): LogicalPlan = {
@@ -241,112 +233,62 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case (agg: UnresolvedAggregate) Filter havingCondition =>
+        agg.copy(havingCondition = Some(havingCondition))
+
+      case (agg: UnresolvedAggregate) Sort ordering =>
+        agg.copy(ordering = ordering)
+
+      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) =>
+        agg
+
+      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved) =>
+        agg
+
       // Resolves an `UnresolvedAggregate` into a `Project` over an `Aggregate`
-      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList) =>
+      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
         // Aliases all grouping keys
         val keyAliases = keys map GroupingAlias.apply
-        // TODO Ugly trick, eliminate it!
-        // The analyzer can be invoked recursively when, for example, resolving having conditions.
-        // Thus, the grouping keys may already be aliased. Here we must use the original unaliased
-        // grouping keys.
-        val rewriteKeys = agg.unaliasedKeys.zip(keyAliases.map(_.toAttribute)).toMap
+        val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
         val aggs = collectAggregation(projectList)
         val aggAliases = aggs map AggregationAlias.apply
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
-        // Replaces grouping keys and aggregate functions in projected fields
-        val rewrittenProjectList = projectList map (_ transformDown {
+        def rewrite(expression: Expression) = expression transformDown {
           case e => rewriteKeys orElse rewriteAggs applyOrElse (e, identity[Expression])
-        })
+        }
+
+        // Replaces grouping keys and aggregate functions in projected fields, having condition, and
+        // sort ordering expressions.
+        val rewrittenProjectList = projectList map rewrite
+        val rewrittenCondition = condition map rewrite
+        val rewrittenOrdering = ordering map { order =>
+          order.copy(child = rewrite(order.child))
+        }
 
         // Reports invalid aggregation expressions if any.  Project list of an `UnresolvedAggregate`
         // should only consist of aggregation functions, grouping keys, literals, operators and
         // function calls.  After rewriting aggregation functions and grouping keys to
         // `AggregationAttribute`s and `GroupingAttribute`s, no `AttributeRef`s should exist in the
         // rewritten project list.
-        rewrittenProjectList filter {
+        rewrittenProjectList ++ rewrittenCondition ++ rewrittenOrdering filter {
           _.collectFirst { case _: AttributeRef => () }.nonEmpty
         } foreach {
           e => throw new IllegalAggregationException(e, keyAliases)
         }
 
-        Aggregate(child, keyAliases, aggAliases) select rewrittenProjectList
+        val resolvedAgg = Aggregate(child, keyAliases, aggAliases)
+        val withHaving = rewrittenCondition map resolvedAgg.filter getOrElse resolvedAgg
+        val withOrdering = if (rewrittenOrdering.isEmpty) withHaving
+        else withHaving orderBy rewrittenOrdering
+
+        withOrdering select rewrittenProjectList
     }
 
     private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
       expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
-  }
-
-  object ResolveHavingConditions extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Resolved((agg: Aggregate) Project projectList) Filter Unresolved(havingCondition) =>
-        // Constructs a single field `UnresolvedAggregate` to resolve having condition recursively
-        // and obtain aliased aggregate functions referenced by resolved having condition.
-        // TODO Eliminates possibly duplicated aggregate functions
-        val (aggAliases, resolvedHavingCondition) = {
-          val Aggregate(child, keys, _) = agg
-          val plan = child groupBy keys agg named(havingCondition)
-
-          logDebug(
-            s"""Resolving having condition $havingCondition recursively using the following plan:
-               |
-               |${plan.prettyTree}
-               |""".stripMargin
-          )
-
-          resolve(plan) match {
-            case Aggregate(_, _, aliases) Project Seq(Alias(condition, _, _)) =>
-              (aliases, condition)
-          }
-        }
-
-        logDebug(s"Resolved having condition $havingCondition into $resolvedHavingCondition")
-
-        agg
-          .copy(functions = agg.functions ++ aggAliases)
-          .filter(resolvedHavingCondition)
-          .select(projectList)
-    }
-  }
-
-  object ResolveOrderBysOverAggregates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      // Only handles unresolved sort orders
-      case plan: Sort if plan.orders forall (_.isResolved) =>
-        plan
-
-      case Resolved((agg: Aggregate) Project projectList) Sort orders =>
-        // Constructs an `UnresolvedAggregate` to resolve order by expression recursively and obtain
-        // aliased aggregate functions referenced by resolved order by expressions.
-        // TODO Eliminates possibly duplicated aggregate functions
-        val (aggAliases, resolvedOrderByExpressions) = {
-          val Aggregate(child, keys, _) = agg
-          val plan = child groupBy keys agg (orders map (_.child) map named)
-
-          logDebug({
-            val ordersList = orders mkString ("[", ", ", "]")
-            s"""Resolving having condition $ordersList recursively using the following plan:
-               |
-               |${plan.prettyTree}
-               |""".stripMargin
-          })
-
-          resolve(plan) match {
-            case Aggregate(_, _, aliases) Project fields => aliases -> fields
-          }
-        }
-
-        val resolvedOrders = orders zip resolvedOrderByExpressions map {
-          case (order, expression) => order.copy(child = expression)
-        }
-
-        agg
-          .copy(functions = agg.functions ++ aggAliases)
-          .orderBy(resolvedOrders)
-          .select(projectList)
-    }
   }
 
   /**
