@@ -2,6 +2,7 @@ package scraper
 
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
+import scraper.expressions.AutoAlias.named
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -205,10 +206,7 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
 
 class GroupedData(df: DataFrame, keys: Seq[Expression]) {
   def agg(projectList: Seq[Expression]): DataFrame =
-    df.withPlan(UnresolvedAggregate(_, keys, projectList map {
-      case e: NamedExpression => e
-      case e                  => UnresolvedAlias(e)
-    }))
+    df.withPlan(UnresolvedAggregate(_, keys, projectList map named))
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }

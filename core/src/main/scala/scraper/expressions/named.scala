@@ -92,7 +92,7 @@ case class Alias(
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
 
-case class UnresolvedAlias(child: Expression)
+case class AutoAlias private (child: Expression)
   extends NamedExpression
   with UnaryExpression
   with UnresolvedNamedExpression
@@ -103,6 +103,13 @@ case class UnresolvedAlias(child: Expression)
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override def debugString: String = s"${child.debugString} AS ?alias?"
+}
+
+object AutoAlias {
+  def named(child: Expression): NamedExpression = child match {
+    case e: NamedExpression => e
+    case _                  => AutoAlias(child)
+  }
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

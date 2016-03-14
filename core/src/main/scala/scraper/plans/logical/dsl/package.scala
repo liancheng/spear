@@ -1,5 +1,6 @@
 package scraper.plans.logical
 
+import scraper.expressions.AutoAlias.named
 import scraper.expressions._
 import scraper.expressions.functions._
 
@@ -9,8 +10,7 @@ package object dsl {
       Project(plan, projectList map {
         // TODO Handles qualified star
         case UnresolvedAttribute("*", _) => Star
-        case e: NamedExpression          => e
-        case e                           => UnresolvedAlias(e)
+        case e                           => named(e)
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
@@ -63,10 +63,7 @@ package object dsl {
 
   class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
     def agg(projectList: Seq[Expression]): UnresolvedAggregate =
-      UnresolvedAggregate(plan, keys, projectList map {
-        case e: NamedExpression => e
-        case e                  => UnresolvedAlias(e)
-      })
+      UnresolvedAggregate(plan, keys, projectList map named)
 
     def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }

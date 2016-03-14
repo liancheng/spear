@@ -10,6 +10,7 @@ import scala.util.parsing.input.CharArrayReader.EofCh
 import scraper.config.Keys.NullsLarger
 import scraper.config.Settings
 import scraper.exceptions.ParsingException
+import scraper.expressions.AutoAlias.named
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions._
 import scraper.plans.logical._
@@ -192,11 +193,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def projectList: Parser[Seq[NamedExpression]] =
     rep1sep(projection | star, ",") ^^ {
-      case ps =>
-        ps.map {
-          case e: NamedExpression => e
-          case e: Expression      => UnresolvedAlias(e)
-        }
+      case ps => ps map named
     }
 
   private def projection: Parser[Expression] =

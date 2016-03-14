@@ -2,6 +2,7 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
+import scraper.expressions.AutoAlias.named
 import scraper.expressions.NamedExpression.{newExpressionID, AnonymousColumnName, UnquotedName}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
@@ -204,8 +205,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ResolveAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case UnresolvedAlias(Resolved(child: NamedExpression)) => child
-      case UnresolvedAlias(Resolved(child: Expression))      => applyAlias(child)
+      case AutoAlias(Resolved(child: NamedExpression)) => child
+      case AutoAlias(Resolved(child: Expression))      => applyAlias(child)
     }
 
     private def applyAlias(child: Expression): NamedExpression = {
@@ -286,7 +287,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         // TODO Eliminates possibly duplicated aggregate functions
         val (aggAliases, resolvedHavingCondition) = {
           val Aggregate(child, keys, _) = agg
-          val plan = child groupBy keys agg UnresolvedAlias(havingCondition)
+          val plan = child groupBy keys agg named(havingCondition)
 
           logDebug(
             s"""Resolving having condition $havingCondition recursively using the following plan:
@@ -322,7 +323,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         // TODO Eliminates possibly duplicated aggregate functions
         val (aggAliases, resolvedOrderByExpressions) = {
           val Aggregate(child, keys, _) = agg
-          val plan = child groupBy keys agg (orders map (_.child) map UnresolvedAlias)
+          val plan = child groupBy keys agg (orders map (_.child) map named)
 
           logDebug({
             val ordersList = orders mkString ("[", ", ", "]")
