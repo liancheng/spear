@@ -1,7 +1,6 @@
 package scraper
 
 import org.scalatest.FunSuite
-
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.LogicalPlan
@@ -66,12 +65,10 @@ trait TestUtils { this: FunSuite =>
     val rewrites = allIdExpressions.zipWithIndex.toMap
 
     plan.transformAllExpressions {
-      case e: Alias                => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: AttributeRef         => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GroupingAlias        => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: GroupingAttribute    => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: AggregationAlias     => e.copy(expressionID = ExpressionID(rewrites(e)))
-      case e: AggregationAttribute => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: Alias              => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: AttributeRef       => e.copy(expressionID = ExpressionID(rewrites(e)))
+      case e: GeneratedAlias     => e.newInstance(id = ExpressionID(rewrites(e)))
+      case e: GeneratedAttribute => e.newInstance(id = ExpressionID(rewrites(e)))
     }
   }
 
