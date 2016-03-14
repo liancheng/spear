@@ -227,7 +227,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan @ ((agg @ Aggregate(child, _, _)) Filter condition) =>
+      case plan @ ((agg: Aggregate) Filter condition) if agg.functions forall (_.isPure) =>
         val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
           _.collectFirst { case AggregationAttribute(_) => () }.isEmpty
         }
@@ -242,7 +242,7 @@ object Optimizer {
         } else {
           // Expands grouping attributes to original grouping key expressions
           val expandedPushDown = expandGroupingKeys(pushDown, agg)
-          val newAgg = agg.copy(child = child filter (expandedPushDown reduce And))
+          val newAgg = agg.copy(child = agg.child filter (expandedPushDown reduce And))
           if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
         }
     }
