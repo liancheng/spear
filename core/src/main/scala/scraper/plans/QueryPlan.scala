@@ -22,10 +22,10 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   lazy val referenceIDs: Set[ExpressionID] = references map (_.expressionID)
 
   def expressions: Seq[Expression] = productIterator.flatMap {
-    case element: Expression     => Seq(element)
-    case element: Option[_]      => element collect { case e: Expression => e }
-    case element: Traversable[_] => element collect { case e: Expression => e }
-    case _                       => Nil
+    case element: Expression       => element :: Nil
+    case Some(element: Expression) => element :: Nil
+    case element: Traversable[_]   => element collect { case e: Expression => e }
+    case _                         => Nil
   }.toSeq
 
   def transformAllExpressions(rule: Rule): Plan = transformDown {
@@ -81,12 +81,15 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         None
 
       case arg: Seq[_] =>
-        val values = arg flatMap {
+        val values = arg map {
           case e: Expression                  => Some(expressionHolder(e))
           case plan if children contains plan => None
           case _                              => Some(arg.toString)
         }
-        if (values.isEmpty) None else Some(values mkString ("[", ", ", "]"))
+        if (values forall (_.nonEmpty)) Some(values.flatten mkString ("[", ", ", "]")) else None
+
+      case None =>
+        None
 
       case arg: Some[_] =>
         val value = arg flatMap {
@@ -94,7 +97,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
           case plan if children contains plan => None
           case _                              => Some(arg.toString)
         }
-        if (value.isEmpty) None else Some(value mkString ("Some(", "", ")"))
+        if (value.nonEmpty) Some(value mkString ("Some(", "", ")")) else None
 
       case arg: Expression =>
         Some(expressionHolder(arg))
