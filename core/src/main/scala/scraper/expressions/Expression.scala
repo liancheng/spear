@@ -265,5 +265,5 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
 case class UnresolvedFunction(name: String, args: Seq[Expression]) extends UnresolvedExpression {
   override def children: Seq[Expression] = args
 
-  override def nodeName: String = "UNRESOLVED_FUNCTION"
+  override def debugString: String = s"$nodeName($name, ${args map (_.debugString) mkString ", "})"
 }
