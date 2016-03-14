@@ -55,9 +55,9 @@ trait GeneratedAttribute
   override def debugString: String = "g:" + super.debugString
 }
 
-case class GroupingAlias private (
+case class GroupingAlias(
   child: Expression,
-  override val expressionID: ExpressionID
+  override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedAlias {
 
   override val purpose: Purpose = ForGrouping
@@ -66,13 +66,6 @@ case class GroupingAlias private (
     GroupingAttribute(child.dataType, child.isNullable, expressionID)
 
   override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
-}
-
-object GroupingAlias {
-  def apply(child: Expression): GroupingAlias = child match {
-    case e: GroupingAlias => e
-    case e                => GroupingAlias(e, newExpressionID())
-  }
 }
 
 case class GroupingAttribute(
@@ -86,9 +79,9 @@ case class GroupingAttribute(
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
-case class AggregationAlias private (
+case class AggregationAlias(
   child: AggregateFunction,
-  override val expressionID: ExpressionID
+  override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedAlias {
 
   override val purpose: Purpose = ForAggregation
@@ -97,10 +90,6 @@ case class AggregationAlias private (
     AggregationAttribute(child.dataType, child.isNullable, expressionID)
 
   override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
-}
-
-object AggregationAlias {
-  def apply(child: AggregateFunction): AggregationAlias = AggregationAlias(child, newExpressionID())
 }
 
 case class AggregationAttribute(

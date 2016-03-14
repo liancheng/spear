@@ -15,12 +15,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   private val resolutionBatch =
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
-      ExpandStars,
       ResolveReferences,
-      DeduplicateReferences,
-      ResolveAliases,
+      ExpandStars,
       new ResolveFunctions(catalog),
+      ResolveAliases,
+      DeduplicateReferences,
+
       GlobalAggregates,
+      MergeHavingConditions,
+      MergeSortsOverAggregates,
       ResolveAggregates
     ))
 
@@ -231,64 +234,70 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
   }
 
+  object MergeHavingConditions extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case (agg: UnresolvedAggregate) Filter condition =>
+        agg.copy(havingCondition = agg.havingCondition map condition.and orElse Some(condition))
+    }
+  }
+
+  object MergeSortsOverAggregates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case (agg: UnresolvedAggregate) Sort ordering =>
+        agg.copy(ordering = agg.ordering ++ ordering)
+    }
+  }
+
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (agg: UnresolvedAggregate) Filter havingCondition =>
-        agg.copy(havingCondition = Some(havingCondition))
+      // Having condition must be resolved first
+      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) => agg
 
-      case (agg: UnresolvedAggregate) Sort ordering =>
-        agg.copy(ordering = ordering)
+      // Sort ordering must be resolved first
+      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved)        => agg
 
-      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) =>
-        agg
-
-      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved) =>
-        agg
-
-      // Resolves an `UnresolvedAggregate` into a `Project` over an `Aggregate`
       case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
         // Aliases all grouping keys
-        val keyAliases = keys map GroupingAlias.apply
+        val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
         val aggs = collectAggregation(projectList)
-        val aggAliases = aggs map AggregationAlias.apply
+        val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
         def rewrite(expression: Expression) = expression transformDown {
           case e => rewriteKeys orElse rewriteAggs applyOrElse (e, identity[Expression])
         }
 
-        // Replaces grouping keys and aggregate functions in projected fields, having condition, and
-        // sort ordering expressions.
-        val rewrittenProjectList = projectList map rewrite
-        val rewrittenCondition = condition map rewrite
-        val rewrittenOrdering = ordering map { order =>
-          order.copy(child = rewrite(order.child))
-        }
+        // Replaces grouping keys and aggregate functions in projected fields, having condition,
+        // and sort ordering expressions.
+        val newProjectList = projectList map rewrite
+        val newCondition = condition map rewrite
+        val newOrdering = ordering map (order => order.copy(child = rewrite(order.child)))
 
-        // Reports invalid aggregation expressions if any.  Project list of an `UnresolvedAggregate`
-        // should only consist of aggregation functions, grouping keys, literals, operators and
-        // function calls.  After rewriting aggregation functions and grouping keys to
-        // `AggregationAttribute`s and `GroupingAttribute`s, no `AttributeRef`s should exist in the
-        // rewritten project list.
-        rewrittenProjectList ++ rewrittenCondition ++ rewrittenOrdering filter {
-          _.collectFirst { case _: AttributeRef => () }.nonEmpty
-        } foreach {
-          e => throw new IllegalAggregationException(e, keyAliases)
-        }
+        checkAggregation(
+          keyAliases map (_.child),
+          newProjectList ++ newCondition ++ newOrdering
+        )
 
-        val resolvedAgg = Aggregate(child, keyAliases, aggAliases)
-        val withHaving = rewrittenCondition map resolvedAgg.filter getOrElse resolvedAgg
-        val withOrdering = if (rewrittenOrdering.isEmpty) withHaving
-        else withHaving orderBy rewrittenOrdering
+        val newAgg = Aggregate(child, keyAliases, aggAliases)
+        val filteredAgg = newCondition map newAgg.filter getOrElse newAgg
+        val orderedAgg = if (newOrdering.isEmpty) filteredAgg else filteredAgg orderBy newOrdering
 
-        withOrdering select rewrittenProjectList
+        orderedAgg select newProjectList
     }
 
     private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
       expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
+
+    // TODO Refines error reporting
+    private def checkAggregation(keys: Seq[Expression], expressions: Seq[Expression]): Unit =
+      expressions filter {
+        _.collectFirst { case _: AttributeRef => () }.nonEmpty
+      } foreach {
+        e => throw new IllegalAggregationException(e, keys)
+      }
   }
 
   /**

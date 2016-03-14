@@ -124,7 +124,7 @@ class SchemaIncompatibleException(message: String, cause: Throwable)
 class IllegalAggregationException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
-  def this(expression: Expression, keys: Seq[GroupingAlias], cause: Throwable) =
+  def this(expression: Expression, keys: Seq[Expression], cause: Throwable) =
     this(
       s"""Expression ${expression.sql.get} is neither an aggregate function nor a grouping key
          |${keys map (_.sql.get) mkString ("[", ", ", "]")}
@@ -132,7 +132,7 @@ class IllegalAggregationException(message: String, cause: Throwable)
       cause
     )
 
-  def this(expression: Expression, keys: Seq[GroupingAlias]) =
+  def this(expression: Expression, keys: Seq[Expression]) =
     this(expression, keys, null)
 }
 
