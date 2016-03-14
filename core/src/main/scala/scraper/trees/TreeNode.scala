@@ -118,7 +118,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   def prettyTree: String =
-    buildPrettyTree(isRoot = true, 0, Nil, StringBuilder.newBuilder).toString.trim
+    buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = toString
 
@@ -135,8 +135,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    *        For root node, `lastChildren` is empty (`Nil`).
    * @param builder The string builder used to build the tree string.
    */
-  private[scraper] def buildPrettyTree(
-    isRoot: Boolean, depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  protected[scraper] def buildPrettyTree(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
@@ -145,12 +145,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     if (depth > 0) {
       lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
-      builder ++= ((lastChildren.last, isRoot) match {
-        case (false, true)  => s"$pipe "
-        case (false, false) => s"$tee$bar"
-        case (true, true)   => s"  "
-        case (true, false)  => s"$corner$bar"
-      })
+      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
     }
 
     builder ++= nodeCaption
@@ -159,16 +154,16 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     buildVirtualTreeNodes(depth, lastChildren, builder)
 
     if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (false, depth + 1, lastChildren :+ false, builder))
-      children.last buildPrettyTree (false, depth + 1, lastChildren :+ true, builder)
+      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
     }
 
     builder
   }
 
   /**
-   * Callback used to add virtual nodes other than [[TreeNode]] children to the built tree string.
-   * This is used to display expression virtual nodes in query plan trees.
+   * Adds "virtual" nodes that are not members of [[TreeNode.children]] to the pretty printed tree
+   * string.  Used by [[scraper.plans.QueryPlan QueryPlan]] to bake expression tree nodes.
    *
    * @see [[TreeNode.buildPrettyTree]] for more details.
    */

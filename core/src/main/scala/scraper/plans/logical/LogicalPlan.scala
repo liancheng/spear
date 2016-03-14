@@ -89,12 +89,13 @@ case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
   extends MultiInstanceRelation {
 
   // Overrides this to avoid showing individual local data entry
-  override protected def argStrings: Seq[String] = Seq(
-    "<local-data>",
-    output map (_.debugString) mkString ("[", ",", "]")
-  )
+  override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
 
   override def newInstance(): LogicalPlan = copy(output = output map (_.newInstance()))
+
+  override protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = ()
 }
 
 object LocalRelation {

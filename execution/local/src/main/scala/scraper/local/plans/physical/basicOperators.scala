@@ -12,10 +12,11 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
   override def iterator: Iterator[Row] = data.iterator
 
   // Overrides this to avoid showing individual local data entry
-  override protected def argStrings: Seq[String] = Seq(
-    "<local-data>",
-    output map (_.debugString) mkString ("[", ",", "]")
-  )
+  override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
+
+  override protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = ()
 }
 
 case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])

@@ -39,15 +39,21 @@ case object SingleRowRelation extends LeafPhysicalPlan {
 }
 
 case class NotImplemented(
-  input: Seq[PhysicalPlan], output: Seq[Attribute]
-)(logicalPlanNodeName: String)
-  extends PhysicalPlan {
-
-  override def nodeName: String = s"?$logicalPlanNodeName?"
-
+  logicalPlanName: String,
+  input: Seq[PhysicalPlan],
+  output: Seq[Attribute]
+) extends PhysicalPlan {
   override def children: Seq[PhysicalPlan] = input
 
   override def iterator: Iterator[Row] = throw new UnsupportedOperationException(
-    s"$logicalPlanNodeName is not implemented yet"
+    s"$logicalPlanName is not implemented yet"
   )
+
+  override protected def argValueStrings: Seq[Option[String]] = Seq(
+    Some(logicalPlanName), None, None
+  )
+
+  override protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = ()
 }

@@ -65,17 +65,18 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     if (argsChanged contains true) makeCopy(newArgs) else this
   }
 
+  // TODO We can probably replace this with annotation tricks
   /**
-   * Returns string representations of each constructor arguments of this query plan
+   * Returns optional string representations of all constructor argument values in declaration
+   * order.  If an argument value is mapped to `None`, it won't be shown in the plan tree.  By
+   * default, constructor arguments corresponding to children plans are hidden.
    */
-  protected def argStrings: Seq[String] = {
-    // Avoids duplicating string representation of expression nodes.  Replaces them with `$expr{n}`,
-    // where `n` is the index or the expression.
+  protected def argValueStrings: Seq[Option[String]] = {
+    // Avoids duplicating string representation of expression nodes.  Replaces them with `$n`,
+    // where `n` is the index of the expression.
     def expressionHolder(e: Expression): String = s"$$${expressions indexOf e}"
 
-    // String representations of values of all constructor arguments except those that are children
-    // of this query plan.
-    val argValues = productIterator.toSeq map {
+    productIterator.toSeq map {
       case arg if children contains arg =>
         None
 
@@ -101,10 +102,15 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
       case arg =>
         Some(arg.toString)
     }
+  }
 
+  /**
+   * Returns string representations of constructor arguments of this query plan in the form of
+   * `&lt;arg&gt;=&lt;value&gt;`.
+   */
+  protected def argStrings: Seq[String] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
-
-    argNames zip argValues collect { case (name, Some(arg)) => s"$name=$arg" }
+    argNames zip argValueStrings collect { case (name, Some(arg)) => s"$name=$arg" }
   }
 
   /**
@@ -115,7 +121,8 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   override def nodeCaption: String = {
     val argsString = argStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
-    s"$nodeName: $argsString ==> $outputString"
+    val arrow = "\u21d2"
+    s"$nodeName: $argsString $arrow $outputString"
   }
 
   override protected def buildVirtualTreeNodes(
@@ -126,7 +133,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     }
 
     expressionStrings.foreach {
-      _.buildPrettyTree(isRoot = false, depth + 1, lastChildren :+ children.isEmpty, builder)
+      _.buildPrettyTree(depth + 1, lastChildren :+ children.isEmpty, builder)
     }
   }
 }
