@@ -89,10 +89,21 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Unresolved(Resolved(child) Project projectList) =>
         child select (projectList flatMap {
-          case Star => child.output
-          case e    => Seq(e)
+          case Star(qualifier) => expand(qualifier, child.output)
+          case e               => Seq(e)
         })
     }
+
+    def expand(maybeQualifier: Option[String], input: Seq[Attribute]): Seq[Attribute] =
+      maybeQualifier match {
+        case None =>
+          input
+
+        case Some(qualifier) =>
+          input.collect {
+            case a: AttributeRef if a.qualifier contains qualifier => a
+          }
+      }
   }
 
   /**

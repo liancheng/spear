@@ -8,9 +8,8 @@ package object dsl {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList map {
-        // TODO Handles qualified star
-        case UnresolvedAttribute("*", _) => Star
-        case e                           => named(e)
+        case UnresolvedAttribute("*", qualifier) => Star(qualifier)
+        case e                                   => named(e)
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)

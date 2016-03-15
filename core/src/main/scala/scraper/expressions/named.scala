@@ -57,13 +57,13 @@ object NamedExpression {
   }
 }
 
-case object Star extends LeafExpression with UnresolvedNamedExpression {
+case class Star(qualifier: Option[String]) extends LeafExpression with UnresolvedNamedExpression {
   override def name: String = throw new ExpressionUnresolvedException(this)
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    implicitly[Applicative[T]] point "*"
+    implicitly[Applicative[T]] point ((qualifier map quote).toSeq :+ "*" mkString ".")
 }
 
 case class Alias(
@@ -200,6 +200,10 @@ case class AttributeRef(
   override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
 
   override def debugString: String = ((qualifier.toSeq map quote) :+ super.debugString) mkString "."
+
+  def qualifiedBy(qualifier: String): AttributeRef = copy(qualifier = Some(qualifier))
+
+  def qualifiedBy(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)

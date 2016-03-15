@@ -52,7 +52,11 @@ abstract class TokenParser[T] extends StdTokenParsers {
 
 class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   def parseAttribute(input: String): UnresolvedAttribute = synchronized {
-    phrase(attribute)(new lexical.Scanner(input)) match {
+    val start = attribute | star ^^ {
+      case Star(qualifier) => UnresolvedAttribute("*", qualifier)
+    }
+
+    phrase(start)(new lexical.Scanner(input)) match {
       case Success(a, _)  => a
       case failureOrError => throw new ParsingException(failureOrError.toString)
     }
@@ -202,7 +206,8 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case e ~ _       => e
     }
 
-  private def star: Parser[Star.type] = "*" ^^^ Star
+  private def star: Parser[Star] =
+    (ident <~ ".").? <~ "*" ^^ Star
 
   private def expression: Parser[Expression] =
     arithmetic ||| predicate
