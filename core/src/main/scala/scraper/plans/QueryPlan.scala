@@ -15,8 +15,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   lazy val outputSet: Set[Attribute] = output.toSet
 
-  lazy val outputIDSet: Set[ExpressionID] = outputSet map (_.expressionID)
-
   lazy val schema: StructType = StructType fromAttributes output
 
   lazy val references: Set[Attribute] = expressions.toSet flatMap ((_: Expression).references)

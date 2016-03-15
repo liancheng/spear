@@ -205,13 +205,13 @@ object Optimizer {
         // condition predicate is turned into CNF first so that we can push as many predicates as
         // possible.
         val (leftPredicates, rest) = splitConjunction(toCNF(filterCondition)) partition {
-          _.referenceIDs subsetOf left.outputIDSet
+          _.references subsetOfByID left.outputSet
         }
 
         // Finds predicates that only reference attribute(s) of the right branch and predicates
         // that reference attributes of both branches.
         val (rightPredicates, commonPredicates) = rest partition {
-          _.referenceIDs subsetOf right.outputIDSet
+          _.references subsetOfByID right.outputSet
         }
 
         def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =

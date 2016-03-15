@@ -25,8 +25,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def references: Set[Attribute] = children.toSet flatMap ((_: Expression).references)
 
-  lazy val referenceIDs: Set[ExpressionID] = references map (_.expressionID)
-
   /**
    * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] is
    * already strictly typed, it's returned untouched.  If this [[Expression]] cannot be converted to
