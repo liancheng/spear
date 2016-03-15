@@ -30,8 +30,6 @@ trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpressio
 object NamedExpression {
   private val currentID = new AtomicLong(0L)
 
-  val AnonymousColumnName = "?column?"
-
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
@@ -92,6 +90,13 @@ case class Alias(
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
 
+/**
+ * When user gives an arbitrary [[Expression]] where a [[NamedExpression]] is required, we use
+ * [[AutoAlias]] to wrap the given expression and defer decision of the final alias name until
+ * analysis time.  The final alias name is usually the SQL representation of the finally resolved
+ * expression.  If the resolved expression doesn't have a SQL representation (e.g., Scala UDF),
+ * a default name `?column?` will be used.
+ */
 case class AutoAlias private (child: Expression)
   extends NamedExpression
   with UnaryExpression
@@ -106,6 +111,8 @@ case class AutoAlias private (child: Expression)
 }
 
 object AutoAlias {
+  val AnonymousColumnName = "?column?"
+
   def named(child: Expression): NamedExpression = child match {
     case e: NamedExpression => e
     case _                  => AutoAlias(child)

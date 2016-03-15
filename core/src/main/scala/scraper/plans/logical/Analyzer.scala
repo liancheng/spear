@@ -2,7 +2,8 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.{AnonymousColumnName, UnquotedName, newExpressionID}
+import scraper.expressions.AutoAlias.AnonymousColumnName
+import scraper.expressions.NamedExpression.{UnquotedName, newExpressionID}
 import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.dsl._
@@ -198,6 +199,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       projectList.collect { case a: Alias => a.toAttribute }.toSet
   }
 
+  /**
+   * This rule converts [[scraper.expressions.AutoAlias AutoAlias]]es into real
+   * [[scraper.expressions.Alias Alias]]es, as long as aliased expressions are resolved.
+   */
   object ResolveAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case AutoAlias(Resolved(child: Expression)) =>
@@ -210,6 +215,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * This rule resolves [[scraper.expressions.UnresolvedFunction unresolved functions]] by looking
+   * up function names from the [[Catalog]].
+   */
   object ResolveFunctions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
@@ -218,10 +227,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * This rule converts [[Project]]s with [[scraper.expressions.AggregateFunction aggregate
+   * functions]] into unresolved global aggregates, i.e., an [[UnresolvedAggregate]] without
+   * grouping keys.
+   */
   object GlobalAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      // Converts a `Project` with aggregate function(s) into an `UnresolvedAggregate` without any
-      // grouping keys.
       case Resolved(child Project projectList) if containsAggregation(projectList) =>
         child groupBy Nil agg projectList
     }
@@ -230,6 +242,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
   }
 
+  /**
+   * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a "having condition" in
+   * SQL.  Having condition can only reference grouping keys and aggregated expressions, and thus
+   * must be resolved together with the [[UnresolvedAggregate]] beneath it.  This rule merges such
+   * having conditions into [[UnresolvedAggregate]]s beneath them so that they can be resolved
+   * together later.
+   */
   object MergeHavingConditions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Filter condition =>
@@ -237,6 +256,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * A [[Sort]] directly over an [[UnresolvedAggregate]] is special.  Its ordering expressions can
+   * only reference grouping keys and aggregated expressions, and thus must be resolved together
+   * with the [[UnresolvedAggregate]] beneath it.  This rule merges such [[Sort]]s into
+   * [[UnresolvedAggregate]]s beneath them so that they can be resolved together later.
+   */
   object MergeSortsOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Sort ordering =>
@@ -244,15 +269,28 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  /**
+   * This rule resolves [[UnresolvedAggregate]]s into an [[Aggregate]], an optional [[Filter]] if
+   * there exists a having condition, an optional [[Sort]] if there exist any sort ordering
+   * expressions, and a top-level [[Project]].
+   */
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      // Having condition must be resolved first
-      case agg: UnresolvedAggregate if agg.havingCondition exists (!_.isResolved) =>
-        agg
+      // Waits until all adjacent having conditions are merged
+      case plan @ Filter(_: UnresolvedAggregate, _) =>
+        plan
 
-      // Sort ordering must be resolved first
-      case agg: UnresolvedAggregate if agg.ordering exists (!_.isResolved) =>
-        agg
+      // Waits until all adjacent sorts are merged
+      case plan @ Sort(_: UnresolvedAggregate, _) =>
+        plan
+
+      // Waits until the having condition (if any) is resolved
+      case plan: UnresolvedAggregate if plan.havingCondition exists (!_.isResolved) =>
+        plan
+
+      // Waits until all sort ordering expressions (if any) are resolved
+      case plan: UnresolvedAggregate if plan.ordering exists (!_.isResolved) =>
+        plan
 
       case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
         // Aliases all grouping keys
@@ -274,10 +312,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val newCondition = condition map rewrite
         val newOrdering = ordering map (order => order.copy(child = rewrite(order.child)))
 
-        checkAggregation(
-          keyAliases map (_.child),
-          newProjectList ++ newCondition ++ newOrdering
-        )
+        checkAggregation(keys, newProjectList ++ newCondition ++ newOrdering)
 
         val newAgg = Aggregate(child, keyAliases, aggAliases)
         val filteredAgg = newCondition map newAgg.filter getOrElse newAgg

@@ -162,10 +162,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   /**
-   * Adds "virtual" nodes that are not members of [[TreeNode.children]] to the pretty printed tree
-   * string.  Used by [[scraper.plans.QueryPlan QueryPlan]] to bake expression tree nodes.
+   * Adds "virtual" nodes that are not members of [[children]] to the pretty printed tree string.
+   * Used by [[scraper.plans.QueryPlan QueryPlan]] to bake expression tree nodes.
    *
-   * @see [[TreeNode.buildPrettyTree]] for more details.
+   * @see [[buildPrettyTree]] for more details.
    */
   protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder

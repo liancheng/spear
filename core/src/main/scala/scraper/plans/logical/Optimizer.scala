@@ -241,7 +241,7 @@ object Optimizer {
           plan
         } else {
           // Expands grouping attributes to original grouping key expressions
-          val expandedPushDown = expandGroupingKeys(pushDown, agg)
+          val expandedPushDown = pushDown map (expandGroupingKeys(_, agg))
           val newAgg = agg.copy(child = agg.child filter (expandedPushDown reduce And))
           if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
         }
@@ -257,22 +257,6 @@ object Optimizer {
 
       val rewrite = (keys zip expandedKeys).toMap
       expression transformDown { case a: GroupingAttribute => rewrite(a) }
-    }
-
-    def expandGroupingKeys(expressions: Seq[Expression], plan: LogicalPlan): Seq[Expression] = {
-      val keys = expressions.flatMap(_ collect { case a: GroupingAttribute => a }).distinct
-
-      val expandedKeys = keys.map { g =>
-        plan.collectFirstFromAllExpressions {
-          case GroupingAlias(child, id) if id == g.expressionID => child
-        }.get
-      }
-
-      val rewrite = keys.zip(expandedKeys).toMap
-
-      expressions.map(_ transformDown {
-        case a: GroupingAttribute => rewrite(a)
-      })
     }
   }
 

@@ -110,7 +110,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
         if (values forall (_.nonEmpty)) Some(values.flatten mkString ("[", ", ", "]")) else None
 
       case None =>
-        None
+        Some("None")
 
       case arg: Some[_] =>
         val value = arg flatMap {
