@@ -8,76 +8,87 @@ import scraper.plans.logical.dsl._
 import scraper.{LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {
-  private val analyzer = new Analyzer(new InMemoryCatalog)
+  private val analyze = new Analyzer(new InMemoryCatalog)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  test("resolve references") {
-    val relation = LocalRelation.empty(a, b)
+  private val relation = LocalRelation.empty(a, b)
 
+  test("resolve references") {
     checkPlan(
-      analyzer resolve (relation select ('b, ('a + 1) as 's)),
+      analyze(relation select ('b, ('a + 1) as 's)),
       relation select (b, (a + 1) as 's)
     )
   }
 
-  test("expand stars") {
-    val relation = LocalRelation.empty(a, b)
-
+  test("expand star") {
     checkPlan(
-      analyzer resolve (relation select '*),
+      analyze(relation select '*),
       relation select (a, b)
     )
   }
 
-  test("self-join") {
-    val relation = LocalRelation.empty(a)
-
+  test("expand star with qualifier") {
     checkPlan(
-      analyzer resolve (relation join relation),
+      analyze(relation as 'x join (relation as 'y) select $"x.*"),
+      relation as 'x join (relation.newInstance() as 'y) select (a qualifiedBy 'x, b qualifiedBy 'x)
+    )
+  }
+
+  test("self-join") {
+    checkPlan(
+      analyze(relation join relation),
       relation join relation.newInstance()
     )
   }
 
   test("duplicated aliases") {
     // Using analyzed plan here so that the expression ID of alias "a" is fixed.
-    val plan = analyzer resolve (SingleRowRelation select (1 as 'a))
+    val plan = analyze(SingleRowRelation select (1 as 'a))
 
     checkPlan(
-      analyzer resolve (plan union plan),
+      analyze(plan union plan),
       // Note that the following two aliases have different expression IDs.
       SingleRowRelation select (1 as 'a) union (SingleRowRelation select (1 as 'a))
     )
   }
 
-  test("aggregate with multiple order by clauses") {
-    val relation = LocalRelation.empty(a, b)
+  test("global aggregate") {
+    val Project(child, _) = analyze(relation select count('a))
 
-    val Project(child, _) = analyzer {
+    checkPlan(child, {
+      val aggCountA = AggregationAlias(count(a))
+      Aggregate(relation, Nil, Seq(aggCountA))
+    })
+  }
+
+  test("aggregate with multiple order by clauses") {
+    val Project(child, _) = analyze {
       relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc
     }
 
     checkPlan(child, {
       val groupA = GroupingAlias(a)
       val aggCountB = AggregationAlias(count(b))
+
       // Only the last sort order should be preserved
-      Aggregate(relation, Seq(groupA), Seq(aggCountB)) orderBy aggCountB.toAttribute.asc
+      val resolvedOrder = aggCountB.toAttribute.asc
+      Aggregate(relation, Seq(groupA), Seq(aggCountB)) orderBy resolvedOrder
     })
   }
 
   test("aggregate with multiple having conditions") {
-    val relation = LocalRelation.empty(a, b)
+    val groupA = GroupingAlias(a)
+    val aggCountB = AggregationAlias(count(b))
 
-    val Project(child, _) = analyzer {
+    val Project(child, _) = analyze {
       relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L
     }
 
     checkPlan(child, {
-      val groupA = GroupingAlias(a)
-      val aggCountB = AggregationAlias(count(b))
       // All the having conditions should be preserved
-      Aggregate(relation, Seq(groupA), Seq(aggCountB))
-        .having(groupA.toAttribute > 1 and aggCountB.toAttribute < 3L)
+      val resolvedCondition = groupA.toAttribute > 1 and aggCountB.toAttribute < 3L
+      Aggregate(relation, Seq(groupA), Seq(aggCountB)) having resolvedCondition
     })
   }
 }
