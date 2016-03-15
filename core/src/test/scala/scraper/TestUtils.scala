@@ -9,14 +9,14 @@ import scraper.types.DataType
 import scraper.utils._
 
 trait TestUtils { this: FunSuite =>
-  private[scraper] def assertSideBySide(expected: String, actual: String): Unit = {
+  private[scraper] def assertSideBySide(actual: String, expected: String): Unit = {
     if (expected != actual) {
       fail(sideBySide(
-        s"""Expected
+        s"""Actual
            |$expected
            |""".stripMargin,
 
-        s"""Actual
+        s"""Expected
            |$actual
            |""".stripMargin,
 
@@ -26,16 +26,16 @@ trait TestUtils { this: FunSuite =>
   }
 
   private[scraper] def assertSideBySide[T <: TreeNode[T]](
-    expected: TreeNode[T],
-    actual: TreeNode[T]
+    actual: TreeNode[T],
+    expected: TreeNode[T]
   ): Unit = {
     if (expected != actual) {
       fail(sideBySide(
-        s"""Expected
+        s"""Actual
            |${expected.prettyTree}
            |""".stripMargin,
 
-        s"""Actual
+        s"""Expected
            |${actual.prettyTree}
            |""".stripMargin,
 
@@ -45,10 +45,10 @@ trait TestUtils { this: FunSuite =>
   }
 
   private[scraper] def checkTree[T <: TreeNode[T]](
-    expected: TreeNode[T],
-    actual: TreeNode[T]
+    actual: TreeNode[T],
+    expected: TreeNode[T]
   ): Unit = {
-    assertSideBySide(expected, actual)
+    assertSideBySide(actual, expected)
   }
 
   private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
@@ -83,11 +83,11 @@ trait TestUtils { this: FunSuite =>
     val actual = ds.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
       val answerDiff = sideBySide(
-        s"""Expected answer:
+        s"""Actual answer:
            |${expected mkString "\n"}
            |""".stripMargin,
 
-        s"""Actual answer:
+        s"""Expected answer:
            |${actual mkString "\n"}
            |""".stripMargin,
 
