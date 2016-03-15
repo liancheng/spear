@@ -251,7 +251,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object MergeHavingConditions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Filter condition =>
-        agg.copy(havingCondition = agg.havingCondition map condition.and orElse Some(condition))
+        agg.copy(havingCondition = agg.havingCondition map (_ and condition) orElse Some(condition))
     }
   }
 

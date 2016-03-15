@@ -52,15 +52,12 @@ trait TestUtils { this: FunSuite =>
   }
 
   private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    val allIdExpressions = plan.collect {
-      case node =>
-        node.expressions.collect {
-          case e: Alias              => e: NamedExpression
-          case e: AttributeRef       => e: NamedExpression
-          case e: GeneratedAlias     => e: NamedExpression
-          case e: GeneratedAttribute => e: NamedExpression
-        }
-    }.flatten
+    val allIdExpressions = plan.collectFromAllExpressions {
+      case e: Alias              => e
+      case e: AttributeRef       => e
+      case e: GeneratedAlias     => e
+      case e: GeneratedAttribute => e
+    }
 
     val rewrite = allIdExpressions.zipWithIndex.toMap
 
