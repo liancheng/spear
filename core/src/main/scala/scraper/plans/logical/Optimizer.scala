@@ -250,9 +250,10 @@ object Optimizer {
     def expandGroupingKeys(expression: Expression, plan: LogicalPlan): Expression = {
       val keys = expression.collect { case a: GroupingAttribute => a }.distinct
 
-      val expandedKeys = keys.map {
-        case GroupingAttribute(_, _, id) =>
-          plan.collectFirstFromAllExpressions { case GroupingAlias(child, `id`) => child }.get
+      val expandedKeys = keys.map { key =>
+        plan.collectFirstFromAllExpressions {
+          case GroupingAlias(child, id) if id == key.expressionID => child
+        }.get
       }
 
       val rewrite = (keys zip expandedKeys).toMap

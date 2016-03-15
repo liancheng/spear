@@ -6,7 +6,7 @@ import scraper.types._
 import scraper.utils._
 
 sealed trait GeneratedNamedExpression extends NamedExpression {
-  val purpose: Purpose
+  def purpose: Purpose
 
   override def name: String = purpose.name
 }
@@ -16,21 +16,21 @@ object GeneratedNamedExpression {
    * Indicates the purpose of a [[GeneratedNamedExpression]].
    */
   sealed trait Purpose {
-    val name: String
+    def name: String
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
-    override val name: String = "group"
+    override def name: String = "group"
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override val name: String = "agg"
+    override def name: String = "agg"
   }
 }
 
@@ -46,59 +46,53 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
   def withID(id: ExpressionID): GeneratedAlias
 }
 
-trait GeneratedAttribute
+abstract class GeneratedAttribute(alias: GeneratedAlias)
   extends GeneratedNamedExpression
   with ResolvedAttribute
   with LeafExpression
   with UnevaluableExpression {
 
+  require(alias.purpose == this.purpose)
+
+  override def dataType: DataType = alias.dataType
+
+  override def isNullable: Boolean = alias.isNullable
+
+  override def expressionID: ExpressionID = alias.expressionID
+
+  override def withID(id: ExpressionID): Attribute = (alias withID id).toAttribute
+
   override def debugString: String = "g:" + super.debugString
+}
+
+trait GroupingNamedExpression extends GeneratedNamedExpression {
+  override def purpose: Purpose = ForGrouping
 }
 
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GeneratedAlias {
-
-  override val purpose: Purpose = ForGrouping
-
-  override def toAttribute: GroupingAttribute =
-    GroupingAttribute(child.dataType, child.isNullable, expressionID)
+) extends GeneratedAlias with GroupingNamedExpression {
+  override def toAttribute: GroupingAttribute = GroupingAttribute(this)
 
   override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
 }
 
-case class GroupingAttribute(
-  override val dataType: DataType,
-  override val isNullable: Boolean,
-  override val expressionID: ExpressionID
-) extends GeneratedAttribute {
+case class GroupingAttribute(alias: GeneratedAlias)
+  extends GeneratedAttribute(alias) with GroupingNamedExpression
 
-  override val purpose: Purpose = ForGrouping
-
-  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+trait AggregationNamedExpression extends GeneratedNamedExpression {
+  override def purpose: Purpose = ForAggregation
 }
 
 case class AggregationAlias(
   child: AggregateFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GeneratedAlias {
-
-  override val purpose: Purpose = ForAggregation
-
-  override def toAttribute: AggregationAttribute =
-    AggregationAttribute(child.dataType, child.isNullable, expressionID)
+) extends GeneratedAlias with AggregationNamedExpression {
+  override def toAttribute: AggregationAttribute = AggregationAttribute(this)
 
   override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
 }
 
-case class AggregationAttribute(
-  override val dataType: DataType,
-  override val isNullable: Boolean,
-  override val expressionID: ExpressionID
-) extends GeneratedAttribute {
-
-  override val purpose: Purpose = ForAggregation
-
-  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
-}
+case class AggregationAttribute(alias: GeneratedAlias)
+  extends GeneratedAttribute(alias) with AggregationNamedExpression
