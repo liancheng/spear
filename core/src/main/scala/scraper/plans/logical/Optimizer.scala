@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scraper.expressions
+import scraper.expressions.GeneratedAttribute._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
@@ -233,16 +234,16 @@ object Optimizer {
           _.collectFirst { case _: AggregationAttribute => () }.isEmpty
         }
 
-        logTrace({
-          val pushDownList = pushDown mkString ("[", ", ", "]")
-          s"Pushing down predicates $pushDownList through aggregation"
-        })
-
         if (pushDown.isEmpty) {
           plan
         } else {
+          logTrace({
+            val pushDownList = pushDown mkString ("[", ", ", "]")
+            s"Pushing down predicates $pushDownList through aggregation"
+          })
+
           // Expands grouping attributes to original grouping key expressions
-          val expandedPushDown = pushDown map (GeneratedAttribute.expand(_, agg, ForGrouping))
+          val expandedPushDown = pushDown map (_ expand (agg, ForGrouping))
           val newAgg = agg.copy(child = agg.child filter (expandedPushDown reduce And))
           if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
         }

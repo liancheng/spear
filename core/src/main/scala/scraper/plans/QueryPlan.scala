@@ -132,7 +132,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
    * Returns string representations of constructor arguments of this query plan in the form of
    * `&lt;arg&gt;=&lt;value&gt;`.
    */
-  protected def argStrings: Seq[String] = {
+  private def argStrings: Seq[String] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
     argNames zip argValueStrings collect { case (name, Some(arg)) => s"$name=$arg" }
   }
