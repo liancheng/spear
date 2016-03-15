@@ -1,7 +1,9 @@
 package scraper.expressions
 
+import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.plans.logical.LogicalPlan
 import scraper.types._
 import scraper.utils._
 
@@ -63,6 +65,58 @@ abstract class GeneratedAttribute(alias: GeneratedAlias)
   override def withID(id: ExpressionID): Attribute = (alias withID id).toAttribute
 
   override def debugString: String = "g:" + super.debugString
+
+  /**
+   * Returns the original expression to which this [[GeneratedAttribute]] refers in `plan`.
+   */
+  def origin(plan: LogicalPlan): Expression = {
+    val candidates = plan.collectFromAllExpressions {
+      case a: GeneratedAlias if a.expressionID == expressionID && a.purpose == purpose => a
+    }
+
+    candidates match {
+      case Seq(a: GeneratedAlias) =>
+        a.child
+
+      case Nil =>
+        throw new ResolutionFailureException(
+          s"""Couldn't find the original expression referenced by attribute $this in plan
+             |
+             |${plan.prettyTree}
+             |""".stripMargin
+        )
+
+      case _ =>
+        throw new ResolutionFailureException({
+          val candidateList = candidates mkString ("[", ", ", "]")
+          s"""Attribute $this references multiple ambiguous expressions $candidateList in plan
+             |
+             |${plan.prettyTree}
+             |""".stripMargin
+        })
+    }
+  }
+}
+
+object GeneratedAttribute {
+  def expand(expression: Expression, plan: LogicalPlan, purposes: Purpose*): Expression = {
+    val attributes = expression.collect {
+      case a: GeneratedAttribute if purposes contains a.purpose => a
+    }
+
+    val origins = attributes map (_ origin plan)
+    val rewrite = (attributes zip origins).toMap
+
+    expression transformDown {
+      case a: GeneratedAttribute if purposes contains a.purpose => rewrite(a)
+    }
+  }
+
+  implicit class ExpandGeneratedAttribute(expression: Expression) {
+    def expand(plan: LogicalPlan, purposes: Purpose*): Expression = {
+      GeneratedAttribute.expand(expression, plan, purposes: _*)
+    }
+  }
 }
 
 trait GroupingNamedExpression extends GeneratedNamedExpression {

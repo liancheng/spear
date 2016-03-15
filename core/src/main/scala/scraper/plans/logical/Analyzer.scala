@@ -228,9 +228,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule converts [[Project]]s with [[scraper.expressions.AggregateFunction aggregate
-   * functions]] into unresolved global aggregates, i.e., an [[UnresolvedAggregate]] without
-   * grouping keys.
+   * This rule converts [[Project]]s containing aggregate functions into unresolved global
+   * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
    */
   object GlobalAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -265,7 +264,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object MergeSortsOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Sort ordering =>
-        agg.copy(ordering = agg.ordering ++ ordering)
+        agg.copy(ordering = ordering)
     }
   }
 

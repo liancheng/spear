@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scraper.expressions
+import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions._
@@ -241,23 +242,10 @@ object Optimizer {
           plan
         } else {
           // Expands grouping attributes to original grouping key expressions
-          val expandedPushDown = pushDown map (expandGroupingKeys(_, agg))
+          val expandedPushDown = pushDown map (GeneratedAttribute.expand(_, agg, ForGrouping))
           val newAgg = agg.copy(child = agg.child filter (expandedPushDown reduce And))
           if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
         }
-    }
-
-    def expandGroupingKeys(expression: Expression, plan: LogicalPlan): Expression = {
-      val keys = expression.collect { case a: GroupingAttribute => a }.distinct
-
-      val expandedKeys = keys.map { key =>
-        plan.collectFirstFromAllExpressions {
-          case GroupingAlias(child, id) if id == key.expressionID => child
-        }.get
-      }
-
-      val rewrite = (keys zip expandedKeys).toMap
-      expression transformDown { case a: GroupingAttribute => rewrite(a) }
     }
   }
 
