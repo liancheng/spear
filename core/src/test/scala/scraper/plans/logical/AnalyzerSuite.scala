@@ -11,9 +11,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val (
-    groupA, groupB, aggCountA, aggCountB
-    ) = (a.asGrouping, b.asGrouping, count(a).asAgg, count(b).asAgg)
+  private val (groupA, groupB, aggCountA, aggCountB) =
+    (a.asGrouping, b.asGrouping, count(a).asAgg, count(b).asAgg)
 
   private val relation = LocalRelation.empty(a, b)
 
