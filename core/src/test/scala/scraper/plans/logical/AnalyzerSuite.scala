@@ -1,9 +1,11 @@
 package scraper.plans.logical
 
+import scraper.expressions.Expression
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.logical.dsl._
+import scraper.utils.quote
 import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {
@@ -16,6 +18,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
 
   private val relation = LocalRelation.empty(a, b)
 
+  testAlias('a + 1, "(a + 1)")
+
+  testAlias($"t.a" + 1, "(a + 1)")
+
+  testAlias(lit("foo"), "foo")
+
   test("resolve references") {
     checkPlan(
       analyze(relation select ('b, ('a + 1) as 's)),
@@ -23,14 +31,14 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
-  test("expand star") {
+  test("expand stars") {
     checkPlan(
       analyze(relation select '*),
       relation select (a, b)
     )
   }
 
-  test("expand star with qualifier") {
+  test("expand stars with qualifier") {
     checkPlan(
       analyze(relation as 'x join (relation as 'y) select $"x.*"),
       relation as 'x join (relation.newInstance() as 'y) select (a qualifiedBy 'x, b qualifiedBy 'x)
@@ -124,5 +132,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
       analyze(relation.distinct),
       Aggregate(relation, Seq(groupA, groupB), Nil) select (groupA.attr as 'a, groupB.attr as 'b)
     )
+  }
+
+  private def testAlias(expression: Expression, expectedAlias: String): Unit = {
+    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias)}") {
+      val Seq(actualAlias) = analyze(relation as 't select expression).output map (_.name)
+      assert(actualAlias == expectedAlias)
+    }
   }
 }
