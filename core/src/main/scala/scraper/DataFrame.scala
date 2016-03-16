@@ -49,6 +49,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
+  def distinct: DataFrame = withPlan(Distinct)
+
   def join(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, Inner)
 
   def join(right: DataFrame, joinType: JoinType): JoinedDataFrame =

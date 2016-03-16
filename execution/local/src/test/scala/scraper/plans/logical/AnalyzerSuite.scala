@@ -12,7 +12,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val (groupA, aggCountA, aggCountB) = (a.asGrouping, count(a).asAgg, count(b).asAgg)
+  private val (
+    groupA, groupB, aggCountA, aggCountB
+    ) = (a.asGrouping, b.asGrouping, count(a).asAgg, count(b).asAgg)
 
   private val relation = LocalRelation.empty(a, b)
 
@@ -116,6 +118,13 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
       analyze(relation groupBy 'a agg 'a),
       Aggregate(relation, Seq(groupA), Nil) select (groupA.attr as 'a)
+    )
+  }
+
+  test("distinct") {
+    checkPlan(
+      analyze(relation.distinct),
+      Aggregate(relation, Seq(groupA, groupB), Nil) select (groupA.attr as 'a, groupB.attr as 'b)
     )
   }
 }

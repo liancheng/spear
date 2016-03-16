@@ -22,6 +22,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ResolveAliases,
       DeduplicateReferences,
 
+      RewriteDistinctsAsAggregates,
       GlobalAggregates,
       MergeHavingConditions,
       MergeSortsOverAggregates,
@@ -235,6 +236,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
         val fnInfo = catalog.functionRegistry.lookupFunction(name)
         fnInfo.builder(args)
+    }
+  }
+
+  object RewriteDistinctsAsAggregates extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case Distinct(Resolved(child)) =>
+        child groupBy child.output agg child.output
     }
   }
 
