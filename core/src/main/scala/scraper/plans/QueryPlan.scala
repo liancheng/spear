@@ -103,8 +103,8 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
       case arg: Seq[_] =>
         val values = arg map {
-          case e: Expression                  => Some(expressionHolder(e))
           case plan if children contains plan => None
+          case e: Expression                  => Some(expressionHolder(e))
           case _                              => Some(arg.toString)
         }
         if (values forall (_.nonEmpty)) Some(values.flatten mkString ("[", ", ", "]")) else None
@@ -114,8 +114,8 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
       case arg: Some[_] =>
         val value = arg flatMap {
-          case e: Expression                  => Some(expressionHolder(e))
           case plan if children contains plan => None
+          case e: Expression                  => Some(expressionHolder(e))
           case _                              => Some(arg.toString)
         }
         if (value.nonEmpty) Some(value mkString ("Some(", "", ")")) else None

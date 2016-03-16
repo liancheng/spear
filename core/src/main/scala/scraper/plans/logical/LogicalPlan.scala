@@ -267,7 +267,10 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
   }
 }
 
-case class UnresolvedAggregate(
+/**
+ * An unresolved, filtered, ordered aggregate operator.
+ */
+case class RichAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
