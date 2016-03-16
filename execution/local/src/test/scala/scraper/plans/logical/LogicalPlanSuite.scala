@@ -89,24 +89,6 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
 
     intercept[TypeCheckException](resolve(r1 union r4))
   }
-
-  test("aggregation without grouping key") {
-    val r = LocalRelation.empty('a.int.!, 'b.string.?)
-
-    checkStrictlyTyped(resolve(r agg count('a)))
-    checkStrictlyTyped(resolve(r groupBy 'a agg count('a)))
-    checkStrictlyTyped(resolve(r groupBy 'a agg count('b)))
-  }
-
-  test("having condition containing aggregate function - #1") {
-    val r = LocalRelation.empty('a.int.!, 'b.int.!)
-    checkStrictlyTyped(resolve(r agg count('a) filter count('a) / 2 =:= 0))
-  }
-
-  test("having condition containing aggregate function - #2") {
-    val r = LocalRelation.empty('a.int.!, 'b.int.!)
-    checkStrictlyTyped(resolve(r groupBy 'b agg count('a) filter (count('a) / 2 =:= 0 and 'b > 1)))
-  }
 }
 
 object LogicalPlanSuite {

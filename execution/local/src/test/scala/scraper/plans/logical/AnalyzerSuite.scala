@@ -12,6 +12,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
+  private val (groupA, aggCountA, aggCountB) = (a.asGrouping, count(a).asAgg, count(b).asAgg)
+
   private val relation = LocalRelation.empty(a, b)
 
   test("resolve references") {
@@ -53,8 +55,6 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("global aggregate") {
-    val aggCountA = count(a).asAgg
-
     checkPlan(
       analyze(relation select count('a)),
       Aggregate(relation, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
@@ -62,22 +62,16 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("aggregate with both having and order by clauses") {
-    val groupA = a.asGrouping
-    val aggCountB = count(b).asAgg
-
     checkPlan(
       analyze(relation groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc),
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         .having(groupA.attr > 1)
         .orderBy(aggCountB.attr.asc)
-        .select(groupA.attr as "a")
+        .select(groupA.attr as 'a)
     )
   }
 
   test("aggregate with multiple order by clauses") {
-    val groupA = a.asGrouping
-    val aggCountB = count(b).asAgg
-
     checkPlan(
       analyze(relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc),
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
@@ -88,9 +82,6 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("aggregate with multiple having conditions") {
-    val groupA = a.asGrouping
-    val aggCountB = count(b).asAgg
-
     checkPlan(
       analyze(relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L),
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
@@ -100,14 +91,31 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
     )
   }
 
-  test("analyzed aggregate should not expose `GeneratedAttribute`s") {
-    val groupA = a.asGrouping
+  test("aggregate with multiple alternate having and order by clauses") {
+    val analyzedPlan = analyze {
+      relation
+        .groupBy('a).agg('a)
+        .having('a > 1)
+        .orderBy('a.asc)
+        .having(count('b) < 10L)
+        .orderBy(count('b).asc)
+    }
 
+    val expectedPlan =
+      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+        .having(groupA.attr > 1 and (aggCountB.attr < 10L))
+        .orderBy(aggCountB.attr.asc)
+        .select(groupA.attr as 'a)
+
+    checkPlan(analyzedPlan, expectedPlan)
+  }
+
+  test("analyzed aggregate should not expose `GeneratedAttribute`s") {
     checkPlan(
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
       analyze(relation groupBy 'a agg 'a),
-      Aggregate(relation, Seq(groupA), Nil) select (groupA.attr as "a")
+      Aggregate(relation, Seq(groupA), Nil) select (groupA.attr as 'a)
     )
   }
 }
