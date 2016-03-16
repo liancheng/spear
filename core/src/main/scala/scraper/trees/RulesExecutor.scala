@@ -5,9 +5,7 @@ import scala.annotation.tailrec
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
 import scraper.utils.{Logging, sideBySide}
 
-trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
-  def apply(tree: Base): Base
-}
+trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging
 
 trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) {
   case class RuleBatch(

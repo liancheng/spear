@@ -49,31 +49,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     super.apply(tree)
   }
 
-  def resolve(tree: LogicalPlan): LogicalPlan = {
-    logDebug(
-      s"""Resolving logical query plan:
-         |
-         |${tree.prettyTree}
-         |""".stripMargin
-    )
-    apply(tree, resolutionBatch :: Nil)
-  }
-
-  def typeCheck(tree: LogicalPlan): LogicalPlan = {
-    if (tree.isResolved) {
-      logDebug(
-        s"""Type checking logical query plan:
-           |
-           |${tree.prettyTree}
-           |""".stripMargin
-      )
-      apply(tree, typeCheckBatch :: Nil)
-    } else {
-      // Performs full analysis for unresolved logical query plan
-      apply(tree)
-    }
-  }
-
   /**
    * This rule resolves unresolved relations by looking up the table name from the `catalog`.
    */
@@ -133,9 +108,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         }
 
         // TODO Considers case insensitive name resolution
-        val candidates = plan.children flatMap (_.output) filter {
-          case a: AttributeRef => a.name == name && (qualifier.toSet subsetOf a.qualifier.toSet)
-          case _               => false
+        val candidates = plan.children flatMap (_.output) collect {
+          case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
+          case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
         }
 
         candidates match {

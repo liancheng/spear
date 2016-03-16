@@ -193,7 +193,7 @@ case class AttributeRef(
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
-  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+  override def withID(id: ExpressionID): AttributeRef = copy(expressionID = id)
 
   override def ? : AttributeRef = withNullability(true)
 

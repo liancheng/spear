@@ -1,14 +1,17 @@
 package scraper.plans.logical
 
 import org.scalatest.BeforeAndAfterAll
-import scraper.expressions.Expression
+import scraper._
+import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
+import scraper.expressions.{Expression, LeafExpression, NonSQLExpression, UnevaluableExpression}
 import scraper.parser.Parser
+import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._
+import scraper.types.{DataType, NullType}
 import scraper.utils.quote
-import scraper.{InMemoryCatalog, LoggingFunSuite, Test, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
   private val catalog = new InMemoryCatalog
@@ -32,11 +35,46 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   testAlias(lit("foo"), "foo")
 
+  testAlias(NonSQL, "?column?")
+
   test("resolve references") {
     checkAnalyzedPlan(
-      relation select ('b, ('a + 1) as 's),
-      relation select (b, (a + 1) as 's)
+      relation select (('a + 1) as 's),
+      relation select ((a + 1) as 's)
     )
+  }
+
+  test("resolve references in SQL") {
+    checkAnalyzedPlan(
+      "SELECT a + 1 AS s FROM t",
+      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+    )
+  }
+
+  test("resolve qualified references") {
+    checkAnalyzedPlan(
+      relation as 't select (($"t.a" + 1) as 's),
+      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+    )
+  }
+
+  test("resolve qualified references in SQL") {
+    checkAnalyzedPlan(
+      "SELECT t.a + 1 AS s FROM t",
+      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+    )
+  }
+
+  test("non-existed reference") {
+    intercept[ResolutionFailureException] {
+      analyze(relation select 'bad)
+    }
+  }
+
+  test("ambiguous reference") {
+    intercept[ResolutionFailureException] {
+      analyze(LocalRelation.empty(a, a withID newExpressionID()) select 'a)
+    }
   }
 
   test("expand stars") {
@@ -46,9 +84,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  test("sql - expand stars") {
+  test("expand stars in SQL") {
     checkAnalyzedPlan(
-      "select * from t",
+      "SELECT * FROM t",
       relation as 't select (a qualifiedBy 't, b qualifiedBy 't)
     )
   }
@@ -60,10 +98,31 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
+  test("expand stars with qualifier in SQL") {
+    checkAnalyzedPlan(
+      "SELECT x.* FROM t x JOIN t y",
+      (relation as 't as 'x)
+        .join(relation.newInstance() as 't as 'y)
+        .select(a qualifiedBy 'x, b qualifiedBy 'x)
+    )
+  }
+
   test("self-join") {
     checkAnalyzedPlan(
       relation join relation,
       relation join relation.newInstance()
+    )
+  }
+
+  test("self-join in SQL") {
+    checkAnalyzedPlan(
+      "SELECT * FROM t JOIN t",
+      relation as 't join (relation.newInstance() as 't) select (
+        a qualifiedBy 't,
+        b qualifiedBy 't,
+        a withID newExpressionID() qualifiedBy 't,
+        b withID newExpressionID() qualifiedBy 't
+      )
     )
   }
 
@@ -75,12 +134,31 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       SingleRowRelation select alias union (SingleRowRelation select alias),
       SingleRowRelation select alias union (SingleRowRelation select newAlias)
     )
+
+    checkAnalyzedPlan(
+      SingleRowRelation select alias intersect (SingleRowRelation select alias),
+      SingleRowRelation select alias intersect (SingleRowRelation select newAlias)
+    )
+
+    checkAnalyzedPlan(
+      SingleRowRelation select alias except (SingleRowRelation select alias),
+      SingleRowRelation select alias except (SingleRowRelation select newAlias)
+    )
   }
 
   test("global aggregate") {
     checkAnalyzedPlan(
       relation select count('a),
       Aggregate(relation, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+    )
+  }
+
+  test("global aggregate in SQL") {
+    val aggCountA = count(a qualifiedBy 't).asAgg
+
+    checkAnalyzedPlan(
+      "SELECT COUNT(a) FROM t",
+      Aggregate(relation as 't, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
     )
   }
 
@@ -141,6 +219,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
+  test("illegal aggregation") {
+    intercept[IllegalAggregationException] {
+      analyze(relation groupBy 'a agg 'b)
+    }
+  }
+
   test("distinct") {
     checkAnalyzedPlan(
       relation.distinct,
@@ -159,5 +243,11 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       val Seq(actualAlias) = analyze(relation as 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }
+  }
+}
+
+object AnalyzerSuite {
+  case object NonSQL extends NonSQLExpression with LeafExpression with UnevaluableExpression {
+    override def dataType: DataType = NullType
   }
 }
