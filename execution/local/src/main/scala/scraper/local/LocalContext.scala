@@ -63,35 +63,6 @@ class LocalContext(val settings: Settings) extends Context {
   override def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
 }
 
-class InMemoryCatalog extends Catalog {
-  override val functionRegistry: FunctionRegistry = new FunctionRegistry {
-    private val functions: mutable.Map[String, FunctionInfo] =
-      mutable.Map.empty[String, FunctionInfo]
-
-    override def lookupFunction(name: String): FunctionInfo =
-      functions.getOrElse(name.toLowerCase, throw new FunctionNotFoundException(name))
-
-    override def registerFunction(fn: FunctionInfo): Unit = functions(fn.name.toLowerCase) = fn
-
-    override def removeFunction(name: String): Unit = functions -= name
-  }
-
-  private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
-
-  functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
-
-  override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
-    tables(tableName) = analyzedPlan
-
-  override def removeRelation(tableName: String): Unit = tables -= tableName
-
-  override def lookupRelation(tableName: String): LogicalPlan =
-    tables
-      .get(tableName)
-      .map(_ subquery tableName)
-      .getOrElse(throw new TableNotFoundException(tableName))
-}
-
 class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
   extends QueryExecution
 

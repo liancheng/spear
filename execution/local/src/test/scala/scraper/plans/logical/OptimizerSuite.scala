@@ -6,18 +6,16 @@ import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
-
 import scraper.Test.defaultSettings
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.generators.expressions._
-import scraper.local.InMemoryCatalog
 import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters}
 import scraper.plans.logical.dsl._
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.trees.{Rule, RulesExecutor}
-import scraper.{LoggingFunSuite, TestUtils}
+import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private implicit def prettyExpression(expression: Expression): Pretty = Pretty {

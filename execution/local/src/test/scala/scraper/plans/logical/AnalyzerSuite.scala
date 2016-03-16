@@ -3,9 +3,8 @@ package scraper.plans.logical
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.local.InMemoryCatalog
 import scraper.plans.logical.dsl._
-import scraper.{LoggingFunSuite, TestUtils}
+import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   private val analyze = new Analyzer(new InMemoryCatalog)

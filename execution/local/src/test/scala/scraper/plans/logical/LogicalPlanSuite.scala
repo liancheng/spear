@@ -4,17 +4,15 @@ import scala.collection.JavaConverters._
 
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.Checkers
-
 import scraper.exceptions.TypeCheckException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.{Attribute, Expression}
 import scraper.generators.genRandomPartitions
-import scraper.local.InMemoryCatalog
 import scraper.plans.logical.LogicalPlanSuite.{ExprNode, PlanNode}
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, IntType}
-import scraper.{LoggingFunSuite, Row, TestUtils}
+import scraper.{InMemoryCatalog, LoggingFunSuite, Row, TestUtils}
 
 class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
   def genExprNode: Gen[ExprNode] = Gen.sized {
