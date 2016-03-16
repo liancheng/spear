@@ -19,18 +19,38 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   private val singleRow = SingleRowRelation
 
   testParser(
-    "SELECT 1 AS a FROM t0",
-    t0 select (1 as 'a)
-  )
-
-  testParser(
     "SELECT 1",
     singleRow select 1
   )
 
   testParser(
+    "SELECT 1 AS a FROM t0",
+    t0 select (1 as 'a)
+  )
+
+  testParser(
+    "SELECT * FROM t0",
+    t0 select '*
+  )
+
+  testParser(
+    "SELECT a.* FROM t0 a",
+    t0 as 'a select $"a.*"
+  )
+
+  testParser(
     "SELECT * FROM t0, t1",
     t0 join t1 select '*
+  )
+
+  testParser(
+    "SELECT * FROM t0 a JOIN t1 b",
+    t0 as 'a join (t1 as 'b) select '*
+  )
+
+  testParser(
+    "SELECT a.* FROM t0 a JOIN t1 b",
+    t0 as 'a join (t1 as 'b) select $"a.*"
   )
 
   testParser(

@@ -28,4 +28,6 @@ trait ExpressionDSL
   def in(list: Seq[Expression]): In = In(this, list)
 
   def in(first: Expression, rest: Expression*): In = this in (first +: rest)
+
+  def asGrouping: GroupingAlias = GroupingAlias(this)
 }

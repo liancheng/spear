@@ -13,6 +13,8 @@ trait AggregateFunction extends Expression {
   def merge(into: MutableRow, from: Row): Unit
 
   def result(buffer: Row): Any
+
+  def asAgg: AggregationAlias = AggregationAlias(this)
 }
 
 case class Count(child: Expression) extends UnaryExpression with AggregateFunction {

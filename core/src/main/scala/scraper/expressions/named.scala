@@ -21,6 +21,8 @@ trait NamedExpression extends Expression {
   def expressionID: ExpressionID
 
   def toAttribute: Attribute
+
+  def attr: Attribute = toAttribute
 }
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
