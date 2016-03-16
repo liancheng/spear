@@ -54,41 +54,47 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("global aggregate") {
-    val Project(child, _) = analyze(relation select count('a))
+    val aggCountA = AggregationAlias(count(a))
 
-    checkPlan(child, {
-      val aggCountA = AggregationAlias(count(a))
-      Aggregate(relation, Nil, Seq(aggCountA))
-    })
+    checkPlan(
+      analyze(relation select count('a)),
+      Aggregate(relation, Nil, Seq(aggCountA)) select (aggCountA.toAttribute as "COUNT(a)")
+    )
   }
 
   test("aggregate with multiple order by clauses") {
-    val Project(child, _) = analyze {
-      relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc
-    }
+    val groupA = GroupingAlias(a)
+    val aggCountB = AggregationAlias(count(b))
 
-    checkPlan(child, {
-      val groupA = GroupingAlias(a)
-      val aggCountB = AggregationAlias(count(b))
-
-      // Only the last sort order should be preserved
-      val resolvedOrder = aggCountB.toAttribute.asc
-      Aggregate(relation, Seq(groupA), Seq(aggCountB)) orderBy resolvedOrder
-    })
+    checkPlan(
+      analyze(relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc),
+      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+        // Only the last sort order should be preserved
+        .orderBy(aggCountB.toAttribute.asc)
+        .select(aggCountB.toAttribute as "COUNT(b)")
+    )
   }
 
   test("aggregate with multiple having conditions") {
     val groupA = GroupingAlias(a)
     val aggCountB = AggregationAlias(count(b))
 
-    val Project(child, _) = analyze {
-      relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L
-    }
+    checkPlan(
+      analyze(relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L),
+      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+        .having(groupA.toAttribute > 1 and aggCountB.toAttribute < 3L)
+        .select(aggCountB.toAttribute as "COUNT(b)")
+    )
+  }
 
-    checkPlan(child, {
-      // All the having conditions should be preserved
-      val resolvedCondition = groupA.toAttribute > 1 and aggCountB.toAttribute < 3L
-      Aggregate(relation, Seq(groupA), Seq(aggCountB)) having resolvedCondition
-    })
+  test("aggregate - should not expose GeneratedAttributes") {
+    val groupA = GroupingAlias(a)
+
+    checkPlan(
+      // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
+      // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
+      analyze(relation groupBy 'a agg 'a),
+      Aggregate(relation, Seq(groupA), Nil) select (groupA.toAttribute as "a")
+    )
   }
 }

@@ -319,11 +319,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           case e => rewriteKeys orElse rewriteAggs applyOrElse (e, identity[Expression])
         }
 
-        // Replaces grouping keys and aggregate functions in projected fields, having condition,
-        // and sort ordering expressions.
-        val newProjectList = projectList map rewrite
+        // Replaces grouping keys and aggregate functions in having condition, sort ordering
+        // expressions, and projected named expressions.
         val newCondition = condition map rewrite
         val newOrdering = ordering map (order => order.copy(child = rewrite(order.child)))
+        val newProjectList = projectList map (e => rewrite(e) -> e) map {
+          // `GeneratedAttribute`s should be hidden
+          case (g: GeneratedAttribute, e) => g as e.name
+          case (e, _)                     => e
+        }
 
         checkAggregation(keys, newProjectList ++ newCondition ++ newOrdering)
 
