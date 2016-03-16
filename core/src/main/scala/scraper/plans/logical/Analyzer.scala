@@ -262,7 +262,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object MergeHavingConditions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Filter condition =>
-        agg.copy(havingCondition = agg.havingCondition map (_ and condition) orElse Some(condition))
+        // All having conditions should be preserved
+        val combinedCondition = (agg.havingCondition.toSeq :+ condition) reduce And
+        agg.copy(havingCondition = Some(combinedCondition))
     }
   }
 
@@ -275,6 +277,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object MergeSortsOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Sort ordering =>
+        // Only preserves the last sort order
         agg.copy(ordering = ordering)
     }
   }
