@@ -96,6 +96,8 @@ class DataFrame(val queryExecution: QueryExecution) {
   def asTable(tableName: String): Unit =
     context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
+  def asTable(tableName: Symbol): Unit = asTable(tableName.name)
+
   def toSeq: Seq[Row] = iterator.toSeq
 
   def toArray: Array[Row] = iterator.toArray

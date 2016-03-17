@@ -114,6 +114,8 @@ trait Context {
   def q(query: String): DataFrame
 
   def table(name: String): DataFrame
+
+  def table(name: Symbol): DataFrame = table(name.name)
 }
 
 object Context {

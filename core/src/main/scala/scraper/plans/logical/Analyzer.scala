@@ -225,11 +225,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   object ResolveSortReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Unresolved(
-        Resolved(child Project projectList) Sort order) if !containsAggregation(projectList) =>
+      // Ignores global aggregates
+      case plan @ (Resolved(_ Project projectList) Sort _) if containsAggregation(projectList) =>
+        plan
+
+      case Unresolved(plan @ Resolved(child Project projectList) Sort order) =>
         val orderReferences = order.flatMap(_.collect { case a: Attribute => a }).distinct
-        val output = projectList map (_.toAttribute)
-        child select (projectList ++ orderReferences).distinct orderBy order select output
+        child select (projectList ++ orderReferences).distinct orderBy order select plan.output
     }
   }
 
@@ -282,19 +284,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Waits until all adjacent having conditions are merged
-      case plan @ Filter(_: UnresolvedAggregate, _) =>
+      case plan @ ((_: UnresolvedAggregate) Filter _) =>
         plan
 
       // Waits until all adjacent sorts are merged
-      case plan @ Sort(_: UnresolvedAggregate, _) =>
+      case plan @ ((_: UnresolvedAggregate) Sort _) =>
         plan
 
-      // Waits until the having condition (if any) is resolved
-      case plan: UnresolvedAggregate if plan.havingCondition exists (!_.isResolved) =>
-        plan
-
-      // Waits until all sort ordering expressions (if any) are resolved
-      case plan: UnresolvedAggregate if plan.ordering exists (!_.isResolved) =>
+      // Waits until projected list, having condition and sort order expressions all all resolved
+      case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
 
       case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
