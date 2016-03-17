@@ -57,15 +57,15 @@ package object dsl {
     def groupBy(first: Expression, rest: Expression*): GroupedLogicalPlan =
       new GroupedLogicalPlan(plan, first +: rest)
 
-    def agg(projectList: Seq[Expression]): RichAggregate = this groupBy Nil agg projectList
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate = this groupBy Nil agg projectList
 
-    def agg(first: Expression, rest: Expression*): RichAggregate = agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
 
   class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
-    def agg(projectList: Seq[Expression]): RichAggregate =
-      RichAggregate(plan, keys, projectList map named)
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate =
+      UnresolvedAggregate(plan, keys, projectList map named)
 
-    def agg(first: Expression, rest: Expression*): RichAggregate = agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
 }

@@ -223,7 +223,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
   /**
    * This rule converts [[Project]]s containing aggregate functions into unresolved global
-   * aggregates, i.e., an [[RichAggregate]] without grouping keys.
+   * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
    */
   object GlobalAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -236,15 +236,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * A [[Filter]] directly over an [[RichAggregate]] corresponds to a "having condition" in
+   * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a "having condition" in
    * SQL.  Having condition can only reference grouping keys and aggregated expressions, and thus
-   * must be resolved together with the [[RichAggregate]] beneath it.  This rule merges such
-   * having conditions into [[RichAggregate]]s beneath them so that they can be resolved
+   * must be resolved together with the [[UnresolvedAggregate]] beneath it.  This rule merges such
+   * having conditions into [[UnresolvedAggregate]]s beneath them so that they can be resolved
    * together later.
    */
   object MergeHavingConditions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (agg: RichAggregate) Filter condition =>
+      case (agg: UnresolvedAggregate) Filter condition =>
         // All having conditions should be preserved
         val combinedCondition = (agg.havingCondition.toSeq :+ condition) reduce And
         agg.copy(havingCondition = Some(combinedCondition))
@@ -252,43 +252,43 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * A [[Sort]] directly over an [[RichAggregate]] is special.  Its ordering expressions can
+   * A [[Sort]] directly over an [[UnresolvedAggregate]] is special.  Its ordering expressions can
    * only reference grouping keys and aggregated expressions, and thus must be resolved together
-   * with the [[RichAggregate]] beneath it.  This rule merges such [[Sort]]s into
-   * [[RichAggregate]]s beneath them so that they can be resolved together later.
+   * with the [[UnresolvedAggregate]] beneath it.  This rule merges such [[Sort]]s into
+   * [[UnresolvedAggregate]]s beneath them so that they can be resolved together later.
    */
   object MergeSortsOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (agg: RichAggregate) Sort ordering =>
+      case (agg: UnresolvedAggregate) Sort ordering =>
         // Only preserves the last sort order
         agg.copy(ordering = ordering)
     }
   }
 
   /**
-   * This rule resolves [[RichAggregate]]s into an [[Aggregate]], an optional [[Filter]] if
+   * This rule resolves [[UnresolvedAggregate]]s into an [[Aggregate]], an optional [[Filter]] if
    * there exists a having condition, an optional [[Sort]] if there exist any sort ordering
    * expressions, and a top-level [[Project]].
    */
   object ResolveAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // Waits until all adjacent having conditions are merged
-      case plan @ Filter(_: RichAggregate, _) =>
+      case plan @ Filter(_: UnresolvedAggregate, _) =>
         plan
 
       // Waits until all adjacent sorts are merged
-      case plan @ Sort(_: RichAggregate, _) =>
+      case plan @ Sort(_: UnresolvedAggregate, _) =>
         plan
 
       // Waits until the having condition (if any) is resolved
-      case plan: RichAggregate if plan.havingCondition exists (!_.isResolved) =>
+      case plan: UnresolvedAggregate if plan.havingCondition exists (!_.isResolved) =>
         plan
 
       // Waits until all sort ordering expressions (if any) are resolved
-      case plan: RichAggregate if plan.ordering exists (!_.isResolved) =>
+      case plan: UnresolvedAggregate if plan.ordering exists (!_.isResolved) =>
         plan
 
-      case agg @ RichAggregate(Resolved(child), keys, projectList, condition, ordering) =>
+      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
         // Aliases all grouping keys
         val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
