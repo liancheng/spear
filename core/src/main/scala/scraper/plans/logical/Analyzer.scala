@@ -21,6 +21,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       ResolveAliases,
       DeduplicateReferences,
 
+      ResolveSortReferences,
       RewriteDistinctsAsAggregates,
       GlobalAggregates,
       MergeHavingConditions,
@@ -96,7 +97,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
 
     private def resolveReferences(plan: LogicalPlan): LogicalPlan = plan transformExpressionsUp {
-      case UnresolvedAttribute(name, qualifier) =>
+      case unresolved @ UnresolvedAttribute(name, qualifier) =>
         def reportResolutionFailure(message: String): Nothing = {
           throw new ResolutionFailureException(
             s"""Failed to resolve attribute $name in logical query plan:
@@ -117,7 +118,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
             attribute
 
           case Nil =>
-            reportResolutionFailure("No candidate input attribute(s) found")
+            // We don't report resolution failure here since the attribute might be resolved later
+            // with the help of other analysis rules.
+            unresolved
 
           case _ =>
             reportResolutionFailure {
@@ -220,6 +223,16 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  object ResolveSortReferences extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case Unresolved(
+        Resolved(child Project projectList) Sort order) if !containsAggregation(projectList) =>
+        val orderReferences = order.flatMap(_.collect { case a: Attribute => a }).distinct
+        val output = projectList map (_.toAttribute)
+        child select (projectList ++ orderReferences).distinct orderBy order select output
+    }
+  }
+
   /**
    * This rule converts [[Project]]s containing aggregate functions into unresolved global
    * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
@@ -229,9 +242,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case Resolved(child Project projectList) if containsAggregation(projectList) =>
         child groupBy Nil agg projectList
     }
-
-    private def containsAggregation(expressions: Seq[Expression]): Boolean =
-      expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
   }
 
   /**
@@ -342,4 +352,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case Resolved(plan) => plan.strictlyTyped.get
     }
   }
+
+  private def containsAggregation(expressions: Seq[Expression]): Boolean =
+    expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
 }

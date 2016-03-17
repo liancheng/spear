@@ -73,11 +73,11 @@ trait TestUtils { this: FunSuite =>
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)
 
-  def checkDataFrame(ds: DataFrame, first: Row, rest: Row*): Unit =
-    checkDataFrame(ds, first +: rest)
+  def checkDataFrame(df: DataFrame, first: Row, rest: Row*): Unit =
+    checkDataFrame(df, first +: rest)
 
-  def checkDataFrame(ds: DataFrame, expected: Seq[Row]): Unit = {
-    val actual = ds.queryExecution.physicalPlan.iterator.toSeq
+  def checkDataFrame(df: DataFrame, expected: Seq[Row]): Unit = {
+    val actual = df.queryExecution.physicalPlan.iterator.toSeq
     if (actual != expected) {
       val answerDiff = sideBySide(
         s"""Actual answer:
@@ -98,7 +98,7 @@ trait TestUtils { this: FunSuite =>
            |
            |Query plan details:
            |
-           |${ds explanation (extended = true)}
+           |${df explanation (extended = true)}
            |""".stripMargin
       )
     }
