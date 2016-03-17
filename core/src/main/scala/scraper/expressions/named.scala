@@ -178,13 +178,6 @@ trait ResolvedAttribute extends Attribute {
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, isNullable)
 }
 
-object ResolvedAttribute {
-  def intersectByID(lhs: Set[Attribute], rhs: Set[Attribute]): Set[Attribute] = {
-    require(lhs.forall(_.isResolved) && rhs.forall(_.isResolved))
-    lhs filter (a => rhs exists (_.expressionID == a.expressionID))
-  }
-}
-
 case class AttributeRef(
   name: String,
   override val dataType: DataType,

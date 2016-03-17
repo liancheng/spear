@@ -8,7 +8,6 @@ import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.dsl._
@@ -21,7 +20,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
 
   lazy val isDeduplicated: Boolean = isChildrenResolved && (
-    children.length < 2 || (children map (_.outputSet) reduce intersectByID).isEmpty
+    children.length < 2 || (children map (_.outputSet) reduce (_ intersectByID _)).isEmpty
   )
 
   def isChildrenResolved: Boolean = children forall (_.isResolved)

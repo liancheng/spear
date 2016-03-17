@@ -4,7 +4,6 @@ import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions.AutoAlias.AnonymousColumnName
 import scraper.expressions.NamedExpression.{UnquotedName, newExpressionID}
-import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns._
@@ -154,10 +153,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
 
     def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
-      val conflictingAttributes = intersectByID(left.outputSet, right.outputSet)
+      val conflictingAttributes = left.outputSet intersectByID right.outputSet
 
       def hasDuplicates(attributes: Set[Attribute]): Boolean =
-        intersectByID(attributes, conflictingAttributes).nonEmpty
+        (attributes intersectByID conflictingAttributes).nonEmpty
 
       right collectFirst {
         // Handles relations that introduce ambiguous attributes
