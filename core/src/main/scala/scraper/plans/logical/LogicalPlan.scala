@@ -8,7 +8,6 @@ import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.ResolvedAttribute.intersectByID
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.dsl._
@@ -21,7 +20,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
 
   lazy val isDeduplicated: Boolean = isChildrenResolved && (
-    children.length < 2 || (children map (_.outputSet) reduce intersectByID).isEmpty
+    children.length < 2 || (children map (_.outputSet) reduce (_ intersectByID _)).isEmpty
   )
 
   def isChildrenResolved: Boolean = children forall (_.isResolved)
@@ -40,6 +39,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
+
+  override def nodeName: String = if (isResolved) super.nodeName else "?" + super.nodeName + "?"
 
   override protected def outputStrings: Seq[String] = this match {
     case Unresolved(_) => "?output?" :: Nil
@@ -115,12 +116,18 @@ case class Distinct(child: LogicalPlan) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }
 
+case class UnresolvedProject(
+  child: LogicalPlan,
+  projectList: Seq[NamedExpression],
+  ordering: Seq[SortOrder] = Nil
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan {
+  assert(projectList.nonEmpty, "Project should have at least one expression")
+}
+
 case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
   extends UnaryLogicalPlan {
 
   assert(projectList.nonEmpty, "Project should have at least one expression")
-
-  override def expressions: Seq[Expression] = projectList
 
   override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
 }
@@ -174,7 +181,7 @@ trait SetOperator extends BinaryLogicalPlan {
       if (plan.schema.fieldTypes == targetTypes) {
         plan
       } else {
-        plan select (plan.output zip targetTypes map {
+        plan project (plan.output zip targetTypes map {
           case (a, t) if a.dataType == t => a
           case (a, t)                    => a cast t as a.name
         })
@@ -270,7 +277,7 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
 /**
  * An unresolved, filtered, ordered aggregate operator.
  */
-case class RichAggregate(
+case class UnresolvedAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],

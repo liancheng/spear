@@ -40,28 +40,28 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("resolve references") {
     checkAnalyzedPlan(
       relation select (('a + 1) as 's),
-      relation select ((a + 1) as 's)
+      relation project ((a + 1) as 's)
     )
   }
 
   test("resolve references in SQL") {
     checkAnalyzedPlan(
       "SELECT a + 1 AS s FROM t",
-      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+      relation as 't project (((a qualifiedBy 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references") {
     checkAnalyzedPlan(
       relation as 't select (($"t.a" + 1) as 's),
-      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+      relation as 't project (((a qualifiedBy 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references in SQL") {
     checkAnalyzedPlan(
       "SELECT t.a + 1 AS s FROM t",
-      relation as 't select (((a qualifiedBy 't) + 1) as 's)
+      relation as 't project (((a qualifiedBy 't) + 1) as 's)
     )
   }
 
@@ -80,30 +80,34 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("expand stars") {
     checkAnalyzedPlan(
       relation select '*,
-      relation select (a, b)
+      relation project (a, b)
     )
   }
 
   test("expand stars in SQL") {
     checkAnalyzedPlan(
       "SELECT * FROM t",
-      relation as 't select (a qualifiedBy 't, b qualifiedBy 't)
+      relation as 't project (a qualifiedBy 't, b qualifiedBy 't)
     )
   }
 
   test("expand stars with qualifier") {
     checkAnalyzedPlan(
       relation as 'x join (relation as 'y) select $"x.*",
-      relation as 'x join (relation.newInstance() as 'y) select (a qualifiedBy 'x, b qualifiedBy 'x)
+      relation as 'x join (relation.newInstance() as 'y) project (
+        a qualifiedBy 'x,
+        b qualifiedBy 'x
+      )
     )
   }
 
   test("expand stars with qualifier in SQL") {
     checkAnalyzedPlan(
       "SELECT x.* FROM t x JOIN t y",
-      (relation as 't as 'x)
-        .join(relation.newInstance() as 't as 'y)
-        .select(a qualifiedBy 'x, b qualifiedBy 'x)
+      relation as 't as 'x join (relation.newInstance() as 't as 'y) project (
+        a qualifiedBy 'x,
+        b qualifiedBy 'x
+      )
     )
   }
 
@@ -117,7 +121,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("self-join in SQL") {
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
-      relation as 't join (relation.newInstance() as 't) select (
+      relation as 't join (relation.newInstance() as 't) project (
         a qualifiedBy 't,
         b qualifiedBy 't,
         a withID newExpressionID() qualifiedBy 't,
@@ -132,24 +136,24 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       SingleRowRelation select alias union (SingleRowRelation select alias),
-      SingleRowRelation select alias union (SingleRowRelation select newAlias)
+      SingleRowRelation project alias union (SingleRowRelation project newAlias)
     )
 
     checkAnalyzedPlan(
       SingleRowRelation select alias intersect (SingleRowRelation select alias),
-      SingleRowRelation select alias intersect (SingleRowRelation select newAlias)
+      SingleRowRelation project alias intersect (SingleRowRelation project newAlias)
     )
 
     checkAnalyzedPlan(
       SingleRowRelation select alias except (SingleRowRelation select alias),
-      SingleRowRelation select alias except (SingleRowRelation select newAlias)
+      SingleRowRelation project alias except (SingleRowRelation project newAlias)
     )
   }
 
   test("global aggregate") {
     checkAnalyzedPlan(
       relation select count('a),
-      Aggregate(relation, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+      Aggregate(relation, Nil, Seq(aggCountA)) project (aggCountA.attr as "COUNT(a)")
     )
   }
 
@@ -158,7 +162,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT COUNT(a) FROM t",
-      Aggregate(relation as 't, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+      Aggregate(relation as 't, Nil, Seq(aggCountA)) project (aggCountA.attr as "COUNT(a)")
     )
   }
 
@@ -168,7 +172,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         .having(groupA.attr > 1)
         .orderBy(aggCountB.attr.asc)
-        .select(groupA.attr as 'a)
+        .project(groupA.attr as 'a)
     )
   }
 
@@ -178,7 +182,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         // Only the last sort order should be preserved
         .orderBy(aggCountB.attr.asc)
-        .select(aggCountB.attr as "COUNT(b)")
+        .project(aggCountB.attr as "COUNT(b)")
     )
   }
 
@@ -188,7 +192,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         // All having conditions should be preserved
         .having(groupA.attr > 1 and aggCountB.attr < 3L)
-        .select(aggCountB.attr as "COUNT(b)")
+        .project(aggCountB.attr as "COUNT(b)")
     )
   }
 
@@ -205,7 +209,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         .having(groupA.attr > 1 and (aggCountB.attr < 10L))
         .orderBy(aggCountB.attr.asc)
-        .select(groupA.attr as 'a)
+        .project(groupA.attr as 'a)
 
     checkAnalyzedPlan(plan, expectedPlan)
   }
@@ -215,7 +219,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
       relation groupBy 'a agg 'a,
-      Aggregate(relation, Seq(groupA), Nil) select (groupA.attr as 'a)
+      Aggregate(relation, Seq(groupA), Nil) project (groupA.attr as 'a)
     )
   }
 
@@ -228,7 +232,14 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("distinct") {
     checkAnalyzedPlan(
       relation.distinct,
-      Aggregate(relation, Seq(groupA, groupB), Nil) select (groupA.attr as 'a, groupB.attr as 'b)
+      Aggregate(relation, Seq(groupA, groupB), Nil) project (groupA.attr as 'a, groupB.attr as 'b)
+    )
+  }
+
+  test("order by column not appearing in project list") {
+    checkAnalyzedPlan(
+      relation select 'a orderBy 'b.asc,
+      relation project (a, b) orderBy b.asc project a
     )
   }
 

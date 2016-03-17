@@ -134,7 +134,7 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        plan select (outerList map (inlineAliases(innerList, _)))
+        plan project (outerList map (inlineAliases(innerList, _)))
     }
   }
 
@@ -193,7 +193,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
         val rewrittenCondition = inlineAliases(projectList, condition)
-        plan filter rewrittenCondition select projectList
+        plan filter rewrittenCondition project projectList
     }
   }
 
@@ -253,7 +253,7 @@ object Optimizer {
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Project projectList =>
-        plan select projectList limit n
+        plan project projectList limit n
     }
   }
 

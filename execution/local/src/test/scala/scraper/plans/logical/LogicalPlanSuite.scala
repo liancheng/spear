@@ -79,11 +79,11 @@ class LogicalPlanSuite extends LoggingFunSuite with TestUtils with Checkers {
     val r4 = LocalRelation.empty('a.long.!, 'b.string.!)
 
     checkStrictlyTyped(resolve(r1 union r2))
-    checkStrictlyTyped(resolve(r1 union (r4 select ('a cast IntType as 'a))))
-    checkStrictlyTyped(resolve(r1 union SingleRowRelation.select(1 as 'a)))
+    checkStrictlyTyped(resolve(r1 union (r4 project ('a cast IntType as 'a))))
+    checkStrictlyTyped(resolve(r1 union SingleRowRelation.project(1 as 'a)))
 
     checkWellTyped(resolve(r1 union r3))
-    checkWellTyped(resolve(r1 union (r4 select 'a)))
+    checkWellTyped(resolve(r1 union (r4 project 'a)))
 
     intercept[TypeCheckException](resolve(r1 union r4))
   }

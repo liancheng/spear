@@ -6,13 +6,20 @@ import scraper.expressions.functions._
 
 package object dsl {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
-    def select(projectList: Seq[Expression]): Project =
-      Project(plan, projectList map {
+    def select(projectList: Seq[Expression]): UnresolvedProject =
+      UnresolvedProject(plan, projectList map {
         case UnresolvedAttribute("*", qualifier) => Star(qualifier)
         case e                                   => named(e)
       })
 
-    def select(first: Expression, rest: Expression*): Project = select(first +: rest)
+    def select(first: Expression, rest: Expression*): UnresolvedProject = select(first +: rest)
+
+    def project(projectList: Seq[Expression]): Project = Project(plan, projectList map {
+      case UnresolvedAttribute("*", qualifier) => Star(qualifier)
+      case e                                   => named(e)
+    })
+
+    def project(first: Expression, rest: Expression*): Project = project(first +: rest)
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
@@ -57,15 +64,15 @@ package object dsl {
     def groupBy(first: Expression, rest: Expression*): GroupedLogicalPlan =
       new GroupedLogicalPlan(plan, first +: rest)
 
-    def agg(projectList: Seq[Expression]): RichAggregate = this groupBy Nil agg projectList
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate = this groupBy Nil agg projectList
 
-    def agg(first: Expression, rest: Expression*): RichAggregate = agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
 
   class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
-    def agg(projectList: Seq[Expression]): RichAggregate =
-      RichAggregate(plan, keys, projectList map named)
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate =
+      UnresolvedAggregate(plan, keys, projectList map named)
 
-    def agg(first: Expression, rest: Expression*): RichAggregate = agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
 }
