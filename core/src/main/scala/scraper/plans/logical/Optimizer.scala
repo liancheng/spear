@@ -82,6 +82,9 @@ object Optimizer {
       case False && _         => False
       case _ && False         => False
 
+      case !(True)            => False
+      case !(False)           => True
+
       case a && b if a same b => a
       case a || b if a same b => a
 
