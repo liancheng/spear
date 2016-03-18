@@ -219,7 +219,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 }
 
 object BoundRef {
-  def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = {
+  def bind[A <: Expression](input: Seq[Attribute])(expression: A): A = {
     expression.transformUp {
       case ref: ResolvedAttribute =>
         val ordinal = input.indexWhere(_.expressionID == ref.expressionID)

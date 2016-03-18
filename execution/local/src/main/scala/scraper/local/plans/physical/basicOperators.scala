@@ -24,7 +24,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
 
   override lazy val output: Seq[Attribute] = expressions map (_.toAttribute)
 
-  private lazy val boundProjectList = expressions map (bind(_, child.output))
+  private lazy val boundProjectList = expressions map bind(child.output)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     Row.fromSeq(boundProjectList map (_ evaluate row))
@@ -34,7 +34,7 @@ case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpre
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  private lazy val boundCondition = bind(condition, child.output)
+  private lazy val boundCondition = bind(child.output)(condition)
 
   override def iterator: Iterator[Row] = child.iterator filter {
     boundCondition.evaluate(_).asInstanceOf[Boolean]
@@ -79,7 +79,7 @@ case class CartesianProduct(
   right: PhysicalPlan,
   condition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-  private lazy val boundCondition = condition map (bind(_, output)) getOrElse True
+  private lazy val boundCondition = condition map bind(output) getOrElse True
 
   def evaluateBoundCondition(input: Row): Boolean =
     boundCondition evaluate input match { case result: Boolean => result }

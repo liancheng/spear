@@ -2,13 +2,13 @@ package scraper.plans.logical
 
 import org.scalatest.BeforeAndAfterAll
 import scraper._
-import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
+import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions._
 import scraper.parser.Parser
-import scraper.plans.logical.AnalyzerSuite.{AlwaysResolved, NonSQL}
+import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, NullType}
 import scraper.utils.quote
@@ -81,9 +81,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     }
   }
 
-  test("resolved logical plan containing unresolved expression") {
-    intercept[AnalysisException] {
-      analyze(AlwaysResolved('a))
+  test("no generated output allowed") {
+    intercept[ResolutionFailureException] {
+      analyze(LocalRelation.empty('a.int.!.asGrouping.attr))
     }
   }
 
@@ -275,11 +275,5 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 object AnalyzerSuite {
   case object NonSQL extends NonSQLExpression with LeafExpression with UnevaluableExpression {
     override def dataType: DataType = NullType
-  }
-
-  case class AlwaysResolved(child: Expression) extends LeafLogicalPlan {
-    override def isResolved: Boolean = true
-
-    override def output: Seq[Attribute] = Nil
   }
 }

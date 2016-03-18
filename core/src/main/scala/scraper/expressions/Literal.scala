@@ -20,6 +20,7 @@ case class Literal(value: Any, override val dataType: PrimitiveType) extends Lea
     case (v: Long, LongType)       => s"CAST($v AS ${LongType.sql})"
     case (v: Float, FloatType)     => s"CAST($v AS ${FloatType.sql})"
     case (v: Double, DoubleType)   => s"CAST($v AS ${DoubleType.sql})"
+    case (v, _) if v == null       => "NULL"
     case (v, _)                    => v.toString
   })
 }

@@ -8,6 +8,7 @@ import scraper.config.Settings
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
 import scraper.expressions.Count
 import scraper.local.plans.physical
+import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.logical._
@@ -78,6 +79,9 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
 
       case child Project projectList =>
         (planLater(child) select projectList) :: Nil
+
+      case Aggregate(child, keys, functions) =>
+        HashAggregate(planLater(child), keys, functions) :: Nil
 
       case child Filter condition =>
         (planLater(child) filter condition) :: Nil

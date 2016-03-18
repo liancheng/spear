@@ -12,78 +12,52 @@ case class HashAggregate(
   keys: Seq[GroupingAlias],
   functions: Seq[AggregationAlias]
 ) extends UnaryPhysicalPlan {
-  type AccumulatorMap = Map[AggregateFunction, MutableRow]
+  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 
-  private val hashMap: mutable.HashMap[Row, (MutableRow, AccumulatorMap)] =
-    mutable.HashMap.empty[Row, (MutableRow, AccumulatorMap)]
+  private lazy val boundKeys = keys map (_.child) map bind(child.output)
 
-  private val groupingOutput: Seq[Attribute] = keys map (_.toAttribute)
+  private lazy val boundFunctions = functions map (_.child) map bind(child.output)
 
-  private val boundGroupingList: Seq[GroupingAlias] = keys map (bind(_, child.output))
+  private val bufferBuilder = new AggregationBufferBuilder(functions map (_.child))
 
-  private val boundAggregateList: Seq[NamedExpression] =
-    functions map (bind(_, groupingOutput ++ child.output))
-
-  override def output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
-
-  private def allocateAccumulators(
-    aggs: Seq[AggregateFunction]
-  ): (MutableRow, Map[AggregateFunction, MutableRow]) = {
-    val schemaLengths = aggs.map(_.bufferSchema.length)
-    val accumulator = new BasicMutableRow(schemaLengths.sum)
-    val begins = schemaLengths.inits.toSeq.reverse.init.map(_.sum)
-    val perAggAccumulators = begins.zip(schemaLengths).map {
-      case (begin, length) => new MutableRowSlice(accumulator, begin, length)
-    }
-    (accumulator, aggs.zip(perAggAccumulators).toMap)
-  }
+  private val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
 
   override def iterator: Iterator[Row] = {
-    hashMap.clear()
-
-    val boundAggFunctions = for {
-      named <- boundAggregateList
-      agg <- named collect { case f: AggregateFunction => f }
-    } yield agg
-
-    val aggOutput = boundAggFunctions.zipWithIndex.map {
-      case (f, i) =>
-        UnresolvedAttribute(s"agg$i") of f.dataType withNullability f.isNullable
-    }
-
-    val rewriteAgg = boundAggFunctions.zip(aggOutput).toMap
-
-    val rewrittenAggList = boundAggregateList.map(_.transformDown {
-      case f: AggregateFunction => rewriteAgg(f)
-    })
-
-    child.iterator foreach { row =>
-      val key = Row.fromSeq(boundGroupingList map (_ evaluate row))
-
-      val accumulators = hashMap.getOrElseUpdate(key, {
-        val (buffer, accumulators) = allocateAccumulators(boundAggFunctions)
-        accumulators.foreach { case (agg, acc) => agg.zero(acc) }
-        (buffer, accumulators)
+    child.iterator foreach { input =>
+      val keyRow = Row.fromSeq(boundKeys map (_ evaluate input))
+      val aggBuffer = hashMap.getOrElseUpdate(keyRow, {
+        val buffer = bufferBuilder.newBuffer()
+        (boundFunctions, buffer.slices).zipped foreach (_ zero _)
+        buffer
       })
 
-      accumulators._2.foreach {
-        case (agg, acc) =>
-          agg.accumulate(acc, row)
-      }
+      (boundFunctions, aggBuffer.slices).zipped foreach (_.accumulate(_, input))
     }
 
-    val resultRow = new BasicMutableRow(functions.length)
-    val boundRewrittenAggList = rewrittenAggList.map(bind(_, groupingOutput ++ aggOutput))
-
-    hashMap.iterator.map {
-      case (keyRow, (buffer, _)) =>
-        val joinedRow = new JoinedRow(keyRow, buffer)
-        boundRewrittenAggList.zipWithIndex.foreach {
-          case (a, i) =>
-            resultRow(i) = a.evaluate(joinedRow)
-        }
-
-        new JoinedRow(keyRow, resultRow)
+    hashMap.iterator map {
+      case (keyRow, valueBuffer) =>
+        (boundFunctions, valueBuffer.slices).zipped foreach (_ result _)
+        new JoinedRow(keyRow, valueBuffer.buffer)
     }
+  }
+}
+
+case class AggregationBuffer(buffer: MutableRow, slices: Seq[MutableRow])
+
+class AggregationBufferBuilder(functions: Seq[AggregateFunction]) {
+  val (bufferLength, slicesBuilder) = {
+    val lengths = functions map (_.bufferSchema.length)
+    val begins = lengths.inits.toSeq.tail reverseMap (_.sum)
+    val bufferLength = lengths.sum
+
+    def slicesBuilder(row: MutableRow) =
+      (begins, lengths).zipped map (new MutableRowSlice(row, _, _))
+
+    (bufferLength, slicesBuilder _)
+  }
+
+  def newBuffer(): AggregationBuffer = {
+    val mutableRow = new BasicMutableRow(bufferLength)
+    AggregationBuffer(mutableRow, slicesBuilder(mutableRow))
   }
 }
