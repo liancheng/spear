@@ -360,6 +360,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object PostAnalysisCheck extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = {
       ensureResolved(tree)
+      ensureNoGeneratedOutputAttributes(tree)
       tree
     }
 
@@ -370,6 +371,22 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
            |${tree.prettyTree}
            |""".stripMargin
       )
+    }
+
+    private def ensureNoGeneratedOutputAttributes(tree: LogicalPlan): Unit = {
+      val generated = tree.output.collect { case e: GeneratedNamedExpression => e }
+
+      if (generated.nonEmpty) {
+        val generatedList = generated mkString ("[", ", ", "]")
+        throw new ResolutionFailureException(
+          s"""Found generated output attributes $generatedList in logical plan:
+             |
+             |${tree.prettyTree}
+             |
+             |Generated named expressions are reserved for internal use during analysis phase.
+             |""".stripMargin
+        )
+      }
     }
   }
 
