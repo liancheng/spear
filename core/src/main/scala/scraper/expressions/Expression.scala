@@ -248,10 +248,9 @@ trait UnevaluableExpression extends Expression {
 trait UnresolvedExpression extends Expression with UnevaluableExpression with NonSQLExpression {
   override def dataType: DataType = throw new ExpressionUnresolvedException(this)
 
-  override def isNullable: Boolean = throw new ExpressionUnevaluableException(this)
+  override def isNullable: Boolean = throw new ExpressionUnresolvedException(this)
 
-  override def strictlyTyped: Try[Expression] =
-    Failure(new ExpressionUnevaluableException(this))
+  override def strictlyTyped: Try[Expression] = Failure(new ExpressionUnresolvedException(this))
 
   override def isResolved: Boolean = false
 

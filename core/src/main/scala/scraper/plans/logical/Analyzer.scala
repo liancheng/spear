@@ -34,9 +34,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       TypeCheck
     ))
 
+  private val postAnalysisCheck =
+    RuleBatch("Post-analysis check", Once, Seq(
+      PostAnalysisCheck
+    ))
+
   override def batches: Seq[RuleBatch] = Seq(
     resolutionBatch,
-    typeCheckBatch
+    typeCheckBatch,
+    postAnalysisCheck
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
@@ -348,6 +354,22 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   object TypeCheck extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Resolved(plan) => plan.strictlyTyped.get
+    }
+  }
+
+  object PostAnalysisCheck extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = {
+      ensureResolved(tree)
+      tree
+    }
+
+    private def ensureResolved(tree: LogicalPlan): Unit = if (!tree.isResolved) {
+      throw new ResolutionFailureException(
+        s"""Logical plan not fully resolved:
+           |
+           |${tree.prettyTree}
+           |""".stripMargin
+      )
     }
   }
 

@@ -2,13 +2,13 @@ package scraper.plans.logical
 
 import org.scalatest.BeforeAndAfterAll
 import scraper._
-import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
+import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.{Expression, LeafExpression, NonSQLExpression, UnevaluableExpression}
+import scraper.expressions._
 import scraper.parser.Parser
-import scraper.plans.logical.AnalyzerSuite.NonSQL
+import scraper.plans.logical.AnalyzerSuite.{AlwaysResolved, NonSQL}
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, NullType}
 import scraper.utils.quote
@@ -69,8 +69,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  // TODO Re-enable this after adding post-analysis check batch
-  ignore("non-existed reference") {
+  test("non-existed reference") {
     intercept[ResolutionFailureException] {
       analyze(relation select 'bad)
     }
@@ -79,6 +78,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("ambiguous reference") {
     intercept[ResolutionFailureException] {
       analyze(LocalRelation.empty(a, a withID newExpressionID()) select 'a)
+    }
+  }
+
+  test("resolved logical plan containing unresolved expression") {
+    intercept[AnalysisException] {
+      analyze(AlwaysResolved('a))
     }
   }
 
@@ -270,5 +275,11 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 object AnalyzerSuite {
   case object NonSQL extends NonSQLExpression with LeafExpression with UnevaluableExpression {
     override def dataType: DataType = NullType
+  }
+
+  case class AlwaysResolved(child: Expression) extends LeafLogicalPlan {
+    override def isResolved: Boolean = true
+
+    override def output: Seq[Attribute] = Nil
   }
 }
