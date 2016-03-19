@@ -146,7 +146,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     val argsString = argStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
     val arrow = "\u21d2"
-    s"$nodeName: $argsString $arrow $outputString"
+    Seq(s"$nodeName:", argsString, arrow, outputString) filter (_.nonEmpty) mkString " "
   }
 
   override protected def buildVirtualTreeNodes(
