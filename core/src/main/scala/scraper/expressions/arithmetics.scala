@@ -102,6 +102,40 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
   override def operator: String = "/"
 }
 
+case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
+  override lazy val strictlyTyped: Try[Expression] = {
+    val checkBranch: Expression => Try[Expression] = {
+      case IntegralType(e)            => Success(e)
+      case IntegralType.Implicitly(e) => Success(promoteDataType(e, IntegralType.defaultType))
+      case e =>
+        Failure(new TypeMismatchException(e, classOf[IntegralType]))
+    }
+
+    for {
+      lhs <- left.strictlyTyped flatMap checkBranch
+      rhs <- right.strictlyTyped flatMap checkBranch
+
+      t <- (lhs.dataType, rhs.dataType) match {
+        case (t1: IntegralType, t2) => t1 widest t2
+        case (t1, t2: IntegralType) => t1 widest t2
+        case (t1, t2)               => Success(IntegralType.defaultType)
+      }
+
+      newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
+    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+  }
+
+  override protected def strictDataType: DataType = left.dataType
+
+  private lazy val integral = whenStrictlyTyped(dataType match {
+    case t: IntegralType => t.genericIntegral
+  })
+
+  override def operator: String = "%"
+
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = integral.rem(lhs, rhs)
+}
+
 case class IsNaN(child: Expression) extends UnaryExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
     strictChild <- child.strictlyTyped map {

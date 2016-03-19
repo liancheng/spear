@@ -19,6 +19,10 @@ trait ArithmeticExpressionDSL { this: Expression =>
 
   def div(that: Expression): Divide = this / that
 
+  def %(that: Expression): Remainder = Remainder(this, that)
+
+  def rem(that: Expression): Remainder = this % that
+
   def unary_- : Negate = Negate(this)
 
   def neg: Negate = -this
