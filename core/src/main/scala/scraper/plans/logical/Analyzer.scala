@@ -12,7 +12,7 @@ import scraper.trees.{Rule, RulesExecutor}
 import scraper.types.StringType
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  private val resolutionBatch =
+  override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       ResolveRelations,
       ExpandStars,
@@ -27,22 +27,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       MergeHavingConditions,
       MergeSortsOverAggregates,
       ResolveAggregates
-    ))
+    )),
 
-  private val typeCheckBatch =
     RuleBatch("Type check", Once, Seq(
       TypeCheck
-    ))
+    )),
 
-  private val postAnalysisCheck =
     RuleBatch("Post-analysis check", Once, Seq(
       PostAnalysisCheck
     ))
-
-  override def batches: Seq[RuleBatch] = Seq(
-    resolutionBatch,
-    typeCheckBatch,
-    postAnalysisCheck
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
@@ -276,9 +269,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object MergeSortsOverAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (agg: UnresolvedAggregate) Sort ordering =>
+      case (agg: UnresolvedAggregate) Sort order =>
         // Only preserves the last sort order
-        agg.copy(ordering = ordering)
+        agg.copy(order = order)
     }
   }
 
@@ -301,13 +294,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
 
-      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, ordering) =>
+      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, order) =>
         // Aliases all grouping keys
         val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
-        val aggs = collectAggregation(projectList ++ condition ++ ordering)
+        val aggs = collectAggregation(projectList ++ condition ++ order)
         val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
@@ -318,7 +311,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         // Replaces grouping keys and aggregate functions in having condition, sort ordering
         // expressions, and projected named expressions.
         val newCondition = condition map rewrite
-        val newOrdering = ordering map (order => order.copy(child = rewrite(order.child)))
+        val newOrdering = order map (order => order.copy(child = rewrite(order.child)))
         val newProjectList = projectList map (e => rewrite(e) -> e) map {
           // `GeneratedAttribute`s should be hidden
           case (g: GeneratedAttribute, e) => g as e.name

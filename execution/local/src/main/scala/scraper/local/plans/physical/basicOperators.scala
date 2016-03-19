@@ -14,6 +14,8 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
   // Overrides this to avoid showing individual local data entry
   override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
 
+  // The only expression nodes of `LocalRelation` are output attributes, which are not interesting
+  // to be shown in the query plan tree
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = ()

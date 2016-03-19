@@ -93,6 +93,8 @@ case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
 
   override def newInstance(): LogicalPlan = copy(output = output map (_ withID newExpressionID()))
 
+  // The only expression nodes of `LocalRelation` are output attributes, which are not interesting
+  // to be shown in the query plan tree
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = ()
@@ -274,7 +276,7 @@ case class UnresolvedAggregate(
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
   havingCondition: Option[Expression] = None,
-  ordering: Seq[SortOrder] = Nil
+  order: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
 case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Seq[AggregationAlias])
@@ -283,6 +285,6 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
   override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 }
 
-case class Sort(child: LogicalPlan, ordering: Seq[SortOrder]) extends UnaryLogicalPlan {
+case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }

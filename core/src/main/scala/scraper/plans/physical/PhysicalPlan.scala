@@ -53,6 +53,8 @@ case class NotImplemented(
     Some(logicalPlanName), None, None
   )
 
+  // The only expression nodes of `NotImplemented` are output attributes, which are not interesting
+  // to be shown in the query plan tree
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = ()

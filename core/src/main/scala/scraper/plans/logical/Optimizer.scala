@@ -206,21 +206,8 @@ object Optimizer {
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (join @ Join(left, right, Inner, joinCondition)) Filter filterCondition =>
-        // Finds predicates that only reference attribute(s) of the left branch.  The filter
-        // condition predicate is turned into CNF first so that we can push as many predicates as
-        // possible.
-        val (leftPredicates, rest) = splitConjunction(toCNF(filterCondition)) partition {
-          _.references subsetOfByID left.outputSet
-        }
-
-        // Finds predicates that only reference attribute(s) of the right branch and predicates
-        // that reference attributes of both branches.
-        val (rightPredicates, commonPredicates) = rest partition {
-          _.references subsetOfByID right.outputSet
-        }
-
-        def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
-          predicates reduceOption And map plan.filter getOrElse plan
+        val (leftPredicates, rightPredicates, commonPredicates) =
+          partitionPredicatesByReferencedBranches(filterCondition, left, right)
 
         join.copy(
           left = applyPredicates(leftPredicates, left),
@@ -284,4 +271,23 @@ object Optimizer {
       case ref: AttributeRef => ref.copy(qualifier = None)
     }
   }
+
+  private def partitionPredicatesByReferencedBranches(
+    predicate: Expression,
+    left: LogicalPlan,
+    right: LogicalPlan
+  ): (Seq[Expression], Seq[Expression], Seq[Expression]) = {
+    val (leftPredicates, rest) = splitConjunction(toCNF(predicate)) partition {
+      _.references subsetOfByID left.outputSet
+    }
+
+    val (rightPredicates, commonPredicates) = rest partition {
+      _.references subsetOfByID right.outputSet
+    }
+
+    (leftPredicates, rightPredicates, commonPredicates)
+  }
+
+  private def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
+    predicates reduceOption And map plan.filter getOrElse plan
 }
