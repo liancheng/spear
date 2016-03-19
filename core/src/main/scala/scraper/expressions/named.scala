@@ -2,16 +2,15 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.language.higherKinds
-import scala.util.{Success, Try}
-import scalaz._
-
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.types._
 import scraper.utils._
+
+import scala.language.higherKinds
+import scala.util.{Success, Try}
 
 case class ExpressionID(id: Long)
 
@@ -64,8 +63,7 @@ case class Star(qualifier: Option[String]) extends LeafExpression with Unresolve
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    implicitly[Applicative[T]] point ((qualifier map quote).toSeq :+ "*" mkString ".")
+  override protected def template: String = (qualifier map quote).toSeq :+ "*" mkString "."
 }
 
 case class Alias(
@@ -85,7 +83,7 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"${child.debugString} AS ${quote(name)}#${expressionID.id}"
+  override def debugString: String = s"(${child.debugString} AS ${quote(name)})#${expressionID.id}"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
@@ -140,10 +138,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
   extends Attribute with UnresolvedNamedExpression {
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    implicitly[Applicative[T]].point {
-      (qualifier.toSeq :+ name) map quote mkString "."
-    }
+  override protected def template: String = (qualifier.toSeq :+ name) map quote mkString "."
 
   override def withID(id: ExpressionID): Attribute = this
 

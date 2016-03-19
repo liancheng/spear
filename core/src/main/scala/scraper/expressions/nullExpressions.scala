@@ -1,13 +1,11 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.Try
-import scalaz.Applicative
-import scalaz.Scalaz._
-
 import scraper.Row
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types.{BooleanType, DataType}
+
+import scala.language.higherKinds
+import scala.util.Try
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
@@ -32,8 +30,7 @@ case class IsNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map ("(" + _ + "IS NULL)")
+  override protected def template(childString: String): String = s"($childString IS NULL)"
 }
 
 case class IsNotNull(child: Expression) extends UnaryExpression {
@@ -41,6 +38,5 @@ case class IsNotNull(child: Expression) extends UnaryExpression {
 
   override def dataType: DataType = BooleanType
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map ("(" + _ + "IS NOT NULL)")
+  override protected def template(childString: String): String = s"($childString IS NOT NULL)"
 }

@@ -1,18 +1,16 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.{Success, Try}
-import scalaz.Scalaz._
-import scalaz._
-
 import scraper.exceptions.{ImplicitCastException, TypeCastException}
 import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types
 import scraper.types._
 
+import scala.language.higherKinds
+import scala.util.{Success, Try}
+
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    f(child) map (childString => s"CAST($childString AS ${dataType.sql})")
+  override protected def template(childString: String): String =
+    s"CAST($childString AS ${dataType.sql})"
 
   private def fromType = child.dataType
 

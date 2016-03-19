@@ -1,14 +1,13 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.{Failure, Success, Try}
-import scalaz.Applicative
-
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType, OrderedType}
 import scraper.utils._
+
+import scala.language.higherKinds
+import scala.util.{Failure, Success, Try}
 
 trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
@@ -128,12 +127,8 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
     }
   }
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] = {
-    import scalaz.Scalaz._
-
-    sequence(children map f) map {
-      case Seq(testStr, listStr @ _*) =>
-        s"($testStr IN (${listStr mkString ", "}))"
-    }
+  override protected def template(childList: Seq[String]): String = {
+    val Seq(testString, listString @ _*) = childList
+    s"($testString IN (${listString mkString ", "}))"
   }
 }

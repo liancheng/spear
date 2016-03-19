@@ -1,14 +1,12 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.{Failure, Success, Try}
-import scalaz.Scalaz._
-import scalaz._
-
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType}
+
+import scala.language.higherKinds
+import scala.util.{Failure, Success, Try}
 
 trait BinaryLogicalPredicate extends BinaryOperator {
   override def dataType: DataType = BooleanType
@@ -58,8 +56,7 @@ case class Not(child: Expression) extends UnaryOperator {
 
   override def operator: String = "NOT"
 
-  override protected def template[T[_]: Applicative](f: (Expression) => T[String]): T[String] =
-    f(child) map ("(" + operator + " " + _ + ")")
+  override protected def template(childString: String): String = s"($operator $childString)"
 }
 
 case class If(condition: Expression, yes: Expression, no: Expression) extends Expression {

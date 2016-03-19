@@ -37,7 +37,8 @@ object GeneratedNamedExpression {
 }
 
 trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
-  override def debugString: String = s"${child.debugString} AS g:${quote(name)}#${expressionID.id}"
+  override def debugString: String =
+    s"(${child.debugString} AS g:${quote(name)})#${expressionID.id}"
 
   override def dataType: DataType = child.dataType
 

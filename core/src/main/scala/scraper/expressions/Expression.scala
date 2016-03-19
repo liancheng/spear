@@ -1,16 +1,16 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.{Failure, Try}
-import scalaz.Scalaz._
-import scalaz._
-
 import scraper.Row
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
 import scraper.utils._
+
+import scala.language.higherKinds
+import scala.util.{Failure, Try}
+import scalaz.Scalaz._
+import scalaz._
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def isFoldable: Boolean = children forall (_.isFoldable)
@@ -126,8 +126,11 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   override def nodeCaption: String = getClass.getSimpleName
 
-  protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    sequence(children map f) map (_ mkString (s"${nodeName.toUpperCase}(", ", ", ")"))
+  private def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
+    sequence(children map f) map template
+
+  protected def template(childList: Seq[String]): String =
+    childList mkString (s"${nodeName.toUpperCase}(", ", ", ")")
 
   def debugString: String = template(_.debugString.some).get
 
@@ -176,6 +179,10 @@ trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 
   override def nodeCaption: String = debugString
+
+  override protected def template(childList: Seq[String]): String = template
+
+  protected def template: String = super.template(Nil)
 }
 
 trait UnaryExpression extends Expression {
@@ -191,6 +198,10 @@ trait UnaryExpression extends Expression {
   override def evaluate(input: Row): Any = {
     Option(child.evaluate(input)).map(nullSafeEvaluate).orNull
   }
+
+  override protected def template(childList: Seq[String]): String = template(childList.head)
+
+  protected def template(childString: String): String = super.template(childString :: Nil)
 }
 
 trait BinaryExpression extends Expression {
@@ -224,8 +235,8 @@ trait Operator { this: Expression =>
 }
 
 trait BinaryOperator extends BinaryExpression with Operator {
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    (f(left) |@| f(right)) { "(" + _ + s" $operator " + _ + ")" }
+  override protected def template(childrenList: Seq[String]): String =
+    childrenList mkString ("(", s" $operator ", ")")
 }
 
 object BinaryOperator {
@@ -235,8 +246,7 @@ object BinaryOperator {
 trait UnaryOperator extends UnaryExpression with Operator {
   override def isNullable: Boolean = child.isNullable
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] =
-    f(child) map ("(" + operator + _ + ")")
+  override protected def template(childString: String): String = s"($operator$childString)"
 }
 
 trait UnevaluableExpression extends Expression {

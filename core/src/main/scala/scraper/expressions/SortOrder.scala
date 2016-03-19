@@ -1,12 +1,10 @@
 package scraper.expressions
 
-import scala.language.higherKinds
-import scala.util.Try
-import scalaz.Scalaz._
-import scalaz._
-
 import scraper.exceptions.TypeMismatchException
 import scraper.types.{DataType, OrderedType}
+
+import scala.language.higherKinds
+import scala.util.Try
 
 abstract sealed class SortDirection
 
@@ -46,13 +44,13 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
 
   def isNullsFirst: Boolean = isAscending ^ nullsLarger
 
-  override protected def template[T[_]: Applicative](f: Expression => T[String]): T[String] = {
+  override protected def template(childString: String): String = {
     val nullsFirstOrLast = (direction, nullsLarger) match {
       case (Ascending, false) => "FIRST"
       case (Descending, true) => "FIRST"
       case _                  => "LAST"
     }
 
-    f(child) map (_ + s" $direction NULLS $nullsFirstOrLast")
+    s"$childString $direction NULLS $nullsFirstOrLast"
   }
 }
