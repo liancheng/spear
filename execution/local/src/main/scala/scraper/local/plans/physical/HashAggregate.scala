@@ -18,46 +18,57 @@ case class HashAggregate(
 
   private lazy val boundFunctions = functions map (_.child) map bind(child.output)
 
-  private val bufferBuilder = new AggregationBufferBuilder(functions map (_.child))
+  private val bufferBuilder = new AggregationBufferBuilder(boundFunctions)
 
   private val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
 
   override def iterator: Iterator[Row] = {
     child.iterator foreach { input =>
-      val keyRow = Row.fromSeq(boundKeys map (_ evaluate input))
-      val aggBuffer = hashMap.getOrElseUpdate(keyRow, {
-        val buffer = bufferBuilder.newBuffer()
-        (boundFunctions, buffer.slices).zipped foreach (_ zero _)
-        buffer
-      })
-
-      (boundFunctions, aggBuffer.slices).zipped foreach (_.accumulate(_, input))
+      val groupingRow = Row.fromSeq(boundKeys map (_ evaluate input))
+      val aggBuffer = hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer())
+      aggBuffer += input
     }
 
+    val mutableResult = new BasicMutableRow(functions.length)
+    val joinedRow = new JoinedRow()
+
     hashMap.iterator map {
-      case (keyRow, valueBuffer) =>
-        (boundFunctions, valueBuffer.slices).zipped foreach (_ result _)
-        new JoinedRow(keyRow, valueBuffer.buffer)
+      case (groupingRow, aggBuffer) =>
+        aggBuffer result mutableResult
+        joinedRow replaceLeft groupingRow replaceRight mutableResult
     }
   }
 }
 
-case class AggregationBuffer(buffer: MutableRow, slices: Seq[MutableRow])
+case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq[MutableRow]) {
+  (boundFunctions, slices).zipped foreach (_ zero _)
 
-class AggregationBufferBuilder(functions: Seq[AggregateFunction]) {
-  val (bufferLength, slicesBuilder) = {
-    val lengths = functions map (_.bufferSchema.length)
+  def +=(row: Row): Unit = (boundFunctions, slices).zipped foreach (_.accumulate(_, row))
+
+  def ++=(other: AggregationBuffer): Unit =
+    (boundFunctions, slices, other.slices).zipped foreach (_.merge(_, _))
+
+  def result(mutableResult: MutableRow): Unit =
+    mutableResult.indices foreach { i =>
+      mutableResult(i) = boundFunctions(i) result slices(i)
+    }
+}
+
+class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
+  private val (bufferLength, slicesBuilder) = {
+    val lengths = boundFunctions map (_.bufferSchema.length)
     val begins = lengths.inits.toSeq.tail reverseMap (_.sum)
     val bufferLength = lengths.sum
 
-    def slicesBuilder(row: MutableRow) =
-      (begins, lengths).zipped map (new MutableRowSlice(row, _, _))
+    def slicesBuilder(row: MutableRow) = (begins, lengths).zipped.map {
+      new MutableRowSlice(row, _, _)
+    }
 
     (bufferLength, slicesBuilder _)
   }
 
   def newBuffer(): AggregationBuffer = {
     val mutableRow = new BasicMutableRow(bufferLength)
-    AggregationBuffer(mutableRow, slicesBuilder(mutableRow))
+    AggregationBuffer(boundFunctions, slicesBuilder(mutableRow))
   }
 }

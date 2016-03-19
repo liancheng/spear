@@ -55,6 +55,6 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testParser(
     "SELECT t.a FROM (SELECT * FROM t0) t",
-    t0 select '* subquery 't select $"t.a"
+    t0 select '* as 't select $"t.a"
   )
 }

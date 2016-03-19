@@ -26,19 +26,15 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
 
   override def bufferSchema: StructType = StructType('count -> LongType.!)
 
-  override def zero(row: MutableRow): Unit = row(0) = 0L
+  override def zero(buffer: MutableRow): Unit = buffer.setLong(0, 0L)
 
-  override def accumulate(buffer: MutableRow, row: Row): Unit = {
-    if (child.evaluate(row) != null) {
-      val current = buffer.head.asInstanceOf[Long]
-      buffer(0) = current + 1L
-    }
+  override def accumulate(buffer: MutableRow, row: Row): Unit = if (child.evaluate(row) != null) {
+    val current = buffer.getLong(0)
+    buffer.setLong(0, current + 1L)
   }
 
-  override def merge(into: MutableRow, from: Row): Unit = {
-    val current = into.head.asInstanceOf[Long]
-    into(0) = current + from.head.asInstanceOf[Long]
-  }
+  override def merge(into: MutableRow, from: Row): Unit =
+    into.setLong(0, into.getLong(0) + from.getLong(0))
 
-  override def result(buffer: Row): Any = buffer.head
+  override def result(buffer: Row): Any = buffer.getLong(0)
 }
