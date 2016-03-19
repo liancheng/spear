@@ -29,13 +29,13 @@ case class HashAggregate(
       aggBuffer += input
     }
 
-    val mutableResult = new BasicMutableRow(functions.length)
+    val aggResult = new BasicMutableRow(functions.length)
     val joinedRow = new JoinedRow()
 
     hashMap.iterator map {
       case (groupingRow, aggBuffer) =>
-        aggBuffer result mutableResult
-        joinedRow replaceLeft groupingRow replaceRight mutableResult
+        aggBuffer result aggResult
+        joinedRow replaceLeft groupingRow replaceRight aggResult
     }
   }
 }

@@ -6,6 +6,8 @@ import scraper.expressions.Literal.True
 import scraper.expressions._
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 
+import scala.collection.mutable.ArrayBuffer
+
 case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
   extends LeafPhysicalPlan {
 
@@ -98,9 +100,19 @@ case class CartesianProduct(
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
-  override def output: Seq[Attribute] = child.output
+  override lazy val output: Seq[Attribute] = child.output
 
   private lazy val rowOrdering = new RowOrdering(order, child.output)
 
-  override def iterator: Iterator[Row] = child.iterator.toArray.sorted(rowOrdering).toIterator
+  override def iterator: Iterator[Row] = {
+    val buffer = ArrayBuffer.empty[Row]
+
+    child.iterator.foreach { row =>
+      val copy = Array.fill[Any](output.length)(null)
+      row.copyToArray(copy)
+      buffer += Row.fromSeq(copy)
+    }
+
+    buffer.sorted(rowOrdering).iterator
+  }
 }
