@@ -3,7 +3,7 @@ package scraper.trees
 import scala.annotation.tailrec
 
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
-import scraper.utils.{Logging, sideBySide}
+import scraper.utils.{sideBySide, Logging}
 
 trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging
 

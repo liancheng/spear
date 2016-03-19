@@ -3,8 +3,8 @@ package scraper.config
 import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
 import scala.util.{Success, Try}
+import scala.util.control.NonFatal
 
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 

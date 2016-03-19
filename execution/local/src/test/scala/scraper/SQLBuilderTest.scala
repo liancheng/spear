@@ -3,6 +3,7 @@ package scraper
 import scala.util.control.NonFatal
 
 import org.scalatest.BeforeAndAfterAll
+
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
 import scraper.local.LocalContext

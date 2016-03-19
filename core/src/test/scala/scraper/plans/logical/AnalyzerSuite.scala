@@ -1,10 +1,11 @@
 package scraper.plans.logical
 
 import org.scalatest.BeforeAndAfterAll
+
 import scraper._
 import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions._
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.parser.Parser

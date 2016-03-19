@@ -4,8 +4,8 @@ import java.io.PrintStream
 
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
-import scraper.expressions.AutoAlias.named
 import scraper.expressions._
+import scraper.expressions.AutoAlias.named
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.QueryExecution

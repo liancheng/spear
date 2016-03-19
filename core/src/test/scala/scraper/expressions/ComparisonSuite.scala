@@ -2,9 +2,9 @@ package scraper.expressions
 
 import org.scalatest.prop.Checkers
 
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions.dsl._
 import scraper.types.{BooleanType, IntType}
-import scraper.{LoggingFunSuite, TestUtils}
 
 class ComparisonSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("a = b") {

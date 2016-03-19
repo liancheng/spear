@@ -1,13 +1,13 @@
 package scraper.expressions
 
+import scala.util.{Failure, Try}
+
 import scraper.Row
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
 import scraper.types.DataType
 import scraper.utils._
-
-import scala.util.{Failure, Try}
 
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def isFoldable: Boolean = children forall (_.isFoldable)
@@ -123,6 +123,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   override def nodeCaption: String = getClass.getSimpleName
 
+  /**
+   * A template method for building `debugString` and `sql`.
+   */
   protected def template(childList: Seq[String]): String =
     childList mkString (s"${nodeName.toUpperCase}(", ", ", ")")
 

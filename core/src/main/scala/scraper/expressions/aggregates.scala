@@ -1,7 +1,7 @@
 package scraper.expressions
 
-import scraper.types._
 import scraper.{MutableRow, Row}
+import scraper.types._
 
 trait AggregateFunction extends Expression {
   override def isFoldable: Boolean = false

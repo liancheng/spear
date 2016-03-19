@@ -3,8 +3,8 @@ package scraper.generators.plans
 import org.scalacheck.Gen
 
 import scraper.config.Settings
-import scraper.generators.Keys._
 import scraper.generators._
+import scraper.generators.Keys._
 import scraper.generators.expressions._
 import scraper.plans.logical._
 import scraper.plans.logical.dsl._

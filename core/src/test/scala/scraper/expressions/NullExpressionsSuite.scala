@@ -1,8 +1,8 @@
 package scraper.expressions
 
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions.dsl._
 import scraper.types.{IntType, LongType}
-import scraper.{LoggingFunSuite, TestUtils}
 
 class NullExpressionsSuite extends LoggingFunSuite with TestUtils {
   test("if - type check") {

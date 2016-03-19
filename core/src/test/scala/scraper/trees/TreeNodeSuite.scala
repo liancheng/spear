@@ -5,12 +5,12 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.Stream.Empty
 import scala.language.implicitConversions
 
-import org.scalacheck.Prop.{BooleanOperators, all}
 import org.scalacheck._
+import org.scalacheck.Prop.{all, BooleanOperators}
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
-import scraper.{TestUtils, LoggingFunSuite}
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.generators.genRandomPartitions
 import scraper.trees.TreeNodeSuite.Node
 

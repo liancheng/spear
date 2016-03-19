@@ -1,8 +1,8 @@
 package scraper.expressions
 
 import scraper.expressions.dsl._
-import scraper.trees.RulesExecutor.FixedPoint
 import scraper.trees.{Rule, RulesExecutor}
+import scraper.trees.RulesExecutor.FixedPoint
 
 object Predicate {
   private[scraper] def splitConjunction(predicate: Expression): Seq[Expression] = predicate match {

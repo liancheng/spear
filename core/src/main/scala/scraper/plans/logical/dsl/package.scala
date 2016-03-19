@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
-import scraper.expressions.AutoAlias.named
 import scraper.expressions._
+import scraper.expressions.AutoAlias.named
 import scraper.expressions.functions._
 
 package object dsl {

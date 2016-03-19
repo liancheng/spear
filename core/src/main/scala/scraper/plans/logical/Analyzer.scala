@@ -2,13 +2,13 @@ package scraper.plans.logical
 
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
-import scraper.expressions.AutoAlias.AnonymousColumnName
-import scraper.expressions.NamedExpression.{UnquotedName, newExpressionID}
 import scraper.expressions._
+import scraper.expressions.AutoAlias.AnonymousColumnName
+import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns._
-import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.trees.{Rule, RulesExecutor}
+import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.types.StringType
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {

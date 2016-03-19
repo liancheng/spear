@@ -6,8 +6,8 @@ import scala.language.existentials
 import scraper.config.Settings
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
 import scraper.expressions.{Count, Expression}
-import scraper.plans.logical.dsl._
 import scraper.plans.logical.{LogicalPlan, SingleRowRelation}
+import scraper.plans.logical.dsl._
 import scraper.plans.physical.PhysicalPlan
 
 case class FunctionInfo(

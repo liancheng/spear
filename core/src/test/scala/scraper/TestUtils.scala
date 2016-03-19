@@ -1,6 +1,7 @@
 package scraper
 
 import org.scalatest.FunSuite
+
 import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.LogicalPlan

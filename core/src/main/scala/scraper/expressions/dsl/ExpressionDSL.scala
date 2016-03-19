@@ -2,8 +2,8 @@ package scraper.expressions.dsl
 
 import scala.language.implicitConversions
 
-import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions._
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types.DataType
 
 trait ExpressionDSL

@@ -1,12 +1,12 @@
 package scraper.expressions
 
+import scala.language.higherKinds
+import scala.util.{Failure, Success, Try}
+
 import scraper.Row
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.promoteDataType
 import scraper.types.{BooleanType, DataType}
-
-import scala.language.higherKinds
-import scala.util.{Failure, Success, Try}
 
 trait BinaryLogicalPredicate extends BinaryOperator {
   override def dataType: DataType = BooleanType

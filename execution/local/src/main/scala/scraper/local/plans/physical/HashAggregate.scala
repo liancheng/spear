@@ -3,8 +3,8 @@ package scraper.local.plans.physical
 import scala.collection.mutable
 
 import scraper._
-import scraper.expressions.BoundRef.bind
 import scraper.expressions._
+import scraper.expressions.BoundRef.bind
 import scraper.plans.physical.{PhysicalPlan, UnaryPhysicalPlan}
 
 case class HashAggregate(

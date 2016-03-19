@@ -3,9 +3,9 @@ package scraper.generators
 import scala.collection.immutable.Stream.Empty
 import scala.util.{Failure, Success}
 
+import org.scalacheck.{Gen, Shrink}
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Shrink.shrink
-import org.scalacheck.{Gen, Shrink}
 
 import scraper.config.Settings
 import scraper.config.Settings.Key

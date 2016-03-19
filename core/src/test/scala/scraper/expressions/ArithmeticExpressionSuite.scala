@@ -4,12 +4,12 @@ import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.generators.types._
 import scraper.generators.values._
 import scraper.types._
-import scraper.{LoggingFunSuite, TestUtils}
 
 class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Checkers {
   private val genNumericLiteral: Gen[Literal] = for {

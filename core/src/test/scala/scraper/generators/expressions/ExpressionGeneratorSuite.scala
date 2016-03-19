@@ -3,7 +3,7 @@ package scraper.generators.expressions
 import org.scalacheck.Arbitrary
 import org.scalatest.prop.Checkers
 
-import scraper.{TestUtils, LoggingFunSuite}
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.Test._
 import scraper.expressions.Expression
 

@@ -1,18 +1,18 @@
 package scraper.local
 
+import scala.collection.Iterable
+import scala.reflect.runtime.universe.WeakTypeTag
+
 import scraper._
 import scraper.config.Settings
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
+import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
-import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.types.{LongType, StructType}
-
-import scala.collection.Iterable
-import scala.reflect.runtime.universe.WeakTypeTag
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution

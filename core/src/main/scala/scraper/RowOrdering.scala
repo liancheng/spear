@@ -1,7 +1,7 @@
 package scraper
 
-import scraper.expressions.BoundRef.bind
 import scraper.expressions._
+import scraper.expressions.BoundRef.bind
 import scraper.types.{DataType, OrderedType}
 
 class NullSafeOrdering(dataType: DataType, nullsLarger: Boolean) extends Ordering[Any] {

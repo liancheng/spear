@@ -1,9 +1,9 @@
 package scraper.parser
 
-import scraper.expressions.dsl._
-import scraper.plans.logical.dsl._
-import scraper.plans.logical.{LogicalPlan, SingleRowRelation, UnresolvedRelation}
 import scraper.{LoggingFunSuite, Test, TestUtils}
+import scraper.expressions.dsl._
+import scraper.plans.logical.{LogicalPlan, SingleRowRelation, UnresolvedRelation}
+import scraper.plans.logical.dsl._
 
 class ParserSuite extends LoggingFunSuite with TestUtils {
   private def testParser(sql: String, expectedPlan: LogicalPlan): Unit = {

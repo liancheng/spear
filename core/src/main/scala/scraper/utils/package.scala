@@ -1,8 +1,8 @@
 package scraper
 
-import com.typesafe.config.{Config, ConfigFactory}
-
 import scala.util.Try
+
+import com.typesafe.config.{Config, ConfigFactory}
 
 package object utils {
   def sideBySide(lhs: String, rhs: String, withHeader: Boolean): String = {

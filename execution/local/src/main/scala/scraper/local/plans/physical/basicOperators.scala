@@ -1,12 +1,12 @@
 package scraper.local.plans.physical
 
+import scala.collection.mutable.ArrayBuffer
+
 import scraper._
+import scraper.expressions._
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
-import scraper.expressions._
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
-
-import scala.collection.mutable.ArrayBuffer
 
 case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
   extends LeafPhysicalPlan {

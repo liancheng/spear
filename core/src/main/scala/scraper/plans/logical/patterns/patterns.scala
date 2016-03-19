@@ -1,8 +1,8 @@
 package scraper.plans.logical
 
 import scraper.expressions
-import scraper.expressions.Predicate._
 import scraper.expressions._
+import scraper.expressions.Predicate._
 
 package object patterns {
   /**

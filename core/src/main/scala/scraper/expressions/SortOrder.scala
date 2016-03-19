@@ -1,10 +1,10 @@
 package scraper.expressions
 
-import scraper.exceptions.TypeMismatchException
-import scraper.types.{DataType, OrderedType}
-
 import scala.language.higherKinds
 import scala.util.Try
+
+import scraper.exceptions.TypeMismatchException
+import scraper.types.{DataType, OrderedType}
 
 abstract sealed class SortDirection
 

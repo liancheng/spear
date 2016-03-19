@@ -2,7 +2,7 @@ package scraper.expressions
 
 import org.scalatest.prop.Checkers
 
-import scraper.{TestUtils, LoggingFunSuite}
+import scraper.{LoggingFunSuite, TestUtils}
 
 class LogicalOperatorSuite extends LoggingFunSuite with TestUtils with Checkers {
   test("a AND b") {

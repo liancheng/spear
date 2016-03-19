@@ -1,12 +1,11 @@
 package scraper.expressions
 
+import scala.util.{Success, Try}
+
 import scraper.exceptions.{ImplicitCastException, TypeCastException}
 import scraper.expressions.Cast.{buildCast, convertible}
 import scraper.types
 import scraper.types._
-
-import scala.language.higherKinds
-import scala.util.{Success, Try}
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
   override protected def template(childString: String): String =

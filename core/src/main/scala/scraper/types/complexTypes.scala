@@ -2,8 +2,8 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.{Attribute, AttributeRef}
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
 
 trait ComplexType extends DataType

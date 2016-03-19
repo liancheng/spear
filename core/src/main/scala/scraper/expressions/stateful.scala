@@ -1,10 +1,10 @@
 package scraper.expressions
 
-import scraper.Row
-import scraper.types.{DataType, DoubleType}
-
 import scala.language.higherKinds
 import scala.util.Random
+
+import scraper.Row
+import scraper.types.{DataType, DoubleType}
 
 case class Rand(seed: Long) extends StatefulExpression[Random] with LeafExpression {
   override def dataType: DataType = DoubleType

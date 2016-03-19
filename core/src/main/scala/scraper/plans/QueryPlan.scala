@@ -1,12 +1,12 @@
 package scraper.plans
 
+import scala.collection.mutable.ArrayBuffer
+
 import scraper.expressions._
 import scraper.plans.QueryPlan.ExpressionNode
 import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
-
-import scala.collection.mutable.ArrayBuffer
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   private type Rule = PartialFunction[Expression, Expression]

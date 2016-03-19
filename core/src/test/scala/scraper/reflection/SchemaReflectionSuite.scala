@@ -3,7 +3,7 @@ package scraper.reflection
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
-import scraper.{TestUtils, LoggingFunSuite}
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.reflection.SchemaReflectionSuite._
 import scraper.types._
 

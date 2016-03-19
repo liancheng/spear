@@ -1,14 +1,14 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
+import scala.util.control.NonFatal
 
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
+import scraper.expressions._
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved

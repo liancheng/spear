@@ -2,15 +2,15 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.language.higherKinds
+import scala.util.{Success, Try}
+
 import scraper.Row
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.types._
 import scraper.utils._
-
-import scala.language.higherKinds
-import scala.util.{Success, Try}
 
 case class ExpressionID(id: Long)
 

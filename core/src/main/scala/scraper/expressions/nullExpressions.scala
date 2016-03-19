@@ -1,11 +1,10 @@
 package scraper.expressions
 
+import scala.util.Try
+
 import scraper.Row
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.types.{BooleanType, DataType}
-
-import scala.language.higherKinds
-import scala.util.Try
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
