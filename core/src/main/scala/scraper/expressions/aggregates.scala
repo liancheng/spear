@@ -4,6 +4,8 @@ import scraper.types._
 import scraper.{MutableRow, Row}
 
 trait AggregateFunction extends Expression {
+  override def isFoldable: Boolean = false
+
   def bufferSchema: StructType
 
   def zero(buffer: MutableRow): Unit
