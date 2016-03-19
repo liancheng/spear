@@ -2,7 +2,53 @@ package scraper
 
 import scala.collection.mutable.ArrayBuffer
 
-trait Row extends Seq[Any]
+trait SpecializedGetter {
+  def getBoolean(ordinal: Int): Boolean
+
+  def getByte(ordinal: Int): Byte
+
+  def getShort(ordinal: Int): Short
+
+  def getInt(ordinal: Int): Int
+
+  def getLong(ordinal: Int): Long
+
+  def getFloat(ordinal: Int): Float
+
+  def getDouble(ordinal: Int): Double
+}
+
+trait SpecializedSetter {
+  def setBoolean(ordinal: Int, value: Boolean): Unit
+
+  def setByte(ordinal: Int, value: Byte): Unit
+
+  def setShort(ordinal: Int, value: Short): Unit
+
+  def setInt(ordinal: Int, value: Int): Unit
+
+  def setLong(ordinal: Int, value: Long): Unit
+
+  def setFloat(ordinal: Int, value: Float): Unit
+
+  def setDouble(ordinal: Int, value: Double): Unit
+}
+
+trait Row extends Seq[Any] with SpecializedGetter {
+  override def getBoolean(ordinal: Int): Boolean = apply(ordinal).asInstanceOf[Boolean]
+
+  override def getDouble(ordinal: Int): Double = apply(ordinal).asInstanceOf[Double]
+
+  override def getFloat(ordinal: Int): Float = apply(ordinal).asInstanceOf[Float]
+
+  override def getLong(ordinal: Int): Long = apply(ordinal).asInstanceOf[Long]
+
+  override def getByte(ordinal: Int): Byte = apply(ordinal).asInstanceOf[Byte]
+
+  override def getShort(ordinal: Int): Short = apply(ordinal).asInstanceOf[Short]
+
+  override def getInt(ordinal: Int): Int = apply(ordinal).asInstanceOf[Int]
+}
 
 object Row {
   val empty = new BasicRow(Nil)
@@ -14,8 +60,22 @@ object Row {
   def unapplySeq(row: Row): Some[Seq[Any]] = Some(row)
 }
 
-trait MutableRow extends Row {
+trait MutableRow extends Row with SpecializedSetter {
   def update(ordinal: Int, value: Any): Unit
+
+  def setBoolean(ordinal: Int, value: Boolean): Unit = update(ordinal, value)
+
+  def setByte(ordinal: Int, value: Byte): Unit = update(ordinal, value)
+
+  def setShort(ordinal: Int, value: Short): Unit = update(ordinal, value)
+
+  def setInt(ordinal: Int, value: Int): Unit = update(ordinal, value)
+
+  def setLong(ordinal: Int, value: Long): Unit = update(ordinal, value)
+
+  def setFloat(ordinal: Int, value: Float): Unit = update(ordinal, value)
+
+  def setDouble(ordinal: Int, value: Double): Unit = update(ordinal, value)
 }
 
 class BasicRow(values: Seq[Any]) extends Row {
@@ -26,7 +86,7 @@ class BasicRow(values: Seq[Any]) extends Row {
   override def iterator: Iterator[Any] = values.iterator
 }
 
-class BasicMutableRow(values: ArrayBuffer[Any]) extends MutableRow {
+class BasicMutableRow(values: ArrayBuffer[Any]) extends BasicRow(values) with MutableRow {
   def this(size: Int) = this(ArrayBuffer.fill(size)(null: Any))
 
   override def update(ordinal: Int, value: Any): Unit = values(ordinal) = value
@@ -38,13 +98,25 @@ class BasicMutableRow(values: ArrayBuffer[Any]) extends MutableRow {
   override def iterator: Iterator[Any] = values.iterator
 }
 
-class JoinedRow(row1: Row, row2: Row) extends Row {
+class JoinedRow(private var row1: Row, private var row2: Row) extends Row {
+  def this() = this(null, null)
+
   override def length: Int = row1.length + row2.length
 
   override def apply(ordinal: Int): Any =
     if (ordinal < row1.length) row1(ordinal) else row2(ordinal - row1.length)
 
   override def iterator: Iterator[Any] = row1.iterator ++ row2.iterator
+
+  def replaceLeft(row: Row): this.type = {
+    row1 = row
+    this
+  }
+
+  def replaceRight(row: Row): this.type = {
+    row2 = row
+    this
+  }
 }
 
 class RowSlice(row: Row, begin: Int, override val length: Int) extends Row {
