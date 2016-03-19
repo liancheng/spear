@@ -6,6 +6,7 @@ import scraper.expressions.{If, Literal}
 
 class ExpressionSQLBuilderSuite extends SQLBuilderTest {
   test("literals") {
+    checkSQL(Literal(null), "NULL")
     checkSQL(True, "TRUE")
     checkSQL(False, "FALSE")
     checkSQL(Literal("foo"), "\"foo\"")
