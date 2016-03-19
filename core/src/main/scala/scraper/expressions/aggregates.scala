@@ -8,6 +8,8 @@ trait AggregateFunction extends Expression {
 
   def bufferSchema: StructType
 
+  def supportPartialAggregation: Boolean
+
   def zero(buffer: MutableRow): Unit
 
   def accumulate(buffer: MutableRow, row: Row): Unit
@@ -25,6 +27,8 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
   override def isNullable: Boolean = false
 
   override def bufferSchema: StructType = StructType('count -> LongType.!)
+
+  override def supportPartialAggregation: Boolean = true
 
   override def zero(buffer: MutableRow): Unit = buffer.setLong(0, 0L)
 
