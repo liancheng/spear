@@ -144,6 +144,13 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(0), Row(1), Row(2)
     )
   }
+
+  test("aggregate constant expression") {
+    checkDataFrame(
+      context range 3 agg count(1),
+      Row(3)
+    )
+  }
 }
 
 object LocalContextSuite {
