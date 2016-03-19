@@ -181,7 +181,7 @@ trait SetOperator extends BinaryLogicalPlan {
         })
       }
 
-    for (widenedTypes <- sequence(branches.map(_.schema.fieldTypes).transpose map widestTypeOf))
+    for (widenedTypes <- trySequence(branches.map(_.schema.fieldTypes).transpose map widestTypeOf))
       yield branches.map(align(_, widenedTypes))
   }
 

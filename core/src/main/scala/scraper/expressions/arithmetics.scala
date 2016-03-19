@@ -173,7 +173,7 @@ abstract class GreatestLike extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
 
   override lazy val strictlyTyped: Try[Expression] = for {
-    strictChildren <- sequence(children map (_.strictlyTyped))
+    strictChildren <- trySequence(children map (_.strictlyTyped))
     widestType <- widestTypeOf(strictChildren map (_.dataType)) map {
       case t: OrderedType => t
       case t              => throw new TypeMismatchException(this, classOf[OrderedType])

@@ -99,11 +99,11 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
   override lazy val strictlyTyped: Try[Expression] = {
     for {
       strictTest <- test.strictlyTyped
-      strictList <- sequence(list map (_.strictlyTyped))
+      strictList <- trySequence(list map (_.strictlyTyped))
 
       testType = strictTest.dataType
 
-      promotedList <- sequence(strictList map {
+      promotedList <- trySequence(strictList map {
         case e if e.dataType narrowerThan testType => Success(promoteDataType(e, testType))
         case e => Failure(new TypeMismatchException(
           "Test value and list values must be of the same data type in IN expression."

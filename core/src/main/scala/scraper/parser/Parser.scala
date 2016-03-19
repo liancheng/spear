@@ -310,9 +310,14 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     CAST ~ "(" ~> expression ~ (AS ~> dataType) <~ ")" ^^ { case e ~ t => Cast(e, t) }
 
   private def function: Parser[Expression] =
-    ident ~ ("(" ~> repsep(expression, ",") <~ ")") ^^ {
+    ident ~ ("(" ~> functionArgs <~ ")") ^^ {
       case functionName ~ args => UnresolvedFunction(functionName, args)
     }
+
+  private def functionArgs: Parser[Seq[Expression]] = (
+    repsep(expression, ",")
+    | star ^^ (_ :: Nil)
+  )
 
   private def dataType: Parser[DataType] = (
     primitiveType

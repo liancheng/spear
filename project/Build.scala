@@ -44,7 +44,7 @@ object Build extends sbt.Build {
 
   lazy val coreDependencies = {
     import Dependencies._
-    test ++ config ++ log4j ++ scala ++ scopt ++ scalaz ++ slf4j
+    test ++ config ++ log4j ++ scala ++ scopt ++ slf4j
   }
 
   lazy val localExecutionDependencies = {
@@ -111,7 +111,6 @@ object Dependencies {
     val scalaParserCombinators = "1.0.4"
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
-    val scalaz = "7.2.0"
     val scopt = "3.3.0"
     val slf4j = "1.6.4"
   }
@@ -149,10 +148,6 @@ object Dependencies {
 
   val scalaTest = Seq(
     "org.scalatest" %% "scalatest" % Versions.scalaTest % "test"
-  )
-
-  val scalaz = Seq(
-    "org.scalaz" %% "scalaz-core" % Versions.scalaz
   )
 
   val scopt = Seq(
