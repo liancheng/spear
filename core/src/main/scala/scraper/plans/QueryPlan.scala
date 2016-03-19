@@ -1,12 +1,12 @@
 package scraper.plans
 
-import scala.collection.mutable.ArrayBuffer
-
 import scraper.expressions._
-import scraper.plans.QueryPlan.ExpressionString
+import scraper.plans.QueryPlan.ExpressionNode
 import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
+
+import scala.collection.mutable.ArrayBuffer
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   private type Rule = PartialFunction[Expression, Expression]
@@ -153,17 +153,21 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = if (expressions.nonEmpty) {
     val expressionStrings = expressions.zipWithIndex.map {
-      case (expression, index) => ExpressionString(expression, index)
+      case (expression, index) => ExpressionNode(expression, index)
     }
 
-    expressionStrings.foreach {
-      _.buildPrettyTree(depth + 1, lastChildren :+ children.isEmpty, builder)
+    expressionStrings.init.foreach {
+      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
     }
+
+    expressionStrings.last.buildPrettyTree(
+      depth + 2, lastChildren :+ children.isEmpty :+ true, builder
+    )
   }
 }
 
 object QueryPlan {
-  private case class ExpressionString(child: Expression, index: Int)
+  private case class ExpressionNode(child: Expression, index: Int)
     extends LeafExpression with UnevaluableExpression {
 
     override def nodeCaption: String = s"$$$index: ${child.debugString}"
