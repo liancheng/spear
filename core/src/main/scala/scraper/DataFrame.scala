@@ -1,5 +1,7 @@
 package scraper
 
+import java.io.PrintStream
+
 import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.AutoAlias.named
@@ -104,7 +106,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def foreach(f: Row => Unit): Unit = iterator foreach f
 
-  def showSchema(): Unit = println(schema.prettyTree)
+  def showSchema(out: PrintStream = System.out): Unit = out.println(schema.prettyTree)
 
   def explanation(extended: Boolean = true): String = if (extended) {
     s"""# Logical plan
@@ -125,10 +127,11 @@ class DataFrame(val queryExecution: QueryExecution) {
        |""".stripMargin
   }
 
-  def explain(extended: Boolean = true): Unit = println(explanation(extended))
+  def explain(extended: Boolean = true, out: PrintStream = System.out): Unit =
+    out.println(explanation(extended))
 
-  def show(rowCount: Int = 20, truncate: Boolean = true): Unit =
-    println(tabulate(rowCount, truncate))
+  def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
+    out.println(tabulate(rowCount, truncate))
 
   private def tabulate(rowCount: Int = 20, truncate: Boolean = true): String = {
     val truncated = limit(rowCount + 1).toArray
