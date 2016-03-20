@@ -32,13 +32,7 @@ object MapType {
     MapType(keyType, valueFieldSpec.dataType, valueFieldSpec.nullable)
 }
 
-case class StructField(name: String, dataType: DataType, nullable: Boolean) {
-  /** Makes a nullable copy of this [[StructField]]. */
-  def ? : StructField = this.copy(nullable = true)
-
-  /** Makes a non-nullable copy of this [[StructField]]. */
-  def ! : StructField = this.copy(nullable = false)
-}
+case class StructField(name: String, dataType: DataType, nullable: Boolean)
 
 object StructField {
   def apply(name: String, fieldSpec: FieldSpec): StructField =

@@ -6,6 +6,8 @@ import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
 import scraper.{LoggingFunSuite, TestUtils}
+import scraper.expressions.{Attribute, ExpressionID}
+import scraper.expressions.dsl._
 import scraper.generators.types._
 
 class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
@@ -82,6 +84,30 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
         'f2 -> DoubleType.!
       )
     )
+  }
+
+  test("StructType.rename") {
+    checkTree(
+      StructType(
+        'f1 -> IntType.!,
+        'f2 -> StringType.?
+      ) rename ("c1", "c2"),
+      StructType(
+        'c1 -> IntType.!,
+        'c2 -> StringType.?
+      )
+    )
+  }
+
+  test("StructType.toAttribute") {
+    def resetID(attribute: Attribute): Attribute = attribute withID ExpressionID(0L)
+
+    assertResult(Seq('f1.int.!, 'f2.string.?) map resetID) {
+      StructType(
+        "f1" -> IntType.!,
+        "f2" -> StringType.?
+      ).toAttributes map resetID
+    }
   }
 
   private val testSchema =

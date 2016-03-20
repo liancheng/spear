@@ -182,5 +182,5 @@ case object BooleanType extends PrimitiveType with OrderedType {
 
   override val ordering: Ordering[Boolean] = implicitly[Ordering[Boolean]]
 
-  override def sql: String = "BOOL"
+  override def sql: String = "BOOLEAN"
 }

@@ -87,7 +87,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
         node
     }
 
-    buffer.toSeq
+    buffer
   }
 
   def collectFirst[T](f: PartialFunction[Base, T]): Option[T] = {

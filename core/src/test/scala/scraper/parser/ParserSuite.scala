@@ -35,6 +35,14 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     )
   )
 
+  testDataTypeParsing(
+    "STRUCT<`name`: STRING, `age`: INT>",
+    StructType(
+      'name -> StringType.?,
+      'age -> IntType.?
+    )
+  )
+
   testExpressionParsing("1", 1)
 
   testExpressionParsing((Int.MaxValue.toLong + 1).toString, Int.MaxValue.toLong + 1)
@@ -304,7 +312,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   }
 
   private def testDataTypeParsing(sql: String, dataType: DataType): Unit = {
-    test(s"parsing expression: $sql") {
+    test(s"parsing data type: $sql") {
       checkPlan(
         parse(s"SELECT CAST(a AS $sql) FROM t0"),
         table('t0) select ('a cast dataType)

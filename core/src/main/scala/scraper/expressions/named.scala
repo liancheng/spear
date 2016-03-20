@@ -194,6 +194,10 @@ case class AttributeRef(
   def qualifiedBy(qualifier: String): AttributeRef = copy(qualifier = Some(qualifier))
 
   def qualifiedBy(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
+
+  def of(qualifier: String): AttributeRef = qualifiedBy(qualifier)
+
+  def of(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)

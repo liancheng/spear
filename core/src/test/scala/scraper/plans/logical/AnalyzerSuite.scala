@@ -21,9 +21,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val `t.a` = a qualifiedBy 't
+  private val `t.a` = a of 't
 
-  private val `t.b` = b qualifiedBy 't
+  private val `t.b` = b of 't
 
   private val (groupA, groupB, aggCountA, aggCountB) =
     (a.asGrouping, b.asGrouping, count(a).asAgg, count(b).asAgg)
@@ -256,6 +256,15 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     checkAnalyzedPlan(
       "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
       relation as 't select (`t.b`, `t.a`) orderBy ((`t.a` + 1).asc, `t.b`.desc) select `t.b`
+    )
+  }
+
+  test("CTE substitution") {
+    val `s.a` = a of 's
+
+    checkAnalyzedPlan(
+      "WITH s AS (SELECT a FROM t) SELECT * FROM s",
+      relation as 't select `t.a` as 's select `s.a`
     )
   }
 
