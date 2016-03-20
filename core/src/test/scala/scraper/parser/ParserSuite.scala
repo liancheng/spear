@@ -61,9 +61,9 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("(a = 1)", 'a =:= 1)
 
-  testExpressionParsing("a AND b", 'a and 'b)
+  testExpressionParsing("a AND b", 'a && 'b)
 
-  testExpressionParsing("a OR b", 'a or 'b)
+  testExpressionParsing("a OR b", 'a || 'b)
 
   testExpressionParsing("NOT a", !'a)
 

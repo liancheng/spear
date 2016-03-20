@@ -200,7 +200,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         // All having conditions should be preserved
-        .having(groupA.attr > 1 and aggCountB.attr < 3L)
+        .having(groupA.attr > 1 && aggCountB.attr < 3L)
         .select(aggCountB.attr as "COUNT(b)")
     )
   }
@@ -216,7 +216,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     val expectedPlan =
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
-        .having(groupA.attr > 1 and (aggCountB.attr < 10L))
+        .having(groupA.attr > 1 && (aggCountB.attr < 10L))
         .orderBy(aggCountB.attr.asc)
         .select(groupA.attr as 'a)
 

@@ -142,6 +142,14 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
 
   override def withID(id: ExpressionID): Attribute = this
 
+  def qualifiedBy(qualifier: String): UnresolvedAttribute = copy(qualifier = Some(qualifier))
+
+  def qualifiedBy(qualifier: Symbol): UnresolvedAttribute = qualifiedBy(qualifier.name)
+
+  def of(qualifier: String): UnresolvedAttribute = qualifiedBy(qualifier)
+
+  def of(qualifier: Symbol): UnresolvedAttribute = qualifiedBy(qualifier.name)
+
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, isNullable = true, newExpressionID())
 
