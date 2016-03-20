@@ -1,0 +1,14 @@
+language: scala
+sudo: false
+cache:
+  directories:
+    - $HOME/.ivy2
+matrix:
+  include:
+    - jdk: openjdk7
+      scala: 2.11.7
+script:
+  - sbt coverage test
+  - sbt scalastyle test:scalastyle
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
