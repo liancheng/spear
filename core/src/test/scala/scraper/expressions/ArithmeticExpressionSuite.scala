@@ -23,7 +23,7 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     b <- genValueForNumericType(t)
   } yield (Literal(a, t), Literal(b, t))
 
-  test("add") {
+  test("plus") {
     check(forAll(genNumericLiteralPair) {
       case (a @ Literal(_, t: NumericType), b) =>
         Plus(a, b).evaluated == t.genericNumeric.plus(a.value, b.value)

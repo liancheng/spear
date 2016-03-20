@@ -152,15 +152,15 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = if (expressions.nonEmpty) {
-    val expressionStrings = expressions.zipWithIndex.map {
+    val expressionNodes = expressions.zipWithIndex.map {
       case (expression, index) => ExpressionNode(expression, index)
     }
 
-    expressionStrings.init.foreach {
+    expressionNodes.init.foreach {
       _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
     }
 
-    expressionStrings.last.buildPrettyTree(
+    expressionNodes.last.buildPrettyTree(
       depth + 2, lastChildren :+ children.isEmpty :+ true, builder
     )
   }

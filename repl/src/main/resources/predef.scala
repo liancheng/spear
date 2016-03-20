@@ -1,5 +1,6 @@
 import org.apache.log4j.{Level, Logger}
 
+import scraper.Context._
 import scraper.config.Settings
 import scraper.expressions._
 import scraper.expressions.dsl._

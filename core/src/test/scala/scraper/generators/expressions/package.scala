@@ -68,13 +68,13 @@ package object expressions extends Logging {
         size <- Gen.size
 
         genProduct = genProductExpression(input, outputSpec)(settings)
-        genNegate = Gen resize (size - 1, genProduct map Negate)
+        genNegate = Gen.resize(size - 1, genProduct map Negate)
         genTerm = genUnaryOrBinary(genProduct, Plus, Minus)
 
         term <- size match {
           case 1 => genProduct
-          case 2 => Gen oneOf (genProduct, genNegate)
-          case _ => Gen oneOf (genProduct, genNegate, genTerm)
+          case 2 => Gen.oneOf(genProduct, genNegate)
+          case _ => Gen.oneOf(genProduct, genNegate, genTerm)
         }
       } yield term
 
@@ -110,14 +110,14 @@ package object expressions extends Logging {
     }
 
     val genLeaf = if (candidates.nonEmpty) {
-      Gen oneOf candidates
+      Gen.oneOf(candidates)
     } else {
       genLiteral(outputSpec)(settings)
     }
 
     Gen.sized {
       case 1    => genLeaf
-      case size => Gen oneOf (genLeaf, Gen lzy genExpression(input, outputSpec)(settings))
+      case size => Gen.oneOf(genLeaf, Gen.lzy(genExpression(input, outputSpec)(settings)))
     }
   }
 
@@ -165,7 +165,7 @@ package object expressions extends Logging {
           genNotExpression(input, outputSpec)(settings)
 
         case _ =>
-          Gen oneOf (
+          Gen.oneOf(
             genNotExpression(input, outputSpec)(settings),
             genComparison(input, outputSpec)(settings)
           )
@@ -183,7 +183,7 @@ package object expressions extends Logging {
     case BooleanType =>
       for {
         size <- Gen.size
-        predicate <- Gen resize (size - 1, genPredicate(input, outputSpec)(settings))
+        predicate <- Gen.resize(size - 1, genPredicate(input, outputSpec)(settings))
       } yield Not(predicate)
   }
 
@@ -195,14 +195,14 @@ package object expressions extends Logging {
   ): Gen[Expression] = outputSpec.dataType match {
     case BooleanType =>
       val genBoolLiteral = genLiteral(outputSpec.copy(dataType = BooleanType))
-      val genBranch = Gen lzy genTermExpression(input, outputSpec)(settings)
+      val genBranch = Gen.lzy(genTermExpression(input, outputSpec)(settings))
 
       Gen.sized {
         case size if size < 2 =>
           genBoolLiteral
 
         case _ =>
-          Gen oneOf (
+          Gen.oneOf(
             genBinary(genBranch, Gt, GtEq, Lt, LtEq, Eq, NotEq),
             genBoolLiteral
           )
@@ -221,7 +221,7 @@ package object expressions extends Logging {
     val nullFreq = if (nullable) (settings(NullChances) * 100).toInt else 0
     val nonNullFreq = 100 - nullFreq
 
-    Gen frequency (
+    Gen.frequency(
       nullFreq -> Gen.const(Literal(null, dataType)),
       nonNullFreq -> genValueForPrimitiveType(dataType).map(Literal(_, dataType))
     )
@@ -302,7 +302,7 @@ package object expressions extends Logging {
   private def genUnaryOrBinary[T <: Expression](genBranch: Gen[T], ops: ((T, T) => T)*): Gen[T] =
     Gen.sized {
       case size if size < 3 => genBranch
-      case size             => Gen oneOf (genBranch, genBinary(genBranch, ops: _*))
+      case size             => Gen.oneOf(genBranch, genBinary(genBranch, ops: _*))
     }
 
   private def genBinary[T <: Expression, R <: Expression](
@@ -310,13 +310,13 @@ package object expressions extends Logging {
   ): Gen[R] = Gen.parameterized { params =>
     for {
       size <- Gen.size
-      op <- Gen oneOf ops
+      op <- Gen.oneOf(ops)
 
       lhsSize = params.rng.nextInt(size - 1)
-      lhs <- Gen resize (lhsSize, genBranch)
+      lhs <- Gen.resize(lhsSize, genBranch)
 
       rhsSize = size - 1 - lhsSize
-      rhs <- Gen resize (rhsSize, genBranch)
+      rhs <- Gen.resize(rhsSize, genBranch)
     } yield op(lhs, rhs)
   }
 }
