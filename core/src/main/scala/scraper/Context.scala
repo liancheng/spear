@@ -107,9 +107,9 @@ trait Context {
 
   def execute(logicalPlan: LogicalPlan): QueryExecution
 
-  lazy val single: DataFrame = new DataFrame(SingleRowRelation, this)
+  private lazy val values: DataFrame = new DataFrame(SingleRowRelation, this)
 
-  def single(first: Expression, rest: Expression*): DataFrame = single select first +: rest
+  def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
   def q(query: String): DataFrame
 

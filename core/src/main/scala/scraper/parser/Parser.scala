@@ -142,8 +142,8 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
         val base = rs getOrElse SingleRowRelation
         val withFilter = f map base.filter getOrElse base
         val withProject = gs map (withFilter.groupBy(_).agg(ps)) getOrElse (withFilter select ps)
-        val withDistinct = d map (_ => withProject.distinct) getOrElse withProject
-        val withHaving = h map withDistinct.filter getOrElse withProject
+        val withDistinct = d.map(_ => withProject.distinct) getOrElse withProject
+        val withHaving = h map withDistinct.filter getOrElse withDistinct
         val withOrder = o map withHaving.orderBy getOrElse withHaving
         val withLimit = n map withOrder.limit getOrElse withOrder
         withLimit
@@ -251,6 +251,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
     | termExpression <~ IS ~ NULL ^^ IsNull
     | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
+    | termExpression
   )
 
   private def termExpression: Parser[Expression] = (
@@ -280,8 +281,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def attribute: Parser[UnresolvedAttribute] =
     (ident <~ ".").? ~ ident ^^ {
-      case qualifier ~ name =>
-        UnresolvedAttribute(name, qualifier)
+      case qualifier ~ name => UnresolvedAttribute(name, qualifier)
     }
 
   private def literal: Parser[Literal] = (

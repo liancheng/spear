@@ -70,4 +70,8 @@ package object dsl {
       set forall (e => otherIDs contains e.expressionID)
     }
   }
+
+  def function(name: String, args: Expression*): UnresolvedFunction = UnresolvedFunction(name, args)
+
+  def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
 }

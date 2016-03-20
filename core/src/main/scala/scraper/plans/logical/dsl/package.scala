@@ -40,6 +40,8 @@ package object dsl {
 
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
+    def leftSemiJoin(that: LogicalPlan): Join = Join(plan, that, LeftSemi, None)
+
     def leftJoin(that: LogicalPlan): Join = Join(plan, that, LeftOuter, None)
 
     def rightJoin(that: LogicalPlan): Join = Join(plan, that, RightOuter, None)
@@ -68,4 +70,18 @@ package object dsl {
 
     def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
   }
+
+  def table(name: String): UnresolvedRelation = UnresolvedRelation(name)
+
+  def table(name: Symbol): UnresolvedRelation = table(name.name)
+
+  def values(expressions: Seq[Expression]): Project = SingleRowRelation select expressions
+
+  def values(first: Expression, rest: Expression*): Project = values(first +: rest)
+
+  def let(cteRelations: Map[Symbol, LogicalPlan])(query: LogicalPlan): With =
+    With(query, cteRelations map { case (name, plan) => name.name -> plan })
+
+  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*)(query: LogicalPlan): With =
+    let((first +: rest).toMap)(query)
 }
