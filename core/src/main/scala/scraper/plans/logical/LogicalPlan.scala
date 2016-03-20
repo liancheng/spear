@@ -10,6 +10,7 @@ import scraper.expressions._
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.QueryPlan
+import scraper.plans.logical.With.CTENode
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
@@ -287,4 +288,34 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
+}
+
+case class With(
+  child: LogicalPlan, cteRelations: Map[String, LogicalPlan]
+) extends UnaryLogicalPlan {
+  override def output: Seq[Attribute] = child.output
+
+  override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
+
+  override protected def buildVirtualTreeNodes(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = {
+    val cteNodes = cteRelations.map {
+      case (name, plan) => CTENode(name, plan)
+    }.toSeq sortBy (_.name)
+
+    cteNodes.foreach { node =>
+      node.buildPrettyTree(depth + 1, lastChildren :+ children.isEmpty, builder)
+    }
+  }
+}
+
+object With {
+  case class CTENode(name: String, child: LogicalPlan) extends UnaryLogicalPlan {
+    override def output: Seq[Attribute] = child.output
+
+    override def nodeName: String = s"CTE: $name"
+
+    override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
+  }
 }

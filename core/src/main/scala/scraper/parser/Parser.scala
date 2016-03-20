@@ -108,15 +108,29 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val TRUE = Keyword("TRUE")
   private val UNION = Keyword("UNION")
   private val WHERE = Keyword("WHERE")
+  private val WITH = Keyword("WITH")
 
   override protected def start: Parser[LogicalPlan] =
-    select * (
+    query * (
       UNION ~ ALL ^^^ Union
       | INTERSECT ^^^ Intersect
       | EXCEPT ^^^ Except
     )
 
-  private def select: Parser[LogicalPlan] = (
+  private def query: Parser[LogicalPlan] =
+    selectClause | withClause
+
+  private def withClause: Parser[LogicalPlan] =
+    WITH ~> rep1sep(cteDefinition, ",") ~ selectClause ^^ {
+      case cs ~ q => With(q, cs.toMap)
+    }
+
+  private def cteDefinition: Parser[(String, LogicalPlan)] =
+    ident ~ (AS ~ "(" ~> selectClause <~ ")") ^^ {
+      case name ~ query => (name, query)
+    }
+
+  private def selectClause: Parser[LogicalPlan] = (
     SELECT ~> DISTINCT.? ~ projectList
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
@@ -190,7 +204,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case t ~ Some(a) => Subquery(UnresolvedRelation(t), a)
       case t ~ None    => UnresolvedRelation(t)
     }
-    | ("(" ~> select <~ ")") ~ (AS.? ~> ident) ^^ {
+    | ("(" ~> selectClause <~ ")") ~ (AS.? ~> ident) ^^ {
       case s ~ a => Subquery(s, a)
     }
   )
