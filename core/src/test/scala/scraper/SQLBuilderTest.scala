@@ -6,7 +6,6 @@ import org.scalatest.BeforeAndAfterAll
 
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
-import scraper.local.LocalContext
 
 abstract class SQLBuilderTest
   extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
@@ -31,6 +30,9 @@ abstract class SQLBuilderTest
         fail(
           s"""Wrong SQL generated for the following expression:
              |${e.prettyTree}
+             |
+             |Expected: $expectedSQL
+             |Actual:   ${e.sql.get}
              |""".stripMargin,
           cause
         )
