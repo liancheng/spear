@@ -5,13 +5,13 @@ import scraper.expressions._
 import scraper.expressions.GeneratedAttribute._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
+import scraper.expressions.NamedExpression.inlineAliases
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.logical
 import scraper.plans.logical.Optimizer._
 import scraper.plans.logical.dsl._
-import scraper.plans.logical.patterns.PhysicalOperation.inlineAliases
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.FixedPoint
 
@@ -137,7 +137,7 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        plan select (outerList map (inlineAliases(innerList, _)))
+        plan select (outerList map (inlineAliases(_, innerList)))
     }
   }
 
@@ -195,7 +195,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        val rewrittenCondition = inlineAliases(projectList, condition)
+        val rewrittenCondition = inlineAliases(condition, projectList)
         plan filter rewrittenCondition select projectList
     }
   }

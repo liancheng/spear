@@ -100,7 +100,7 @@ abstract class GeneratedAttribute(alias: GeneratedAlias)
 }
 
 object GeneratedAttribute {
-  def expand(expression: Expression, plan: LogicalPlan, purposes: Purpose*): Expression = {
+  private def expand(expression: Expression, plan: LogicalPlan, purposes: Purpose*): Expression = {
     val attributes = expression.collect {
       case a: GeneratedAttribute if purposes contains a.purpose => a
     }
