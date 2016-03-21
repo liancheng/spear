@@ -53,23 +53,23 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def distinct: DataFrame = withPlan(Distinct)
 
-  def join(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, Inner)
-
   def join(right: DataFrame, joinType: JoinType): JoinedDataFrame =
     new JoinedDataFrame(this, right, joinType)
 
-  def leftJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, LeftOuter)
+  def join(right: DataFrame): JoinedDataFrame = join(right, Inner)
 
-  def rightJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, RightOuter)
+  def leftJoin(right: DataFrame): JoinedDataFrame = join(right, LeftOuter)
 
-  def outerJoin(right: DataFrame): JoinedDataFrame = new JoinedDataFrame(this, right, FullOuter)
+  def rightJoin(right: DataFrame): JoinedDataFrame = join(right, RightOuter)
 
-  def orderBy(first: Expression, rest: Expression*): DataFrame = {
-    val sortOrders = first +: rest map (SortOrder(_, Ascending, context.settings(NullsLarger)))
-    withPlan(Sort(_, sortOrders))
-  }
+  def outerJoin(right: DataFrame): JoinedDataFrame = join(right, FullOuter)
 
-  def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = withPlan(Sort(_, first +: rest))
+  def orderBy(order: Seq[SortOrder]): DataFrame = withPlan(Sort(_, order))
+
+  def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
+
+  def orderBy(first: Expression, rest: Expression*): DataFrame =
+    orderBy(first +: rest map (SortOrder(_, Ascending, context settings NullsLarger)))
 
   def subquery(name: String): DataFrame = withPlan(_ subquery name)
 
@@ -77,7 +77,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def as(name: String): DataFrame = subquery(name)
 
-  def as(name: Symbol): DataFrame = subquery(name.name)
+  def as(name: Symbol): DataFrame = as(name.name)
 
   def union(that: DataFrame): DataFrame = withPlan(_ union that.queryExecution.logicalPlan)
 
@@ -101,10 +101,6 @@ class DataFrame(val queryExecution: QueryExecution) {
   def asTable(tableName: Symbol): Unit = asTable(tableName.name)
 
   def toSeq: Seq[Row] = iterator.toSeq
-
-  def toArray: Array[Row] = iterator.toArray
-
-  def foreach(f: Row => Unit): Unit = iterator foreach f
 
   def showSchema(out: PrintStream = System.out): Unit = out.println(schema.prettyTree)
 
@@ -134,7 +130,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     out.println(tabulate(rowCount, truncate))
 
   private def tabulate(rowCount: Int = 20, truncate: Boolean = true): String = {
-    val truncated = limit(rowCount + 1).toArray
+    val truncated = limit(rowCount + 1).toSeq
     val hasMoreData = truncated.length > rowCount
     val data = truncated take rowCount
 

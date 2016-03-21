@@ -1,14 +1,16 @@
 package scraper
 
-import scala.collection.mutable
+import scala.collection.{Iterable, mutable}
 import scala.language.existentials
+import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
 import scraper.expressions.{Count, Expression}
-import scraper.plans.logical.{LogicalPlan, SingleRowRelation}
+import scraper.plans.logical.{LocalRelation, LogicalPlan, SingleRowRelation}
 import scraper.plans.logical.dsl._
 import scraper.plans.physical.PhysicalPlan
+import scraper.types.{LongType, StructType}
 
 case class FunctionInfo(
   name: String,
@@ -111,11 +113,32 @@ trait Context {
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
-  def q(query: String): DataFrame
+  def q(query: String): DataFrame = new DataFrame(parse(query), this)
 
-  def table(name: String): DataFrame
+  def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
 
   def table(name: Symbol): DataFrame = table(name.name)
+
+  def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
+    new DataFrame(LocalRelation(data), this)
+
+  def lift[T <: Product: WeakTypeTag](first: T, rest: T*): DataFrame = lift(first +: rest)
+
+  def lift[T <: Product: WeakTypeTag](data: Iterable[T], columnNames: String*): DataFrame = {
+    val LocalRelation(rows, output) = LocalRelation(data)
+    val renamed = (StructType fromAttributes output rename columnNames).toAttributes
+    new DataFrame(LocalRelation(rows, renamed), this)
+  }
+
+  def range(end: Long): DataFrame = range(0, end)
+
+  def range(begin: Long, end: Long): DataFrame = range(begin, end, 1L)
+
+  def range(begin: Long, end: Long, step: Long): DataFrame = {
+    val rows = begin until end by step map (Row apply _)
+    val output = StructType('id -> LongType.!).toAttributes
+    new DataFrame(LocalRelation(rows, output), this)
+  }
 }
 
 object Context {

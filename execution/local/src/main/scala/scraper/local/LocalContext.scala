@@ -1,18 +1,14 @@
 package scraper.local
 
-import scala.collection.Iterable
-import scala.reflect.runtime.universe.WeakTypeTag
-
 import scraper._
 import scraper.config.Settings
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
-import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
-import scraper.types.{LongType, StructType}
+import scraper.plans.{QueryExecution, QueryPlanner}
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
@@ -35,33 +31,10 @@ class LocalContext(val settings: Settings) extends Context {
 
   override def plan(plan: LogicalPlan): PhysicalPlan = planner(plan)
 
-  def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
-    new DataFrame(new QueryExecution(LocalRelation(data), this))
-
-  def lift[T <: Product: WeakTypeTag](data: Iterable[T], columnNames: String*): DataFrame = {
-    val LocalRelation(rows, output) = LocalRelation(data)
-    val renamed = (StructType fromAttributes output rename columnNames).toAttributes
-    new DataFrame(LocalRelation(rows, renamed), this)
-  }
-
-  def range(end: Long): DataFrame = range(0, end)
-
-  def range(begin: Long, end: Long): DataFrame = range(begin, end, 1L)
-
-  def range(begin: Long, end: Long, step: Long): DataFrame = {
-    val rows = begin until end by step map (Row apply _)
-    val output = StructType('id -> LongType.!).toAttributes
-    new DataFrame(LocalRelation(rows, output), this)
-  }
-
-  override def q(query: String): DataFrame = new DataFrame(parse(query), this)
-
   def execute(logicalPlan: LogicalPlan): QueryExecution = new QueryExecution(logicalPlan, this)
-
-  override def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
 }
 
-class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: LocalContext)
+class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: Context)
   extends QueryExecution
 
 class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
