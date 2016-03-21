@@ -75,10 +75,6 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def subquery(name: Symbol): DataFrame = subquery(name.name)
 
-  def as(name: String): DataFrame = subquery(name)
-
-  def as(name: Symbol): DataFrame = as(name.name)
-
   def union(that: DataFrame): DataFrame = withPlan(_ union that.queryExecution.logicalPlan)
 
   def intersect(that: DataFrame): DataFrame = withPlan(_ intersect that.queryExecution.logicalPlan)

@@ -34,10 +34,6 @@ package object dsl {
 
     def subquery(name: Symbol): Subquery = plan subquery name.name
 
-    def as(name: String): Subquery = plan subquery name
-
-    def as(name: Symbol): Subquery = plan as name.name
-
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
     def leftSemiJoin(that: LogicalPlan): Join = Join(plan, that, LeftSemi, None)

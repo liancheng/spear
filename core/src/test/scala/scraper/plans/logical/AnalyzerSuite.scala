@@ -52,21 +52,21 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("resolve references in SQL") {
     checkAnalyzedPlan(
       "SELECT a + 1 AS s FROM t",
-      relation as 't select ((`t.a` + 1) as 's)
+      relation subquery 't select ((`t.a` + 1) as 's)
     )
   }
 
   test("resolve qualified references") {
     checkAnalyzedPlan(
-      relation as 't select (($"t.a" + 1) as 's),
-      relation as 't select ((`t.a` + 1) as 's)
+      relation subquery 't select (($"t.a" + 1) as 's),
+      relation subquery 't select ((`t.a` + 1) as 's)
     )
   }
 
   test("resolve qualified references in SQL") {
     checkAnalyzedPlan(
       "SELECT t.a + 1 AS s FROM t",
-      relation as 't select ((`t.a` + 1) as 's)
+      relation subquery 't select ((`t.a` + 1) as 's)
     )
   }
 
@@ -98,7 +98,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("expand stars in SQL") {
     checkAnalyzedPlan(
       "SELECT * FROM t",
-      relation as 't select (`t.a`, `t.b`)
+      relation subquery 't select (`t.a`, `t.b`)
     )
   }
 
@@ -107,8 +107,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     val `x.b` = b qualifiedBy 'x
 
     checkAnalyzedPlan(
-      relation as 'x join (relation as 'y) select $"x.*",
-      relation as 'x join (relation.newInstance() as 'y) select (`x.a`, `x.b`)
+      relation subquery 'x join (relation subquery 'y) select $"x.*",
+      relation subquery 'x join (relation.newInstance() subquery 'y) select (`x.a`, `x.b`)
     )
   }
 
@@ -118,7 +118,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT x.* FROM t x JOIN t y",
-      relation as 't as 'x join (relation.newInstance() as 't as 'y) select (`x.a`, `x.b`)
+      (relation subquery 't subquery 'x)
+        .join(relation.newInstance() subquery 't subquery 'y)
+        .select(`x.a`, `x.b`)
     )
   }
 
@@ -135,7 +137,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
-      relation as 't join (relation.newInstance() as 't) select (`t.a`, `t.b`, `t.a'`, `t.b'`)
+      (relation subquery 't)
+        .join(relation.newInstance() subquery 't)
+        .select(`t.a`, `t.b`, `t.a'`, `t.b'`)
     )
   }
 
@@ -171,7 +175,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT COUNT(a) FROM t",
-      Aggregate(relation as 't, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+      Aggregate(relation subquery 't, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
     )
   }
 
@@ -255,7 +259,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("order by columns not appearing in project list in SQL") {
     checkAnalyzedPlan(
       "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
-      relation as 't select (`t.b`, `t.a`) orderBy ((`t.a` + 1).asc, `t.b`.desc) select `t.b`
+      relation subquery 't select (`t.b`, `t.a`) orderBy ((`t.a` + 1).asc, `t.b`.desc) select `t.b`
     )
   }
 
@@ -264,7 +268,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
-      relation as 't select `t.a` as 's select `s.a`
+      relation subquery 't select `t.a` subquery 's select `s.a`
     )
   }
 
@@ -276,7 +280,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private def testAlias(expression: Expression, expectedAlias: String): Unit = {
     test(s"auto-alias resolution - $expression AS ${quote(expectedAlias)}") {
-      val Seq(actualAlias) = analyze(relation as 't select expression).output map (_.name)
+      val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }
   }

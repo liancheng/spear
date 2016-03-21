@@ -52,112 +52,112 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   test("select named expressions") {
     checkLogicalPlan(
       table('t) select ('a, 'b as 'c),
-      r1 as 't select ('a, 'b as 'c)
+      r1 subquery 't select ('a, 'b as 'c)
     )
   }
 
   test("select arbitrary expression") {
     checkLogicalPlan(
       table('t) select ('a + 1, 'b cast IntType),
-      r1 as 't select ('a + 1, 'b cast IntType)
+      r1 subquery 't select ('a + 1, 'b cast IntType)
     )
   }
 
   test("global aggregation using select") {
     checkLogicalPlan(
       table('t) select count('a),
-      r1 as 't select count('a)
+      r1 subquery 't select count('a)
     )
   }
 
   test("filter") {
     checkLogicalPlan(
       table('t) where 'a > 3 filter 'b.notNull,
-      r1 as 't filter 'a > 3 filter 'b.notNull
+      r1 subquery 't filter 'a > 3 filter 'b.notNull
     )
   }
 
   test("limit") {
     checkLogicalPlan(
       table('t) limit 3,
-      r1 as 't limit 3
+      r1 subquery 't limit 3
     )
   }
 
   test("distinct") {
     checkLogicalPlan(
       table('t).distinct,
-      (r1 as 't).distinct
+      (r1 subquery 't).distinct
     )
   }
 
   test("order by sort order") {
     checkLogicalPlan(
       table('t) orderBy 'a.asc.nullsFirst,
-      r1 as 't orderBy 'a.asc.nullsFirst
+      r1 subquery 't orderBy 'a.asc.nullsFirst
     )
   }
 
   test("order by arbitrary expression") {
     checkLogicalPlan(
       table('t) orderBy 'a + 1,
-      r1 as 't orderBy ('a + 1).asc
+      r1 subquery 't orderBy ('a + 1).asc
     )
   }
 
   test("subquery") {
     checkLogicalPlan(
-      table('t) subquery 'x as 'y,
-      r1 as 't as 'x as 'y
+      table('t) subquery 'x subquery 'y,
+      r1 subquery 't subquery 'x subquery 'y
     )
   }
 
   test("join") {
     checkLogicalPlan(
       table('t) subquery 'x join (table('t) subquery 'y) on $"x.a" =:= $"y.a",
-      r1 as 't as 'x join (r1 as 't as 'y) on ('a of 'x) =:= ('a of 'y)
+      r1 subquery 't subquery 'x join (r1 subquery 't subquery 'y) on ('a of 'x) =:= ('a of 'y)
     )
   }
 
   test("union") {
     checkLogicalPlan(
       table('t) union table('t),
-      r1 as 't union (r1 as 't)
+      r1 subquery 't union (r1 subquery 't)
     )
   }
 
   test("intersect") {
     checkLogicalPlan(
       table('t) intersect table('s),
-      r1 as 't intersect (r2 as 's)
+      r1 subquery 't intersect (r2 subquery 's)
     )
   }
 
   test("except") {
     checkLogicalPlan(
       table('t) except table('s),
-      r1 as 't except (r2 as 's)
+      r1 subquery 't except (r2 subquery 's)
     )
   }
 
   test("global aggregation") {
     checkLogicalPlan(
       table('t) agg count('a),
-      r1 as 't agg count('a)
+      r1 subquery 't agg count('a)
     )
   }
 
   test("group by") {
     checkLogicalPlan(
       table('t) groupBy 'a agg count('b),
-      r1 as 't groupBy 'a agg count('b)
+      r1 subquery 't groupBy 'a agg count('b)
     )
   }
 
   test("group by with having condition") {
     checkLogicalPlan(
       table('t) groupBy 'a agg count('b) having 'a > 3,
-      r1 as 't groupBy 'a agg count('b) having 'a > 3
+      r1 subquery 't groupBy 'a agg count('b) having 'a > 3
     )
   }
 
@@ -168,7 +168,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
       checkLogicalPlan(
         table('reverse),
-        df.queryExecution.analyzedPlan as 'reverse
+        df.queryExecution.analyzedPlan subquery 'reverse
       )
     }
   }

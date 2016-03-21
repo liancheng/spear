@@ -119,12 +119,12 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val df = context range 2
 
     checkDataFrame(
-      df as 'a join (df as 'b),
+      df subquery 'a join (df subquery 'b),
       Row(0, 0), Row(0, 1), Row(1, 0), Row(1, 1)
     )
 
     checkDataFrame(
-      df as 'a join (df as 'b) on $"a.id" =:= $"b.id",
+      df subquery 'a join (df subquery 'b) on $"a.id" =:= $"b.id",
       Row(0, 0), Row(1, 1)
     )
   }
@@ -133,7 +133,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val df = context range 3
 
     checkDataFrame(
-      df as 'a join (df as 'b) on $"a.id" =:= $"b.id" where $"b.id" > 0,
+      df subquery 'a join (df subquery 'b) on $"a.id" =:= $"b.id" where $"b.id" > 0,
       Row(1, 1), Row(2, 2)
     )
   }

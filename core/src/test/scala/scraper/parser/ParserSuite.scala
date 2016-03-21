@@ -118,7 +118,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT a.* FROM t0 a",
-    table('t0) as 'a select $"a.*"
+    table('t0) subquery 'a select $"a.*"
   )
 
   testQueryParsing(
@@ -253,17 +253,17 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 a JOIN t1 b",
-    table('t0) as 'a join (table("t1") as 'b) select '*
+    table('t0) subquery 'a join (table("t1") subquery 'b) select '*
   )
 
   testQueryParsing(
     "SELECT a.* FROM t0 a JOIN t1 b",
-    table('t0) as 'a join (table("t1") as 'b) select $"a.*"
+    table('t0) subquery 'a join (table("t1") subquery 'b) select $"a.*"
   )
 
   testQueryParsing(
     "SELECT t.a FROM (SELECT * FROM t0) t",
-    table('t0) select '* as 't select $"t.a"
+    table('t0) select '* subquery 't select $"t.a"
   )
 
   testQueryParsing(

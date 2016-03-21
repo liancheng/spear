@@ -161,6 +161,7 @@ object Optimizer {
    */
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      // TODO CNF budget
       case plan Filter condition => plan filter toCNF(condition)
     }
   }
