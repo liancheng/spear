@@ -33,8 +33,8 @@ package object reflection {
     case t if t <:< weakTypeOf[Product] =>
       val formalTypeArgs = t.typeSymbol.asClass.typeParams
       val TypeRef(_, _, actualTypeArgs) = t
-      val List(constructorParams) = t.member(termNames.CONSTRUCTOR).asMethod.paramLists
-      StructType(constructorParams.map { param =>
+      val params = constructorParams(t)
+      StructType(params.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
         val FieldSpec(dataType, nullable) = fieldSpecFor(paramType)
         StructField(param.name.toString, dataType, nullable)
@@ -72,8 +72,10 @@ package object reflection {
     val constructorSymbol = tpe.member(termNames.CONSTRUCTOR)
 
     val constructor = if (constructorSymbol.isMethod) {
+      // The type has only one constructor
       constructorSymbol.asMethod
     } else {
+      // The type has multiple constructors. Let's pick the primary one.
       constructorSymbol.asTerm.alternatives find { symbol =>
         symbol.isMethod && symbol.asMethod.isPrimaryConstructor
       } map (_.asMethod) getOrElse {

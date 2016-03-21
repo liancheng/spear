@@ -159,6 +159,12 @@ class SchemaReflectionSuite extends LoggingFunSuite with TestUtils {
       )
     )
   }
+
+  testStructType[CaseClass7] {
+    StructType(
+      'f1 -> StringType.?
+    )
+  }
 }
 
 object SchemaReflectionSuite {
@@ -168,4 +174,7 @@ object SchemaReflectionSuite {
   private case class CaseClass4(f1: Int, f2: String, f3: Map[Int, String])
   private case class CaseClass5(f1: Int, f2: CaseClass4)
   private case class CaseClass6(f1: Int, f2: (String, Array[Int]))
+  private case class CaseClass7(f1: String) {
+    def this(f1: Int) = this(f1.toString)
+  }
 }
