@@ -175,12 +175,15 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("explain") {
     val out = new PrintStream(new ByteArrayOutputStream())
+    // These only check that no exceptions are thrown during analysis, optimization, and planning.
     table('t).explain(extended = false, out = out)
     table('t).explain(extended = true, out = out)
   }
 
   test("show") {
     val out = new PrintStream(new ByteArrayOutputStream())
+    // These only check that no exceptions are thrown during analysis, optimization, planning and
+    // query execution.
     table('t).show(out = out)
   }
 

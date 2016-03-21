@@ -1,11 +1,11 @@
-package scraper.plans.physical
+package scraper.local.plans.physical
 
 import scraper.{LoggingFunSuite, Row, TestUtils}
 import scraper.expressions.dsl._
-import scraper.local.plans.physical.{LocalRelation, Sort}
 import scraper.local.plans.physical.dsl._
+import scraper.plans.physical.{PhysicalPlan, SingleRowRelation}
 
-class PhysicalPlanSuite extends LoggingFunSuite with TestUtils {
+class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   private val Seq(a1, b1) = Seq('a.int.!, 'b.string.?)
 
   private val r1 = LocalRelation(
