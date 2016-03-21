@@ -7,8 +7,8 @@ import org.scalatest.BeforeAndAfterAll
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.plans.logical.dsl._
 import scraper.plans.logical.{LocalRelation, LogicalPlan}
+import scraper.plans.logical.dsl._
 import scraper.types.{IntType, StringType, StructType}
 
 class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {

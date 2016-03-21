@@ -6,9 +6,9 @@ import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
+import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
-import scraper.plans.{QueryExecution, QueryPlanner}
 
 class LocalContext(val settings: Settings) extends Context {
   type QueryExecution = LocalQueryExecution
