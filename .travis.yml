@@ -10,5 +10,5 @@ matrix:
 script:
   - sbt coverage test
   - sbt scalastyle test:scalastyle doc
-after_success:
+after_script:
   - bash <(curl -s https://codecov.io/bash)
