@@ -10,11 +10,6 @@ object Predicate {
     case _             => predicate :: Nil
   }
 
-  private[scraper] def splitDisjunction(predicate: Expression): Seq[Expression] = predicate match {
-    case left || right => splitDisjunction(left) ++ splitDisjunction(right)
-    case _             => predicate :: Nil
-  }
-
   private[scraper] def toCNF(predicate: Expression): Expression = CNFConverter(predicate)
 
   private object CNFConverter extends RulesExecutor[Expression] {
