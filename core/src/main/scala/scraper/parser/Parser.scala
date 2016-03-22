@@ -236,7 +236,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     andExpression * (OR ^^^ Or)
 
   private def andExpression: Parser[Expression] =
-    (notExpression ||| comparison ||| booleanLiteral) * (AND ^^^ And)
+    (notExpression ||| comparison ||| termExpression ||| booleanLiteral) * (AND ^^^ And)
 
   private def notExpression: Parser[Expression] =
     NOT ~> predicate ^^ Not
@@ -251,7 +251,6 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
     | termExpression <~ IS ~ NULL ^^ IsNull
     | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
-    | termExpression
   )
 
   private def termExpression: Parser[Expression] = (
