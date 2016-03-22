@@ -1,10 +1,11 @@
 import scalariform.formatter.preferences.PreferencesImporterExporter
 
+import com.simplytyped.Antlr4Plugin
+import com.simplytyped.Antlr4Plugin._
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
 import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 import net.virtualvoid.sbt.graph.{Plugin => SbtDependencyGraph}
-import pl.project13.scala.sbt.JmhPlugin
 import sbt.Keys._
 import sbt._
 import scoverage.ScoverageSbtPlugin
@@ -13,11 +14,18 @@ object Build extends sbt.Build {
   lazy val scraper =
     Project("scraper", file("."))
       .aggregate(core, localExecution, repl)
+      .enablePlugins(
+        // For Scala code formatting
+        SbtScalariform,
+        // For Scala test coverage reporting
+        ScoverageSbtPlugin
+      )
       .settings(commonSettings)
 
   lazy val core =
     Project("core", file("core"))
-      .enablePlugins(sbtPlugins: _*)
+      // ANTLR4 support
+      .settings(antlr4Settings)
       .settings(commonSettings)
       .settings(libraryDependencies ++= coreDependencies)
       // Explicitly overrides all conflicting transitive dependencies
@@ -26,7 +34,6 @@ object Build extends sbt.Build {
   lazy val localExecution =
     Project("execution-local", file("execution/local"))
       .dependsOn(core % "compile->compile;test->test")
-      .enablePlugins(sbtPlugins: _*)
       .settings(commonSettings)
       .settings(libraryDependencies ++= localExecutionDependencies)
       // Explicitly overrides all conflicting transitive dependencies
@@ -36,7 +43,8 @@ object Build extends sbt.Build {
     Project("repl", file("repl"))
       .dependsOn(core % "compile->compile;test->test")
       .dependsOn(localExecution % "compile->compile;test->test")
-      .enablePlugins(sbtPlugins: _*)
+      // For packaging
+      .enablePlugins(JavaAppPackaging)
       .settings(commonSettings)
       .settings(libraryDependencies ++= Dependencies.ammonite)
       // Explicitly overrides all conflicting transitive dependencies
@@ -45,24 +53,13 @@ object Build extends sbt.Build {
 
   lazy val coreDependencies = {
     import Dependencies._
-    test ++ config ++ log4j ++ scala ++ scopt ++ slf4j
+    test ++ antlr4 ++ config ++ log4j ++ scala ++ scopt ++ slf4j
   }
 
   lazy val localExecutionDependencies = {
     import Dependencies._
     test
   }
-
-  lazy val sbtPlugins = Seq(
-    // For packaging
-    JavaAppPackaging,
-    // For JMH benchmarking
-    JmhPlugin,
-    // For Scala code formatting
-    SbtScalariform,
-    // For Scala test coverage reporting
-    ScoverageSbtPlugin
-  )
 
   lazy val commonSettings =
     basicSettings ++ generalDependencySettings ++ scalariformSettings
@@ -93,6 +90,14 @@ object Build extends sbt.Build {
     SbtScalariform.scalariformSettings ++ Seq(
       preferences := PreferencesImporterExporter.loadPreferences("scalariform.properties")
     )
+
+  lazy val antlr4Settings =
+    Antlr4Plugin.antlr4Settings ++ Seq(
+      antlr4PackageName in Antlr4 := Some("scraper.antlr4"),
+      antlr4Dependency in Antlr4 := "org.antlr" % "antlr4" % Dependencies.Versions.antlr4,
+      antlr4GenListener in Antlr4 := true,
+      antlr4GenVisitor in Antlr4 := true
+    )
 }
 
 object Dependencies {
@@ -103,6 +108,7 @@ object Dependencies {
 
   object Versions {
     val ammonite = "0.5.7"
+    val antlr4 = "4.5.2"
     val config = "1.2.1"
     val jline = "2.12.1"
     val log4j = "1.2.16"
@@ -118,6 +124,10 @@ object Dependencies {
 
   val ammonite = Seq(
     "com.lihaoyi" % "ammonite-repl_2.11.7" % Versions.ammonite
+  )
+
+  val antlr4 = Seq(
+    "org.antlr" % "antlr4" % Versions.antlr4
   )
 
   val config = Seq(
