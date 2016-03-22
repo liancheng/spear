@@ -196,8 +196,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        val rewrittenCondition = inlineAliases(condition, projectList)
-        plan filter rewrittenCondition select projectList
+        plan filter inlineAliases(condition, projectList) select projectList
     }
   }
 

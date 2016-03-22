@@ -23,11 +23,18 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     _ => "\n" + expression.prettyTree
   }
 
+  private val analyzer = new Analyzer(new InMemoryCatalog)
+
+  private val (a, b) = ('a.int.!, 'b.string.?)
+
+  private val relation = LocalRelation.empty(a, b)
+
   private def testRule(
     rule: Rule[LogicalPlan], endCondition: EndCondition
-  )(f: (LogicalPlan => LogicalPlan) => Unit): Unit = {
+  )(
+    f: (LogicalPlan => LogicalPlan) => Unit
+  ): Unit = {
     test(rule.getClass.getSimpleName stripSuffix "$") {
-      val analyzer = new Analyzer(new InMemoryCatalog)
       val optimizer = new RulesExecutor[LogicalPlan] {
         override def batches: Seq[RuleBatch] = Seq(
           RuleBatch("TestBatch", endCondition, rule :: Nil)
@@ -39,18 +46,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genLogicalPredicate(Nil))
+    implicit val arbPredicate = Arbitrary(genLogicalPredicate(relation.output))
 
     check(
       forAll { predicate: Expression =>
-        val optimizedPlan = optimizer(SingleRowRelation filter predicate)
-        val conditions = optimizedPlan.collect {
-          case _ Filter condition => splitConjunction(condition)
-        }.flatten
-
-        conditions.forall {
-          _.collect { case _ && _ => () }.isEmpty
-        }
+        val optimizedPlan = optimizer(relation filter predicate)
+        val conditions = optimizedPlan.collect { case f: Filter => f.condition }
+        conditions flatMap splitConjunction forall (_.collect { case _: And => () }.isEmpty)
       },
 
       // CNF conversion may potentially expand the predicate significantly and slows down the test
@@ -60,15 +62,12 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(MergeFilters, FixedPoint.Unlimited) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genPredicate(Nil))
+    implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
 
     check { (p1: Expression, p2: Expression) =>
-      val optimized = optimizer(SingleRowRelation filter p1 filter p2)
-      val conditions = optimized.collect {
-        case f: Filter => f.condition
-      }
-
-      conditions == Seq(p1 && p2)
+      val optimized = optimizer(relation filter p1 filter p2)
+      val Seq(condition) = optimized.collect { case f: Filter => f.condition }
+      condition == (p1 && p2)
     }
   }
 }
