@@ -1,5 +1,3 @@
-import org.apache.log4j.{Level, Logger}
-
 import scraper.Context._
 import scraper.config.Settings
 import scraper.expressions._
@@ -10,10 +8,6 @@ import scraper.types._
 import scraper.utils.loadConfig
 
 implicit val context = new LocalContext(new Settings(loadConfig("full")))
-
-def setLogLevel(level: String) {
-  Logger.getRootLogger.setLevel(Level.toLevel(level))
-}
 
 context range 100 select (
   If(

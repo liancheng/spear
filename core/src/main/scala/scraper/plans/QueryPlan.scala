@@ -143,10 +143,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   protected def outputStrings: Seq[String] = output map (_.debugString)
 
   override def nodeCaption: String = {
+    import scala.Console._
     val argsString = argStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
-    val arrow = "\u21d2"
-    Seq(s"$nodeName:", argsString, arrow, outputString) filter (_.nonEmpty) mkString " "
+    val arrow = s"$RED\u21d2$RESET"
+    Seq(s":$GREEN$nodeName$RESET:", argsString, arrow, outputString) filter (_.nonEmpty) mkString " "
   }
 
   override protected def buildVirtualTreeNodes(

@@ -104,7 +104,7 @@ object Dependencies {
     val ammonite = "0.5.5"
     val config = "1.2.1"
     val jline = "2.12.1"
-    val log4j = "1.2.16"
+    val log4j = "2.5"
     val protobuf = "2.5.0"
     val scala = "2.11.7"
     val scalaCheck = "1.12.5"
@@ -112,7 +112,7 @@ object Dependencies {
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
     val scopt = "3.3.0"
-    val slf4j = "1.6.4"
+    val slf4j = "1.7.19"
   }
 
   val ammonite = Seq(
@@ -128,7 +128,9 @@ object Dependencies {
   )
 
   val log4j = Seq(
-    "log4j" % "log4j" % Versions.log4j
+    "org.apache.logging.log4j" % "log4j-api" % Versions.log4j,
+    "org.apache.logging.log4j" % "log4j-core" % Versions.log4j,
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % Versions.log4j
   )
 
   val protobuf = Seq(
@@ -155,12 +157,10 @@ object Dependencies {
   )
 
   val slf4j = Seq(
-    "org.slf4j" % "slf4j-api" % Versions.slf4j,
-    "org.slf4j" % "slf4j-log4j12" % Versions.slf4j,
-    "org.slf4j" % "jul-to-slf4j" % Versions.slf4j
+    "org.slf4j" % "slf4j-api" % Versions.slf4j
   )
 
   val test = scalaCheck ++ scalaTest
 
-  val overrides = Set.empty ++ jline ++ protobuf ++ scala
+  val overrides = Set.empty ++ jline ++ protobuf ++ scala ++ slf4j
 }
