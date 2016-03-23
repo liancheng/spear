@@ -29,11 +29,11 @@ package object expressions extends Logging {
     Key("scraper.test.expressions.only-logical-operators-in-predicate").boolean
 
   def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
-    dataType <- genPrimitiveType(settings)
+    dataType <- genPrimitiveType
     nullable <- arbitrary[Boolean]
 
     outputSpec = FieldSpec(dataType, nullable)
-    expression <- genExpression(input, outputSpec)(settings)
+    expression <- genExpression(input, outputSpec)
   } yield expression
 
   def genExpression(
@@ -42,9 +42,9 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType      => genPredicate(input, outputSpec)(settings)
-    case _: NumericType   => genArithmetic(input, outputSpec)(settings)
-    case _: PrimitiveType => genLiteral(outputSpec)(settings)
+    case BooleanType      => genPredicate(input, outputSpec)
+    case _: NumericType   => genArithmetic(input, outputSpec)
+    case _: PrimitiveType => genLiteral(outputSpec)
   }
 
   def genArithmetic(
@@ -54,7 +54,7 @@ package object expressions extends Logging {
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
     case _: NumericType =>
-      genTermExpression(input, outputSpec)(settings)
+      genTermExpression(input, outputSpec)
   }
 
   def genTermExpression(
@@ -67,7 +67,7 @@ package object expressions extends Logging {
       for {
         size <- Gen.size
 
-        genProduct = genProductExpression(input, outputSpec)(settings)
+        genProduct = genProductExpression(input, outputSpec)
         genNegate = Gen.resize(size - 1, genProduct map Negate)
         genTerm = genUnaryOrBinary(genProduct, Plus, Minus)
 
@@ -79,7 +79,7 @@ package object expressions extends Logging {
       } yield term
 
     case BooleanType =>
-      genPredicate(input, outputSpec)(settings)
+      genPredicate(input, outputSpec)
   }
 
   def genProductExpression(
@@ -91,10 +91,10 @@ package object expressions extends Logging {
     case _: NumericType =>
       Gen.sized {
         case size if size < 2 =>
-          genBaseExpression(input, outputSpec)(settings)
+          genBaseExpression(input, outputSpec)
 
         case size =>
-          val genBranch = genBaseExpression(input, outputSpec)(settings)
+          val genBranch = genBaseExpression(input, outputSpec)
           genUnaryOrBinary(genBranch, Multiply, Divide)
       }
   }
@@ -112,12 +112,12 @@ package object expressions extends Logging {
     val genLeaf = if (candidates.nonEmpty) {
       Gen.oneOf(candidates)
     } else {
-      genLiteral(outputSpec)(settings)
+      genLiteral(outputSpec)
     }
 
     Gen.sized {
       case 1    => genLeaf
-      case size => Gen.oneOf(genLeaf, Gen.lzy(genExpression(input, outputSpec)(settings)))
+      case size => Gen.oneOf(genLeaf, Gen.lzy(genExpression(input, outputSpec)))
     }
   }
 
@@ -127,7 +127,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
-    case BooleanType => genOrExpression(input, outputSpec)(settings)
+    case BooleanType => genOrExpression(input, outputSpec)
   }
 
   def genLogicalPredicate(
@@ -146,7 +146,7 @@ package object expressions extends Logging {
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
     case BooleanType =>
-      val genBranch = genAndExpression(input, outputSpec)(settings)
+      val genBranch = genAndExpression(input, outputSpec)
       genUnaryOrBinary(genBranch, Or)
   }
 
@@ -159,15 +159,15 @@ package object expressions extends Logging {
     case BooleanType =>
       val genBranch = Gen.sized {
         case size if size < 2 =>
-          genComparison(input, outputSpec)(settings)
+          genComparison(input, outputSpec)
 
         case _ if settings(OnlyLogicalOperatorsInPredicate) =>
-          genNotExpression(input, outputSpec)(settings)
+          genNotExpression(input, outputSpec)
 
         case _ =>
           Gen.oneOf(
-            genNotExpression(input, outputSpec)(settings),
-            genComparison(input, outputSpec)(settings)
+            genNotExpression(input, outputSpec),
+            genComparison(input, outputSpec)
           )
       }
 
@@ -183,7 +183,7 @@ package object expressions extends Logging {
     case BooleanType =>
       for {
         size <- Gen.size
-        predicate <- Gen.resize(size - 1, genPredicate(input, outputSpec)(settings))
+        predicate <- Gen.resize(size - 1, genPredicate(input, outputSpec))
       } yield Not(predicate)
   }
 
@@ -195,7 +195,7 @@ package object expressions extends Logging {
   ): Gen[Expression] = outputSpec.dataType match {
     case BooleanType =>
       val genBoolLiteral = genLiteral(outputSpec.copy(dataType = BooleanType))
-      val genBranch = Gen.lzy(genTermExpression(input, outputSpec)(settings))
+      val genBranch = Gen.lzy(genTermExpression(input, outputSpec))
 
       Gen.sized {
         case size if size < 2 =>
@@ -287,7 +287,7 @@ package object expressions extends Logging {
     case e =>
       def stripLeaves(e: Expression): Expression = e transformDown {
         case child if !child.isLeaf && child.children.forall(_.isLeaf) =>
-          genLiteral(FieldSpec(child.dataType, child.isNullable))(settings).sample.get
+          genLiteral(FieldSpec(child.dataType, child.isNullable)).sample.get
       }
 
       val OutputType = e.dataType

@@ -12,23 +12,23 @@ import scraper.plans.logical.dsl._
 package object logical {
   def genLogicalPlan(input: Seq[LogicalPlan])(implicit settings: Settings): Gen[LogicalPlan] = for {
     size <- Gen.size
-    from <- genFromClause(input)(settings)
+    from <- genFromClause(input)
 
     maybeSelect <- Gen.resize(
       size - from.size,
-      chanceOption(settings(SelectClauseChance), genSelectClause(from)(settings))
+      chanceOption(settings(SelectClauseChance), genSelectClause(from))
     )
     withSelect = maybeSelect getOrElse from
 
     maybeWhere <- Gen.resize(
       size - withSelect.size,
-      chanceOption(settings(WhereClauseChance), genWhereClause(withSelect)(settings))
+      chanceOption(settings(WhereClauseChance), genWhereClause(withSelect))
     )
     withWhere = maybeWhere getOrElse withSelect
 
     maybeLimit <- Gen.resize(
       size - withWhere.size,
-      chanceOption(settings(LimitClauseChance), genLimitClause(withWhere)(settings))
+      chanceOption(settings(LimitClauseChance), genLimitClause(withWhere))
     )
     withLimit = maybeLimit getOrElse withWhere
   } yield withLimit
@@ -40,7 +40,7 @@ package object logical {
 
     head :: tails <- Gen.listOfN(
       joinNum + 1,
-      Gen.resize(relationFactorSize, genRelationFactor(input)(settings))
+      Gen.resize(relationFactorSize, genRelationFactor(input))
     )
   } yield (tails foldLeft head) { _ join _ }
 
@@ -53,7 +53,7 @@ package object logical {
 
       case size =>
         val genSubquery = for {
-          plan <- Gen.resize(size - 1, Gen.lzy(genLogicalPlan(input)(settings)))
+          plan <- Gen.resize(size - 1, Gen.lzy(genLogicalPlan(input)))
           name <- genIdentifier
         } yield plan subquery name
 
@@ -72,7 +72,7 @@ package object logical {
     aliases <- Gen.listOfN(width, genIdentifier) retryUntil (_.distinct.length == width)
     expressions <- Gen.listOfN(width, Gen.resize(
       settings(MaxSelectExpressionSize),
-      genExpression(plan.output)(settings)
+      genExpression(plan.output)
     ))
 
     projectList = (expressions, aliases).zipped map (_ as _)
@@ -81,7 +81,7 @@ package object logical {
   def genWhereClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
     Gen.resize(
       settings(MaxWherePredicateSize),
-      genPredicate(plan.output)(settings)
+      genPredicate(plan.output)
     ) map plan.filter
 
   def genLimitClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =

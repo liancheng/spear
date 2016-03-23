@@ -105,11 +105,12 @@ package object types {
         fieldTypeUpperBound = fieldNumUpperBound / (fieldNum max 1)
 
         genFieldType = Gen.resize(
-          fieldTypeUpperBound, if (settings(AllowNestedStructType)) {
-          genDataType(settings)
-        } else {
-          genPrimitiveType(settings)
-        }
+          fieldTypeUpperBound,
+          if (settings(AllowNestedStructType)) {
+            genDataType(settings)
+          } else {
+            genPrimitiveType(settings)
+          }
         )
 
         allowNullable = settings(AllowNullableStructField)
