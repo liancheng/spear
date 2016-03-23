@@ -34,20 +34,6 @@ package object utils {
     }
   } mkString ("\n", "\n", "")
 
-  def loadConfig(component: String): Config =
-    ConfigFactory
-      // Environment variables takes highest priority and overrides everything else
-      .systemEnvironment()
-      // System properties comes after environment variables
-      .withFallback(ConfigFactory.systemProperties())
-      // Then follows user provided configuration files
-      .withFallback(ConfigFactory.parseResources(s"scraper-$component.conf"))
-      // Reference configuration, bundled as resource
-      .withFallback(ConfigFactory.parseResources(s"scraper-$component-reference.conf"))
-      // Configurations of all other components (like Akka)
-      .withFallback(ConfigFactory.load())
-      .resolve()
-
   implicit class StraightString(string: String) {
     def straight: String = straight('|', " ")
 

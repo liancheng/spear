@@ -59,4 +59,18 @@ object Settings {
   val empty: Settings = new Settings(ConfigFactory.empty())
 
   def apply(config: Config): Settings = new Settings(config)
+
+  def load(first: String, rest: String*): Settings =
+    Settings(
+      ConfigFactory
+        // Environment variables takes highest priority and overrides everything else
+        .systemEnvironment()
+        // System properties comes after environment variables
+        .withFallback(ConfigFactory.systemProperties())
+        // Then follows user provided configuration files
+        .withFallback(first +: rest map ConfigFactory.parseResources reduce (_ withFallback _))
+        // Configurations of all other components (like Akka)
+        .withFallback(ConfigFactory.load())
+        .resolve()
+    )
 }

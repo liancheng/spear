@@ -7,9 +7,8 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.local.LocalContext
 import scraper.types._
-import scraper.utils.loadConfig
 
-implicit val context = new LocalContext(new Settings(loadConfig("full")))
+implicit val context = new LocalContext(Settings.load("scraper.conf", "scraper-reference.conf"))
 
 def setLogLevel(level: String) {
   Logger.getRootLogger.setLevel(Level.toLevel(level))

@@ -41,6 +41,7 @@ object Build extends sbt.Build {
       .settings(libraryDependencies ++= Dependencies.ammonite)
       // Explicitly overrides all conflicting transitive dependencies
       .settings(dependencyOverrides ++= Dependencies.overrides)
+      .settings(unmanagedClasspath in Runtime += baseDirectory.value.getParentFile / "conf")
 
   lazy val coreDependencies = {
     import Dependencies._
