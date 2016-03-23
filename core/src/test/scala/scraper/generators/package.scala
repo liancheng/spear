@@ -1,8 +1,11 @@
 package scraper
 
+import scala.util.{Failure, Success}
+
 import org.scalacheck.Gen
 
 import scraper.config.Settings.Key
+import scraper.exceptions.SettingsValidationException
 
 package object generators {
   def genRandomPartitions(sum: Int, partitionNum: Int): Gen[Seq[Int]] = for {
@@ -56,6 +59,17 @@ package object generators {
 
     val MaxRepetition: Key[Int] =
       Key("scraper.test.expressions.max-repetition").int
+
+    val NullChances: Key[Double] =
+      Key("scraper.test.expressions.chances.null").double.validate {
+        case v if v >= 0D && v <= 1.0D => Success(v)
+        case v => Failure(new SettingsValidationException(
+          s"Illegal null chance $v, value must be within range [0.0, 1.0]."
+        ))
+      }
+
+    val OnlyLogicalOperatorsInPredicate: Key[Boolean] =
+      Key("scraper.test.expressions.only-logical-operators-in-predicate").boolean
 
     // -----------------------------------------
     // Settings keys for logical plan generators

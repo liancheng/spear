@@ -1,15 +1,13 @@
 package scraper.generators
 
 import scala.collection.immutable.Stream.Empty
-import scala.util.{Failure, Success}
 
 import org.scalacheck.{Gen, Shrink}
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Shrink.shrink
 
 import scraper.config.Settings
-import scraper.config.Settings.Key
-import scraper.exceptions.{SettingsValidationException, TypeMismatchException}
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions._
 import scraper.generators.types._
 import scraper.generators.values._
@@ -17,17 +15,6 @@ import scraper.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
 import scraper.utils.Logging
 
 package object expressions extends Logging {
-  val NullChances: Key[Double] =
-    Key("scraper.test.expressions.chances.null").double.validate {
-      case v if v >= 0D && v <= 1.0D => Success(v)
-      case v => Failure(new SettingsValidationException(
-        s"Illegal null chance $v, value must be within range [0.0, 1.0]."
-      ))
-    }
-
-  val OnlyLogicalOperatorsInPredicate: Key[Boolean] =
-    Key("scraper.test.expressions.only-logical-operators-in-predicate").boolean
-
   def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
     dataType <- genPrimitiveType
     nullable <- arbitrary[Boolean]
@@ -136,7 +123,7 @@ package object expressions extends Logging {
     implicit
     settings: Settings
   ): Gen[Expression] = genPredicate(input, outputSpec)(settings.withValue(
-    OnlyLogicalOperatorsInPredicate, true
+    Keys.OnlyLogicalOperatorsInPredicate, true
   ))
 
   def genOrExpression(
@@ -161,7 +148,7 @@ package object expressions extends Logging {
         case size if size < 2 =>
           genComparison(input, outputSpec)
 
-        case _ if settings(OnlyLogicalOperatorsInPredicate) =>
+        case _ if settings(Keys.OnlyLogicalOperatorsInPredicate) =>
           genNotExpression(input, outputSpec)
 
         case _ =>
@@ -218,7 +205,7 @@ package object expressions extends Logging {
         )
     }
 
-    val nullFreq = if (nullable) (settings(NullChances) * 100).toInt else 0
+    val nullFreq = if (nullable) (settings(Keys.NullChances) * 100).toInt else 0
     val nonNullFreq = 100 - nullFreq
 
     Gen.frequency(
