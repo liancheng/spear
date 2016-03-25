@@ -118,9 +118,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT x.* FROM t x JOIN t y",
-      (relation subquery 't subquery 'x)
-        .join(relation.newInstance() subquery 't subquery 'y)
-        .select(`x.a`, `x.b`)
+      relation subquery 't subquery 'x
+        join (relation.newInstance() subquery 't subquery 'y)
+        select (`x.a`, `x.b`)
     )
   }
 
@@ -183,9 +183,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     checkAnalyzedPlan(
       relation groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc,
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
-        .having(groupA.attr > 1)
-        .orderBy(aggCountB.attr.asc)
-        .select(groupA.attr as 'a)
+        having groupA.attr > 1
+        orderBy aggCountB.attr.asc
+        select (groupA.attr as 'a)
     )
   }
 
@@ -194,8 +194,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc,
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         // Only the last sort order should be preserved
-        .orderBy(aggCountB.attr.asc)
-        .select(aggCountB.attr as "COUNT(b)")
+        orderBy aggCountB.attr.asc
+        select (aggCountB.attr as "COUNT(b)")
     )
   }
 
@@ -204,27 +204,24 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
         // All having conditions should be preserved
-        .having(groupA.attr > 1 && aggCountB.attr < 3L)
-        .select(aggCountB.attr as "COUNT(b)")
+        having groupA.attr > 1 && aggCountB.attr < 3L
+        select (aggCountB.attr as "COUNT(b)")
     )
   }
 
   test("aggregate with multiple alternate having and order by clauses") {
-    val plan =
+    checkAnalyzedPlan(
       relation
-        .groupBy('a).agg('a)
-        .having('a > 1)
-        .orderBy('a.asc)
-        .having(count('b) < 10L)
-        .orderBy(count('b).asc)
-
-    val expectedPlan =
+        groupBy 'a agg 'a
+        having 'a > 1
+        orderBy 'a.asc
+        having count('b) < 10L
+        orderBy count('b).asc,
       Aggregate(relation, Seq(groupA), Seq(aggCountB))
-        .having(groupA.attr > 1 && (aggCountB.attr < 10L))
-        .orderBy(aggCountB.attr.asc)
-        .select(groupA.attr as 'a)
-
-    checkAnalyzedPlan(plan, expectedPlan)
+        having groupA.attr > 1 && (aggCountB.attr < 10L)
+        orderBy aggCountB.attr.asc
+        select (groupA.attr as 'a)
+    )
   }
 
   test("analyzed aggregate should not expose `GeneratedAttribute`s") {
