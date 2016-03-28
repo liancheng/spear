@@ -212,14 +212,14 @@ object Optimizer {
         if (leftPredicates.nonEmpty) {
           logDebug({
             val leftList = leftPredicates mkString ("[", ", ", "]")
-            s"Pushing predicates $leftList through left join branches"
+            s"Pushing predicates $leftList through left join branch"
           })
         }
 
         if (rightPredicates.nonEmpty) {
           logDebug({
             val rightList = rightPredicates mkString ("[", ", ", "]")
-            s"Pushing predicates $rightList through left join branches"
+            s"Pushing predicates $rightList through right join branch"
           })
         }
 
