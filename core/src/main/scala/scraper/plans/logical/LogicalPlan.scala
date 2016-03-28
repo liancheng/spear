@@ -279,7 +279,7 @@ case class UnresolvedAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
-  havingCondition: Option[Expression] = None,
+  havingConditions: Seq[Expression] = Nil,
   order: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 

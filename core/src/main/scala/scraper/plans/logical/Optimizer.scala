@@ -260,9 +260,9 @@ object Optimizer {
           })
         }
 
-        agg.copy(
-          child = agg.child filterOption (pushDown map (_ expand (agg, ForGrouping)))
-        ) filterOption stayUp
+        val expandedPushDown = pushDown map (_ expand (agg, ForGrouping))
+        val filteredChild = agg.child filterOption expandedPushDown
+        agg.copy(child = filteredChild) filterOption stayUp
     }
   }
 

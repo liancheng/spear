@@ -275,8 +275,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (agg: UnresolvedAggregate) Filter condition =>
         // All having conditions should be preserved
-        val combinedCondition = (agg.havingCondition.toSeq :+ condition) reduce And
-        agg.copy(havingCondition = Some(combinedCondition))
+        agg.copy(havingConditions = agg.havingConditions :+ condition)
     }
   }
 
@@ -313,13 +312,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
 
-      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, condition, order) =>
+      case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
         // Aliases all grouping keys
         val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
-        val aggs = collectAggregation(projectList ++ condition ++ order)
+        val aggs = collectAggregation(projectList ++ conditions ++ order)
         val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
@@ -329,7 +328,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
         // Replaces grouping keys and aggregate functions in having condition, sort ordering
         // expressions, and projected named expressions.
-        val newCondition = condition map rewrite
+        val newConditions = conditions map rewrite
         val newOrdering = order map (order => order.copy(child = rewrite(order.child)))
         val newProjectList = projectList map (e => rewrite(e) -> e) map {
           // `GeneratedAttribute`s should be hidden
@@ -337,13 +336,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           case (e, _)                     => e
         }
 
-        checkAggregation(keys, newProjectList ++ newCondition ++ newOrdering)
+        checkAggregation(keys, newProjectList ++ newConditions ++ newOrdering)
 
-        val newAgg = Aggregate(child, keyAliases, aggAliases)
-        val filteredAgg = newCondition map newAgg.filter getOrElse newAgg
-        val orderedAgg = if (newOrdering.isEmpty) filteredAgg else filteredAgg orderBy newOrdering
-
-        orderedAgg select newProjectList
+        Aggregate(child, keyAliases, aggAliases)
+          .filterOption(newConditions)
+          .orderByOption(newOrdering)
+          .select(newProjectList)
     }
 
     private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =

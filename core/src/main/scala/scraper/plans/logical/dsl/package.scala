@@ -31,6 +31,9 @@ package object dsl {
 
     def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
 
+    def orderByOption(order: Seq[SortOrder]): LogicalPlan =
+      if (order.nonEmpty) orderBy(order) else plan
+
     def distinct: Distinct = Distinct(plan)
 
     def subquery(name: String): Subquery = Subquery(plan, name)
