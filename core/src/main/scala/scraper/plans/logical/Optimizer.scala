@@ -207,13 +207,41 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case (join @ Join(left, right, Inner, joinCondition)) Filter filterCondition =>
         val (leftPredicates, rightPredicates, commonPredicates) =
-          partitionPredicatesByReferencedBranches(filterCondition, left, right)
+          partitionByReferencedBranches(splitConjunction(toCNF(filterCondition)), left, right)
 
-        join.copy(
-          left = applyPredicates(leftPredicates, left),
-          right = applyPredicates(rightPredicates, right),
-          condition = (joinCondition ++ commonPredicates) reduceOption And
-        )
+        if (leftPredicates.nonEmpty) {
+          logDebug({
+            val leftList = leftPredicates mkString ("[", ", ", "]")
+            s"Pushing predicates $leftList through left join branches"
+          })
+        }
+
+        if (rightPredicates.nonEmpty) {
+          logDebug({
+            val rightList = rightPredicates mkString ("[", ", ", "]")
+            s"Pushing predicates $rightList through left join branches"
+          })
+        }
+
+        (left filterOption leftPredicates)
+          .join(right filterOption rightPredicates)
+          .onOption(commonPredicates ++ joinCondition)
+    }
+
+    private def partitionByReferencedBranches(
+      predicates: Seq[Expression],
+      left: LogicalPlan,
+      right: LogicalPlan
+    ): (Seq[Expression], Seq[Expression], Seq[Expression]) = {
+      val (leftPredicates, rest) = predicates partition {
+        _.references subsetOfByID left.outputSet
+      }
+
+      val (rightPredicates, commonPredicates) = rest partition {
+        _.references subsetOfByID right.outputSet
+      }
+
+      (leftPredicates, rightPredicates, commonPredicates)
     }
   }
 
@@ -221,22 +249,20 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan @ ((agg: Aggregate) Filter condition) if agg.functions forall (_.isPure) =>
         val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
+          // Predicates that don't reference any aggregate functions can be pushed down
           _.collectFirst { case _: AggregationAttribute => () }.isEmpty
         }
 
-        if (pushDown.isEmpty) {
-          plan
-        } else {
-          logTrace({
+        if (pushDown.nonEmpty) {
+          logDebug({
             val pushDownList = pushDown mkString ("[", ", ", "]")
             s"Pushing down predicates $pushDownList through aggregation"
           })
-
-          // Expands grouping attributes to original grouping key expressions
-          val expandedPushDown = pushDown map (_ expand (agg, ForGrouping))
-          val newAgg = agg.copy(child = agg.child filter (expandedPushDown reduce And))
-          if (stayUp.isEmpty) newAgg else newAgg filter (stayUp reduce And)
         }
+
+        agg.copy(
+          child = agg.child filterOption (pushDown map (_ expand (agg, ForGrouping)))
+        ) filterOption stayUp
     }
   }
 
@@ -271,23 +297,4 @@ object Optimizer {
       case ref: AttributeRef => ref.copy(qualifier = None)
     }
   }
-
-  private def partitionPredicatesByReferencedBranches(
-    predicate: Expression,
-    left: LogicalPlan,
-    right: LogicalPlan
-  ): (Seq[Expression], Seq[Expression], Seq[Expression]) = {
-    val (leftPredicates, rest) = splitConjunction(toCNF(predicate)) partition {
-      _.references subsetOfByID left.outputSet
-    }
-
-    val (rightPredicates, commonPredicates) = rest partition {
-      _.references subsetOfByID right.outputSet
-    }
-
-    (leftPredicates, rightPredicates, commonPredicates)
-  }
-
-  private def applyPredicates(predicates: Seq[Expression], plan: LogicalPlan): LogicalPlan =
-    predicates reduceOption And map plan.filter getOrElse plan
 }

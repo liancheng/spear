@@ -16,6 +16,9 @@ package object dsl {
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
+    def filterOption(predicates: Seq[Expression]): LogicalPlan =
+      predicates reduceOption And map filter getOrElse plan
+
     def where(condition: Expression): Filter = filter(condition)
 
     def having(condition: Expression): Filter = filter(condition)

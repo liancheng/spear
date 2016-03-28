@@ -260,6 +260,9 @@ case class Join(
   }
 
   def on(condition: Expression): Join = copy(condition = Some(condition))
+
+  def onOption(predicates: Seq[Expression]): Join =
+    predicates reduceOption And map on getOrElse this
 }
 
 case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
