@@ -98,23 +98,19 @@ class BasicMutableRow(values: ArrayBuffer[Any]) extends BasicRow(values) with Mu
   override def iterator: Iterator[Any] = values.iterator
 }
 
-class JoinedRow(private var row1: Row, private var row2: Row) extends Row {
+class JoinedRow(private var left: Row, private var right: Row) extends Row {
   def this() = this(null, null)
 
-  override def length: Int = row1.length + row2.length
+  override def length: Int = left.length + right.length
 
   override def apply(ordinal: Int): Any =
-    if (ordinal < row1.length) row1(ordinal) else row2(ordinal - row1.length)
+    if (ordinal < left.length) left(ordinal) else right(ordinal - left.length)
 
-  override def iterator: Iterator[Any] = row1.iterator ++ row2.iterator
+  override def iterator: Iterator[Any] = left.iterator ++ right.iterator
 
-  def replaceLeft(row: Row): this.type = {
-    row1 = row
-    this
-  }
-
-  def replaceRight(row: Row): this.type = {
-    row2 = row
+  def apply(lhs: Row, rhs: Row): this.type = {
+    left = lhs
+    right = rhs
     this
   }
 }

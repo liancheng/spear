@@ -35,7 +35,7 @@ case class HashAggregate(
     hashMap.iterator map {
       case (groupingRow, aggBuffer) =>
         aggBuffer result aggResult
-        joinedRow replaceLeft groupingRow replaceRight aggResult
+        joinedRow(groupingRow, aggResult)
     }
   }
 }
