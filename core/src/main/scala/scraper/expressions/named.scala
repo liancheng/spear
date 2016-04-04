@@ -106,7 +106,7 @@ object Alias {
 }
 
 /**
- * When user gives an arbitrary [[Expression]] where a [[NamedExpression]] is required, we use
+ * Wherever a [[NamedExpression]] is required but an arbitrary [[Expression]] is given, we use
  * [[AutoAlias]] to wrap the given expression and defer decision of the final alias name until
  * analysis time.  The final alias name is usually the SQL representation of the finally resolved
  * expression.  If the resolved expression doesn't have a SQL representation (e.g., Scala UDF),
