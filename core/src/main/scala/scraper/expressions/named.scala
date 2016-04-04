@@ -35,19 +35,6 @@ object NamedExpression {
 
   def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
 
-  def inlineAliases[T <: Expression](expression: T, targets: Seq[NamedExpression]): T = {
-    val aliases = targets.collect { case a: Alias => a }
-    val rewrite = aliases.map(a => a.toAttribute -> a.child).toMap
-
-    expression.transformUp {
-      case a @ Alias(ref: AttributeRef, _, _) if rewrite contains ref =>
-        a.copy(child = rewrite getOrElse (ref, ref))
-
-      case ref: AttributeRef if rewrite contains ref =>
-        rewrite(ref) as ref.name withID ref.expressionID
-    }.asInstanceOf[T]
-  }
-
   /**
    * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
    * names.  For example, for expression `id + 1`, we'd like to generate column name `(id + 1)`
@@ -101,6 +88,22 @@ case class Alias(
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
+}
+
+object Alias {
+  def collectAliases(expressions: Seq[NamedExpression]): Map[Attribute, Expression] =
+    expressions
+      .collect { case a: Alias => a }
+      .map(a => a.attr -> a.child)
+      .toMap
+
+  def betaReduction(expression: Expression, aliases: Map[Attribute, Expression]): Expression =
+    expression transformUp {
+      case a: AttributeRef => aliases.getOrElse(a, a)
+    }
+
+  def betaReduction(expression: Expression, targets: Seq[NamedExpression]): Expression =
+    betaReduction(expression, collectAliases(targets))
 }
 
 /**

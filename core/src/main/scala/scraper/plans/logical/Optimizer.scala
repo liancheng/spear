@@ -2,10 +2,8 @@ package scraper.plans.logical
 
 import scraper.expressions
 import scraper.expressions._
-import scraper.expressions.GeneratedAttribute._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
-import scraper.expressions.NamedExpression.inlineAliases
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -137,7 +135,13 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        plan select (outerList map (inlineAliases(_, innerList)))
+        val aliases = Alias.collectAliases(innerList)
+
+        plan select (outerList map {
+          case a: Alias        => a.copy(child = Alias.betaReduction(a.child, aliases))
+          case a: AttributeRef => Alias.betaReduction(a, aliases) as a.name withID a.expressionID
+          case e               => Alias.betaReduction(e, aliases)
+        })
     }
   }
 
@@ -145,9 +149,19 @@ object Optimizer {
    * This rule reduces adjacent aliases.
    */
   object ReduceAliases extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case outer @ Alias(inner: Alias, _, _) => outer.copy(child = inner.child)
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case child Project projectList =>
+        child select (projectList map reduceNonTopLevelAliases)
+
+      case Aggregate(child, keys, functions) =>
+        child resolvedGroupBy keys agg (functions map reduceNonTopLevelAliases)
+
+      case plan =>
+        plan.transformExpressionsUp { case a: Alias => a.child }
     }
+
+    private def reduceNonTopLevelAliases[T <: NamedExpression](expression: T): T =
+      expression.transformChildrenUp { case a: Alias => a.child }.asInstanceOf[T]
   }
 
   /**
@@ -196,7 +210,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        plan filter inlineAliases(condition, projectList) select projectList
+        plan filter Alias.betaReduction(condition, projectList) select projectList
     }
   }
 
@@ -247,7 +261,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (agg: Aggregate) Filter condition if agg.functions forall (_.isPure) =>
+      case Aggregate(child, keys, functions) Filter condition if functions forall (_.isPure) =>
         val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
           // Predicates that don't reference any aggregate functions can be pushed down
           _.collectFirst { case _: AggregationAttribute => () }.isEmpty
@@ -260,9 +274,13 @@ object Optimizer {
           })
         }
 
-        val expandedPushDown = pushDown map (_ expand (agg, ForGrouping))
-        val filteredChild = agg.child filterOption expandedPushDown
-        agg.copy(child = filteredChild) filterOption stayUp
+        val reducedPushDown = pushDown map (GeneratedAlias.betaReduction(_, keys, ForGrouping))
+
+        child
+          .filterOption(reducedPushDown)
+          .resolvedGroupBy(keys)
+          .agg(functions)
+          .filterOption(stayUp)
     }
   }
 
