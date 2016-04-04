@@ -2,7 +2,6 @@ package scraper.expressions
 
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.language.higherKinds
 import scala.util.{Success, Try}
 
 import scraper.Row

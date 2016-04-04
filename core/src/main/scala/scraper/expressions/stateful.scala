@@ -1,6 +1,5 @@
 package scraper.expressions
 
-import scala.language.higherKinds
 import scala.util.Random
 
 import scraper.Row
