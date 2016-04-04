@@ -1,7 +1,10 @@
 package scraper.expressions
 
+import scala.util.Try
+
 import scraper.{MutableRow, Row}
 import scraper.types._
+import scraper.utils.trySequence
 
 trait AggregateFunction extends Expression with UnevaluableExpression {
   def bufferSchema: StructType
@@ -42,6 +45,8 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
 case class DistinctAggregateFunction(child: AggregateFunction)
   extends AggregateFunction with UnaryExpression {
 
+  override def dataType: DataType = child.dataType
+
   override def bufferSchema: StructType = child.bufferSchema
 
   override def result(buffer: Row): Any = child.result(buffer)
@@ -53,4 +58,15 @@ case class DistinctAggregateFunction(child: AggregateFunction)
   override def accumulate(buffer: MutableRow, row: Row): Unit = child.accumulate(buffer, row)
 
   override def zero(buffer: MutableRow): Unit = child.zero(buffer)
+
+  override def sql: Try[String] = for {
+    argSQL <- trySequence(child.children.map(_.sql))
+    name = child.nodeName.toUpperCase
+  } yield s"$name(DISTINCT ${argSQL mkString ", "})"
+
+  override def debugString: String = {
+    val args = child.children map (_.debugString)
+    val name = child.nodeName.toUpperCase
+    s"$name(DISTINCT ${args mkString ", "})"
+  }
 }

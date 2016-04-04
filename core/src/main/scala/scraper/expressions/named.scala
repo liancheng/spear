@@ -96,7 +96,7 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"(${child.debugString} AS ${quote(name)})#${expressionID.id}"
+  override def debugString: String = s"(${child.debugString} AS ${quote(name)}#${expressionID.id})"
 
   override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
 
