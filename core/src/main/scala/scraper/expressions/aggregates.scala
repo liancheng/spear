@@ -3,9 +3,7 @@ package scraper.expressions
 import scraper.{MutableRow, Row}
 import scraper.types._
 
-trait AggregateFunction extends Expression {
-  override def isFoldable: Boolean = false
-
+trait AggregateFunction extends Expression with UnevaluableExpression {
   def bufferSchema: StructType
 
   def supportPartialAggregation: Boolean
@@ -41,4 +39,20 @@ case class Count(child: Expression) extends UnaryExpression with AggregateFuncti
     into.setLong(0, into.getLong(0) + from.getLong(0))
 
   override def result(buffer: Row): Any = buffer.getLong(0)
+}
+
+case class DistinctAggregateFunction(child: AggregateFunction)
+  extends AggregateFunction with UnaryExpression {
+
+  override def bufferSchema: StructType = child.bufferSchema
+
+  override def result(buffer: Row): Any = child.result(buffer)
+
+  override def supportPartialAggregation: Boolean = child.supportPartialAggregation
+
+  override def merge(into: MutableRow, from: Row): Unit = child.merge(into, from)
+
+  override def accumulate(buffer: MutableRow, row: Row): Unit = child.accumulate(buffer, row)
+
+  override def zero(buffer: MutableRow): Unit = child.zero(buffer)
 }

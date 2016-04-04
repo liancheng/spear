@@ -3,6 +3,7 @@ package scraper.plans.logical
 import scraper.Catalog
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
+import scraper.expressions.dsl._
 import scraper.expressions.AutoAlias.AnonymousColumnName
 import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
 import scraper.plans.logical.dsl._
@@ -53,7 +54,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 
   /**
-   * This rule substitutes CTE relations references with sub-queries.
+   * This rule inlines CTE relation definitions as sub-queries.
    */
   object SubstituteCTEs extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -338,7 +339,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
         checkAggregation(keys, newProjectList ++ newConditions ++ newOrdering)
 
-        Aggregate(child, keyAliases, aggAliases)
+        child
+          .resolvedGroupBy(keyAliases)
+          .agg(aggAliases)
           .filterOption(newConditions)
           .orderByOption(newOrdering)
           .select(newProjectList)

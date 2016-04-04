@@ -16,4 +16,6 @@ package object functions {
   def rand(seed: Int): Rand = Rand(seed)
 
   def count(expression: Expression): Count = Count(expression)
+
+  def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 }

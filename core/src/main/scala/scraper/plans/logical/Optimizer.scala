@@ -234,11 +234,11 @@ object Optimizer {
       right: LogicalPlan
     ): (Seq[Expression], Seq[Expression], Seq[Expression]) = {
       val (leftPredicates, rest) = predicates partition {
-        _.references subsetOfByID left.outputSet
+        _.referenceSet subsetOfByID left.outputSet
       }
 
       val (rightPredicates, commonPredicates) = rest partition {
-        _.references subsetOfByID right.outputSet
+        _.referenceSet subsetOfByID right.outputSet
       }
 
       (leftPredicates, rightPredicates, commonPredicates)

@@ -268,9 +268,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1) SELECT * FROM c0",
-    let('c0 -> values(1)) {
-      table('c0) select '*
-    }
+    let('c0 -> values(1)) in (table('c0) select '*)
   )
 
   testQueryParsing(
@@ -331,7 +329,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   private def testQueryParsing(sql: String, expectedPlan: LogicalPlan): Unit = {
     test(s"parsing SQL: $sql") {
-      checkPlan(parse(sql), expectedPlan)
+      checkPlan(parse(sql.split("\n").map(_.trim).mkString(" ")), expectedPlan)
     }
   }
 

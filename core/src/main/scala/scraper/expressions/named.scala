@@ -135,7 +135,7 @@ object AutoAlias {
 trait Attribute extends NamedExpression with LeafExpression {
   override def isFoldable: Boolean = false
 
-  override lazy val references: Set[Attribute] = Set(this)
+  override lazy val referenceSet: Set[Attribute] = Set(this)
 
   override def toAttribute: Attribute = this
 

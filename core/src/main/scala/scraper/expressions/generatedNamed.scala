@@ -130,7 +130,7 @@ case class GroupingAlias(
 ) extends GeneratedAlias with GroupingNamedExpression {
   override def toAttribute: GroupingAttribute = GroupingAttribute(this)
 
-  override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
+  override def withID(id: ExpressionID): GroupingAlias = copy(expressionID = id)
 }
 
 case class GroupingAttribute(alias: GeneratedAlias)
@@ -146,7 +146,7 @@ case class AggregationAlias(
 ) extends GeneratedAlias with AggregationNamedExpression {
   override def toAttribute: AggregationAttribute = AggregationAttribute(this)
 
-  override def withID(id: ExpressionID): GeneratedAlias = copy(expressionID = id)
+  override def withID(id: ExpressionID): AggregationAlias = copy(expressionID = id)
 }
 
 case class AggregationAttribute(alias: GeneratedAlias)

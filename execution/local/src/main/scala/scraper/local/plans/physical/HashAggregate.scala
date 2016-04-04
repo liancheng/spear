@@ -25,8 +25,7 @@ case class HashAggregate(
   override def iterator: Iterator[Row] = {
     child.iterator foreach { input =>
       val groupingRow = Row.fromSeq(boundKeys map (_ evaluate input))
-      val aggBuffer = hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer())
-      aggBuffer += input
+      hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer()) += input
     }
 
     val aggResult = new BasicMutableRow(functions.length)
@@ -34,7 +33,7 @@ case class HashAggregate(
 
     hashMap.iterator map {
       case (groupingRow, aggBuffer) =>
-        aggBuffer result aggResult
+        aggBuffer.result(aggResult)
         joinedRow(groupingRow, aggResult)
     }
   }

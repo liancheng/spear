@@ -166,7 +166,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("global aggregate") {
     checkAnalyzedPlan(
       relation select count('a),
-      Aggregate(relation, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+      relation resolvedAgg aggCountA select (aggCountA.attr as "COUNT(a)")
     )
   }
 
@@ -175,14 +175,16 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT COUNT(a) FROM t",
-      Aggregate(relation subquery 't, Nil, Seq(aggCountA)) select (aggCountA.attr as "COUNT(a)")
+      relation subquery 't resolvedAgg aggCountA select (aggCountA.attr as "COUNT(a)")
     )
   }
 
   test("aggregate with both having and order by clauses") {
     checkAnalyzedPlan(
       relation groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc,
-      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
         having groupA.attr > 1
         orderBy aggCountB.attr.asc
         select (groupA.attr as 'a)
@@ -192,7 +194,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("aggregate with multiple order by clauses") {
     checkAnalyzedPlan(
       relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc,
-      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
         // Only the last sort order should be preserved
         orderBy aggCountB.attr.asc
         select (aggCountB.attr as "COUNT(b)")
@@ -202,7 +206,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("aggregate with multiple having conditions") {
     checkAnalyzedPlan(
       relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
-      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
         // All having conditions should be preserved
         having groupA.attr > 1 && aggCountB.attr < 3L
         select (aggCountB.attr as "COUNT(b)")
@@ -217,7 +223,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         orderBy 'a.asc
         having count('b) < 10L
         orderBy count('b).asc,
-      Aggregate(relation, Seq(groupA), Seq(aggCountB))
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
         having groupA.attr > 1 && (aggCountB.attr < 10L)
         orderBy aggCountB.attr.asc
         select (groupA.attr as 'a)
@@ -229,7 +237,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
       relation groupBy 'a agg 'a,
-      Aggregate(relation, Seq(groupA), Nil) select (groupA.attr as 'a)
+      relation resolvedGroupBy groupA agg Nil select (groupA.attr as 'a)
     )
   }
 
@@ -242,7 +250,10 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("distinct") {
     checkAnalyzedPlan(
       relation.distinct,
-      Aggregate(relation, Seq(groupA, groupB), Nil) select (groupA.attr as 'a, groupB.attr as 'b)
+      relation
+        resolvedGroupBy (groupA, groupB)
+        agg Nil
+        select (groupA.attr as 'a, groupB.attr as 'b)
     )
   }
 
@@ -261,6 +272,15 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("CTE substitution") {
+    val `s.a` = a of 's
+
+    checkAnalyzedPlan(
+      let('s -> (relation subquery 't select 'a)) in (table('s) select '*),
+      relation subquery 't select `t.a` subquery 's select `s.a`
+    )
+  }
+
+  test("CTE substitution in SQL") {
     val `s.a` = a of 's
 
     checkAnalyzedPlan(

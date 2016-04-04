@@ -6,6 +6,7 @@ import scraper._
 import scraper.expressions._
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
+import scraper.local.plans.physical.dsl._
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 
 case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
@@ -23,12 +24,12 @@ case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute
   ): Unit = ()
 }
 
-case class Project(child: PhysicalPlan, override val expressions: Seq[NamedExpression])
+case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
   extends UnaryPhysicalPlan {
 
-  override lazy val output: Seq[Attribute] = expressions map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
 
-  private lazy val boundProjectList = expressions map bind(child.output)
+  private lazy val boundProjectList = projectList map bind(child.output)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     Row.fromSeq(boundProjectList map (_ evaluate row))
@@ -115,4 +116,17 @@ case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysica
 
     buffer.sorted(rowOrdering).iterator
   }
+}
+
+case class Expand(child: PhysicalPlan, projectLists: Seq[Seq[NamedExpression]])
+  extends UnaryPhysicalPlan {
+
+  private lazy val boundProjectLists = projectLists map (_ map bind(child.output))
+
+  override def output: Seq[Attribute] = projectLists.head map (_.toAttribute)
+
+  override def iterator: Iterator[Row] = for {
+    row <- child.iterator
+    projectList <- boundProjectLists
+  } yield Row.fromSeq(projectList map (_ evaluate row))
 }

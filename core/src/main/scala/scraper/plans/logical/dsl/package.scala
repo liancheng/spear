@@ -56,21 +56,45 @@ package object dsl {
 
     def except(that: LogicalPlan): Except = Except(plan, that)
 
-    def groupBy(keys: Seq[Expression]): GroupedLogicalPlan = new GroupedLogicalPlan(plan, keys)
+    def groupBy(keys: Seq[Expression]): UnresolvedAggregateBuilder =
+      new UnresolvedAggregateBuilder(plan, keys)
 
-    def groupBy(first: Expression, rest: Expression*): GroupedLogicalPlan =
-      new GroupedLogicalPlan(plan, first +: rest)
+    def groupBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+      new UnresolvedAggregateBuilder(plan, first +: rest)
 
     def agg(projectList: Seq[Expression]): UnresolvedAggregate = this groupBy Nil agg projectList
 
     def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
+
+    def resolvedGroupBy(keys: Seq[GroupingAlias]): ResolvedAggregateBuilder =
+      new ResolvedAggregateBuilder(plan, keys)
+
+    def resolvedGroupBy(first: GroupingAlias, rest: GroupingAlias*): ResolvedAggregateBuilder =
+      resolvedGroupBy(first +: rest)
+
+    def resolvedAgg(functions: Seq[AggregationAlias]): Aggregate =
+      plan resolvedGroupBy Nil agg functions
+
+    def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
+      resolvedAgg(first +: rest)
+
+    def expand(projectLists: Seq[Seq[NamedExpression]]): Expand = Expand(plan, projectLists)
+
+    def expand(first: Seq[NamedExpression], rest: Seq[NamedExpression]*): Expand =
+      expand(first +: rest)
   }
 
-  class GroupedLogicalPlan(plan: LogicalPlan, keys: Seq[Expression]) {
+  class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {
     def agg(projectList: Seq[Expression]): UnresolvedAggregate =
       UnresolvedAggregate(plan, keys, projectList map named)
 
     def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
+  }
+
+  class ResolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[GroupingAlias]) {
+    def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)
+
+    def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
   }
 
   def table(name: String): UnresolvedRelation = UnresolvedRelation(name)
@@ -81,9 +105,12 @@ package object dsl {
 
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
-  def let(cteRelations: Map[Symbol, LogicalPlan])(query: LogicalPlan): With =
-    With(query, cteRelations map { case (name, plan) => name.name -> plan })
+  def let(cteRelations: Map[String, LogicalPlan]): CTEBuilder = new CTEBuilder(cteRelations)
 
-  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*)(query: LogicalPlan): With =
-    let((first +: rest).toMap)(query)
+  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*): CTEBuilder =
+    let((first +: rest).toMap map { case (name, plan) => name.name -> plan })
+
+  class CTEBuilder(cteRelations: Map[String, LogicalPlan]) {
+    def in(plan: LogicalPlan): With = With(plan, cteRelations)
+  }
 }

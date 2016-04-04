@@ -322,3 +322,9 @@ object With {
     override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
   }
 }
+
+case class Expand(child: LogicalPlan, projectLists: Seq[Seq[NamedExpression]])
+  extends UnaryLogicalPlan {
+
+  override def output: Seq[Attribute] = projectLists.head map (_.toAttribute)
+}
