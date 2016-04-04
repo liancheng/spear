@@ -25,8 +25,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private val `t.b` = b of 't
 
-  private val (groupA, groupB, aggCountA, aggCountB) =
-    (a.asGrouping, b.asGrouping, count(a).asAgg, count(b).asAgg)
+  private val (groupA, groupB, aggCountA, aggCountB) = (
+    GroupingAlias(a),
+    GroupingAlias(b),
+    AggregationAlias(count(a)),
+    AggregationAlias(count(b))
+  )
 
   private val relation = LocalRelation.empty(a, b)
 
@@ -103,24 +107,18 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("expand stars with qualifier") {
-    val `x.a` = a qualifiedBy 'x
-    val `x.b` = b qualifiedBy 'x
-
     checkAnalyzedPlan(
       relation subquery 'x join (relation subquery 'y) select $"x.*",
-      relation subquery 'x join (relation.newInstance() subquery 'y) select (`x.a`, `x.b`)
+      relation subquery 'x join (relation.newInstance() subquery 'y) select (a of 'x, b of 'x)
     )
   }
 
   test("expand stars with qualifier in SQL") {
-    val `x.a` = a qualifiedBy 'x
-    val `x.b` = b qualifiedBy 'x
-
     checkAnalyzedPlan(
       "SELECT x.* FROM t x JOIN t y",
       relation subquery 't subquery 'x
         join (relation.newInstance() subquery 't subquery 'y)
-        select (`x.a`, `x.b`)
+        select (a of 'x, b of 'x)
     )
   }
 
@@ -132,14 +130,15 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("self-join in SQL") {
-    val `t.a'` = a withID newExpressionID() qualifiedBy 't
-    val `t.b'` = b withID newExpressionID() qualifiedBy 't
+    val `t.a'` = a withID newExpressionID() of 't
+    val `t.b'` = b withID newExpressionID() of 't
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
-      (relation subquery 't)
-        .join(relation.newInstance() subquery 't)
-        .select(`t.a`, `t.b`, `t.a'`, `t.b'`)
+      relation
+        subquery 't
+        join (relation.newInstance() subquery 't)
+        select (`t.a`, `t.b`, `t.a'`, `t.b'`)
     )
   }
 
@@ -171,7 +170,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("global aggregate in SQL") {
-    val aggCountA = count(`t.a`).asAgg
+    val aggCountA = AggregationAlias(count(`t.a`))
 
     checkAnalyzedPlan(
       "SELECT COUNT(a) FROM t",
@@ -272,20 +271,16 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("CTE substitution") {
-    val `s.a` = a of 's
-
     checkAnalyzedPlan(
       let('s -> (relation subquery 't select 'a)) in (table('s) select '*),
-      relation subquery 't select `t.a` subquery 's select `s.a`
+      relation subquery 't select `t.a` subquery 's select (a of 's)
     )
   }
 
   test("CTE substitution in SQL") {
-    val `s.a` = a of 's
-
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
-      relation subquery 't select `t.a` subquery 's select `s.a`
+      relation subquery 't select `t.a` subquery 's select (a of 's)
     )
   }
 

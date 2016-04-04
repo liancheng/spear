@@ -1,5 +1,7 @@
 package scraper
 
+import scala.util.control.NonFatal
+
 import org.scalatest.FunSuite
 
 import scraper.expressions._
@@ -78,7 +80,19 @@ trait TestUtils { this: FunSuite =>
     checkDataFrame(df, first +: rest)
 
   def checkDataFrame(df: DataFrame, expected: Seq[Row]): Unit = {
-    val actual = df.queryExecution.physicalPlan.iterator.toSeq
+    val actual = try {
+      df.queryExecution.physicalPlan.iterator.toSeq
+    } catch {
+      case NonFatal(cause) =>
+        fail(
+          s"""Query execution failed:
+           |
+           |${df.explanation(extended = true)}
+         """.stripMargin,
+          cause
+        )
+    }
+
     if (actual != expected) {
       val answerDiff = sideBySide(
         s"""Actual answer:

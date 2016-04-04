@@ -1,6 +1,6 @@
 package scraper.exceptions
 
-import scraper.expressions.{Expression, GroupingAlias}
+import scraper.expressions.{AttributeRef, Expression}
 import scraper.plans.logical.LogicalPlan
 import scraper.types.DataType
 import scraper.utils._
@@ -124,16 +124,21 @@ class SchemaIncompatibleException(message: String, cause: Throwable)
 class IllegalAggregationException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
-  def this(expression: Expression, keys: Seq[Expression], cause: Throwable) =
-    this(
-      s"""Expression ${expression.sql.get} is neither an aggregate function nor a grouping key
-         |${keys map (_.sql.get) mkString ("[", ", ", "]")}
-       """.straight,
-      cause
-    )
+  def this(
+    part: String,
+    attribute: AttributeRef,
+    expression: Expression,
+    keys: Seq[Expression],
+    cause: Throwable
+  ) = this({
+    val e = expression.sql.get
+    val a = attribute.sql.get
+    val ks = keys map (_.sql.get) mkString ("[", ", ", "]")
+    s"$part $e references $a, which is neither an aggregate function nor a grouping key among $ks"
+  }, cause)
 
-  def this(expression: Expression, keys: Seq[Expression]) =
-    this(expression, keys, null)
+  def this(part: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
+    this(part, attribute, expression, keys, null)
 }
 
 class SettingsValidationException(message: String, cause: Throwable)

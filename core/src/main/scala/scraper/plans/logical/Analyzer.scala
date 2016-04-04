@@ -309,7 +309,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case plan @ ((_: UnresolvedAggregate) Sort _) =>
         plan
 
-      // Waits until projected list, having condition and sort order expressions all all resolved
+      // Waits until projected list, having condition, and sort order expressions are all resolved
       case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
 
@@ -332,12 +332,14 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val newConditions = conditions map rewrite
         val newOrdering = order map (order => order.copy(child = rewrite(order.child)))
         val newProjectList = projectList map (e => rewrite(e) -> e) map {
-          // `GeneratedAttribute`s should be hidden
+          // Top level `GeneratedAttribute`s should be aliased to names of the original expressions
           case (g: GeneratedAttribute, e) => g as e.name
           case (e, _)                     => e
         }
 
-        checkAggregation(keys, newProjectList ++ newConditions ++ newOrdering)
+        checkAggregation("SELECT field", keys, newProjectList)
+        checkAggregation("HAVING condition", keys, newConditions)
+        checkAggregation("ORDER BY expression", keys, newOrdering)
 
         child
           .resolvedGroupBy(keyAliases)
@@ -350,13 +352,18 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
       expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
 
-    // TODO Refines error reporting
-    private def checkAggregation(keys: Seq[Expression], expressions: Seq[Expression]): Unit =
-      expressions filter {
-        _.collectFirst { case _: AttributeRef => () }.nonEmpty
-      } foreach {
-        e => throw new IllegalAggregationException(e, keys)
+    private def checkAggregation(
+      part: String, keys: Seq[Expression], expressions: Seq[Expression]
+    ): Unit = expressions foreach { e =>
+      e.references collectFirst {
+        case a: AttributeRef => a
+      } foreach { a =>
+        val cleaned = e.transformDown {
+          case e: NonSQLExpression => UnquotedName(e as e.debugString)
+        }
+        throw new IllegalAggregationException(part, a, cleaned, keys)
       }
+    }
   }
 
   /**

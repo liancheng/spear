@@ -247,7 +247,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan @ ((agg: Aggregate) Filter condition) if agg.functions forall (_.isPure) =>
+      case (agg: Aggregate) Filter condition if agg.functions forall (_.isPure) =>
         val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
           // Predicates that don't reference any aggregate functions can be pushed down
           _.collectFirst { case _: AggregationAttribute => () }.isEmpty
@@ -268,7 +268,7 @@ object Optimizer {
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Project projectList =>
+      case plan Limit n Project projectList if projectList.length < plan.output.length =>
         plan select projectList limit n
     }
   }

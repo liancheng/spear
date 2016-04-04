@@ -20,7 +20,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def isChildrenResolved: Boolean = children forall (_.isResolved)
 
-  def referenceSet: Set[Attribute] = children.toSet flatMap ((_: Expression).referenceSet)
+  def referenceSet: Set[Attribute] = references.toSet
 
   def references: Seq[Attribute] = children.flatMap(_.references).distinct
 
