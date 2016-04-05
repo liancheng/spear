@@ -57,7 +57,9 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   protected def buffered(ref: BoundRef): BoundRef = ref at (ref.ordinal + bufferSchema.length)
 }
 
-trait SimpleAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
+trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
+  protected type BinaryFunction = (Expression, Expression) => Expression
+
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
@@ -68,9 +70,9 @@ trait SimpleAggregateFunction extends UnaryExpression with DeclarativeAggregateF
 
   protected lazy val value = bufferSchema.toAttributes.head at 0
 
-  def updateFunction: (Expression, Expression) => Expression
+  def updateFunction: BinaryFunction
 
-  def mergeFunction: (Expression, Expression) => Expression = updateFunction
+  def mergeFunction: BinaryFunction = updateFunction
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
 
@@ -110,6 +112,8 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 }
 
 case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
+  override def nodeName: String = "AVG"
+
   override def dataType: DataType = DoubleType
 
   override def bufferSchema: StructType = StructType(
@@ -138,24 +142,24 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   }
 }
 
-case class Sum(child: Expression) extends SimpleAggregateFunction {
-  override def updateFunction: (Expression, Expression) => Expression = Plus
+case class Sum(child: Expression) extends NullableMonoidAggregateFunction {
+  override def updateFunction: BinaryFunction = Plus
 }
 
-case class Max(child: Expression) extends SimpleAggregateFunction {
-  override def updateFunction: (Expression, Expression) => Expression = Greatest(_, _)
+case class Max(child: Expression) extends NullableMonoidAggregateFunction {
+  override def updateFunction: BinaryFunction = Greatest(_, _)
 }
 
-case class Min(child: Expression) extends SimpleAggregateFunction {
-  override def updateFunction: (Expression, Expression) => Expression = Least(_, _)
+case class Min(child: Expression) extends NullableMonoidAggregateFunction {
+  override def updateFunction: BinaryFunction = Least(_, _)
 }
 
-case class BoolAnd(child: Expression) extends SimpleAggregateFunction {
-  override def updateFunction: (Expression, Expression) => Expression = And
+case class BoolAnd(child: Expression) extends NullableMonoidAggregateFunction {
+  override def updateFunction: BinaryFunction = And
 }
 
-case class BoolOr(child: Expression) extends SimpleAggregateFunction {
-  override def updateFunction: (Expression, Expression) => Expression = Or
+case class BoolOr(child: Expression) extends NullableMonoidAggregateFunction {
+  override def updateFunction: BinaryFunction = Or
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)
