@@ -262,15 +262,13 @@ object Optimizer {
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case Aggregate(child, keys, functions) Filter condition if functions forall (_.isPure) =>
-        val (pushDown, stayUp) = splitConjunction(toCNF(condition)) partition {
-          // Predicates that don't reference any aggregate functions can be pushed down
-          _.collectFirst { case _: AggregationAttribute => () }.isEmpty
-        }
+        // Predicates that don't reference any aggregate functions can be pushed down
+        val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 
         if (pushDown.nonEmpty) {
           logDebug({
             val pushDownList = pushDown mkString ("[", ", ", "]")
-            s"Pushing down predicates $pushDownList through aggregation"
+            s"Pushing down predicates $pushDownList through aggregate"
           })
         }
 
@@ -282,6 +280,9 @@ object Optimizer {
           .agg(functions)
           .filterOption(stayUp)
     }
+
+    private def containsAggregation(expression: Expression): Boolean =
+      expression.collectFirst { case _: AggregationAttribute => () }.nonEmpty
   }
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
