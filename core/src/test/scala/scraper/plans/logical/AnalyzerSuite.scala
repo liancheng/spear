@@ -88,7 +88,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("no generated output allowed") {
     intercept[ResolutionFailureException] {
-      analyze(LocalRelation.empty('a.int.!.asGrouping.attr))
+      analyze(LocalRelation.empty(GroupingAlias('a.int.!).attr))
     }
   }
 
