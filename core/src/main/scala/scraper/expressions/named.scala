@@ -238,6 +238,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
     val nullability = if (isNullable) "?" else "!"
     name + ":" + dataType.sql + nullability
   }
+
+  def at(ordinal: Int): BoundRef = copy(ordinal = ordinal)
 }
 
 object BoundRef {

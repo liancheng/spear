@@ -17,5 +17,11 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
+  def sum(expression: Expression): Sum = Sum(expression)
+
+  def max(expression: Expression): Max = Max(expression)
+
+  def min(expression: Expression): Min = Min(expression)
+
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 }

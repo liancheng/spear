@@ -6,7 +6,7 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
-import scraper.expressions.{Count, Expression}
+import scraper.expressions._
 import scraper.plans.logical.{LocalRelation, LogicalPlan, SingleRowRelation}
 import scraper.plans.logical.dsl._
 import scraper.plans.physical.PhysicalPlan
@@ -62,6 +62,9 @@ class InMemoryCatalog extends Catalog {
   private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
 
   functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
+  functionRegistry.registerFunction(FunctionInfo(classOf[Sum], Sum))
+  functionRegistry.registerFunction(FunctionInfo(classOf[Max], Max))
+  functionRegistry.registerFunction(FunctionInfo(classOf[Min], Min))
 
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan

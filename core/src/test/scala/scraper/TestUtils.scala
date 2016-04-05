@@ -96,11 +96,11 @@ trait TestUtils { this: FunSuite =>
     if (actual != expected) {
       val answerDiff = sideBySide(
         s"""Actual answer:
-           |${expected mkString "\n"}
+           |${actual mkString "\n"}
            |""".stripMargin,
 
         s"""Expected answer:
-           |${actual mkString "\n"}
+           |${expected mkString "\n"}
            |""".stripMargin,
 
         withHeader = true
@@ -108,7 +108,6 @@ trait TestUtils { this: FunSuite =>
 
       fail(
         s"""Unexpected row(s) detected:
-           |
            |$answerDiff
            |
            |Query plan details:

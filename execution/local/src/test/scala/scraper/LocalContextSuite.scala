@@ -151,6 +151,27 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(3)
     )
   }
+
+  test("sum") {
+    checkDataFrame(
+      context range 3 agg sum('id),
+      Row(3)
+    )
+  }
+
+  test("max") {
+    checkDataFrame(
+      context range 3 agg max('id),
+      Row(2)
+    )
+  }
+
+  test("min") {
+    checkDataFrame(
+      context range 3 agg min('id),
+      Row(0)
+    )
+  }
 }
 
 object LocalContextSuite {
