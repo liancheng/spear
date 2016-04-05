@@ -23,5 +23,9 @@ package object functions {
 
   def min(expression: Expression): Min = Min(expression)
 
+  def bool_and(expression: Expression): BoolAnd = BoolAnd(expression)
+
+  def bool_or(expression: Expression): BoolOr = BoolOr(expression)
+
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 }

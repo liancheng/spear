@@ -83,7 +83,7 @@ trait SimpleAggregateFunction extends UnaryExpression with DeclarativeAggregateF
       If(
         buffered(value).isNull,
         child,
-        accumulateFunction(value, buffered(value))
+        accumulateFunction(child, buffered(value))
       )
     )
   )
@@ -121,6 +121,14 @@ case class Max(child: Expression) extends SimpleAggregateFunction {
 case class Min(child: Expression) extends SimpleAggregateFunction {
   override def accumulateFunction: (Expression, Expression) => Expression =
     (buffered, input) => If(input < buffered, input, buffered)
+}
+
+case class BoolAnd(child: Expression) extends SimpleAggregateFunction {
+  override def accumulateFunction: (Expression, Expression) => Expression = And
+}
+
+case class BoolOr(child: Expression) extends SimpleAggregateFunction {
+  override def accumulateFunction: (Expression, Expression) => Expression = Or
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)

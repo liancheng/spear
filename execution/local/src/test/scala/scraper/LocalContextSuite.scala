@@ -172,6 +172,20 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(0)
     )
   }
+
+  test("bool_and") {
+    checkDataFrame(
+      context range 2 agg bool_and('id % 2 =:= 0),
+      Row(false)
+    )
+  }
+
+  test("bool_or") {
+    checkDataFrame(
+      context range 2 agg bool_or('id % 2 =:= 0),
+      Row(true)
+    )
+  }
 }
 
 object LocalContextSuite {
