@@ -17,6 +17,8 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
+  def avg(expression: Expression): Average = Average(expression)
+
   def sum(expression: Expression): Sum = Sum(expression)
 
   def max(expression: Expression): Max = Max(expression)
@@ -28,4 +30,11 @@ package object functions {
   def bool_or(expression: Expression): BoolOr = BoolOr(expression)
 
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
+
+  def when(condition: Expression)(consequence: => Expression): IfBuilder =
+    IfBuilder(condition, consequence)
+
+  case class IfBuilder(condition: Expression, consequence: Expression) {
+    def otherwise(alternative: => Expression): If = If(condition, consequence, alternative)
+  }
 }

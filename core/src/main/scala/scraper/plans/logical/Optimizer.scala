@@ -294,7 +294,7 @@ object Optimizer {
 
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Limit m => Limit(plan, If(n < m, n, m))
+      case plan Limit n Limit m => Limit(plan, Least(n, m))
     }
   }
 

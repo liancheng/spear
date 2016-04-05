@@ -15,9 +15,9 @@ def setLogLevel(level: String) {
 }
 
 context range 100 select (
-  If(
-    ((rand(42) * 10) cast IntType) % 10 < 2,
-    lit(null),
+  when (((rand(42) * 10) cast IntType) % 10 < 2) {
+    lit(null)
+  } otherwise {
     'id
-  ) as 'id
+  } as 'id
 ) asTable 't

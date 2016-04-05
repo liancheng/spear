@@ -42,7 +42,7 @@ case class HashAggregate(
 case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq[MutableRow]) {
   (boundFunctions, slices).zipped foreach (_ zero _)
 
-  def +=(row: Row): Unit = (boundFunctions, slices).zipped foreach (_.accumulate(_, row))
+  def +=(row: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(_, row))
 
   def ++=(other: AggregationBuffer): Unit =
     (boundFunctions, slices, other.slices).zipped foreach (_.merge(_, _))

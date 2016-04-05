@@ -48,14 +48,16 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     check(forAll(genNumericLiteralPair) {
       case (a @ Literal(_, t: IntegralType), b) =>
         if (b.value == 0) {
-          Divide(a, b).evaluated == null
+          intercept[ArithmeticException](Divide(a, b).evaluated)
+          true
         } else {
           Divide(a, b).evaluated == t.genericIntegral.quot(a.value, b.value)
         }
 
       case (a @ Literal(_, t: FractionalType), b) =>
         if (b.value == 0D) {
-          Divide(a, b).evaluated == null
+          intercept[ArithmeticException](Divide(a, b).evaluated)
+          true
         } else {
           Divide(a, b).evaluated == t.genericFractional.div(a.value, b.value)
         }

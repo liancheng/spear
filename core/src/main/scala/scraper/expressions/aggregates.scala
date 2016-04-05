@@ -15,7 +15,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
 
   def zero(buffer: MutableRow): Unit
 
-  def accumulate(buffer: MutableRow, row: Row): Unit
+  def update(buffer: MutableRow, row: Row): Unit
 
   def merge(into: MutableRow, from: Row): Unit
 
@@ -23,31 +23,23 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
-  def bufferAttributes: Seq[AttributeRef] = Seq(
-    'value of dataType withNullability isNullable
-  )
+  def zeroValues: Seq[Expression] = bufferSchema.fieldTypes map (lit(null) cast _)
 
-  protected lazy val value = bufferAttributes.head at 0
-
-  override def bufferSchema: StructType = StructType fromAttributes bufferAttributes
-
-  def zeroExpressions: Seq[Expression] = bufferSchema.fieldTypes map (lit(null) cast _)
-
-  def accumulateExpressions: Seq[Expression]
+  def updateExpressions: Seq[Expression]
 
   def mergeExpressions: Seq[Expression]
 
-  def resultExpression: Expression = bufferAttributes.head at 0
+  def resultExpression: Expression
 
   override def zero(buffer: MutableRow): Unit = buffer.indices foreach { i =>
-    buffer(i) = zeroExpressions(i).evaluated
+    buffer(i) = zeroValues(i).evaluated
   }
 
-  private lazy val accumulator = updateWith(accumulateExpressions) _
+  private lazy val updater = assignWith(updateExpressions) _
 
-  override def accumulate(buffer: MutableRow, row: Row): Unit = accumulator(buffer, row)
+  override def update(buffer: MutableRow, row: Row): Unit = updater(buffer, row)
 
-  private lazy val merger = updateWith(mergeExpressions) _
+  private lazy val merger = assignWith(mergeExpressions) _
 
   override def merge(into: MutableRow, from: Row): Unit = merger(into, from)
 
@@ -55,7 +47,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   private lazy val joinedRow = new JoinedRow()
 
-  private def updateWith(expressions: Seq[Expression])(buffer: MutableRow, row: Row): Unit = {
+  private def assignWith(expressions: Seq[Expression])(buffer: MutableRow, row: Row): Unit = {
     val input = joinedRow(row, buffer)
     buffer.indices foreach { i =>
       buffer(i) = expressions(i).evaluate(input)
@@ -70,27 +62,27 @@ trait SimpleAggregateFunction extends UnaryExpression with DeclarativeAggregateF
 
   override def isNullable: Boolean = child.isNullable
 
-  def accumulateFunction: (Expression, Expression) => Expression
+  override lazy val bufferSchema: StructType = StructType(
+    'value -> (dataType withNullability isNullable)
+  )
 
-  def mergeFunction: (Expression, Expression) => Expression = accumulateFunction
+  protected lazy val value = bufferSchema.toAttributes.head at 0
 
-  override def zeroExpressions: Seq[Expression] = Seq(lit(null) cast dataType)
+  def updateFunction: (Expression, Expression) => Expression
 
-  override def accumulateExpressions: Seq[Expression] = Seq(
-    If(
-      child.isNull,
-      buffered(value),
-      If(
-        buffered(value).isNull,
-        child,
-        accumulateFunction(child, buffered(value))
-      )
-    )
+  def mergeFunction: (Expression, Expression) => Expression = updateFunction
+
+  override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
+
+  override def updateExpressions: Seq[Expression] = Seq(
+    coalesce(updateFunction(child, buffered(value)), buffered(value), child)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
     mergeFunction(value, buffered(value))
   )
+
+  override def resultExpression: Expression = value
 }
 
 case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
@@ -98,37 +90,72 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   override def isNullable: Boolean = false
 
-  override def zeroExpressions: Seq[Expression] = Seq(0L)
+  override lazy val bufferSchema: StructType = StructType(
+    'count -> dataType.!
+  )
+
+  private lazy val count = bufferSchema.toAttributes.head at 0
+
+  override def zeroValues: Seq[Expression] = Seq(0L)
+
+  override def updateExpressions: Seq[Expression] = Seq(
+    when(child.isNull) { buffered(count) } otherwise { buffered(count) + 1L }
+  )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    value + buffered(value)
+    count + buffered(count)
   )
 
-  override def accumulateExpressions: Seq[Expression] = Seq(
-    If(child.isNull, buffered(value), buffered(value) + 1L)
+  override def resultExpression: Expression = count
+}
+
+case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
+  override def dataType: DataType = DoubleType
+
+  override def bufferSchema: StructType = StructType(
+    'sum -> (child.dataType withNullability child.isNullable),
+    'count -> LongType.!
   )
+
+  private lazy val Seq(sum, count) = (bufferSchema.toAttributes, 0 to 1).zipped map (_ at _)
+
+  override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
+
+  override def updateExpressions: Seq[Expression] = Seq(
+    coalesce(child + buffered(sum), child, buffered(sum)),
+    buffered(count) + (when(child.isNull) { 0L } otherwise { 1L })
+  )
+
+  override def mergeExpressions: Seq[Expression] = Seq(
+    coalesce(sum + buffered(sum), sum, buffered(sum)),
+    coalesce(count + buffered(count), count, buffered(count))
+  )
+
+  override def resultExpression: Expression = when(count =:= 0L) {
+    lit(null)
+  } otherwise {
+    sum / (count cast sum.dataType)
+  }
 }
 
 case class Sum(child: Expression) extends SimpleAggregateFunction {
-  override def accumulateFunction: (Expression, Expression) => Expression = Plus
+  override def updateFunction: (Expression, Expression) => Expression = Plus
 }
 
 case class Max(child: Expression) extends SimpleAggregateFunction {
-  override def accumulateFunction: (Expression, Expression) => Expression =
-    (buffered, input) => If(input > buffered, input, buffered)
+  override def updateFunction: (Expression, Expression) => Expression = Greatest(_, _)
 }
 
 case class Min(child: Expression) extends SimpleAggregateFunction {
-  override def accumulateFunction: (Expression, Expression) => Expression =
-    (buffered, input) => If(input < buffered, input, buffered)
+  override def updateFunction: (Expression, Expression) => Expression = Least(_, _)
 }
 
 case class BoolAnd(child: Expression) extends SimpleAggregateFunction {
-  override def accumulateFunction: (Expression, Expression) => Expression = And
+  override def updateFunction: (Expression, Expression) => Expression = And
 }
 
 case class BoolOr(child: Expression) extends SimpleAggregateFunction {
-  override def accumulateFunction: (Expression, Expression) => Expression = Or
+  override def updateFunction: (Expression, Expression) => Expression = Or
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)
@@ -144,7 +171,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def merge(into: MutableRow, from: Row): Unit = child.merge(into, from)
 
-  override def accumulate(buffer: MutableRow, row: Row): Unit = child.accumulate(buffer, row)
+  override def update(buffer: MutableRow, row: Row): Unit = child.update(buffer, row)
 
   override def zero(buffer: MutableRow): Unit = child.zero(buffer)
 

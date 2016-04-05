@@ -97,7 +97,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
     }
   }
 
-  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = if (rhs == 0) null else div(lhs, rhs)
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = div(lhs, rhs)
 
   override def operator: String = "/"
 }
@@ -190,8 +190,16 @@ case class Greatest(children: Seq[Expression]) extends GreatestLike {
   override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
 }
 
+object Greatest {
+  def apply(first: Expression, rest: Expression*): Greatest = Greatest(first +: rest)
+}
+
 case class Least(children: Seq[Expression]) extends GreatestLike {
   override protected def nullLarger: Boolean = true
 
   override def evaluate(input: Row): Any = children map (_ evaluate input) min ordering
+}
+
+object Least {
+  def apply(first: Expression, rest: Expression*): Least = Least(first +: rest)
 }
