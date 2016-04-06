@@ -186,6 +186,13 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(true)
     )
   }
+
+  test("average") {
+    checkDataFrame(
+      context range 2 agg avg('id),
+      Row(0.5D)
+    )
+  }
 }
 
 object LocalContextSuite {

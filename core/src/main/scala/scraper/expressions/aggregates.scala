@@ -48,13 +48,17 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   private lazy val joinedRow = new JoinedRow()
 
   private def assignWith(expressions: Seq[Expression])(buffer: MutableRow, row: Row): Unit = {
-    val input = joinedRow(row, buffer)
+    val input = joinedRow(buffer, row)
     buffer.indices foreach { i =>
-      buffer(i) = expressions(i).evaluate(input)
+      buffer(i) = expressions(i) evaluate input
     }
   }
 
-  protected def buffered(ref: BoundRef): BoundRef = ref at (ref.ordinal + bufferSchema.length)
+  protected lazy val reboundChildren = children map rebind
+
+  protected def rebind(expression: Expression): Expression = expression transformDown {
+    case ref: BoundRef => ref at (ref.ordinal + bufferSchema.length)
+  }
 }
 
 trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
@@ -70,6 +74,8 @@ trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAg
 
   protected lazy val value = bufferSchema.toAttributes.head at 0
 
+  protected lazy val reboundChild = reboundChildren.head
+
   def updateFunction: BinaryFunction
 
   def mergeFunction: BinaryFunction = updateFunction
@@ -77,11 +83,11 @@ trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAg
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(updateFunction(child, buffered(value)), buffered(value), child)
+    coalesce(updateFunction(reboundChild, value), value, reboundChild)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    mergeFunction(value, buffered(value))
+    mergeFunction(value, rebind(value))
   )
 
   override def resultExpression: Expression = value
@@ -98,14 +104,16 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   private lazy val count = bufferSchema.toAttributes.head at 0
 
+  private lazy val reboundChild = reboundChildren.head
+
   override def zeroValues: Seq[Expression] = Seq(0L)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    when(child.isNull) { buffered(count) } otherwise { buffered(count) + 1L }
+    If(reboundChild.isNull, count, count + 1L)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    count + buffered(count)
+    count + rebind(count)
   )
 
   override def resultExpression: Expression = count
@@ -123,23 +131,22 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 
   private lazy val Seq(sum, count) = (bufferSchema.toAttributes, 0 to 1).zipped map (_ at _)
 
+  private lazy val reboundChild = reboundChildren.head
+
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(child + buffered(sum), child, buffered(sum)),
-    buffered(count) + (when(child.isNull) { 0L } otherwise { 1L })
+    coalesce(reboundChild + sum, reboundChild, sum),
+    count + If(reboundChild.isNull, 0L, 1L)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    coalesce(sum + buffered(sum), sum, buffered(sum)),
-    coalesce(count + buffered(count), count, buffered(count))
+    coalesce(sum + rebind(sum), sum, rebind(sum)),
+    coalesce(count + rebind(count), count, rebind(count))
   )
 
-  override def resultExpression: Expression = when(count =:= 0L) {
-    lit(null)
-  } otherwise {
-    sum / (count cast sum.dataType)
-  }
+  override def resultExpression: Expression =
+    If(count =:= 0L, lit(null), (sum cast dataType) / (count cast dataType))
 }
 
 case class Sum(child: Expression) extends NullableMonoidAggregateFunction {

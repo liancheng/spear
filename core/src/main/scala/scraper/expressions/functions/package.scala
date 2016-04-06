@@ -17,7 +17,9 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
-  def avg(expression: Expression): Average = Average(expression)
+  def average(expression: Expression): Average = Average(expression)
+
+  def avg(expression: Expression): Average = average(expression)
 
   def sum(expression: Expression): Sum = Sum(expression)
 
