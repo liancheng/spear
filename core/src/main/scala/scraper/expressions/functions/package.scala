@@ -17,6 +17,10 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
+  def first(expression: Expression): First = First(expression)
+
+  def last(expression: Expression): Last = Last(expression)
+
   def average(expression: Expression): Average = Average(expression)
 
   def avg(expression: Expression): Average = average(expression)

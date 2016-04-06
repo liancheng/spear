@@ -193,6 +193,20 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(0.5D)
     )
   }
+
+  test("first") {
+    checkDataFrame(
+      context range 2 agg first('id),
+      Row(0)
+    )
+  }
+
+  test("last") {
+    checkDataFrame(
+      context range 2 agg last('id),
+      Row(1)
+    )
+  }
 }
 
 object LocalContextSuite {

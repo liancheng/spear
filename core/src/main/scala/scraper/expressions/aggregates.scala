@@ -8,18 +8,24 @@ import scraper.expressions.functions._
 import scraper.types._
 import scraper.utils.trySequence
 
+/**
+ * A trait for aggregate functions, which aggregate a group of values into a single scalar value.
+ */
 trait AggregateFunction extends Expression with UnevaluableExpression {
   def bufferSchema: StructType
 
   def supportPartialAggregation: Boolean = true
 
-  def zero(buffer: MutableRow): Unit
+  /**
+   * Initializes the aggregate buffer with zero value(s).
+   */
+  def zero(aggBuffer: MutableRow): Unit
 
-  def update(buffer: MutableRow, row: Row): Unit
+  def update(input: Row, aggBuffer: MutableRow): Unit
 
-  def merge(into: MutableRow, from: Row): Unit
+  def merge(fromAggBuffer: Row, toAggBuffer: MutableRow): Unit
 
-  def result(buffer: Row): Any
+  def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
@@ -31,33 +37,45 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   def resultExpression: Expression
 
-  override def zero(buffer: MutableRow): Unit = buffer.indices foreach { i =>
-    buffer(i) = zeroValues(i).evaluated
+  override def zero(aggBuffer: MutableRow): Unit = aggBuffer.indices foreach { i =>
+    aggBuffer(i) = zeroValues(i).evaluated
   }
 
-  private lazy val updater = assignWith(updateExpressions) _
+  override def update(input: Row, aggBuffer: MutableRow): Unit = updater(aggBuffer, input)
 
-  override def update(buffer: MutableRow, row: Row): Unit = updater(buffer, row)
+  override def merge(fromAggBuffer: Row, toAggBuffer: MutableRow): Unit =
+    merger(toAggBuffer, fromAggBuffer)
 
-  private lazy val merger = assignWith(mergeExpressions) _
-
-  override def merge(into: MutableRow, from: Row): Unit = merger(into, from)
-
-  override def result(buffer: Row): Any = resultExpression evaluate buffer
-
-  private lazy val joinedRow = new JoinedRow()
-
-  private def assignWith(expressions: Seq[Expression])(buffer: MutableRow, row: Row): Unit = {
-    val input = joinedRow(buffer, row)
-    buffer.indices foreach { i =>
-      buffer(i) = expressions(i) evaluate input
-    }
-  }
+  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
+    resultBuffer(ordinal) = resultExpression evaluate aggBuffer
 
   protected lazy val reboundChildren = children map rebind
 
+  private lazy val updater = inPlaceUpdate(updateExpressions) _
+
+  private lazy val merger = inPlaceUpdate(mergeExpressions) _
+
+  private lazy val joinedRow = new JoinedRow()
+
   protected def rebind(expression: Expression): Expression = expression transformDown {
     case ref: BoundRef => ref at (ref.ordinal + bufferSchema.length)
+  }
+
+  /**
+   * Updates mutable row `left` in-place using `expressions` and row `right` by:
+   *
+   *  1. Join `left` and `right` into a single [[JoinedRow]];
+   *  2. Use the [[JoinedRow]] as input row to evaluate each given `expressions` to produce `n`
+   *     result values, where `n` is the length of both `left` and `expression`;
+   *  3. Update the i-th cell of `left` using the i-th evaluated result value.
+   */
+  private def inPlaceUpdate(expressions: Seq[Expression])(left: MutableRow, right: Row): Unit = {
+    require(expressions.length == left.length)
+
+    val input = joinedRow(left, right)
+    left.indices foreach { i =>
+      left(i) = expressions(i) evaluate input
+    }
   }
 }
 
@@ -145,9 +163,52 @@ case class Average(child: Expression) extends UnaryDeclarativeAggregateFunction 
     coalesce(count + rebind(count), count, rebind(count))
   )
 
-  override def resultExpression: Expression = let('c -> count) {
-    If('c =:= 0L, lit(null), sum / ('c cast dataType))
-  }
+  override def resultExpression: Expression =
+    If(count =:= 0L, lit(null), sum / (count cast dataType))
+}
+
+case class First(child: Expression) extends UnaryDeclarativeAggregateFunction {
+  override def dataType: DataType = child.dataType
+
+  override def isNullable: Boolean = child.isNullable
+
+  override def bufferSchema: StructType = StructType(
+    'value -> (dataType withNullability isNullable)
+  )
+
+  private lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
+
+  override def updateExpressions: Seq[Expression] = Seq(
+    coalesce(value, reboundChild)
+  )
+
+  override def mergeExpressions: Seq[Expression] = Seq(
+    coalesce(value, rebind(value))
+  )
+
+  override def resultExpression: Expression = value
+}
+
+case class Last(child: Expression) extends UnaryDeclarativeAggregateFunction {
+  override def dataType: DataType = child.dataType
+
+  override def isNullable: Boolean = child.isNullable
+
+  override def bufferSchema: StructType = StructType(
+    'value -> (dataType withNullability isNullable)
+  )
+
+  private lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
+
+  override def updateExpressions: Seq[Expression] = Seq(
+    coalesce(reboundChild, value)
+  )
+
+  override def mergeExpressions: Seq[Expression] = Seq(
+    coalesce(rebind(value), value)
+  )
+
+  override def resultExpression: Expression = value
 }
 
 case class Sum(child: Expression) extends ReduceLike(Plus)
@@ -167,15 +228,17 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def bufferSchema: StructType = child.bufferSchema
 
-  override def result(buffer: Row): Any = child.result(buffer)
-
   override def supportPartialAggregation: Boolean = child.supportPartialAggregation
 
-  override def merge(into: MutableRow, from: Row): Unit = child.merge(into, from)
+  override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
 
-  override def update(buffer: MutableRow, row: Row): Unit = child.update(buffer, row)
+  override def update(input: Row, aggBuffer: MutableRow): Unit = child.update(input, aggBuffer)
 
-  override def zero(buffer: MutableRow): Unit = child.zero(buffer)
+  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit =
+    child.merge(fromAggBuffer, intoAggBuffer)
+
+  override def result(into: MutableRow, ordinal: Int, from: Row): Unit =
+    child.result(into, ordinal, from)
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))

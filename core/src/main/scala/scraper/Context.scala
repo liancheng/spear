@@ -68,6 +68,8 @@ class InMemoryCatalog extends Catalog {
   functionRegistry.registerFunction(FunctionInfo(classOf[BoolAnd], BoolAnd))
   functionRegistry.registerFunction(FunctionInfo(classOf[BoolOr], BoolOr))
   functionRegistry.registerFunction(FunctionInfo(classOf[Average], Average))
+  functionRegistry.registerFunction(FunctionInfo(classOf[First], First))
+  functionRegistry.registerFunction(FunctionInfo(classOf[Last], Last))
 
   override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan

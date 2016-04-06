@@ -42,13 +42,13 @@ case class HashAggregate(
 case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq[MutableRow]) {
   (boundFunctions, slices).zipped foreach (_ zero _)
 
-  def +=(row: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(_, row))
+  def +=(input: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(input, _))
 
   def ++=(other: AggregationBuffer): Unit =
-    (boundFunctions, slices, other.slices).zipped foreach (_.merge(_, _))
+    (boundFunctions, other.slices, slices).zipped foreach (_.merge(_, _))
 
   def result(mutableResult: MutableRow): Unit = mutableResult.indices foreach { i =>
-    mutableResult(i) = boundFunctions(i) result slices(i)
+    boundFunctions(i).result(mutableResult, i, slices(i))
   }
 }
 
