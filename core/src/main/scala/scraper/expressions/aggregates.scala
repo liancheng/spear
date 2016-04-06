@@ -61,8 +61,12 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   }
 }
 
-abstract class Reduce(updateFunction: (Expression, Expression) => Expression)
-  extends UnaryExpression with DeclarativeAggregateFunction {
+trait UnaryDeclarativeAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
+  protected lazy val reboundChild = reboundChildren.head
+}
+
+abstract class ReduceLike(updateFunction: (Expression, Expression) => Expression)
+  extends UnaryDeclarativeAggregateFunction {
 
   override def dataType: DataType = child.dataType
 
@@ -73,8 +77,6 @@ abstract class Reduce(updateFunction: (Expression, Expression) => Expression)
   )
 
   protected lazy val value = bufferSchema.toAttributes.head at 0
-
-  protected lazy val reboundChild = reboundChildren.head
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
 
@@ -89,7 +91,7 @@ abstract class Reduce(updateFunction: (Expression, Expression) => Expression)
   override def resultExpression: Expression = value
 }
 
-case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
+case class Count(child: Expression) extends UnaryDeclarativeAggregateFunction {
   override def dataType: DataType = LongType
 
   override def isNullable: Boolean = false
@@ -99,8 +101,6 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
   )
 
   private lazy val count = bufferSchema.toAttributes.head at 0
-
-  private lazy val reboundChild = reboundChildren.head
 
   override def zeroValues: Seq[Expression] = Seq(0L)
 
@@ -115,7 +115,7 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
   override def resultExpression: Expression = count
 }
 
-case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
+case class Average(child: Expression) extends UnaryDeclarativeAggregateFunction {
   override def nodeName: String = "AVG"
 
   override def dataType: DataType = DoubleType
@@ -129,8 +129,6 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
     val Seq(unboundSum, unboundCount) = bufferSchema.toAttributes
     (unboundSum at 0, unboundCount at 1)
   }
-
-  private lazy val reboundChild = reboundChildren.head
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
 
@@ -152,15 +150,15 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   }
 }
 
-case class Sum(child: Expression) extends Reduce(Plus)
+case class Sum(child: Expression) extends ReduceLike(Plus)
 
-case class Max(child: Expression) extends Reduce(Greatest(_, _))
+case class Max(child: Expression) extends ReduceLike(Greatest(_, _))
 
-case class Min(child: Expression) extends Reduce(Least(_, _))
+case class Min(child: Expression) extends ReduceLike(Least(_, _))
 
-case class BoolAnd(child: Expression) extends Reduce(And)
+case class BoolAnd(child: Expression) extends ReduceLike(And)
 
-case class BoolOr(child: Expression) extends Reduce(Or)
+case class BoolOr(child: Expression) extends ReduceLike(Or)
 
 case class DistinctAggregateFunction(child: AggregateFunction)
   extends AggregateFunction with UnaryExpression {
