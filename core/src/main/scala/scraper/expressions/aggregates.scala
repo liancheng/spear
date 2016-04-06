@@ -61,8 +61,8 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   }
 }
 
-trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
-  protected type BinaryFunction = (Expression, Expression) => Expression
+abstract class Reduce(updateFunction: (Expression, Expression) => Expression)
+  extends UnaryExpression with DeclarativeAggregateFunction {
 
   override def dataType: DataType = child.dataType
 
@@ -76,10 +76,6 @@ trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAg
 
   protected lazy val reboundChild = reboundChildren.head
 
-  def updateFunction: BinaryFunction
-
-  def mergeFunction: BinaryFunction = updateFunction
-
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
 
   override def updateExpressions: Seq[Expression] = Seq(
@@ -87,7 +83,7 @@ trait NullableMonoidAggregateFunction extends UnaryExpression with DeclarativeAg
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    mergeFunction(value, rebind(value))
+    updateFunction(value, rebind(value))
   )
 
   override def resultExpression: Expression = value
@@ -156,25 +152,15 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   }
 }
 
-case class Sum(child: Expression) extends NullableMonoidAggregateFunction {
-  override def updateFunction: BinaryFunction = Plus
-}
+case class Sum(child: Expression) extends Reduce(Plus)
 
-case class Max(child: Expression) extends NullableMonoidAggregateFunction {
-  override def updateFunction: BinaryFunction = Greatest(_, _)
-}
+case class Max(child: Expression) extends Reduce(Greatest(_, _))
 
-case class Min(child: Expression) extends NullableMonoidAggregateFunction {
-  override def updateFunction: BinaryFunction = Least(_, _)
-}
+case class Min(child: Expression) extends Reduce(Least(_, _))
 
-case class BoolAnd(child: Expression) extends NullableMonoidAggregateFunction {
-  override def updateFunction: BinaryFunction = And
-}
+case class BoolAnd(child: Expression) extends Reduce(And)
 
-case class BoolOr(child: Expression) extends NullableMonoidAggregateFunction {
-  override def updateFunction: BinaryFunction = Or
-}
+case class BoolOr(child: Expression) extends Reduce(Or)
 
 case class DistinctAggregateFunction(child: AggregateFunction)
   extends AggregateFunction with UnaryExpression {
