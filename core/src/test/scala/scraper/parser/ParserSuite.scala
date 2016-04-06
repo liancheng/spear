@@ -268,7 +268,9 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1) SELECT * FROM c0",
-    let('c0 -> values(1)) in (table('c0) select '*)
+    let('c0 -> values(1)) {
+      table('c0) select '*
+    }
   )
 
   testQueryParsing(

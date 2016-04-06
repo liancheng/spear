@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scala.util.{Failure, Try}
 
-import scraper.Row
+import scraper.{BasicMutableRow, JoinedRow, Row}
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.trees.TreeNode
@@ -272,4 +272,39 @@ case class UnresolvedFunction(name: String, args: Seq[Expression]) extends Unres
   override def children: Seq[Expression] = args
 
   override def debugString: String = s"$nodeName($name, ${args map (_.debugString) mkString ", "})"
+}
+
+case class Let(declarations: Seq[(String, Expression)], body: Expression) extends Expression {
+  override def dataType: DataType = body.dataType
+
+  private val (_, values) = declarations.unzip
+
+  override def children: Seq[Expression] = values :+ body
+
+  private lazy val aliases = declarations.zipWithIndex.map {
+    case ((name, value), i) => value as name
+  }
+
+  private lazy val rewrittenBody = {
+    val rewrite = aliases.map(alias => alias.name -> alias.toAttribute).zipWithIndex.map {
+      case ((name, ref: AttributeRef), i) => name -> (ref at i)
+    }.toMap
+
+    body transformDown {
+      case a: UnresolvedAttribute => rewrite getOrElse (a.name, a)
+      case ref: BoundRef          => ref at (ref.ordinal + declarations.length)
+    }
+  }
+
+  private lazy val mutableRow = new BasicMutableRow(declarations.length)
+
+  private lazy val joinedRow = new JoinedRow
+
+  override def evaluate(input: Row): Any = {
+    aliases.zipWithIndex.foreach {
+      case (alias, i) => mutableRow(i) = alias evaluate input
+    }
+
+    rewrittenBody evaluate joinedRow(mutableRow, input)
+  }
 }

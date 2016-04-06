@@ -105,12 +105,9 @@ package object dsl {
 
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
-  def let(cteRelations: Map[String, LogicalPlan]): CTEBuilder = new CTEBuilder(cteRelations)
+  def let(cteRelations: Map[String, LogicalPlan])(body: LogicalPlan): With =
+    With(body, cteRelations)
 
-  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*): CTEBuilder =
-    let((first +: rest).toMap map { case (name, plan) => name.name -> plan })
-
-  class CTEBuilder(cteRelations: Map[String, LogicalPlan]) {
-    def in(plan: LogicalPlan): With = With(plan, cteRelations)
-  }
+  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*)(body: LogicalPlan): With =
+    let((first +: rest).toMap map { case (name, plan) => name.name -> plan })(body)
 }

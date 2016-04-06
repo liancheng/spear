@@ -125,18 +125,24 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   override def dataType: DataType = DoubleType
 
   override def bufferSchema: StructType = StructType(
-    'sum -> (child.dataType withNullability child.isNullable),
+    'sum -> (dataType withNullability child.isNullable),
     'count -> LongType.!
   )
 
-  private lazy val Seq(sum, count) = (bufferSchema.toAttributes, 0 to 1).zipped map (_ at _)
+  private lazy val (sum, count) = {
+    val Seq(unboundSum, unboundCount) = bufferSchema.toAttributes
+    (unboundSum at 0, unboundCount at 1)
+  }
 
   private lazy val reboundChild = reboundChildren.head
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(reboundChild + sum, reboundChild, sum),
+    let('c -> (reboundChild cast dataType)) {
+      coalesce('c + sum, 'c, sum)
+    },
+
     count + If(reboundChild.isNull, 0L, 1L)
   )
 
@@ -145,8 +151,9 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
     coalesce(count + rebind(count), count, rebind(count))
   )
 
-  override def resultExpression: Expression =
-    If(count =:= 0L, lit(null), (sum cast dataType) / (count cast dataType))
+  override def resultExpression: Expression = let('c -> count) {
+    If('c =:= 0L, lit(null), sum / ('c cast dataType))
+  }
 }
 
 case class Sum(child: Expression) extends NullableMonoidAggregateFunction {

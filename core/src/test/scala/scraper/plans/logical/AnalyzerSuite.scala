@@ -7,7 +7,7 @@ import scraper.exceptions.{IllegalAggregationException, ResolutionFailureExcepti
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
-import scraper.expressions.functions._
+import scraper.expressions.functions.{let => _, _}
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._
@@ -272,7 +272,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("CTE substitution") {
     checkAnalyzedPlan(
-      let('s -> (relation subquery 't select 'a)) in (table('s) select '*),
+      let('s -> (relation subquery 't select 'a)) {
+        table('s) select '*
+      },
       relation subquery 't select `t.a` subquery 's select (a of 's)
     )
   }
