@@ -132,12 +132,6 @@ trait Context {
 
   def lift[T <: Product: WeakTypeTag](first: T, rest: T*): DataFrame = lift(first +: rest)
 
-  def lift[T <: Product: WeakTypeTag](data: Iterable[T], columnNames: String*): DataFrame = {
-    val LocalRelation(rows, output) = LocalRelation(data)
-    val renamed = (StructType fromAttributes output rename columnNames).toAttributes
-    new DataFrame(LocalRelation(rows, renamed), this)
-  }
-
   def range(end: Long): DataFrame = range(0, end)
 
   def range(begin: Long, end: Long): DataFrame = range(begin, end, 1L)
