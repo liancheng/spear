@@ -29,7 +29,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
-  def zeroValues: Seq[Expression] = bufferSchema.fieldTypes map (lit(null) cast _)
+  def zeroValues: Seq[Expression]
 
   def updateExpressions: Seq[Expression]
 
@@ -167,7 +167,7 @@ case class Average(child: Expression) extends UnaryDeclarativeAggregateFunction 
     If(count =:= 0L, lit(null), sum / (count cast dataType))
 }
 
-case class First(child: Expression) extends UnaryDeclarativeAggregateFunction {
+abstract class FirstLike(child: Expression) extends UnaryDeclarativeAggregateFunction {
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
@@ -176,8 +176,14 @@ case class First(child: Expression) extends UnaryDeclarativeAggregateFunction {
     'value -> (dataType withNullability isNullable)
   )
 
-  private lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
+  protected lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
 
+  override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
+
+  override def resultExpression: Expression = value
+}
+
+case class First(child: Expression) extends FirstLike(child) {
   override def updateExpressions: Seq[Expression] = Seq(
     coalesce(value, reboundChild)
   )
@@ -185,21 +191,9 @@ case class First(child: Expression) extends UnaryDeclarativeAggregateFunction {
   override def mergeExpressions: Seq[Expression] = Seq(
     coalesce(value, rebind(value))
   )
-
-  override def resultExpression: Expression = value
 }
 
-case class Last(child: Expression) extends UnaryDeclarativeAggregateFunction {
-  override def dataType: DataType = child.dataType
-
-  override def isNullable: Boolean = child.isNullable
-
-  override def bufferSchema: StructType = StructType(
-    'value -> (dataType withNullability isNullable)
-  )
-
-  private lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
-
+case class Last(child: Expression) extends FirstLike(child) {
   override def updateExpressions: Seq[Expression] = Seq(
     coalesce(reboundChild, value)
   )
@@ -207,8 +201,6 @@ case class Last(child: Expression) extends UnaryDeclarativeAggregateFunction {
   override def mergeExpressions: Seq[Expression] = Seq(
     coalesce(rebind(value), value)
   )
-
-  override def resultExpression: Expression = value
 }
 
 case class Sum(child: Expression) extends ReduceLike(Plus)
