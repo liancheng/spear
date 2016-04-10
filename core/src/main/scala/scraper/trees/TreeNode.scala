@@ -117,10 +117,9 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
-  def prettyTree: String =
-    buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
+  def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
-  def nodeCaption: String = toString
+  def nodeCaption: String = nodeName
 
   override def toString: String = "\n" + prettyTree
 
