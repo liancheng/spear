@@ -12,22 +12,76 @@ import scraper.utils._
 
 /**
  * A trait for aggregate functions, which aggregate a group of values into a single scalar value.
+ * When being evaluated, an aggregation buffer, which is essentially a [[MutableRow]], is used to
+ * store aggregated intermediate values. The aggregation buffer may have multiple fields. For
+ * example, [[Average]] uses two fields to store sum and total count of all input values seen so
+ * far.
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
+  /**
+   * Schema of the aggregation buffer.
+   */
   def aggBufferSchema: StructType
 
+  /**
+   * Whether this [[AggregateFunction]] supports partial aggregation
+   */
   def supportPartialAggregation: Boolean = true
 
   /**
-   * Initializes the aggregate buffer with zero value(s).
+   * Initializes the aggregation buffer with zero value(s).
    */
   def zero(aggBuffer: MutableRow): Unit
 
+  /**
+   * Updates aggregation buffer with new `input` row.
+   */
   def update(input: Row, aggBuffer: MutableRow): Unit
 
+  /**
+   * Merges values in aggregation buffers `fromAggBuffer` and `toAggBuffer`, then writes merged
+   * values into `toAggBuffer`.
+   */
   def merge(fromAggBuffer: Row, toAggBuffer: MutableRow): Unit
 
+  /**
+   * Evaluates the final result value using values in aggregation buffer `aggBuffer`, then writes it
+   * into the `ordinal`-th field of `resultBuffer`.
+   */
   def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit
+}
+
+case class DistinctAggregateFunction(child: AggregateFunction)
+  extends AggregateFunction with UnaryExpression {
+
+  override def dataType: DataType = child.dataType
+
+  override def aggBufferSchema: StructType = error()
+
+  override def supportPartialAggregation: Boolean = error()
+
+  override def zero(aggBuffer: MutableRow): Unit = error()
+
+  override def update(input: Row, aggBuffer: MutableRow): Unit = error()
+
+  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit = error()
+
+  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = error()
+
+  override def sql: Try[String] = for {
+    argSQL <- trySequence(child.children.map(_.sql))
+    name = child.nodeName.toUpperCase
+  } yield s"$name(DISTINCT ${argSQL mkString ", "})"
+
+  override def debugString: String = {
+    val args = child.children map (_.debugString)
+    val name = child.nodeName.toUpperCase
+    s"$name(DISTINCT ${args mkString ", "})"
+  }
+
+  private def error(): Nothing = throw new BrokenContractException(
+    s"${getClass.getName} cannot be evaluated directly."
+  )
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
@@ -106,6 +160,15 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     aggBuffer.indices foreach (i => aggBuffer(i) = expressions(i) evaluate row)
   }
 
+  // Used to bind update, merge, and result expressions. Note that we have the following constraints
+  // for `DeclarativeAggregateFunction`:
+  //
+  //  1. All children expressions must be bound
+  //  2. All expressions in `updateExpressions`, `mergeExpressions`, and `resultExpression` must be
+  //     resolved but unbound.
+  //
+  // Thus, `AttributeRef`s must be aggregation buffer attributes, and `BoundRef`s only appear in
+  // child expressions.
   private def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef => BoundRef.bind(aggBufferAttributes ++ inputAggBufferAttributes)(ref)
     case ref: BoundRef     => ref at (ref.ordinal + aggBufferAttributes.length)
@@ -213,36 +276,3 @@ case class Min(child: Expression) extends ReduceLeft(Least(_, _))
 case class BoolAnd(child: Expression) extends ReduceLeft(And)
 
 case class BoolOr(child: Expression) extends ReduceLeft(Or)
-
-case class DistinctAggregateFunction(child: AggregateFunction)
-  extends AggregateFunction with UnaryExpression {
-
-  override def dataType: DataType = child.dataType
-
-  override def aggBufferSchema: StructType = error()
-
-  override def supportPartialAggregation: Boolean = error()
-
-  override def zero(aggBuffer: MutableRow): Unit = error()
-
-  override def update(input: Row, aggBuffer: MutableRow): Unit = error()
-
-  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit = error()
-
-  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = error()
-
-  override def sql: Try[String] = for {
-    argSQL <- trySequence(child.children.map(_.sql))
-    name = child.nodeName.toUpperCase
-  } yield s"$name(DISTINCT ${argSQL mkString ", "})"
-
-  override def debugString: String = {
-    val args = child.children map (_.debugString)
-    val name = child.nodeName.toUpperCase
-    s"$name(DISTINCT ${args mkString ", "})"
-  }
-
-  private def error(): Nothing = throw new BrokenContractException(
-    s"${getClass.getName} cannot be evaluated directly."
-  )
-}
