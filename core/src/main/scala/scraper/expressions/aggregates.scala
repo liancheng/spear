@@ -3,16 +3,18 @@ package scraper.expressions
 import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
+import scraper.exceptions.BrokenContractException
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.types._
-import scraper.utils.trySequence
+import scraper.utils._
 
 /**
  * A trait for aggregate functions, which aggregate a group of values into a single scalar value.
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
-  def bufferSchema: StructType
+  def aggBufferSchema: StructType
 
   def supportPartialAggregation: Boolean = true
 
@@ -29,16 +31,37 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
-  def zeroValues: Seq[Expression]
+  def aggBufferAttributes: Seq[AttributeRef]
 
-  def updateExpressions: Seq[Expression]
+  def zeroValues: Seq[Expression] = zeroValue :: Nil
 
-  def mergeExpressions: Seq[Expression]
+  def zeroValue: Expression = throw new BrokenContractException(
+    s"${getClass.getName} must override either zeroValue or zeroValues."
+  )
+
+  def updateExpressions: Seq[Expression] = updateExpression :: Nil
+
+  def updateExpression: Expression = throw new BrokenContractException(
+    s"${getClass.getName} must override either updateExpression or updateExpressions."
+  )
+
+  def mergeExpressions: Seq[Expression] = mergeExpression :: Nil
+
+  def mergeExpression: Expression = throw new BrokenContractException(
+    s"${getClass.getName} must override either mergeExpression or mergeExpressions."
+  )
 
   def resultExpression: Expression
 
-  override def zero(aggBuffer: MutableRow): Unit = aggBuffer.indices foreach { i =>
-    aggBuffer(i) = zeroValues(i).evaluated
+  override final lazy val aggBufferSchema: StructType =
+    StructType.fromAttributes(aggBufferAttributes)
+
+  override def zero(aggBuffer: MutableRow): Unit = {
+    // Checks that all child expressions are bound right before evaluating this aggregate function.
+    assertAllChildrenBound()
+    aggBuffer.indices foreach { i =>
+      aggBuffer(i) = zeroValues(i).evaluated
+    }
   }
 
   override def update(input: Row, aggBuffer: MutableRow): Unit = updater(aggBuffer, input)
@@ -47,190 +70,188 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     merger(toAggBuffer, fromAggBuffer)
 
   override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
-    resultBuffer(ordinal) = resultExpression evaluate aggBuffer
+    resultBuffer(ordinal) = boundResultExpression evaluate aggBuffer
 
-  protected lazy val reboundChildren = children map rebind
+  private lazy val inputAggBufferAttributes = aggBufferAttributes map (_ withID newExpressionID())
 
-  private lazy val updater = inPlaceUpdate(updateExpressions) _
+  private lazy val joinedRow: JoinedRow = new JoinedRow()
 
-  private lazy val merger = inPlaceUpdate(mergeExpressions) _
+  private lazy val boundUpdateExpressions: Seq[Expression] = updateExpressions map bind
 
-  private lazy val joinedRow = new JoinedRow()
+  private lazy val boundMergeExpressions: Seq[Expression] = mergeExpressions map bind
 
-  protected def rebind(expression: Expression): Expression = expression transformDown {
-    case ref: BoundRef => ref at (ref.ordinal + bufferSchema.length)
-  }
+  private lazy val boundResultExpression: Expression = bind(resultExpression)
+
+  private lazy val updater = updateAggBufferWith(boundUpdateExpressions) _
+
+  private lazy val merger = updateAggBufferWith(boundMergeExpressions) _
 
   /**
-   * Updates mutable row `left` in-place using `expressions` and row `right` by:
+   * Updates mutable `aggBuffer` in-place using `expressions` and an `input` row.
    *
-   *  1. Join `left` and `right` into a single [[JoinedRow]];
-   *  2. Use the [[JoinedRow]] as input row to evaluate each given `expressions` to produce `n`
-   *     result values, where `n` is the length of both `left` and `expression`;
-   *  3. Update the i-th cell of `left` using the i-th evaluated result value.
+   *  1. Join `aggBuffer` and `input` into a single [[JoinedRow]];
+   *  2. Use the [[JoinedRow]] as input row to evaluate all given `expressions` to produce `n`
+   *     result values, where `n` is the length `aggBuffer` (and `expression`);
+   *  3. Update the i-th cell of `aggBuffer` using the i-th evaluated result value.
+   *
+   * Pre-condition: Length of `expressions` must be equal to length of `aggBuffer`.
    */
-  private def inPlaceUpdate(expressions: Seq[Expression])(left: MutableRow, right: Row): Unit = {
-    require(expressions.length == left.length)
+  private def updateAggBufferWith(
+    expressions: Seq[Expression]
+  )(
+    aggBuffer: MutableRow, input: Row
+  ): Unit = {
+    require(expressions.length == aggBuffer.length)
+    val row = joinedRow(aggBuffer, input)
+    aggBuffer.indices foreach (i => aggBuffer(i) = expressions(i) evaluate row)
+  }
 
-    val input = joinedRow(left, right)
-    left.indices foreach { i =>
-      left(i) = expressions(i) evaluate input
+  private def bind(expression: Expression): Expression = expression transformDown {
+    case ref: AttributeRef => BoundRef.bind(aggBufferAttributes ++ inputAggBufferAttributes)(ref)
+    case ref: BoundRef     => ref at (ref.ordinal + aggBufferAttributes.length)
+  }
+
+  private def assertAllChildrenBound(): Unit = {
+    children foreach { child =>
+      child.collectFirst {
+        case a: Attribute =>
+          throw new BrokenContractException(
+            s"""Attribute $a in child expression $child of aggregate function $this
+               |hasn't been bound yet
+             """.straight
+          )
+      }
     }
+  }
+
+  protected implicit class AggBufferAttribute(val left: AttributeRef) {
+    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes.indexOf(left))
   }
 }
 
-trait UnaryDeclarativeAggregateFunction extends UnaryExpression with DeclarativeAggregateFunction {
-  protected lazy val reboundChild = reboundChildren.head
-}
-
-abstract class ReduceLike(updateFunction: (Expression, Expression) => Expression)
-  extends UnaryDeclarativeAggregateFunction {
+abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression)
+  extends UnaryExpression with DeclarativeAggregateFunction {
 
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
 
-  override lazy val bufferSchema: StructType = StructType(
-    'value -> (dataType withNullability isNullable)
-  )
+  protected lazy val value = 'value of dataType withNullability isNullable
 
-  protected lazy val value = bufferSchema.toAttributes.head at 0
+  override def aggBufferAttributes: Seq[AttributeRef] = Seq(value)
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(updateFunction(reboundChild, value), value, reboundChild)
+    coalesce(updateFunction(value, child), value, child)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    updateFunction(value, rebind(value))
+    updateFunction(value.left, value.right)
   )
 
   override def resultExpression: Expression = value
 }
 
-case class Count(child: Expression) extends UnaryDeclarativeAggregateFunction {
+case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
   override def dataType: DataType = LongType
 
   override def isNullable: Boolean = false
 
-  override lazy val bufferSchema: StructType = StructType(
-    'count -> dataType.!
-  )
+  private lazy val count = ('count of dataType).!
 
-  private lazy val count = bufferSchema.toAttributes.head at 0
+  override def aggBufferAttributes: Seq[AttributeRef] = Seq(count)
 
-  override def zeroValues: Seq[Expression] = Seq(0L)
+  override def zeroValue: Expression = 0L
 
-  override def updateExpressions: Seq[Expression] = Seq(
-    If(reboundChild.isNull, count, count + 1L)
-  )
+  override def updateExpression: Expression = If(child.isNull, count, count + 1L)
 
-  override def mergeExpressions: Seq[Expression] = Seq(
-    count + rebind(count)
-  )
+  override def mergeExpression: Expression = count.left + count.right
 
   override def resultExpression: Expression = count
 }
 
-case class Average(child: Expression) extends UnaryDeclarativeAggregateFunction {
+case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
   override def nodeName: String = "AVG"
 
   override def dataType: DataType = DoubleType
 
-  override def bufferSchema: StructType = StructType(
-    'sum -> (dataType withNullability child.isNullable),
-    'count -> LongType.!
-  )
+  private lazy val sum = 'sum of dataType withNullability child.isNullable
 
-  private lazy val (sum, count) = {
-    val Seq(unboundSum, unboundCount) = bufferSchema.toAttributes
-    (unboundSum at 0, unboundCount at 1)
-  }
+  private lazy val count = 'count.long.!
+
+  override def aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
 
   override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
 
   override def updateExpressions: Seq[Expression] = Seq(
-    let('c -> (reboundChild cast dataType)) {
-      coalesce('c + sum, 'c, sum)
-    },
-
-    count + If(reboundChild.isNull, 0L, 1L)
+    coalesce((child cast dataType) + sum, child cast dataType, sum),
+    count + If(child.isNull, 0L, 1L)
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
-    coalesce(sum + rebind(sum), sum, rebind(sum)),
-    coalesce(count + rebind(count), count, rebind(count))
+    coalesce(sum.left + sum.right, sum.left, sum.right),
+    coalesce(count.left + count.right, count.left, count.right)
   )
 
   override def resultExpression: Expression =
     If(count =:= 0L, lit(null), sum / (count cast dataType))
 }
 
-abstract class FirstLike(child: Expression) extends UnaryDeclarativeAggregateFunction {
+abstract class FirstLike(child: Expression)
+  extends UnaryExpression with DeclarativeAggregateFunction {
+
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
 
-  override def bufferSchema: StructType = StructType(
-    'value -> (dataType withNullability isNullable)
-  )
+  protected lazy val value = 'value of dataType withNullability isNullable
 
-  protected lazy val value: BoundRef = bufferSchema.toAttributes.head at 0
+  override def aggBufferAttributes: Seq[AttributeRef] = Seq(value)
 
-  override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
+  override def zeroValue: Expression = lit(null) cast dataType
 
   override def resultExpression: Expression = value
 }
 
 case class First(child: Expression) extends FirstLike(child) {
-  override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(value, reboundChild)
-  )
+  override def updateExpression: Expression = coalesce(value, child)
 
-  override def mergeExpressions: Seq[Expression] = Seq(
-    coalesce(value, rebind(value))
-  )
+  override def mergeExpression: Expression = coalesce(value.left, value.right)
 }
 
 case class Last(child: Expression) extends FirstLike(child) {
-  override def updateExpressions: Seq[Expression] = Seq(
-    coalesce(reboundChild, value)
-  )
+  override def updateExpression: Expression = coalesce(child, value)
 
-  override def mergeExpressions: Seq[Expression] = Seq(
-    coalesce(rebind(value), value)
-  )
+  override def mergeExpression: Expression = coalesce(value.left, value.right)
 }
 
-case class Sum(child: Expression) extends ReduceLike(Plus)
+case class Sum(child: Expression) extends ReduceLeft(Plus)
 
-case class Max(child: Expression) extends ReduceLike(Greatest(_, _))
+case class Max(child: Expression) extends ReduceLeft(Greatest(_, _))
 
-case class Min(child: Expression) extends ReduceLike(Least(_, _))
+case class Min(child: Expression) extends ReduceLeft(Least(_, _))
 
-case class BoolAnd(child: Expression) extends ReduceLike(And)
+case class BoolAnd(child: Expression) extends ReduceLeft(And)
 
-case class BoolOr(child: Expression) extends ReduceLike(Or)
+case class BoolOr(child: Expression) extends ReduceLeft(Or)
 
 case class DistinctAggregateFunction(child: AggregateFunction)
   extends AggregateFunction with UnaryExpression {
 
   override def dataType: DataType = child.dataType
 
-  override def bufferSchema: StructType = child.bufferSchema
+  override def aggBufferSchema: StructType = error()
 
-  override def supportPartialAggregation: Boolean = child.supportPartialAggregation
+  override def supportPartialAggregation: Boolean = error()
 
-  override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
+  override def zero(aggBuffer: MutableRow): Unit = error()
 
-  override def update(input: Row, aggBuffer: MutableRow): Unit = child.update(input, aggBuffer)
+  override def update(input: Row, aggBuffer: MutableRow): Unit = error()
 
-  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit =
-    child.merge(fromAggBuffer, intoAggBuffer)
+  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit = error()
 
-  override def result(into: MutableRow, ordinal: Int, from: Row): Unit =
-    child.result(into, ordinal, from)
+  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = error()
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
@@ -242,4 +263,8 @@ case class DistinctAggregateFunction(child: AggregateFunction)
     val name = child.nodeName.toUpperCase
     s"$name(DISTINCT ${args mkString ", "})"
   }
+
+  private def error(): Nothing = throw new BrokenContractException(
+    s"${getClass.getName} cannot be evaluated directly."
+  )
 }

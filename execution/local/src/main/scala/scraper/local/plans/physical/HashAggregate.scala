@@ -54,7 +54,7 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq
 
 class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
   private val (bufferLength, slicesBuilder) = {
-    val lengths = boundFunctions map (_.bufferSchema.length)
+    val lengths = boundFunctions map (_.aggBufferSchema.length)
     val begins = lengths.inits.toSeq.tail reverseMap (_.sum)
     val bufferLength = lengths.sum
 
