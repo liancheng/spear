@@ -271,7 +271,7 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
     case a: Attribute    => a
   }
 
-  override protected def argValueStrings: Seq[Option[String]] = None :: Some(quote(alias)) :: Nil
+  override protected def argStrings: Seq[String] = s"alias=${quote(alias)}" :: Nil
 }
 
 /**
@@ -311,9 +311,9 @@ object With {
   case class CTENode(name: String, child: LogicalPlan) extends UnaryLogicalPlan {
     override def output: Seq[Attribute] = child.output
 
-    override def nodeName: String = s"CTE: $name"
+    override def nodeName: String = "CTE"
 
-    override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
+    override protected def argStrings: Seq[String] = s"name=${quote(name)}" :: Nil
   }
 }
 
