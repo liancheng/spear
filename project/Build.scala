@@ -102,7 +102,7 @@ object Dependencies {
   )
 
   object Versions {
-    val ammonite = "0.5.5"
+    val ammonite = "0.5.7"
     val config = "1.2.1"
     val jline = "2.12.1"
     val log4j = "1.2.16"
@@ -112,7 +112,7 @@ object Dependencies {
     val scalaParserCombinators = "1.0.4"
     val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
-    val scopt = "3.3.0"
+    val scopt = "3.4.0"
     val slf4j = "1.6.4"
   }
 
