@@ -152,7 +152,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = if (expressions.nonEmpty) {
-    val expressionNodes = expressions.zipWithIndex.map {
+    val expressionNodes = expressions.distinct.zipWithIndex.map {
       case (expression, index) => ExpressionNode(expression, index)
     }
 
