@@ -107,7 +107,7 @@ object Dependencies {
     val jline = "2.12.1"
     val log4j = "1.2.16"
     val protobuf = "2.5.0"
-    val scala = "2.11.8"
+    val scala = "2.11.7"
     val scalaCheck = "1.12.5"
     val scalaParserCombinators = "1.0.4"
     val scalaXml = "1.0.4"
