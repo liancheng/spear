@@ -198,33 +198,11 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
     If(count =:= 0L, lit(null), sum / (count cast dataType))
 }
 
-abstract class FirstLike(child: Expression)
-  extends UnaryExpression with DeclarativeAggregateFunction {
+case class First(child: Expression) extends ReduceLeft(coalesce(_, _))
 
-  override def dataType: DataType = child.dataType
-
-  override def isNullable: Boolean = child.isNullable
-
-  protected lazy val value = 'value of dataType withNullability isNullable
-
-  override def aggBufferAttributes: Seq[AttributeRef] = Seq(value)
-
-  override def zeroValue: Expression = lit(null) cast dataType
-
-  override def resultExpression: Expression = value
-}
-
-case class First(child: Expression) extends FirstLike(child) {
-  override def updateExpression: Expression = coalesce(value, child)
-
-  override def mergeExpression: Expression = coalesce(value.left, value.right)
-}
-
-case class Last(child: Expression) extends FirstLike(child) {
-  override def updateExpression: Expression = coalesce(child, value)
-
-  override def mergeExpression: Expression = coalesce(value.left, value.right)
-}
+case class Last(child: Expression) extends ReduceLeft(
+  (agg: Expression, input: Expression) => coalesce(input, agg)
+)
 
 case class Sum(child: Expression) extends ReduceLeft(Plus)
 
