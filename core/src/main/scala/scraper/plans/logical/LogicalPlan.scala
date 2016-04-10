@@ -270,6 +270,8 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
+
+  override protected def argValueStrings: Seq[Option[String]] = None :: Some(quote(alias)) :: Nil
 }
 
 /**
