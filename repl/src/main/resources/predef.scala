@@ -13,11 +13,3 @@ implicit val context = new LocalContext(Settings.load("scraper.conf", "scraper-r
 def setLogLevel(level: String) {
   Logger.getRootLogger.setLevel(Level.toLevel(level))
 }
-
-context range 100 select (
-  when (((rand(42) * 10) cast IntType) % 10 < 2) {
-    lit(null)
-  } otherwise {
-    'id
-  } as 'id
-) asTable 't
