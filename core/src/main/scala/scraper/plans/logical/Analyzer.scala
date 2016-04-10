@@ -15,7 +15,7 @@ import scraper.types.StringType
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Substitution", FixedPoint.Unlimited, Seq(
-      SubstituteCTEs
+      InlineCTERelationsAsSubqueries
     )),
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
@@ -56,14 +56,11 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   /**
    * This rule inlines CTE relation definitions as sub-queries.
    */
-  object SubstituteCTEs extends Rule[LogicalPlan] {
+  object InlineCTERelationsAsSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case child With cteRelations =>
+      case child With ((name, plan)) =>
         child transformDown {
-          case relation @ UnresolvedRelation(name) =>
-            // CTE relations override tables with the same names in the catalog since CTE relations
-            // are defined in a closer scope.
-            cteRelations get name map (_ subquery name) getOrElse relation
+          case UnresolvedRelation(`name`) => plan subquery name
         }
     }
   }

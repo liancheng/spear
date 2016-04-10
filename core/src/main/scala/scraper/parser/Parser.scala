@@ -122,7 +122,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def withClause: Parser[LogicalPlan] =
     WITH ~> rep1sep(cteDefinition, ",") ~ selectClause ^^ {
-      case cs ~ q => With(q, cs.toMap)
+      case cs ~ q => cs.foldLeft(q) { With(_, _) }
     }
 
   private def cteDefinition: Parser[(String, LogicalPlan)] =

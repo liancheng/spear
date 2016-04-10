@@ -293,24 +293,16 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
   override def output: Seq[Attribute] = child.output
 }
 
-case class With(
-  child: LogicalPlan, cteRelations: Map[String, LogicalPlan]
-) extends UnaryLogicalPlan {
+case class With(child: LogicalPlan, cteRelation: (String, LogicalPlan)) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 
   override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
 
   override protected def buildVirtualTreeNodes(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = {
-    val cteNodes = cteRelations.map {
-      case (name, plan) => CTENode(name, plan)
-    }.toSeq sortBy (_.name)
-
-    cteNodes.foreach { node =>
-      node.buildPrettyTree(depth + 1, lastChildren :+ children.isEmpty, builder)
-    }
-  }
+  ): Unit = CTENode.tupled(cteRelation).buildPrettyTree(
+    depth + 1, lastChildren :+ children.isEmpty, builder
+  )
 }
 
 object With {

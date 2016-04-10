@@ -7,7 +7,7 @@ import scraper.exceptions.{IllegalAggregationException, ResolutionFailureExcepti
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
-import scraper.expressions.functions.{let => _, _}
+import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._

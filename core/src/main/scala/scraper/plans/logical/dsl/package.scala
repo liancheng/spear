@@ -105,9 +105,8 @@ package object dsl {
 
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
-  def let(cteRelations: Map[String, LogicalPlan])(body: LogicalPlan): With =
-    With(body, cteRelations)
-
-  def let(first: (Symbol, LogicalPlan), rest: (Symbol, LogicalPlan)*)(body: LogicalPlan): With =
-    let((first +: rest).toMap map { case (name, plan) => name.name -> plan })(body)
+  def let(cteRelation: (Symbol, LogicalPlan))(body: LogicalPlan): With = {
+    val (name, value) = cteRelation
+    With(body, (name.name, value))
+  }
 }
