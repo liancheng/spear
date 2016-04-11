@@ -1,7 +1,8 @@
 package scraper.expressions
 
 import scraper.{NullSafeOrdering, Row}
-import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, TypeConstraints}
+import scraper.expressions.typecheck.TypeConstraints
+import scraper.expressions.typecheck.dsl._
 import scraper.types._
 
 trait ArithmeticExpression extends Expression {
@@ -11,7 +12,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, children)
+  override protected def typeConstraints: TypeConstraints = children subtypesOf NumericType
 
   override protected def strictDataType: DataType = child.dataType
 }
@@ -29,7 +30,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, children)
+  override protected def typeConstraints: TypeConstraints = children subtypesOf NumericType
 
   override protected def strictDataType: DataType = left.dataType
 }
@@ -66,7 +67,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(IntegralType, children)
+  override protected def typeConstraints: TypeConstraints = children subtypesOf IntegralType
 
   override protected def strictDataType: DataType = left.dataType
 
@@ -80,7 +81,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(FractionalType, children)
+  override protected def typeConstraints: TypeConstraints = children subtypesOf FractionalType
 
   override def dataType: DataType = BooleanType
 
@@ -101,7 +102,7 @@ abstract class GreatestLike extends Expression {
 
   override protected def strictDataType: DataType = children.head.dataType
 
-  override protected def typeConstraints: TypeConstraints = AllCompatible(children)
+  override protected def typeConstraints: TypeConstraints = children.allCompatible
 
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullLarger)
 }

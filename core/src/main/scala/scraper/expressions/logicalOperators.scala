@@ -1,13 +1,14 @@
 package scraper.expressions
 
 import scraper.Row
-import scraper.expressions.typecheck.{AllCompatible, Exact, TypeConstraints}
+import scraper.expressions.typecheck.TypeConstraints
+import scraper.expressions.typecheck.dsl._
 import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
-  override protected def typeConstraints: TypeConstraints = Exact(BooleanType, children)
+  override protected def typeConstraints: TypeConstraints = children ofType BooleanType
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -28,7 +29,7 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
 case class Not(child: Expression) extends UnaryOperator {
   override def dataType: DataType = BooleanType
 
-  override protected def typeConstraints: TypeConstraints = Exact(BooleanType, children)
+  override protected def typeConstraints: TypeConstraints = child ofType BooleanType
 
   override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
@@ -43,7 +44,7 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
   override protected def typeConstraints: TypeConstraints =
-    Exact(BooleanType, condition :: Nil) ~ AllCompatible(yes :: no :: Nil)
+    (condition ofType BooleanType) ~ Seq(yes, no).allCompatible
 
   override def evaluate(input: Row): Any = condition.evaluate(input) match {
     case null  => null

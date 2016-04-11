@@ -2,7 +2,8 @@ package scraper.expressions
 
 import scraper.types.{BooleanType, DataType, OrderedType}
 import scraper.Row
-import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, Exact, TypeConstraints}
+import scraper.expressions.typecheck.TypeConstraints
+import scraper.expressions.typecheck.dsl._
 
 trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
@@ -13,7 +14,7 @@ trait BinaryComparison extends BinaryOperator {
     }
   }
 
-  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(OrderedType, children)
+  override protected def typeConstraints: TypeConstraints = children subtypesOf OrderedType
 }
 
 object BinaryComparison {
@@ -78,7 +79,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = BooleanType
 
   override protected def typeConstraints: TypeConstraints =
-    Exact(BooleanType, test :: Nil) ~ AllCompatible(list)
+    (test ofType BooleanType) ~ list.allCompatible
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input

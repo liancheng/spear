@@ -1,13 +1,14 @@
 package scraper.expressions
 
 import scraper.Row
-import scraper.expressions.typecheck.{AllCompatible, TypeConstraints}
+import scraper.expressions.typecheck.TypeConstraints
+import scraper.expressions.typecheck.dsl._
 import scraper.types.{BooleanType, DataType}
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
 
-  override protected def typeConstraints: TypeConstraints = AllCompatible(children)
+  override protected def typeConstraints: TypeConstraints = children.allCompatible
 
   override def evaluate(input: Row): Any =
     (children.iterator map (_ evaluate input) find (_ != null)).orNull
