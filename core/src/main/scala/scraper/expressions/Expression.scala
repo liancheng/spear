@@ -56,11 +56,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * `LONG`.
    */
   lazy val strictlyTyped: Try[Expression] = for {
-    strictChildren <- strictlyTypedChildren
+    strictChildren <- typeConstraints.strictlyTyped
   } yield withChildren(strictChildren)
-
-  lazy val strictlyTypedChildren: Try[Seq[Expression]] =
-    typeConstraints.strictlyTyped
 
   protected def typeConstraints: TypeConstraints = PassThrough(children)
 
