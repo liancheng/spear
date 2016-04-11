@@ -2,9 +2,8 @@ package scraper.expressions
 
 import scala.util.{Success, Try}
 
-import scraper.exceptions.{ImplicitCastException, TypeCastException}
+import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
 import scraper.expressions.Cast.{buildCast, convertible}
-import scraper.types
 import scraper.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
@@ -206,6 +205,14 @@ object Cast {
     case _ if e.dataType == dataType           => e
     case _ if e.dataType narrowerThan dataType => e cast dataType
     case _                                     => throw new ImplicitCastException(e, dataType)
+  }
+
+  def promoteDataType(e: Expression, parentType: AbstractDataType): Expression = e match {
+    case `parentType`(_) => e
+    case _ =>
+      parentType.defaultType map (promoteDataType(e, _)) getOrElse {
+        throw new TypeMismatchException(e, parentType.getClass)
+      }
   }
 
   /**

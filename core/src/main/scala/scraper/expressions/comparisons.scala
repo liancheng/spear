@@ -1,12 +1,8 @@
 package scraper.expressions
 
-import scala.util.{Failure, Success, Try}
-
 import scraper.Row
-import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.promoteDataType
+import scraper.expressions.typecheck.{AllBelongTo, AllCompatible, Exact, TypeConstraints}
 import scraper.types.{BooleanType, DataType, OrderedType}
-import scraper.utils._
 
 trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
@@ -17,21 +13,7 @@ trait BinaryComparison extends BinaryOperator {
     }
   }
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    lhs <- left.strictlyTyped map {
-      case OrderedType(e) => e
-      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
-    }
-
-    rhs <- right.strictlyTyped map {
-      case OrderedType(e) => e
-      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
-    }
-
-    t <- lhs.dataType widest rhs.dataType
-
-    newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
-  } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(OrderedType, children)
 }
 
 object BinaryComparison {
@@ -95,23 +77,8 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override protected def strictDataType: DataType = BooleanType
 
-  override lazy val strictlyTyped: Try[Expression] = {
-    for {
-      strictTest <- test.strictlyTyped
-      strictList <- trySequence(list map (_.strictlyTyped))
-
-      testType = strictTest.dataType
-
-      promotedList <- trySequence(strictList map {
-        case e if e.dataType narrowerThan testType => Success(promoteDataType(e, testType))
-        case e => Failure(new TypeMismatchException(
-          "Test value and list values must be of the same data type in IN expression."
-        ))
-      })
-
-      newChildren = strictTest +: promotedList
-    } yield if (sameChildren(newChildren)) this else copy(test = strictTest, list = promotedList)
-  }
+  override protected def typeConstraints: TypeConstraints =
+    Exact(BooleanType, test :: Nil) ~ AllCompatible(list)
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input

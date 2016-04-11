@@ -1,12 +1,8 @@
 package scraper.expressions
 
-import scala.util.{Failure, Success, Try}
-
-import scraper.{NullSafeOrdering, Row}
-import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.typecheck.{AllBelongTo, AllCompatible, TypeConstraints}
 import scraper.types._
-import scraper.utils._
+import scraper.{NullSafeOrdering, Row}
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -15,13 +11,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override lazy val strictlyTyped: Try[Expression] = for {
-    strictChild <- child.strictlyTyped map {
-      case NumericType(e)            => e
-      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType.get)
-      case e                         => throw new TypeMismatchException(e, classOf[NumericType])
-    }
-  } yield if (strictChild same child) this else makeCopy(strictChild :: Nil)
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, children)
 
   override protected def strictDataType: DataType = child.dataType
 }
@@ -39,34 +29,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override lazy val strictlyTyped: Try[Expression] = {
-    val checkBranch: Expression => Try[Expression] = {
-      case NumericType(e)            => Success(e)
-      case NumericType.Implicitly(e) => Success(promoteDataType(e, NumericType.defaultType.get))
-      case e                         => Failure(new TypeMismatchException(e, classOf[NumericType]))
-    }
-
-    for {
-      lhs <- left.strictlyTyped flatMap checkBranch
-      rhs <- right.strictlyTyped flatMap checkBranch
-
-      // Figures out the final data type of this arithmetic expression. Basically there are two
-      // cases:
-      //
-      //  - The data type of at least one side is NumericType.  In this case, we use the wider type
-      //    of the two as the final data type.
-      //
-      //  - The data type of neither side is NumericType, but both can be converted to NumericType
-      //    implicitly.  In this case, we use the default NumericType as the final data type.
-      t <- (lhs.dataType, rhs.dataType) match {
-        case (t1: NumericType, t2) => t1 widest t2
-        case (t1, t2: NumericType) => t1 widest t2
-        case (t1, t2)              => Success(NumericType.defaultType.get)
-      }
-
-      newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
-    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
-  }
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, children)
 
   override protected def strictDataType: DataType = left.dataType
 }
@@ -103,27 +66,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override lazy val strictlyTyped: Try[Expression] = {
-    val checkBranch: Expression => Try[Expression] = {
-      case IntegralType(e)            => Success(e)
-      case IntegralType.Implicitly(e) => Success(promoteDataType(e, IntegralType.defaultType.get))
-      case e =>
-        Failure(new TypeMismatchException(e, classOf[IntegralType]))
-    }
-
-    for {
-      lhs <- left.strictlyTyped flatMap checkBranch
-      rhs <- right.strictlyTyped flatMap checkBranch
-
-      t <- (lhs.dataType, rhs.dataType) match {
-        case (t1: IntegralType, t2) => t1 widest t2
-        case (t1, t2: IntegralType) => t1 widest t2
-        case (t1, t2)               => Success(IntegralType.defaultType.get)
-      }
-
-      newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
-    } yield if (sameChildren(newChildren)) this else makeCopy(newChildren)
-  }
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(IntegralType, children)
 
   override protected def strictDataType: DataType = left.dataType
 
@@ -137,21 +80,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = for {
-    strictChild <- child.strictlyTyped map {
-      case FractionalType(e)            => e
-      case FractionalType.Implicitly(e) => e
-      case e =>
-        throw new TypeMismatchException(e, classOf[FractionalType])
-    }
-
-    finalType = strictChild.dataType match {
-      case t: FractionalType            => t
-      case FractionalType.Implicitly(t) => FractionalType.defaultType.get
-    }
-
-    promotedChild = promoteDataType(strictChild, finalType)
-  } yield if (promotedChild same child) this else copy(child = promotedChild)
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(FractionalType, children)
 
   override def dataType: DataType = BooleanType
 
@@ -172,14 +101,7 @@ abstract class GreatestLike extends Expression {
 
   override protected def strictDataType: DataType = children.head.dataType
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    strictChildren <- trySequence(children map (_.strictlyTyped))
-    widestType <- widestTypeOf(strictChildren map (_.dataType)) map {
-      case t: OrderedType => t
-      case t              => throw new TypeMismatchException(this, classOf[OrderedType])
-    }
-    promotedChildren = strictChildren.map(promoteDataType(_, widestType))
-  } yield if (sameChildren(promotedChildren)) this else makeCopy(promotedChildren)
+  override protected def typeConstraints: TypeConstraints = AllCompatible(children)
 
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullLarger)
 }

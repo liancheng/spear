@@ -7,6 +7,7 @@ import scraper.exceptions.BrokenContractException
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
+import scraper.expressions.typecheck.{AllBelongTo, Exact, TypeConstraints}
 import scraper.types._
 import scraper.utils._
 
@@ -259,6 +260,8 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 
   override def resultExpression: Expression =
     If(count =:= 0L, lit(null), sum / (count cast dataType))
+
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, child :: Nil)
 }
 
 case class First(child: Expression) extends ReduceLeft(coalesce(_, _))
@@ -267,12 +270,24 @@ case class Last(child: Expression) extends ReduceLeft(
   (agg: Expression, input: Expression) => coalesce(input, agg)
 )
 
-case class Sum(child: Expression) extends ReduceLeft(Plus)
+abstract class NumericReduceLeft(updateFunction: (Expression, Expression) => Expression)
+  extends ReduceLeft(updateFunction) {
 
-case class Max(child: Expression) extends ReduceLeft(Greatest(_, _))
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, child :: Nil)
+}
 
-case class Min(child: Expression) extends ReduceLeft(Least(_, _))
+case class Sum(child: Expression) extends NumericReduceLeft(Plus)
 
-case class BoolAnd(child: Expression) extends ReduceLeft(And)
+case class Max(child: Expression) extends NumericReduceLeft(Greatest(_, _))
 
-case class BoolOr(child: Expression) extends ReduceLeft(Or)
+case class Min(child: Expression) extends NumericReduceLeft(Least(_, _))
+
+abstract class LogicalReduceLeft(updateFunction: (Expression, Expression) => Expression)
+  extends ReduceLeft(updateFunction) {
+
+  override protected def typeConstraints: TypeConstraints = Exact(BooleanType, child :: Nil)
+}
+
+case class BoolAnd(child: Expression) extends LogicalReduceLeft(And)
+
+case class BoolOr(child: Expression) extends LogicalReduceLeft(Or)

@@ -1,19 +1,13 @@
 package scraper.expressions
 
-import scala.util.Try
-
 import scraper.Row
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.typecheck.{AllCompatible, TypeConstraints}
 import scraper.types.{BooleanType, DataType}
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected def strictDataType: DataType = children.head.dataType
 
-  override lazy val strictlyTyped: Try[Coalesce] = for {
-    strictChildren <- Try(children map (_.strictlyTyped.get))
-    finalType <- widestTypeOf(strictChildren map (_.dataType))
-    promotedChildren = children.map(promoteDataType(_, finalType))
-  } yield if (sameChildren(promotedChildren)) this else copy(children = promotedChildren)
+  override protected def typeConstraints: TypeConstraints = AllCompatible(children)
 
   override def evaluate(input: Row): Any =
     (children.iterator map (_ evaluate input) find (_ != null)).orNull

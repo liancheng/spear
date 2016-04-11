@@ -5,7 +5,7 @@ import scala.util.{Failure, Try}
 import scraper.Row
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
-import scraper.expressions.typecheck.{PassThrough, TypeConstraint}
+import scraper.expressions.typecheck.{PassThrough, TypeConstraints}
 import scraper.trees.TreeNode
 import scraper.types.DataType
 import scraper.utils._
@@ -55,15 +55,14 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * On the other hand, `a + CAST(1 AS LONG)` is strictly typed because both branches are of type
    * `LONG`.
    */
-  def strictlyTyped: Try[Expression] = Try {
-    this transformChildrenUp {
-      case e: Expression => e.strictlyTyped.get
-    }
-  }
+  lazy val strictlyTyped: Try[Expression] = for {
+    strictChildren <- strictlyTypedChildren
+  } yield withChildren(strictChildren)
 
-  protected lazy val strictlyTypedChildren: Try[Seq[Expression]] = typeConstraint.strictlyTyped
+  lazy val strictlyTypedChildren: Try[Seq[Expression]] =
+    typeConstraints.strictlyTyped
 
-  protected def typeConstraint: TypeConstraint = PassThrough(children)
+  protected def typeConstraints: TypeConstraints = PassThrough(children)
 
   /**
    * Indicates whether this [[Expression]] is strictly typed.
@@ -264,7 +263,8 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
 
   override def isNullable: Boolean = throw new ExpressionUnresolvedException(this)
 
-  override def strictlyTyped: Try[Expression] = Failure(new ExpressionUnresolvedException(this))
+  override lazy val strictlyTyped: Try[Expression] =
+    Failure(new ExpressionUnresolvedException(this))
 
   override def isResolved: Boolean = false
 

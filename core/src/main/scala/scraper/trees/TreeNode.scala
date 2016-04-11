@@ -1,7 +1,9 @@
 package scraper.trees
 
-import scala.collection.{mutable, Traversable}
+import scala.collection.{Traversable, mutable}
 import scala.languageFeature.reflectiveCalls
+
+import scraper.types.StructType
 
 trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   private type Rule = PartialFunction[Base, Base]
@@ -76,6 +78,47 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       case cause: IllegalArgumentException =>
         throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
     }
+  }
+
+  protected def withChildren(newChildren: Seq[Base]): Base = {
+    assert(newChildren.length == children.length)
+
+    val remainingNewChildren = newChildren.toBuffer
+    var changed = false
+
+    val newArgs = productIterator.map {
+      case arg: StructType =>
+        arg
+
+      case arg: TreeNode[_] if children contains arg =>
+        val newChild = remainingNewChildren.head
+        remainingNewChildren.remove(0)
+        changed = changed || (newChild same arg.asInstanceOf[Base])
+        newChild
+
+      case Some(arg) if children contains arg =>
+        val newChild = remainingNewChildren.head
+        remainingNewChildren.remove(0)
+        changed = changed || (newChild same arg.asInstanceOf[Base])
+        Some(newChild)
+
+      case arg: Traversable[_] =>
+        arg.map {
+          case child if children contains child =>
+            val newChild = remainingNewChildren.head
+            remainingNewChildren.remove(0)
+            changed = changed || (newChild same arg.asInstanceOf[Base])
+            newChild
+        }
+
+      case arg: AnyRef =>
+        arg
+
+      case null =>
+        null
+    }.toSeq
+
+    if (changed) makeCopy(newArgs) else this
   }
 
   def collect[T](f: PartialFunction[Base, T]): Seq[T] = {

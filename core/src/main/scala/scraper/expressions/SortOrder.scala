@@ -1,8 +1,6 @@
 package scraper.expressions
 
-import scala.util.Try
-
-import scraper.exceptions.TypeMismatchException
+import scraper.expressions.typecheck.{AllBelongTo, TypeConstraints}
 import scraper.types.{DataType, OrderedType}
 
 abstract sealed class SortDirection
@@ -18,12 +16,7 @@ case object Descending extends SortDirection {
 case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
-  override lazy val strictlyTyped: Try[Expression] = for {
-    strictChild <- child.strictlyTyped map {
-      case OrderedType(e) => e
-      case e              => throw new TypeMismatchException(e, classOf[OrderedType])
-    }
-  } yield if (strictChild same child) this else copy(child = strictChild)
+  override protected def typeConstraints: TypeConstraints = AllBelongTo(OrderedType, child :: Nil)
 
   override def dataType: DataType = child.dataType
 

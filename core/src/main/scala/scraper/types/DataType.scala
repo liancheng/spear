@@ -169,8 +169,10 @@ trait OrderedType { this: DataType =>
   def genericOrdering: Ordering[Any] = ordering.asInstanceOf[Ordering[Any]]
 }
 
-object OrderedType {
-  def unapply(e: Expression): Option[Expression] = e.dataType match {
+object OrderedType extends AbstractDataType {
+  override val defaultType: Option[DataType] = None
+
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: OrderedType => Some(e)
     case _              => None
   }
@@ -178,8 +180,10 @@ object OrderedType {
 
 trait PrimitiveType extends DataType
 
-object PrimitiveType {
-  def unapply(e: Expression): Option[Expression] = e.dataType match {
+object PrimitiveType extends AbstractDataType {
+  override val defaultType: Option[DataType] = None
+
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: PrimitiveType => Some(e)
     case _                => None
   }
