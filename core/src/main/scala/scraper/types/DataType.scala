@@ -137,6 +137,28 @@ object DataType {
   }
 }
 
+trait AbstractDataType {
+  val defaultType: Option[DataType]
+
+  def unapply(e: Expression): Option[Expression]
+
+  object Implicitly {
+    def unapply(e: Expression): Option[Expression] = defaultType flatMap { d =>
+      e.dataType match {
+        case t if t narrowerThan d => Some(e)
+        case _                     => None
+      }
+    }
+
+    def unapply(dataType: DataType): Option[DataType] = defaultType flatMap { d =>
+      dataType match {
+        case t if t narrowerThan d => Some(t)
+        case _                     => None
+      }
+    }
+  }
+}
+
 case class FieldSpec(dataType: DataType, nullable: Boolean)
 
 trait OrderedType { this: DataType =>

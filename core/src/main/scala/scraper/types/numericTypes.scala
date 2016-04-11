@@ -8,24 +8,12 @@ trait NumericType extends PrimitiveType with OrderedType {
   def genericNumeric: Numeric[Any] = numeric.asInstanceOf[Numeric[Any]]
 }
 
-object NumericType {
-  val defaultType = DoubleType
+object NumericType extends AbstractDataType {
+  override val defaultType: Option[DataType] = Some(DoubleType)
 
-  def unapply(e: Expression): Option[Expression] = e.dataType match {
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: NumericType => Some(e)
     case _              => None
-  }
-
-  object Implicitly {
-    def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t narrowerThan defaultType => Some(e)
-      case _                               => None
-    }
-
-    def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t narrowerThan defaultType => Some(t)
-      case _                               => None
-    }
   }
 }
 
@@ -35,24 +23,12 @@ trait IntegralType extends NumericType {
   def genericIntegral: Integral[Any] = integral.asInstanceOf[Integral[Any]]
 }
 
-object IntegralType {
-  val defaultType = IntType
+object IntegralType extends AbstractDataType {
+  val defaultType: Option[DataType] = Some(IntType)
 
-  def unapply(e: Expression): Option[Expression] = e.dataType match {
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: IntegralType => Some(e)
     case _               => None
-  }
-
-  object Implicitly {
-    def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t narrowerThan defaultType => Some(e)
-      case _                               => None
-    }
-
-    def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t narrowerThan defaultType => Some(t)
-      case _                               => None
-    }
   }
 }
 
@@ -110,24 +86,12 @@ trait FractionalType extends NumericType {
   def genericFractional: Fractional[Any] = fractional.asInstanceOf[Fractional[Any]]
 }
 
-object FractionalType {
-  val defaultType = DoubleType
+object FractionalType extends AbstractDataType {
+  val defaultType: Option[DataType] = Some(DoubleType)
 
-  def unapply(e: Expression): Option[Expression] = e.dataType match {
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
     case _: FractionalType => Some(e)
     case _                 => None
-  }
-
-  object Implicitly {
-    def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t narrowerThan defaultType => Some(e)
-      case _                               => None
-    }
-
-    def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t narrowerThan defaultType => Some(t)
-      case _                               => None
-    }
   }
 }
 

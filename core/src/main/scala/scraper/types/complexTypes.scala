@@ -2,11 +2,20 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.{Attribute, AttributeRef}
+import scraper.expressions.{Attribute, AttributeRef, Expression}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
 
 trait ComplexType extends DataType
+
+object ComplexType extends AbstractDataType {
+  override val defaultType: Option[DataType] = None
+
+  override def unapply(e: Expression): Option[Expression] = e.dataType match {
+    case _: ComplexType => Some(e)
+    case _              => None
+  }
+}
 
 case class ArrayType(
   elementType: DataType,

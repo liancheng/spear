@@ -18,7 +18,7 @@ trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
   override lazy val strictlyTyped: Try[Expression] = for {
     strictChild <- child.strictlyTyped map {
       case NumericType(e)            => e
-      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType)
+      case NumericType.Implicitly(e) => promoteDataType(e, NumericType.defaultType.get)
       case e                         => throw new TypeMismatchException(e, classOf[NumericType])
     }
   } yield if (strictChild same child) this else makeCopy(strictChild :: Nil)
@@ -42,7 +42,7 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
   override lazy val strictlyTyped: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case NumericType(e)            => Success(e)
-      case NumericType.Implicitly(e) => Success(promoteDataType(e, NumericType.defaultType))
+      case NumericType.Implicitly(e) => Success(promoteDataType(e, NumericType.defaultType.get))
       case e                         => Failure(new TypeMismatchException(e, classOf[NumericType]))
     }
 
@@ -61,7 +61,7 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
       t <- (lhs.dataType, rhs.dataType) match {
         case (t1: NumericType, t2) => t1 widest t2
         case (t1, t2: NumericType) => t1 widest t2
-        case (t1, t2)              => Success(NumericType.defaultType)
+        case (t1, t2)              => Success(NumericType.defaultType.get)
       }
 
       newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
@@ -106,7 +106,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
   override lazy val strictlyTyped: Try[Expression] = {
     val checkBranch: Expression => Try[Expression] = {
       case IntegralType(e)            => Success(e)
-      case IntegralType.Implicitly(e) => Success(promoteDataType(e, IntegralType.defaultType))
+      case IntegralType.Implicitly(e) => Success(promoteDataType(e, IntegralType.defaultType.get))
       case e =>
         Failure(new TypeMismatchException(e, classOf[IntegralType]))
     }
@@ -118,7 +118,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
       t <- (lhs.dataType, rhs.dataType) match {
         case (t1: IntegralType, t2) => t1 widest t2
         case (t1, t2: IntegralType) => t1 widest t2
-        case (t1, t2)               => Success(IntegralType.defaultType)
+        case (t1, t2)               => Success(IntegralType.defaultType.get)
       }
 
       newChildren = promoteDataType(lhs, t) :: promoteDataType(rhs, t) :: Nil
@@ -147,7 +147,7 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 
     finalType = strictChild.dataType match {
       case t: FractionalType            => t
-      case FractionalType.Implicitly(t) => FractionalType.defaultType
+      case FractionalType.Implicitly(t) => FractionalType.defaultType.get
     }
 
     promotedChild = promoteDataType(strictChild, finalType)

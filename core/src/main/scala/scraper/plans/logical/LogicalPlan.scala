@@ -140,7 +140,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
         Literal(e.evaluated)
 
       case IntegralType.Implicitly(e) if e.isFoldable =>
-        Literal(promoteDataType(e, IntegralType.defaultType).evaluated)
+        Literal(promoteDataType(e, IntegralType.defaultType.get).evaluated)
 
       case _ =>
         throw new TypeCheckException("Limit must be an integral constant")
