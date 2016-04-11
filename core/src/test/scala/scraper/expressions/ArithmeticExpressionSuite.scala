@@ -76,7 +76,7 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     checkStrictlyTyped(lit(1) + 1, IntType)
     checkStrictlyTyped(lit(1L) + 1L, LongType)
 
-    checkWellTyped(lit(1) + "1", DoubleType)
+    checkWellTyped(lit(1) + "1", IntType)
     checkWellTyped(lit(1D) + "1", DoubleType)
   }
 }

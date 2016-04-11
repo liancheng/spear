@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scraper.expressions.typecheck.{AllBelongTo, TypeConstraints}
+import scraper.expressions.typecheck.{AllSubtypesOf, TypeConstraints}
 import scraper.types.{DataType, OrderedType}
 
 abstract sealed class SortDirection
@@ -16,7 +16,7 @@ case object Descending extends SortDirection {
 case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(OrderedType, child :: Nil)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(OrderedType, child :: Nil)
 
   override def dataType: DataType = child.dataType
 

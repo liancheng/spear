@@ -176,6 +176,8 @@ object OrderedType extends AbstractDataType {
     case _: OrderedType => Some(e)
     case _              => None
   }
+
+  override def toString: String = "ordered type"
 }
 
 trait PrimitiveType extends DataType
@@ -187,6 +189,8 @@ object PrimitiveType extends AbstractDataType {
     case _: PrimitiveType => Some(e)
     case _                => None
   }
+
+  override def toString: String = "primitive type"
 }
 
 case object NullType extends PrimitiveType with OrderedType {

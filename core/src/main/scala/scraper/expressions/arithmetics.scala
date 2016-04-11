@@ -1,8 +1,8 @@
 package scraper.expressions
 
-import scraper.expressions.typecheck.{AllBelongTo, AllCompatible, TypeConstraints}
-import scraper.types._
 import scraper.{NullSafeOrdering, Row}
+import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, TypeConstraints}
+import scraper.types._
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -11,7 +11,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, children)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, children)
 
   override protected def strictDataType: DataType = child.dataType
 }
@@ -29,7 +29,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, children)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, children)
 
   override protected def strictDataType: DataType = left.dataType
 }
@@ -66,7 +66,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(IntegralType, children)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(IntegralType, children)
 
   override protected def strictDataType: DataType = left.dataType
 
@@ -80,7 +80,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(FractionalType, children)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(FractionalType, children)
 
   override def dataType: DataType = BooleanType
 

@@ -1,6 +1,6 @@
 package scraper.trees
 
-import scala.collection.{Traversable, mutable}
+import scala.collection.{mutable, Traversable}
 import scala.languageFeature.reflectiveCalls
 
 import scraper.types.StructType
@@ -80,7 +80,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
   }
 
-  protected def withChildren(newChildren: Seq[Base]): Base = {
+  def withChildren(newChildren: Seq[Base]): Base = {
     assert(newChildren.length == children.length)
 
     val remainingNewChildren = newChildren.toBuffer
@@ -93,13 +93,13 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       case arg: TreeNode[_] if children contains arg =>
         val newChild = remainingNewChildren.head
         remainingNewChildren.remove(0)
-        changed = changed || (newChild same arg.asInstanceOf[Base])
+        changed = changed || !(newChild same arg.asInstanceOf[Base])
         newChild
 
       case Some(arg) if children contains arg =>
         val newChild = remainingNewChildren.head
         remainingNewChildren.remove(0)
-        changed = changed || (newChild same arg.asInstanceOf[Base])
+        changed = changed || !(newChild same arg.asInstanceOf[Base])
         Some(newChild)
 
       case arg: Traversable[_] =>
@@ -107,8 +107,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
           case child if children contains child =>
             val newChild = remainingNewChildren.head
             remainingNewChildren.remove(0)
-            changed = changed || (newChild same arg.asInstanceOf[Base])
+            changed = changed || !(newChild same arg.asInstanceOf[Base])
             newChild
+
+          case element =>
+            element
         }
 
       case arg: AnyRef =>
@@ -116,7 +119,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
       case null =>
         null
-    }.toSeq
+    }.toArray
 
     if (changed) makeCopy(newArgs) else this
   }

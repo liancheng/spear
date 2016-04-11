@@ -2,7 +2,7 @@ package scraper.exceptions
 
 import scraper.expressions.{AttributeRef, Expression}
 import scraper.plans.logical.LogicalPlan
-import scraper.types.DataType
+import scraper.types.{AbstractDataType, DataType}
 import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
@@ -82,19 +82,27 @@ class TypeMismatchException(message: String, cause: Throwable)
 
   def this(message: String) = this(message, null)
 
-  def this(expression: Expression, dataTypeClass: Class[_], cause: Throwable) = this({
-    val expected = dataTypeClass.getSimpleName stripSuffix "$"
-    val actual = expression.dataType.getClass.getSimpleName stripSuffix "$"
-    s"""Expression [${expression.debugString}] has type $actual,
-       |which cannot be implicitly converted to expected type $expected.
-     """.straight
-  }, cause)
+  def this(
+    expression: Expression,
+    expected: DataType,
+    cause: Throwable
+  ) = this(
+    s"Expecting ${expected.sql}, while expression $expression has type ${expression.dataType.sql}",
+    cause
+  )
 
-  def this(expression: Expression, dataTypeClass: Class[_]) =
-    this(expression, dataTypeClass, null)
+  def this(
+    expression: Expression,
+    expected: AbstractDataType,
+    cause: Throwable
+  ) = this(
+    s"Expecting a $expected, while expression $expression has type ${expression.dataType.sql}",
+    cause
+  )
 
-  def this(expression: Expression, dataType: DataType) =
-    this(expression, dataType.getClass, null)
+  def this(expression: Expression, expected: DataType) = this(expression, expected, null)
+
+  def this(expression: Expression, expected: AbstractDataType) = this(expression, expected, null)
 }
 
 class ResolutionFailureException(message: String, cause: Throwable)

@@ -211,7 +211,7 @@ object Cast {
     case `parentType`(_) => e
     case _ =>
       parentType.defaultType map (promoteDataType(e, _)) getOrElse {
-        throw new TypeMismatchException(e, parentType.getClass)
+        throw new TypeMismatchException(e, parentType)
       }
   }
 

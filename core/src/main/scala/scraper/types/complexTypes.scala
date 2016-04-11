@@ -15,6 +15,8 @@ object ComplexType extends AbstractDataType {
     case _: ComplexType => Some(e)
     case _              => None
   }
+
+  override def toString: String = "complex type"
 }
 
 case class ArrayType(

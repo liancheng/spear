@@ -5,7 +5,7 @@ import scala.util.Success
 import scraper.LoggingFunSuite
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.{BooleanType, IntType, IntegralType, LongType}
+import scraper.types.{BooleanType, IntegralType, IntType, LongType}
 
 class TypeConstraintsSuite extends LoggingFunSuite {
   def testTypeConstraints(constraintsClass: Class[_ <: TypeConstraints])(f: => Unit): Unit = {
@@ -18,9 +18,9 @@ class TypeConstraintsSuite extends LoggingFunSuite {
     }
   }
 
-  testTypeConstraints(classOf[AllBelongTo]) {
+  testTypeConstraints(classOf[AllSubtypesOf]) {
     assertResult(Success(Seq((1: Byte) cast IntType, (1: Short) cast IntType, lit(1: Int)))) {
-      AllBelongTo(IntegralType, Seq(1: Byte, 1: Short, 1: Int)).strictlyTyped
+      AllSubtypesOf(IntegralType, Seq(1: Byte, 1: Short, 1: Int)).strictlyTyped
     }
   }
 

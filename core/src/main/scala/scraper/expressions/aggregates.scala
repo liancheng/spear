@@ -7,7 +7,7 @@ import scraper.exceptions.BrokenContractException
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.expressions.typecheck.{AllBelongTo, Exact, TypeConstraints}
+import scraper.expressions.typecheck.{AllSubtypesOf, Exact, TypeConstraints}
 import scraper.types._
 import scraper.utils._
 
@@ -261,7 +261,7 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   override def resultExpression: Expression =
     If(count =:= 0L, lit(null), sum / (count cast dataType))
 
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, child :: Nil)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, child :: Nil)
 }
 
 case class First(child: Expression) extends ReduceLeft(coalesce(_, _))
@@ -273,7 +273,7 @@ case class Last(child: Expression) extends ReduceLeft(
 abstract class NumericReduceLeft(updateFunction: (Expression, Expression) => Expression)
   extends ReduceLeft(updateFunction) {
 
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(NumericType, child :: Nil)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(NumericType, child :: Nil)
 }
 
 case class Sum(child: Expression) extends NumericReduceLeft(Plus)

@@ -11,7 +11,7 @@ import scraper.utils.trySequence
 sealed trait TypeConstraints {
   def strictlyTyped: Try[Seq[Expression]]
 
-  def ~(that: TypeConstraints): AndAlso = AndAlso(this, that)
+  def ~(that: TypeConstraints): Concat = Concat(this, that)
 }
 
 case class PassThrough(expressions: Seq[Expression]) extends TypeConstraints {
@@ -29,19 +29,18 @@ case class Exact(dataType: DataType, expressions: Seq[Expression]) extends TypeC
   }
 }
 
-case class AllBelongTo(parentType: AbstractDataType, expressions: Seq[Expression])
+case class AllSubtypesOf(parentType: AbstractDataType, expressions: Seq[Expression])
   extends TypeConstraints {
 
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictOnes <- trySequence(expressions map (_.strictlyTyped))
-    // TODO Shouldn't compute widest type first
-    widestType <- widestTypeOf(strictOnes map (_.dataType))
-    widenedOnes = strictOnes map (promoteDataType(_, widestType))
-  } yield widenedOnes map {
-    case `parentType`(e)            => e
-    case `parentType`.Implicitly(e) => promoteDataType(e, parentType)
-    case e                          => throw new TypeMismatchException(e, parentType.getClass)
-  }
+    candidates = strictOnes collect { case `parentType`(e) => e }
+    widestSubType <- if (candidates.nonEmpty) {
+      widestTypeOf(candidates map (_.dataType))
+    } else {
+      throw new TypeMismatchException(expressions.head, parentType)
+    }
+  } yield strictOnes map (promoteDataType(_, widestSubType))
 }
 
 case class AllCompatible(expressions: Seq[Expression]) extends TypeConstraints {
@@ -51,7 +50,7 @@ case class AllCompatible(expressions: Seq[Expression]) extends TypeConstraints {
   } yield strictOnes map (promoteDataType(_, widestType))
 }
 
-case class AndAlso(left: TypeConstraints, right: TypeConstraints) extends TypeConstraints {
+case class Concat(left: TypeConstraints, right: TypeConstraints) extends TypeConstraints {
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictLeft <- left.strictlyTyped
     strictRight <- right.strictlyTyped

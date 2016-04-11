@@ -131,7 +131,7 @@ trait TestUtils { this: FunSuite =>
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
-           |${e.prettyTree}
+           |${e.strictlyTyped.get.prettyTree}
            |""".stripMargin
       )
     }

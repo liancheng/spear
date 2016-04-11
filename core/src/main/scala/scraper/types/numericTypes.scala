@@ -15,6 +15,8 @@ object NumericType extends AbstractDataType {
     case _: NumericType => Some(e)
     case _              => None
   }
+
+  override def toString: String = "numeric type"
 }
 
 trait IntegralType extends NumericType {
@@ -30,6 +32,8 @@ object IntegralType extends AbstractDataType {
     case _: IntegralType => Some(e)
     case _               => None
   }
+
+  override def toString: String = "integral type"
 }
 
 case object ByteType extends IntegralType {
@@ -93,6 +97,8 @@ object FractionalType extends AbstractDataType {
     case _: FractionalType => Some(e)
     case _                 => None
   }
+
+  override def toString: String = "fractional type"
 }
 
 case object FloatType extends FractionalType {

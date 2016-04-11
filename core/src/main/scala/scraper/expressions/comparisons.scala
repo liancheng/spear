@@ -1,8 +1,8 @@
 package scraper.expressions
 
-import scraper.Row
-import scraper.expressions.typecheck.{AllBelongTo, AllCompatible, Exact, TypeConstraints}
 import scraper.types.{BooleanType, DataType, OrderedType}
+import scraper.Row
+import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, Exact, TypeConstraints}
 
 trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
@@ -13,7 +13,7 @@ trait BinaryComparison extends BinaryOperator {
     }
   }
 
-  override protected def typeConstraints: TypeConstraints = AllBelongTo(OrderedType, children)
+  override protected def typeConstraints: TypeConstraints = AllSubtypesOf(OrderedType, children)
 }
 
 object BinaryComparison {
