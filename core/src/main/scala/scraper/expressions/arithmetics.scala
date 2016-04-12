@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.{NullSafeOrdering, Row}
-import scraper.expressions.typecheck.TypeConstraints
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
 
 trait ArithmeticExpression extends Expression {
@@ -11,7 +11,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override protected def typeConstraints: TypeConstraints = children subtypesOf NumericType
+  override protected def typeConstraint: TypeConstraint = children subtypeOf NumericType
 
   override protected def strictDataType: DataType = child.dataType
 }
@@ -29,7 +29,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected def typeConstraints: TypeConstraints = children subtypesOf NumericType
+  override protected def typeConstraint: TypeConstraint = children subtypeOf NumericType
 
   override protected def strictDataType: DataType = left.dataType
 }
@@ -66,7 +66,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected def typeConstraints: TypeConstraints = children subtypesOf IntegralType
+  override protected def typeConstraint: TypeConstraint = children subtypeOf IntegralType
 
   override protected def strictDataType: DataType = left.dataType
 
@@ -80,7 +80,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override protected def typeConstraints: TypeConstraints = children subtypesOf FractionalType
+  override protected def typeConstraint: TypeConstraint = children subtypeOf FractionalType
 
   override def dataType: DataType = BooleanType
 
@@ -97,17 +97,17 @@ case class IsNaN(child: Expression) extends UnaryExpression {
 abstract class GreatestLike extends Expression {
   assert(children.nonEmpty)
 
-  protected def nullLarger: Boolean
+  protected def nullsLarger: Boolean
 
   override protected def strictDataType: DataType = children.head.dataType
 
-  override protected def typeConstraints: TypeConstraints = children.allCompatible
+  override protected def typeConstraint: TypeConstraint = children.allCompatible
 
-  protected lazy val ordering = new NullSafeOrdering(strictDataType, nullLarger)
+  protected lazy val ordering = new NullSafeOrdering(strictDataType, nullsLarger)
 }
 
 case class Greatest(children: Seq[Expression]) extends GreatestLike {
-  override protected def nullLarger: Boolean = false
+  override protected def nullsLarger: Boolean = false
 
   override def evaluate(input: Row): Any = children map (_ evaluate input) max ordering
 }
@@ -117,7 +117,7 @@ object Greatest {
 }
 
 case class Least(children: Seq[Expression]) extends GreatestLike {
-  override protected def nullLarger: Boolean = true
+  override protected def nullsLarger: Boolean = true
 
   override def evaluate(input: Row): Any = children map (_ evaluate input) min ordering
 }

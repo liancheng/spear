@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.language.implicitConversions
 
 import scraper.config.Settings
-import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, Exact}
+import scraper.expressions.typecheck._
 import scraper.parser.Parser
 import scraper.types._
 
@@ -32,31 +32,31 @@ package object dsl {
       new Parser(Settings.empty).parseAttribute(sc.s(args: _*))
   }
 
-  trait BinaryOperatorPattern[T <: BinaryExpression] {
+  private[scraper] trait BinaryOperatorPattern[T <: BinaryExpression] {
     def unapply(op: T): Option[(Expression, Expression)] = Some((op.left, op.right))
   }
 
-  object ! {
+  private[scraper] object ! {
     def unapply(not: Not): Option[Expression] = Some(not.child)
   }
 
-  object || extends BinaryOperatorPattern[Or]
+  private[scraper] object || extends BinaryOperatorPattern[Or]
 
-  object && extends BinaryOperatorPattern[And]
+  private[scraper] object && extends BinaryOperatorPattern[And]
 
-  object =:= extends BinaryOperatorPattern[Eq]
+  private[scraper] object =:= extends BinaryOperatorPattern[Eq]
 
-  object =/= extends BinaryOperatorPattern[NotEq]
+  private[scraper] object =/= extends BinaryOperatorPattern[NotEq]
 
-  object > extends BinaryOperatorPattern[Gt]
+  private[scraper] object > extends BinaryOperatorPattern[Gt]
 
-  object < extends BinaryOperatorPattern[Lt]
+  private[scraper] object < extends BinaryOperatorPattern[Lt]
 
-  object >= extends BinaryOperatorPattern[GtEq]
+  private[scraper] object >= extends BinaryOperatorPattern[GtEq]
 
-  object <= extends BinaryOperatorPattern[LtEq]
+  private[scraper] object <= extends BinaryOperatorPattern[LtEq]
 
-  implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {
+  private[scraper] implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {
     require(set forall (_.isResolved))
 
     def intersectByID(other: Set[E]): Set[E] = {
@@ -76,19 +76,20 @@ package object dsl {
 
   def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
 
-  implicit class TypeConstraintsForExpressions(expressions: Seq[Expression]) {
+  private[scraper] implicit class TypeConstraintsForExpressions(expressions: Seq[Expression]) {
     def ofType(dataType: DataType): Exact = Exact(dataType, expressions)
 
-    def subtypesOf(parentType: AbstractDataType): AllSubtypesOf =
-      AllSubtypesOf(parentType, expressions)
+    def implicitlyConvertibleTo(dataType: DataType): ImplicitlyConvertibleTo =
+      ImplicitlyConvertibleTo(dataType, expressions)
+
+    def subtypeOf(parentType: AbstractDataType): SubtypeOf =
+      SubtypeOf(parentType, expressions)
+
+    def compatibleWith(target: Expression): CompatibleWith = CompatibleWith(target, expressions)
 
     def allCompatible: AllCompatible = AllCompatible(expressions)
   }
 
-  implicit class TypeConstraintsForExpression(expression: Expression) {
-    def ofType(dataType: DataType): Exact = Exact(dataType, expression :: Nil)
-
-    def subtypeOf(parentType: AbstractDataType): AllSubtypesOf =
-      AllSubtypesOf(parentType, expression :: Nil)
-  }
+  private[scraper] implicit class TypeConstraintsForExpression(expression: Expression)
+    extends TypeConstraintsForExpressions(expression :: Nil)
 }
