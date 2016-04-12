@@ -2,7 +2,6 @@ package scraper.expressions
 
 import scraper.{NullSafeOrdering, Row}
 import scraper.expressions.typecheck.TypeConstraints
-import scraper.expressions.typecheck.dsl._
 import scraper.types._
 
 trait ArithmeticExpression extends Expression {

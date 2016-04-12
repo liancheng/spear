@@ -2,7 +2,6 @@ package scraper.expressions
 
 import scraper.Row
 import scraper.expressions.typecheck.TypeConstraints
-import scraper.expressions.typecheck.dsl._
 import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryOperator {

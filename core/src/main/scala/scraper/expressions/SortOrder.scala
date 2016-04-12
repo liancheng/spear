@@ -1,7 +1,6 @@
 package scraper.expressions
 
 import scraper.expressions.typecheck.TypeConstraints
-import scraper.expressions.typecheck.dsl._
 import scraper.types.{DataType, OrderedType}
 
 abstract sealed class SortDirection

@@ -3,7 +3,6 @@ package scraper.expressions
 import scraper.types.{BooleanType, DataType, OrderedType}
 import scraper.Row
 import scraper.expressions.typecheck.TypeConstraints
-import scraper.expressions.typecheck.dsl._
 
 trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType

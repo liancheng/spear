@@ -3,6 +3,7 @@ package scraper.expressions
 import scala.language.implicitConversions
 
 import scraper.config.Settings
+import scraper.expressions.typecheck.{AllCompatible, AllSubtypesOf, Exact}
 import scraper.parser.Parser
 import scraper.types._
 
@@ -74,4 +75,20 @@ package object dsl {
   def function(name: String, args: Expression*): UnresolvedFunction = UnresolvedFunction(name, args)
 
   def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
+
+  implicit class TypeConstraintsForExpressions(expressions: Seq[Expression]) {
+    def ofType(dataType: DataType): Exact = Exact(dataType, expressions)
+
+    def subtypesOf(parentType: AbstractDataType): AllSubtypesOf =
+      AllSubtypesOf(parentType, expressions)
+
+    def allCompatible: AllCompatible = AllCompatible(expressions)
+  }
+
+  implicit class TypeConstraintsForExpression(expression: Expression) {
+    def ofType(dataType: DataType): Exact = Exact(dataType, expression :: Nil)
+
+    def subtypeOf(parentType: AbstractDataType): AllSubtypesOf =
+      AllSubtypesOf(parentType, expression :: Nil)
+  }
 }
