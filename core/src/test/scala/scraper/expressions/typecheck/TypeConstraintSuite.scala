@@ -3,9 +3,10 @@ package scraper.expressions.typecheck
 import scala.util.Success
 
 import scraper.LoggingFunSuite
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.{BooleanType, IntegralType, IntType, LongType}
+import scraper.types.{BooleanType, IntType, IntegralType, LongType}
 
 class TypeConstraintSuite extends LoggingFunSuite {
   def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
@@ -14,7 +15,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
 
   testTypeConstraint(classOf[ImplicitlyConvertibleTo]) {
     assertResult(Success(Seq(lit(true), 1 cast BooleanType))) {
-      ImplicitlyConvertibleTo(BooleanType, Seq(true, 1)).strictlyTyped
+      (Seq(lit(true), lit(1)) implicitlyConvertibleTo BooleanType).strictlyTyped
     }
   }
 

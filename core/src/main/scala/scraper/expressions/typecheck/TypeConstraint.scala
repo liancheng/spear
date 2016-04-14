@@ -3,7 +3,7 @@ package scraper.expressions.typecheck
 import scala.util.Try
 
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{convertible, implicitlyConvertible, promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.Expression
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils.trySequence
@@ -44,22 +44,16 @@ case class Exact(targetType: DataType, args: Seq[Expression]) extends TypeConstr
 
 /**
  * A [[TypeConstraint]] that requires strict data types of all argument expressions in `args` to be
- * convertible to `targetType`. Only implicit conversion is allowed if `implicitOnly` is `true`.
+ * implicitly convertible to `targetType`.
  */
-case class ConvertibleTo(targetType: DataType, args: Seq[Expression], implicitOnly: Boolean)
+case class ImplicitlyConvertibleTo(targetType: DataType, args: Seq[Expression])
   extends TypeConstraint {
 
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
   } yield strictArgs map {
-    case e if implicitlyConvertible(e.dataType, targetType) =>
-      promoteDataType(e, targetType)
-
-    case e if !implicitOnly && convertible(e.dataType, targetType) =>
-      e cast targetType
-
-    case e =>
-      throw new TypeMismatchException(e, targetType)
+    case `targetType`.Implicitly(e) => promoteDataType(e, targetType)
+    case e                          => throw new TypeMismatchException(e, targetType)
   }
 }
 

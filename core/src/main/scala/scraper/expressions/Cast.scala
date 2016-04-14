@@ -2,13 +2,17 @@ package scraper.expressions
 
 import scala.util.{Success, Try}
 
-import scraper.exceptions.{ImplicitCastException, TypeMismatchException}
-import scraper.expressions.Cast.buildCast
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
+import scraper.expressions.Cast.{buildCast, convertible}
+import scraper.types
 import scraper.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
-  override protected def typeConstraint: TypeConstraint = child convertibleTo dataType
+  override lazy val strictlyTyped: Try[Expression] = child.strictlyTyped map {
+    case e if e.dataType == dataType            => this
+    case e if convertible(e.dataType, dataType) => copy(child = e)
+    case e                                      => throw new TypeCastException(e.dataType, dataType)
+  }
 
   override protected def template(childString: String): String =
     s"CAST($childString AS ${dataType.sql})"
