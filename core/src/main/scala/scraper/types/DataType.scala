@@ -17,7 +17,7 @@ trait DataType { self =>
 
   def withNullability(allow: Boolean): FieldSpec = FieldSpec(this, nullable = allow)
 
-  /** Shortcut method for [[scraper.expressions.Cast.compatible]] */
+  /** Shortcut method for [[scraper.expressions.Cast.implicitlyConvertible]] */
   def narrowerThan(that: DataType): Boolean = implicitlyConvertible(this, that)
 
   /**
