@@ -39,23 +39,6 @@ trait DataType { self =>
   def simpleName: String = (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
 
   def sql: String
-
-  def unapply(e: Expression): Option[Expression] = e match {
-    case _ if e.dataType == this => Some(e)
-    case _                       => None
-  }
-
-  object Implicitly {
-    def unapply(e: Expression): Option[Expression] = e.dataType match {
-      case t if t narrowerThan self => Some(e)
-      case _                        => None
-    }
-
-    def unapply(dataType: DataType): Option[DataType] = dataType match {
-      case t if t narrowerThan self => Some(t)
-      case _                        => None
-    }
-  }
 }
 
 object DataType {

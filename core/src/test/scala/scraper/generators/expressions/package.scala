@@ -277,12 +277,7 @@ package object expressions extends Logging {
           genLiteral(FieldSpec(child.dataType, child.isNullable)).sample.get
       }
 
-      val OutputType = e.dataType
-      val compatibleChildren = e.children.filter {
-        case OutputType(_) => true
-        case _             => false
-      }
-
+      val compatibleChildren = e.children filter (_.dataType == e.dataType)
       compatibleChildren.toStream :+ stripLeaves(e)
   }
 

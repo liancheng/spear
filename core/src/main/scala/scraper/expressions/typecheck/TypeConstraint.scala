@@ -35,8 +35,8 @@ case class Exact(targetType: DataType, args: Seq[Expression]) extends TypeConstr
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
   } yield strictArgs map {
-    case `targetType`(e) => e
-    case e               => throw new TypeMismatchException(e, targetType)
+    case e if e.dataType == targetType => e
+    case e                             => throw new TypeMismatchException(e, targetType)
   }
 }
 
@@ -50,8 +50,8 @@ case class ImplicitlyConvertibleTo(targetType: DataType, args: Seq[Expression])
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
   } yield strictArgs map {
-    case `targetType`.Implicitly(e) => promoteDataType(e, targetType)
-    case e                          => throw new TypeMismatchException(e, targetType)
+    case e if e.dataType narrowerThan targetType => promoteDataType(e, targetType)
+    case e                                       => throw new TypeMismatchException(e, targetType)
   }
 }
 
@@ -82,9 +82,8 @@ case class CompatibleWith(target: Expression, args: Seq[Expression]) extends Typ
     targetType = strictTarget.dataType
     strictArgs <- trySequence(args map (_.strictlyTyped))
   } yield strictArgs map {
-    case `targetType`(e)            => e
-    case `targetType`.Implicitly(e) => promoteDataType(e, targetType)
-    case e                          => throw new TypeMismatchException(e, targetType)
+    case e if e.dataType narrowerThan targetType => promoteDataType(e, targetType)
+    case e                                       => throw new TypeMismatchException(e, targetType)
   }
 }
 
