@@ -45,7 +45,7 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
   override protected def typeConstraint: TypeConstraint =
-    (condition implicitlyConvertibleTo BooleanType) ~ Seq(yes, no).allCompatible
+    (condition implicitlyConvertibleTo BooleanType) ++ Seq(yes, no).allCompatible
 
   override def evaluate(input: Row): Any = condition.evaluate(input) match {
     case null  => null

@@ -11,14 +11,12 @@ import scraper.utils.trySequence
 /**
  * A trait that helps in both type checking and type coercion for expression arguments.
  */
-sealed trait TypeConstraint {
-  def args: Seq[Expression]
-
+trait TypeConstraint {
   def strictlyTyped: Try[Seq[Expression]]
 
-  def ~(that: TypeConstraint): Concat = Concat(this, that)
+  def ++(that: TypeConstraint): Concat = Concat(this, that)
 
-  def &&(that: TypeConstraint): AndThen = AndThen(this, that)
+  def andThen(andThen: Seq[Expression] => TypeConstraint): AndThen = AndThen(this, andThen)
 }
 
 /**
@@ -101,21 +99,17 @@ case class AllCompatible(args: Seq[Expression]) extends TypeConstraint {
  * A [[TypeConstraint]] that concatenates results of two [[TypeConstraint]]s.
  */
 case class Concat(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
-  override def args: Seq[Expression] = left.args ++ right.args
-
   override def strictlyTyped: Try[Seq[Expression]] = for {
     strictLeft <- left.strictlyTyped
     strictRight <- right.strictlyTyped
   } yield strictLeft ++ strictRight
 }
 
-case class AndThen(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
-  require(left.args.length == right.args.length)
-
-  override def args: Seq[Expression] = left.args
+case class AndThen(first: TypeConstraint, andThen: Seq[Expression] => TypeConstraint)
+  extends TypeConstraint {
 
   override def strictlyTyped: Try[Seq[Expression]] = for {
-    _ <- left.strictlyTyped
-    strictArgs <- right.strictlyTyped
-  } yield strictArgs
+    firstResult <- first.strictlyTyped
+    secondResult <- andThen(firstResult).strictlyTyped
+  } yield secondResult
 }
