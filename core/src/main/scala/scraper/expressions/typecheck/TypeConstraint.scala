@@ -17,6 +17,8 @@ trait TypeConstraint {
   def ++(that: TypeConstraint): Concat = Concat(this, that)
 
   def andThen(andThen: Seq[Expression] => TypeConstraint): AndThen = AndThen(this, andThen)
+
+  def orElse(that: TypeConstraint): OrElse = OrElse(this, that)
 }
 
 /**
@@ -104,8 +106,10 @@ case class Concat(left: TypeConstraint, right: TypeConstraint) extends TypeConst
 case class AndThen(first: TypeConstraint, andThen: Seq[Expression] => TypeConstraint)
   extends TypeConstraint {
 
-  override def strictlyTyped: Try[Seq[Expression]] = for {
-    firstResult <- first.strictlyTyped
-    secondResult <- andThen(firstResult).strictlyTyped
-  } yield secondResult
+  override def strictlyTyped: Try[Seq[Expression]] =
+    first.strictlyTyped flatMap (andThen(_).strictlyTyped)
+}
+
+case class OrElse(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
+  override def strictlyTyped: Try[Seq[Expression]] = left.strictlyTyped orElse right.strictlyTyped
 }
