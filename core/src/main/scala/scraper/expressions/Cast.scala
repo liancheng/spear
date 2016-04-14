@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scala.util.{Success, Try}
 
-import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
+import scraper.exceptions.{ImplicitCastException, TypeCastException}
 import scraper.expressions.Cast.{buildCast, castable}
 import scraper.types
 import scraper.types._
