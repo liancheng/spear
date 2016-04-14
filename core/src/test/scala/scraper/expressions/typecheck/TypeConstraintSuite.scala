@@ -5,7 +5,7 @@ import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.{BooleanType, IntegralType, IntType, LongType}
+import scraper.types._
 
 class TypeConstraintSuite extends LoggingFunSuite {
   private def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
@@ -16,7 +16,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
     assertResult(expected)(constraint.strictlyTyped.get)
   }
 
-  private def check(first: Expression, rest: Expression*)(constraint: TypeConstraint): Unit = {
+  private def expectExpressions(first: Expression, rest: Expression*)(constraint: TypeConstraint): Unit = {
     check(first +: rest)(constraint)
   }
 
@@ -25,21 +25,21 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   testTypeConstraint(classOf[PassThrough]) {
-    check(1) {
+    expectExpressions(1) {
       PassThrough(Seq(1))
     }
 
-    check((1 cast LongType) + 1L) {
+    expectExpressions((1 cast LongType) + 1L) {
       PassThrough(Seq(lit(1) + 1L))
     }
   }
 
   testTypeConstraint(classOf[Exact]) {
-    check(lit(true)) {
+    expectExpressions(lit(true)) {
       lit(true) ofType BooleanType
     }
 
-    check((1 cast LongType) =:= 1L) {
+    expectExpressions((1 cast LongType) =:= 1L) {
       (1 =:= 1L) ofType BooleanType
     }
 
@@ -49,7 +49,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   testTypeConstraint(classOf[CompatibleWith]) {
-    check(lit(true), 1 cast BooleanType) {
+    expectExpressions(lit(true), 1 cast BooleanType) {
       Seq(lit(true), lit(1)) compatibleWith BooleanType
     }
 
@@ -59,7 +59,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   testTypeConstraint(classOf[SubtypeOf]) {
-    check((1: Byte) cast IntType, (1: Short) cast IntType, lit(1)) {
+    expectExpressions((1: Byte) cast IntType, (1: Short) cast IntType, lit(1)) {
       Seq(lit(1: Byte), lit(1: Short), lit(1)) subtypeOf IntegralType
     }
 
@@ -69,8 +69,24 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   testTypeConstraint(classOf[AllCompatible]) {
-    check(1 cast LongType, 1L) {
+    expectExpressions(1 cast LongType, 1L) {
       Seq(lit(1), lit(1L)).allCompatible
+    }
+  }
+
+  testTypeConstraint(classOf[AndThen]) {
+    expectExpressions(1 cast LongType, 1L) {
+      Seq(lit(1), lit(1L)) subtypeOf OrderedType andThen (_.allCompatible)
+    }
+  }
+
+  testTypeConstraint(classOf[OrElse]) {
+    expectExpressions(1) {
+      lit(1) ofType StringType orElse (lit(1) subtypeOf IntegralType)
+    }
+
+    expectExpressions("1") {
+      lit("1") ofType StringType orElse (lit(1) subtypeOf IntegralType)
     }
   }
 }
