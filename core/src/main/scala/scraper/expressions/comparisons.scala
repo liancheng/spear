@@ -77,7 +77,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override protected def strictDataType: DataType = BooleanType
 
-  override protected def typeConstraint: TypeConstraint = list compatibleWith test
+  override protected def typeConstraint: TypeConstraint = list compatibleWith test.dataType
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input

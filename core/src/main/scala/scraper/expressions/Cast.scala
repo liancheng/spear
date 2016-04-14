@@ -3,15 +3,15 @@ package scraper.expressions
 import scala.util.{Success, Try}
 
 import scraper.exceptions.{ImplicitCastException, TypeCastException, TypeMismatchException}
-import scraper.expressions.Cast.{buildCast, convertible}
+import scraper.expressions.Cast.{buildCast, castable}
 import scraper.types
 import scraper.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
   override lazy val strictlyTyped: Try[Expression] = child.strictlyTyped map {
-    case e if e.dataType == dataType            => this
-    case e if convertible(e.dataType, dataType) => copy(child = e)
-    case e                                      => throw new TypeCastException(e.dataType, dataType)
+    case e if e.dataType == dataType         => this
+    case e if castable(e.dataType, dataType) => copy(child = e)
+    case e                                   => throw new TypeCastException(e.dataType, dataType)
   }
 
   override protected def template(childString: String): String =
@@ -180,43 +180,31 @@ object Cast {
   }
 
   /**
-   * Returns whether type `x` can be converted to type `y` implicitly.
-   *
-   * @note Any [[types.DataType DataType]] is considered to be [[implicitlyConvertible]] to itself.
+   * Returns true iff `x` equals to `y` or `x` can be implicitly casted to `y`.
    */
-  def implicitlyConvertible(x: DataType, y: DataType): Boolean =
+  def compatible(x: DataType, y: DataType): Boolean =
     x == y || buildImplicitCast.lift(x).exists(_ isDefinedAt y)
 
   /**
-   * Returns whether type `x` can be converted to type `y`, either implicitly or explicitly.
-   *
-   * @note Any [[types.DataType DataType]] is considered to be [[convertible]] to itself.
+   * Returns true iff `x` equals to `y` or `x` can be casted to `y`, either implicitly or
+   * explicitly.
    */
-  def convertible(x: DataType, y: DataType): Boolean =
-    x == y || buildCast(x, y).isDefined
+  def castable(x: DataType, y: DataType): Boolean = x == y || buildCast(x, y).isDefined
 
   /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
-   * [[types.DataType DataType]] of `e` is [[implicitlyConvertible]] to `dataType`.  If `e` is
+   * [[types.DataType DataType]] of `e` is [[compatible]] to `dataType`.  If `e` is
    * already of the target type, `e` is returned untouched.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
-    case _ if e.dataType == dataType           => e
-    case _ if e.dataType narrowerThan dataType => e cast dataType
-    case _                                     => throw new ImplicitCastException(e, dataType)
-  }
-
-  def promoteDataType(e: Expression, parentType: AbstractDataType): Expression = e match {
-    case `parentType`(_) => e
-    case _ =>
-      parentType.defaultType map (promoteDataType(e, _)) getOrElse {
-        throw new TypeMismatchException(e, parentType)
-      }
+    case _ if e.dataType == dataType             => e
+    case _ if e.dataType compatibleWith dataType => e cast dataType
+    case _                                       => throw new ImplicitCastException(e, dataType)
   }
 
   /**
    * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[implicitlyConvertible]] to
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[compatible]] to
    * `x`.
    */
   def widestTypeOf(types: Seq[DataType]): Try[DataType] = (types.tail foldLeft Try(types.head)) {

@@ -286,7 +286,7 @@ abstract class LogicalReduceLeft(updateFunction: (Expression, Expression) => Exp
   extends ReduceLeft(updateFunction) {
 
   override protected def typeConstraint: TypeConstraint =
-    child implicitlyConvertibleTo BooleanType
+    child compatibleWith BooleanType
 }
 
 case class BoolAnd(child: Expression) extends LogicalReduceLeft(And)

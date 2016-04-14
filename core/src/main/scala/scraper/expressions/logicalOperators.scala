@@ -8,7 +8,7 @@ trait BinaryLogicalPredicate extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
   override protected def typeConstraint: TypeConstraint =
-    children implicitlyConvertibleTo BooleanType
+    children compatibleWith BooleanType
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -30,7 +30,7 @@ case class Not(child: Expression) extends UnaryOperator {
   override def dataType: DataType = BooleanType
 
   override protected def typeConstraint: TypeConstraint =
-    child implicitlyConvertibleTo BooleanType
+    child compatibleWith BooleanType
 
   override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
@@ -45,7 +45,7 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
   override protected def typeConstraint: TypeConstraint =
-    (condition implicitlyConvertibleTo BooleanType) ++ Seq(yes, no).allCompatible
+    (condition compatibleWith BooleanType) ++ Seq(yes, no).allCompatible
 
   override def evaluate(input: Row): Any = condition.evaluate(input) match {
     case null  => null

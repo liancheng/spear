@@ -79,13 +79,11 @@ package object dsl {
   private[scraper] implicit class TypeConstraintsForExpressions(expressions: Seq[Expression]) {
     def ofType(dataType: DataType): Exact = Exact(dataType, expressions)
 
-    def implicitlyConvertibleTo(dataType: DataType): ImplicitlyConvertibleTo =
-      ImplicitlyConvertibleTo(dataType, expressions)
+    def compatibleWith(dataType: DataType): CompatibleWith =
+      CompatibleWith(dataType, expressions)
 
     def subtypeOf(parentType: AbstractDataType): SubtypeOf =
       SubtypeOf(parentType, expressions)
-
-    def compatibleWith(target: Expression): CompatibleWith = CompatibleWith(target, expressions)
 
     def allCompatible: AllCompatible = AllCompatible(expressions)
   }

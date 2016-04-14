@@ -4,8 +4,7 @@ import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.implicitlyConvertible
-import scraper.expressions.Expression
+import scraper.expressions.Cast.{castable, compatible}
 import scraper.trees.TreeNode
 
 trait DataType { self =>
@@ -17,16 +16,21 @@ trait DataType { self =>
 
   def withNullability(allow: Boolean): FieldSpec = FieldSpec(this, nullable = allow)
 
-  /** Shortcut method for [[scraper.expressions.Cast.implicitlyConvertible]] */
-  def narrowerThan(that: DataType): Boolean = implicitlyConvertible(this, that)
+  /** Shortcut method for [[scraper.expressions.Cast.compatible]] */
+  def compatibleWith(that: DataType): Boolean = compatible(this, that)
+
+  /** Shortcut method for [[scraper.expressions.Cast.castable]] */
+  def castableTo(that: DataType): Boolean = castable(this, that)
+
+  def subtypeOf(superType: AbstractDataType): Boolean = superType supertypeOf this
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[narrowerThan]] `x`.
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[compatibleWith]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
-    case _ if this narrowerThan that => Success(that)
-    case _ if that narrowerThan this => Success(this)
+    case _ if this compatibleWith that => Success(that)
+    case _ if that compatibleWith this => Success(this)
     case _ => Failure(new TypeMismatchException(
       s"Could not find common type for ${this.sql} and ${that.sql}"
     ))
@@ -123,23 +127,9 @@ object DataType {
 trait AbstractDataType {
   val defaultType: Option[DataType]
 
-  def unapply(e: Expression): Option[Expression]
+  def supertypeOf(dataType: DataType): Boolean
 
-  object Implicitly {
-    def unapply(e: Expression): Option[Expression] = defaultType flatMap { d =>
-      e.dataType match {
-        case t if t narrowerThan d => Some(e)
-        case _                     => None
-      }
-    }
-
-    def unapply(dataType: DataType): Option[DataType] = defaultType flatMap { d =>
-      dataType match {
-        case t if t narrowerThan d => Some(t)
-        case _                     => None
-      }
-    }
-  }
+  def implicitSupertypeOf(dataType: DataType): Boolean = defaultType.exists(dataType.compatibleWith)
 }
 
 case class FieldSpec(dataType: DataType, nullable: Boolean)
@@ -155,9 +145,9 @@ trait OrderedType { this: DataType =>
 object OrderedType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: OrderedType => Some(e)
-    case _              => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: OrderedType => true
+    case _              => false
   }
 
   override def toString: String = "ordered type"
@@ -168,9 +158,9 @@ trait PrimitiveType extends DataType
 object PrimitiveType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: PrimitiveType => Some(e)
-    case _                => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: PrimitiveType => true
+    case _                => false
   }
 
   override def toString: String = "primitive type"

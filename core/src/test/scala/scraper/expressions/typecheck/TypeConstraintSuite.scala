@@ -48,13 +48,13 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
   }
 
-  testTypeConstraint(classOf[ImplicitlyConvertibleTo]) {
+  testTypeConstraint(classOf[CompatibleWith]) {
     check(lit(true), 1 cast BooleanType) {
-      Seq(lit(true), lit(1)) implicitlyConvertibleTo BooleanType
+      Seq(lit(true), lit(1)) compatibleWith BooleanType
     }
 
     check[TypeMismatchException] {
-      Seq(lit(true), lit(false)) implicitlyConvertibleTo LongType
+      Seq(lit(true), lit(false)) compatibleWith LongType
     }
   }
 

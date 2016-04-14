@@ -11,9 +11,9 @@ trait ComplexType extends DataType
 object ComplexType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: ComplexType => Some(e)
-    case _              => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: ComplexType => true
+    case _              => false
   }
 
   override def toString: String = "complex type"

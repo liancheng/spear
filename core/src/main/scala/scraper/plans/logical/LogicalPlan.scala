@@ -7,14 +7,15 @@ import scala.util.control.NonFatal
 import scraper.Row
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.dsl._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.With.CTENode
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
-import scraper.types.{DataType, IntegralType, StructType}
+import scraper.types.{DataType, IntType, StructType}
 import scraper.utils._
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
@@ -136,14 +137,14 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
     n <- limit.strictlyTyped map {
-      case IntegralType(e) if e.isFoldable =>
-        Literal(e.evaluated)
+      case e if e.isFoldable && e.dataType == IntType =>
+        Literal(e.evaluated, IntType)
 
-      case IntegralType.Implicitly(e) if e.isFoldable =>
-        Literal(promoteDataType(e, IntegralType.defaultType.get).evaluated)
+      case e if e.isFoldable && (e.dataType castableTo IntType) =>
+        Literal(e.evaluated) cast IntType
 
       case _ =>
-        throw new TypeCheckException("Limit must be an integral constant")
+        throw new TypeCheckException("Limit must be a constant integer")
     }
   } yield if (n same limit) this else copy(limit = n)
 }
@@ -183,7 +184,7 @@ trait SetOperator extends BinaryLogicalPlan {
       }
 
     for (widenedTypes <- trySequence(branches.map(_.schema.fieldTypes).transpose map widestTypeOf))
-      yield branches.map(align(_, widenedTypes))
+      yield branches map (align(_, widenedTypes))
   }
 
   override lazy val strictlyTyped: Try[LogicalPlan] = {

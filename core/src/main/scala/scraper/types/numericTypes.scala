@@ -11,9 +11,9 @@ trait NumericType extends PrimitiveType with OrderedType {
 object NumericType extends AbstractDataType {
   override val defaultType: Option[DataType] = Some(DoubleType)
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: NumericType => Some(e)
-    case _              => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: NumericType => true
+    case _              => false
   }
 
   override def toString: String = "numeric type"
@@ -28,9 +28,9 @@ trait IntegralType extends NumericType {
 object IntegralType extends AbstractDataType {
   val defaultType: Option[DataType] = Some(IntType)
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: IntegralType => Some(e)
-    case _               => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: IntegralType => true
+    case _               => false
   }
 
   override def toString: String = "integral type"
@@ -93,9 +93,9 @@ trait FractionalType extends NumericType {
 object FractionalType extends AbstractDataType {
   val defaultType: Option[DataType] = Some(DoubleType)
 
-  override def unapply(e: Expression): Option[Expression] = e.dataType match {
-    case _: FractionalType => Some(e)
-    case _                 => None
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: FractionalType => true
+    case _                 => false
   }
 
   override def toString: String = "fractional type"
