@@ -3,10 +3,9 @@ package scraper.expressions.typecheck
 import scala.util.Success
 
 import scraper.LoggingFunSuite
-import scraper.exceptions.TypeMismatchException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.types.{BooleanType, IntType, IntegralType, LongType}
+import scraper.types.{BooleanType, IntegralType, IntType, LongType}
 
 class TypeConstraintSuite extends LoggingFunSuite {
   def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
