@@ -1,5 +1,7 @@
 package scraper.expressions
 
+import java.lang.{Boolean => JBoolean}
+
 import scraper.Row
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{BooleanType, DataType}
@@ -52,4 +54,47 @@ case class If(condition: Expression, yes: Expression, no: Expression) extends Ex
     case true  => yes evaluate input
     case false => no evaluate input
   }
+}
+
+case class CaseWhen(
+  conditions: Seq[Expression],
+  consequences: Seq[Expression],
+  alternative: Option[Expression]
+) extends Expression {
+
+  require(conditions.nonEmpty && conditions.length == consequences.length)
+
+  override protected def typeConstraint: TypeConstraint =
+    (conditions compatibleWith BooleanType) ++ (consequences ++ alternative).allCompatible
+
+  override protected def strictDataType: DataType = consequences.head.dataType
+
+  override def children: Seq[Expression] = conditions ++ consequences ++ alternative
+
+  override def evaluate(input: Row): Any = {
+    val branches = conditions.iterator map (_ evaluate input) zip consequences.iterator
+    def alternativeValue = alternative map (_ evaluate input)
+    val hitBranchValue = branches collectFirst {
+      case (JBoolean.TRUE, consequence) => consequence evaluate input
+    }
+
+    (hitBranchValue orElse alternativeValue).orNull
+  }
+
+  override protected def template(childList: Seq[String]): String = {
+    val (tests, rest) = childList.splitAt(conditions.length)
+    val (values, alternativeString) = rest.splitAt(conditions.length)
+    val elsePart = alternativeString.headOption map (" ELSE " + _) getOrElse ""
+    val cases = (tests, values).zipped map ("WHEN " + _ + " THEN " + _) mkString " "
+    s"CASE $cases$elsePart END"
+  }
+}
+
+object CaseKeyWhen {
+  def apply(
+    key: Expression,
+    candidates: Seq[Expression],
+    consequences: Seq[Expression],
+    alternative: Option[Expression]
+  ): CaseWhen = CaseWhen(candidates map (key =:= _), consequences, alternative)
 }
