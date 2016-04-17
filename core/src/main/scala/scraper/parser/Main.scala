@@ -1,7 +1,6 @@
 package scraper.parser
 
 import org.antlr.v4.runtime.CommonTokenStream
-import scraper.antlr4.{DataTypeLexer, DataTypeParser}
 
 object Main {
   def main(args: Array[String]) {

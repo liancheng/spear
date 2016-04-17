@@ -8,7 +8,7 @@ import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
-import scraper.parser.Parser
+import scraper.parser.DeprecatedParser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, NullType}
@@ -287,7 +287,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   private def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
-    checkAnalyzedPlan(new Parser(Test.defaultSettings) parse sql, expected)
+    checkAnalyzedPlan(new DeprecatedParser(Test.defaultSettings) parse sql, expected)
 
   private def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)

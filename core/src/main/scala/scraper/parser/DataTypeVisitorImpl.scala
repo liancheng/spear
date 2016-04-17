@@ -2,8 +2,7 @@ package scraper.parser
 
 import scala.collection.JavaConverters._
 
-import scraper.antlr4.DataTypeBaseVisitor
-import scraper.antlr4.DataTypeParser._
+import scraper.parser.DataTypeParser._
 import scraper.types._
 
 class DataTypeVisitorImpl extends DataTypeBaseVisitor[DataType] {

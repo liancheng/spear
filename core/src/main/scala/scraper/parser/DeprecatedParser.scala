@@ -50,7 +50,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
   protected def start: Parser[T]
 }
 
-class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
+class DeprecatedParser(settings: Settings) extends TokenParser[LogicalPlan] {
   def parseAttribute(input: String): UnresolvedAttribute = synchronized {
     val start = attribute | star ^^ {
       case Star(qualifier) => UnresolvedAttribute("*", qualifier)

@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 import scraper.config.Settings
 import scraper.expressions.typecheck._
-import scraper.parser.Parser
+import scraper.parser.DeprecatedParser
 import scraper.types._
 
 package object dsl {
@@ -29,7 +29,7 @@ package object dsl {
 
   implicit class StringToUnresolvedAttribute(sc: StringContext) {
     def $(args: Any*): UnresolvedAttribute =
-      new Parser(Settings.empty).parseAttribute(sc.s(args: _*))
+      new DeprecatedParser(Settings.empty).parseAttribute(sc.s(args: _*))
   }
 
   private[scraper] trait BinaryOperatorPattern[T <: BinaryExpression] {

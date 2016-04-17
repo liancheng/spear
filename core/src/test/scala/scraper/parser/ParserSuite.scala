@@ -97,7 +97,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   test("invalid query") {
     intercept[ParsingException] {
-      new Parser(Test.defaultSettings) parse "garbage"
+      new DeprecatedParser(Test.defaultSettings) parse "garbage"
     }
   }
 
@@ -335,5 +335,5 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     }
   }
 
-  private def parse(query: String): LogicalPlan = new Parser(Test.defaultSettings) parse query
+  private def parse(query: String): LogicalPlan = new DeprecatedParser(Test.defaultSettings) parse query
 }

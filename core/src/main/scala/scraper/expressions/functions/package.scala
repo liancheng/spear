@@ -1,10 +1,10 @@
 package scraper.expressions
 
 import scraper.config.Settings
-import scraper.parser.Parser
+import scraper.parser.DeprecatedParser
 
 package object functions {
-  def col(name: String): UnresolvedAttribute = new Parser(Settings.empty).parseAttribute(name)
+  def col(name: String): UnresolvedAttribute = new DeprecatedParser(Settings.empty).parseAttribute(name)
 
   def lit(value: Any): Literal = Literal(value)
 

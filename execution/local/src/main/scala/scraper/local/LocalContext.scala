@@ -5,7 +5,7 @@ import scraper.config.Settings
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
-import scraper.parser.Parser
+import scraper.parser.DeprecatedParser
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
@@ -17,7 +17,7 @@ class LocalContext(val settings: Settings) extends Context {
 
   override val catalog: Catalog = new Catalog
 
-  override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
+  override def parse(query: String): LogicalPlan = new DeprecatedParser(settings).parse(query)
 
   private val analyzer = new Analyzer(catalog)
 

@@ -2,7 +2,7 @@ package scraper
 
 import scraper.config.Settings
 import scraper.expressions.Attribute
-import scraper.parser.Parser
+import scraper.parser.DeprecatedParser
 import scraper.plans.QueryExecution
 import scraper.plans.logical.{Analyzer, LogicalPlan, Optimizer}
 import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan, SingleRowRelation}
@@ -16,7 +16,7 @@ class TestContext extends Context {
 
   override val catalog: Catalog = new InMemoryCatalog
 
-  override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
+  override def parse(query: String): LogicalPlan = new DeprecatedParser(settings).parse(query)
 
   private val analyzer = new Analyzer(catalog)
 
