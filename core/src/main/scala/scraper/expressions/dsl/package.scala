@@ -79,7 +79,8 @@ package object dsl {
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)
 
-    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf = SameSubtypesOf(supertype, input)
+    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf =
+      SameSubtypesOf(supertype, input)
 
     def sameType: SameType = SameType(input)
   }

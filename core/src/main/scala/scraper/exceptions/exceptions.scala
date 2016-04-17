@@ -5,6 +5,7 @@ import scraper.plans.logical.LogicalPlan
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils._
 
+// TODO Adds origin location information
 class ParsingException(message: String) extends RuntimeException(message)
 
 class BrokenContractException(message: String, cause: Throwable)

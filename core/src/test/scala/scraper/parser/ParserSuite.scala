@@ -335,5 +335,6 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     }
   }
 
-  private def parse(query: String): LogicalPlan = new DeprecatedParser(Test.defaultSettings) parse query
+  private def parse(query: String): LogicalPlan =
+    new DeprecatedParser(Test.defaultSettings) parse query
 }
