@@ -93,7 +93,7 @@ object Build extends sbt.Build {
 
   lazy val antlr4Settings =
     Antlr4Plugin.antlr4Settings ++ Seq(
-      antlr4PackageName in Antlr4 := Some("scraper.antlr4"),
+      antlr4PackageName in Antlr4 := Some("scraper"),
       antlr4Dependency in Antlr4 := "org.antlr" % "antlr4" % Dependencies.Versions.antlr4,
       antlr4GenListener in Antlr4 := true,
       antlr4GenVisitor in Antlr4 := true

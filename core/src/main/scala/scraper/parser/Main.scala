@@ -1,17 +1,16 @@
 package scraper.parser
 
-import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream}
-
-import scraper.antlr4.{HelloLexer, HelloParser}
+import org.antlr.v4.runtime.CommonTokenStream
+import scraper.antlr4.{DataTypeLexer, DataTypeParser}
 
 object Main {
   def main(args: Array[String]) {
     val text = args mkString " "
-    val input = new ANTLRInputStream(text)
-    val lexer = new HelloLexer(input)
+    val input = new CaseInsensitiveANTLRInputStream(text)
+    val lexer = new DataTypeLexer(input)
     val tokens = new CommonTokenStream(lexer)
-    val parser = new HelloParser(tokens)
-    val tree = parser.attribute()
-    println(tree.toStringTree(parser))
+    val parser = new DataTypeParser(tokens)
+    val visitor = new DataTypeVisitorImpl
+    println(visitor.visit(parser.dataType()).prettyTree)
   }
 }

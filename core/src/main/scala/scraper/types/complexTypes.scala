@@ -2,7 +2,7 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.{Attribute, AttributeRef, Expression}
+import scraper.expressions.{Attribute, AttributeRef}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
 
