@@ -42,11 +42,11 @@ object NamedExpression {
   case class UnquotedName(named: NamedExpression)
     extends LeafExpression with UnevaluableExpression {
 
-    override def isResolved: Boolean = named.isResolved
+    override lazy val isResolved: Boolean = named.isResolved
 
-    override def dataType: DataType = named.dataType
+    override lazy val dataType: DataType = named.dataType
 
-    override def isNullable: Boolean = named.isNullable
+    override lazy val isNullable: Boolean = named.isNullable
 
     override def sql: Try[String] = Try(named.name)
   }
@@ -70,9 +70,9 @@ case class Alias(
   name: String,
   override val expressionID: ExpressionID
 ) extends NamedExpression with UnaryExpression {
-  override def isFoldable: Boolean = false
+  override lazy val isFoldable: Boolean = false
 
-  override protected def strictDataType: DataType = child.dataType
+  override protected lazy val strictDataType: DataType = child.dataType
 
   override def evaluate(input: Row): Any = child.evaluate(input)
 
@@ -135,7 +135,7 @@ object AutoAlias {
 }
 
 trait Attribute extends NamedExpression with LeafExpression {
-  override def isFoldable: Boolean = false
+  override lazy val isFoldable: Boolean = false
 
   override lazy val references: Seq[Attribute] = Seq(this)
 

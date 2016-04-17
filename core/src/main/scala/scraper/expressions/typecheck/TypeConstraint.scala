@@ -9,10 +9,11 @@ import scraper.types.{AbstractDataType, DataType}
 import scraper.utils.trySequence
 
 /**
- * A trait that helps in both type checking and type coercion for expression arguments.
+ * A trait used to define expression input type constraints. It helps in both type checking and
+ * implicit type coercion for expressions.
  */
 trait TypeConstraint {
-  def strictlyTyped: Try[Seq[Expression]]
+  def enforced: Try[Seq[Expression]]
 
   def ++(that: TypeConstraint): Concat = Concat(this, that)
 
@@ -26,29 +27,15 @@ trait TypeConstraint {
  * expressions.
  */
 case class PassThrough(args: Seq[Expression]) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = trySequence(args map (_.strictlyTyped))
-}
-
-/**
- * A [[TypeConstraint]] that requires data types of all strictly-typed child expressions to be
- * exactly `targetType`.
- */
-case class Exact(targetType: DataType, args: Seq[Expression]) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = for {
-    strictArgs <- trySequence(args map (_.strictlyTyped))
-  } yield strictArgs map {
-    case e if e.dataType == targetType => e
-    case e                             => throw new TypeMismatchException(e, targetType)
-  }
+  override def enforced: Try[Seq[Expression]] = trySequence(args map (_.strictlyTyped))
 }
 
 /**
  * A [[TypeConstraint]] that requires strict data types of all argument expressions in `args` to be
  * [[scraper.expressions.Cast.compatible compatible]] with `targetType`.
  */
-case class CompatibleWith(targetType: DataType, args: Seq[Expression]) extends TypeConstraint {
-
-  override def strictlyTyped: Try[Seq[Expression]] = for {
+case class SameTypeAs(targetType: DataType, args: Seq[Expression]) extends TypeConstraint {
+  override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
   } yield strictArgs map {
     case e if e.dataType compatibleWith targetType => promoteDataType(e, targetType)
@@ -60,8 +47,10 @@ case class CompatibleWith(targetType: DataType, args: Seq[Expression]) extends T
  * A [[TypeConstraint]] that requires strict data types of all argument expressions in `args` to be
  * subtypes of abstract data type `superType`.
  */
-case class SubtypeOf(supertype: AbstractDataType, args: Seq[Expression]) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = for {
+case class SameSubtypesOf(supertype: AbstractDataType, args: Seq[Expression])
+  extends TypeConstraint {
+
+  override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
 
     // Finds all expressions whose data types are already subtype of `superType`.
@@ -86,8 +75,8 @@ case class SubtypeOf(supertype: AbstractDataType, args: Seq[Expression]) extends
   } yield strictArgs map (promoteDataType(_, widestSubType))
 }
 
-case class AllCompatible(args: Seq[Expression]) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = for {
+case class SameType(args: Seq[Expression]) extends TypeConstraint {
+  override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(args map (_.strictlyTyped))
     widestType <- widestTypeOf(strictArgs map (_.dataType))
   } yield strictArgs map (promoteDataType(_, widestType))
@@ -97,19 +86,19 @@ case class AllCompatible(args: Seq[Expression]) extends TypeConstraint {
  * A [[TypeConstraint]] that concatenates results of two [[TypeConstraint]]s.
  */
 case class Concat(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = for {
-    strictLeft <- left.strictlyTyped
-    strictRight <- right.strictlyTyped
+  override def enforced: Try[Seq[Expression]] = for {
+    strictLeft <- left.enforced
+    strictRight <- right.enforced
   } yield strictLeft ++ strictRight
 }
 
 case class AndThen(first: TypeConstraint, andThen: Seq[Expression] => TypeConstraint)
   extends TypeConstraint {
 
-  override def strictlyTyped: Try[Seq[Expression]] =
-    first.strictlyTyped flatMap (andThen(_).strictlyTyped)
+  override def enforced: Try[Seq[Expression]] =
+    first.enforced flatMap (andThen(_).enforced)
 }
 
 case class OrElse(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
-  override def strictlyTyped: Try[Seq[Expression]] = left.strictlyTyped orElse right.strictlyTyped
+  override def enforced: Try[Seq[Expression]] = left.enforced orElse right.enforced
 }

@@ -42,7 +42,7 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
 
   override def isNullable: Boolean = child.isNullable
 
-  override def isFoldable: Boolean = false
+  override lazy val isFoldable: Boolean = false
 
   override def toAttribute: GeneratedAttribute
 

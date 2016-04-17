@@ -10,114 +10,152 @@ import scraper.trees.TreeNode
 import scraper.types.DataType
 import scraper.utils._
 
+/**
+ * A trait for expressions. Typically, concrete expression classes are immutable. One exception is
+ * impure expressions (e.g., [[Rand]]), which are non-deterministic and contain mutable states.
+ */
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
-  def isFoldable: Boolean = children forall (_.isFoldable)
+  /**
+   * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
+   * time. Foldable expressions can be optimized out when being compiled. For example
+   * {{{
+   *   Plus(Literal(1: Int), Literal(1: Int))
+   * }}}
+   * is foldable, while
+   * {{{
+   *   Plus(Literal(1: Int), column: AttributeRef)
+   * }}}
+   * is not.
+   */
+  lazy val isFoldable: Boolean = children forall (_.isFoldable)
 
+  /**
+   * Whether the result of this [[Expression]] can be null when evaluated. False positive is allowed
+   * ([[isNullable]] is true, while this expression never returns null), while false negative is not
+   * allowed.
+   */
   def isNullable: Boolean = children exists (_.isNullable)
 
-  def isPure: Boolean = children forall (_.isPure)
+  /**
+   * Whether this [[Expression]] is pure. A pure [[Expression]] is deterministic, and always returns
+   * the same value when given the same input. Typical examples of impure [[Expression]]s include
+   * [[Rand]].
+   */
+  lazy val isPure: Boolean = children forall (_.isPure)
 
-  def isResolved: Boolean = isChildrenResolved
-
-  def isChildrenResolved: Boolean = children forall (_.isResolved)
+  /**
+   * Whether this [[Expression]] is resolved. An [[Expression]] is resolved if and only if it
+   * satisfies the following two conditions:
+   *
+   *  1. It's not any of the following [[Expression]]:
+   *     - [[UnresolvedAttribute]]
+   *     - [[UnresolvedFunction]]
+   *     - [[Star]]
+   *     - [[AutoAlias]]
+   *  2. All of its child [[Expression]]s are resolved.
+   */
+  lazy val isResolved: Boolean = children forall (_.isResolved)
 
   def referenceSet: Set[Attribute] = references.toSet
 
   def references: Seq[Attribute] = children.flatMap(_.references).distinct
 
   /**
-   * Tries to return a strictly typed copy of this [[Expression]].  If this [[Expression]] is
-   * already strictly typed, it's returned untouched.  If this [[Expression]] cannot be converted to
-   * strictly typed form, we say it doesn't type check, and a `Failure` containing an exception with
-   * detailed type check error message is returned.
+   * [[Try Tries]] to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
+   * expression classes only need to override [[Expression.typeConstraint]] by combining built-in
+   * [[TypeConstraint type constraints]], since this lazy val simply delegates to
+   * [[Expression.typeConstraint]] by default.
    *
-   * Any legal [[Expression]] `e` must be either strictly typed or well typed:
+   * To pass type checking, an [[Expression]] `e` must be either strictly-typed or well-typed:
    *
-   *  1. Strictly typed: `e` is strictly typed iff
-   *
-   *     - `e` is resolved, and
-   *     - all child expressions of `e` are strictly typed, and
-   *     - all child expressions of `e` immediately meet all type requirements of `e`.
-   *
-   *  2. Well typed: `e` is well typed iff
+   *  1. Strictly-typed: `e` is strictly-typed iff
    *
    *     - `e` is resolved, and
-   *     - all child expressions of `e` are well typed, and
-   *     - all child expressions of `e` can meet all type requirements of `e` by applying at most
-   *       one implicit cast for each child expression.
+   *     - all child expressions of `e` are strictly-typed, and
+   *     - all child expressions of `e` immediately meet type constraint of `e`.
    *
-   * For example, say attribute `a` is an attribute of type `LONG`, then `a + 1` is well typed
+   *  2. Well-typed: `e` is well-typed iff
+   *
+   *     - `e` is resolved, and
+   *     - all child expressions of `e` are well-typed, and
+   *     - all child expressions of `e` can meet type constraint of `e` by applying at most one
+   *       implicit cast for each child expression.
+   *
+   * For example, say attribute `a` is an attribute of type `BIGINT`, then `a + 1` is well-typed
    * because:
    *
    *  - Operator `+` requires both branches share the same type, while
-   *  - literal `1` is of type `INT`, but can be implicitly casted to `LONG`.
+   *  - literal `1` is of type `INT`, but can be implicitly casted to `BIGINT`.
    *
-   * On the other hand, `a + CAST(1 AS LONG)` is strictly typed because both branches are of type
-   * `LONG`.
+   * On the other hand, `a + CAST(1 AS BIGINT)` is strictly-typed because both branches are of type
+   * `BIGINT`.
+   *
+   * @see [[typeConstraint]]
    */
   lazy val strictlyTyped: Try[Expression] = for {
-    strictChildren <- typeConstraint.strictlyTyped
+    strictChildren <- typeConstraint.enforced
   } yield withChildren(strictChildren)
 
   /**
    * Type constraint for all input expressions.
    */
-  protected def typeConstraint: TypeConstraint = PassThrough(children)
+  protected lazy val typeConstraint: TypeConstraint = PassThrough(children)
 
   /**
-   * Indicates whether this [[Expression]] is strictly typed.
+   * Indicates whether this [[Expression]] is strictly-typed.
    *
    * @see [[strictlyTyped]]
    */
   lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
 
   /**
-   * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
+   * Returns `value` if this [[Expression]] is strictly-typed, otherwise throws a
    * [[scraper.exceptions.TypeCheckException TypeCheckException]].
    *
    * @see [[strictlyTyped]]
    */
-  @throws[TypeCheckException]("If this expression is not strictly typed")
+  @throws[TypeCheckException]("If this expression is not strictly-typed")
   protected def whenStrictlyTyped[T](value: => T): T =
     if (isStrictlyTyped) value else throw new TypeCheckException(this)
 
   /**
-   * Indicates whether this [[Expression]] is well typed.
+   * Indicates whether this [[Expression]] is well-typed.
    *
    * @see [[strictlyTyped]]
    */
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   /**
-   * Returns `value` if this [[Expression]] is strictly typed, otherwise throws a
-   * [[scraper.exceptions.TypeCheckException TypeCheckException]].
+   * Returns `value` if this [[Expression]] is weel-typed.
    *
    * @see [[strictlyTyped]]
    */
-  @throws[TypeCheckException]("If this expression is not well typed")
+  @throws[TypeCheckException]("If this expression is not well-typed")
   protected def whenWellTyped[T](value: => T): T =
     if (isWellTyped) value else throw new TypeCheckException(this)
 
   /**
-   * Returns the data type of this [[Expression]] if it's well typed, or throws
+   * Returns the data type of this [[Expression]] if it's well-typed, or throws
    * [[scraper.exceptions.AnalysisException AnalysisException]] (or one of its subclasses) if it's
    * not.
    *
    * By default, this method performs type checking and delegates to [[strictDataType]] if this
-   * [[Expression]] is well typed.  But subclasses may override this method directly if the
-   * expression data type is fixed (e.g. comparisons and predicates).
+   * [[Expression]] is well-typed. In general, concrete expression classes should override
+   * [[Expression.strictlyTyped]] instead of this method with the exception when the concrete
+   * expression always have a fixed data type (e.g. predicates always return boolean values).
    *
+   * @see [[strictDataType]]
    * @see [[strictlyTyped]]
    */
   def dataType: DataType = whenWellTyped(strictlyTyped.get.strictDataType)
 
   /**
-   * Returns the data type of a strictly typed [[Expression]]. This method is only called when this
-   * [[Expression]] is strictly typed.
+   * Returns the data type of this [[Expression]]. Different from [[Expression.dataType]], this
+   * method is only called when this [[Expression]] is strictly-typed.
    *
    * @see [[strictlyTyped]]
    */
-  protected def strictDataType: DataType = throw new BrokenContractException(
+  protected lazy val strictDataType: DataType = throw new BrokenContractException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )
 
@@ -125,7 +163,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def evaluated: Any = evaluate(null)
 
-  def childrenTypes: Seq[DataType] = children.map(_.dataType)
+  lazy val childrenTypes: Seq[DataType] = children map (_.dataType)
 
   override def nodeCaption: String = getClass.getSimpleName
 
@@ -145,9 +183,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 trait StatefulExpression[State] extends Expression {
   private var state: Option[State] = None
 
-  override def isPure: Boolean = false
+  override lazy val isPure: Boolean = false
 
-  override def isFoldable: Boolean = false
+  override lazy val isFoldable: Boolean = false
 
   override protected def makeCopy(args: Seq[AnyRef]): Expression = {
     state.foreach(throw new BrokenContractException(
@@ -247,26 +285,26 @@ object BinaryOperator {
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {
-  override def isNullable: Boolean = child.isNullable
+  override lazy val isNullable: Boolean = child.isNullable
 
   override protected def template(childString: String): String = s"($operator$childString)"
 }
 
 trait UnevaluableExpression extends Expression {
-  override def isFoldable: Boolean = false
+  override lazy val isFoldable: Boolean = false
 
   override def evaluate(input: Row): Any = throw new ExpressionUnevaluableException(this)
 }
 
 trait UnresolvedExpression extends Expression with UnevaluableExpression with NonSQLExpression {
-  override def dataType: DataType = throw new ExpressionUnresolvedException(this)
+  override lazy val dataType: DataType = throw new ExpressionUnresolvedException(this)
 
-  override def isNullable: Boolean = throw new ExpressionUnresolvedException(this)
+  override lazy val isNullable: Boolean = throw new ExpressionUnresolvedException(this)
 
   override lazy val strictlyTyped: Try[Expression] =
     Failure(new ExpressionUnresolvedException(this))
 
-  override def isResolved: Boolean = false
+  override lazy val isResolved: Boolean = false
 
   override def sql: Try[String] = Failure(new UnsupportedOperationException(
     s"Unresolved expression $debugString doesn't have a SQL representation"

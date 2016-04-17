@@ -220,7 +220,7 @@ abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression
 case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
   override def dataType: DataType = LongType
 
-  override def isNullable: Boolean = false
+  override lazy val isNullable: Boolean = false
 
   private lazy val count = ('count of dataType).!
 
@@ -261,7 +261,7 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   override def resultExpression: Expression =
     If(count =:= 0L, lit(null), sum / (count cast dataType))
 
-  override protected def typeConstraint: TypeConstraint = child subtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
 }
 
 case class First(child: Expression) extends ReduceLeft(coalesce(_, _))
@@ -273,7 +273,7 @@ case class Last(child: Expression) extends ReduceLeft(
 abstract class NumericReduceLeft(updateFunction: (Expression, Expression) => Expression)
   extends ReduceLeft(updateFunction) {
 
-  override protected def typeConstraint: TypeConstraint = child subtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
 }
 
 case class Sum(child: Expression) extends NumericReduceLeft(Plus)
@@ -285,8 +285,7 @@ case class Min(child: Expression) extends NumericReduceLeft(Least(_, _))
 abstract class LogicalReduceLeft(updateFunction: (Expression, Expression) => Expression)
   extends ReduceLeft(updateFunction) {
 
-  override protected def typeConstraint: TypeConstraint =
-    child compatibleWith BooleanType
+  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameTypeAs BooleanType
 }
 
 case class BoolAnd(child: Expression) extends LogicalReduceLeft(And)

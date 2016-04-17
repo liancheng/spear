@@ -5,9 +5,9 @@ import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{BooleanType, DataType}
 
 case class Coalesce(children: Seq[Expression]) extends Expression {
-  override protected def strictDataType: DataType = children.head.dataType
+  override protected lazy val strictDataType: DataType = children.head.dataType
 
-  override protected def typeConstraint: TypeConstraint = children.allCompatible
+  override protected lazy val typeConstraint: TypeConstraint = children.sameType
 
   override def evaluate(input: Row): Any =
     (children.iterator map (_ evaluate input) find (_ != null)).orNull
@@ -21,7 +21,7 @@ object Coalesce {
 case class IsNull(child: Expression) extends UnaryExpression {
   override def evaluate(input: Row): Any = (child evaluate input) == null
 
-  override def dataType: DataType = BooleanType
+  override lazy val dataType: DataType = BooleanType
 
   override protected def template(childString: String): String = s"($childString IS NULL)"
 }
@@ -29,7 +29,7 @@ case class IsNull(child: Expression) extends UnaryExpression {
 case class IsNotNull(child: Expression) extends UnaryExpression {
   override def evaluate(input: Row): Any = (child evaluate input) != null
 
-  override def dataType: DataType = BooleanType
+  override lazy val dataType: DataType = BooleanType
 
   override protected def template(childString: String): String = s"($childString IS NOT NULL)"
 }

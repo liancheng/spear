@@ -11,9 +11,9 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override protected def typeConstraint: TypeConstraint = children subtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 
-  override protected def strictDataType: DataType = child.dataType
+  override protected lazy val strictDataType: DataType = child.dataType
 }
 
 case class Negate(child: Expression) extends UnaryArithmeticOperator {
@@ -29,9 +29,9 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected def typeConstraint: TypeConstraint = children subtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 
-  override protected def strictDataType: DataType = left.dataType
+  override protected lazy val strictDataType: DataType = left.dataType
 }
 
 case class Plus(left: Expression, right: Expression) extends BinaryArithmeticOperator {
@@ -66,9 +66,9 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected def typeConstraint: TypeConstraint = children subtypeOf IntegralType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf IntegralType
 
-  override protected def strictDataType: DataType = left.dataType
+  override protected lazy val strictDataType: DataType = left.dataType
 
   private lazy val integral = whenStrictlyTyped(dataType match {
     case t: IntegralType => t.genericIntegral
@@ -80,7 +80,7 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override protected def typeConstraint: TypeConstraint = children subtypeOf FractionalType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf FractionalType
 
   override def dataType: DataType = BooleanType
 
@@ -99,10 +99,10 @@ abstract class GreatestLike extends Expression {
 
   protected def nullsLarger: Boolean
 
-  override protected def strictDataType: DataType = children.head.dataType
+  override protected lazy val strictDataType: DataType = children.head.dataType
 
-  override protected def typeConstraint: TypeConstraint =
-    (children subtypeOf OrderedType) andThen (_.allCompatible)
+  override protected lazy val typeConstraint: TypeConstraint =
+    (children sameSubtypeOf OrderedType) andThen (_.sameType)
 
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullsLarger)
 }

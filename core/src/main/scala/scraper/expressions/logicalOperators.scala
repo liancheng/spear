@@ -7,10 +7,9 @@ import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{BooleanType, DataType}
 
 trait BinaryLogicalPredicate extends BinaryOperator {
-  override def dataType: DataType = BooleanType
+  override lazy val dataType: DataType = BooleanType
 
-  override protected def typeConstraint: TypeConstraint =
-    children compatibleWith BooleanType
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 }
 
 case class And(left: Expression, right: Expression) extends BinaryLogicalPredicate {
@@ -29,10 +28,9 @@ case class Or(left: Expression, right: Expression) extends BinaryLogicalPredicat
 }
 
 case class Not(child: Expression) extends UnaryOperator {
-  override def dataType: DataType = BooleanType
+  override lazy val dataType: DataType = BooleanType
 
-  override protected def typeConstraint: TypeConstraint =
-    child compatibleWith BooleanType
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 
   override def nullSafeEvaluate(value: Any): Any = !value.asInstanceOf[Boolean]
 
@@ -42,12 +40,12 @@ case class Not(child: Expression) extends UnaryOperator {
 }
 
 case class If(condition: Expression, yes: Expression, no: Expression) extends Expression {
-  override protected def strictDataType: DataType = yes.dataType
+  override protected lazy val strictDataType: DataType = yes.dataType
 
   override def children: Seq[Expression] = Seq(condition, yes, no)
 
-  override protected def typeConstraint: TypeConstraint =
-    (condition compatibleWith BooleanType) ++ Seq(yes, no).allCompatible
+  override protected lazy val typeConstraint: TypeConstraint =
+    (Seq(condition) sameTypeAs BooleanType) ++ Seq(yes, no).sameType
 
   override def evaluate(input: Row): Any = condition.evaluate(input) match {
     case null  => null
@@ -64,10 +62,10 @@ case class CaseWhen(
 
   require(conditions.nonEmpty && conditions.length == consequences.length)
 
-  override protected def typeConstraint: TypeConstraint =
-    (conditions compatibleWith BooleanType) ++ (consequences ++ alternative).allCompatible
+  override protected lazy val typeConstraint: TypeConstraint =
+    (conditions sameTypeAs BooleanType) ++ (consequences ++ alternative).sameType
 
-  override protected def strictDataType: DataType = consequences.head.dataType
+  override protected lazy val strictDataType: DataType = consequences.head.dataType
 
   override def children: Seq[Expression] = conditions ++ consequences ++ alternative
 

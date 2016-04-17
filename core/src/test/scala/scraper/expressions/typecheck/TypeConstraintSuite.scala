@@ -13,15 +13,17 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   private def check(expected: Seq[Expression])(constraint: TypeConstraint): Unit = {
-    assertResult(expected)(constraint.strictlyTyped.get)
+    assertResult(expected)(constraint.enforced.get)
   }
 
-  private def expectExpressions(first: Expression, rest: Expression*)(constraint: TypeConstraint): Unit = {
+  private def expectExpressions(
+    first: Expression, rest: Expression*
+  )(constraint: TypeConstraint): Unit = {
     check(first +: rest)(constraint)
   }
 
   private def check[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
-    intercept[T](constraint.strictlyTyped.get)
+    intercept[T](constraint.enforced.get)
   }
 
   testTypeConstraint(classOf[PassThrough]) {
@@ -34,59 +36,45 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
   }
 
-  testTypeConstraint(classOf[Exact]) {
-    expectExpressions(lit(true)) {
-      lit(true) ofType BooleanType
-    }
-
-    expectExpressions((1 cast LongType) =:= 1L) {
-      (1 =:= 1L) ofType BooleanType
-    }
-
-    check[TypeMismatchException] {
-      lit(1f) ofType BooleanType
-    }
-  }
-
-  testTypeConstraint(classOf[CompatibleWith]) {
+  testTypeConstraint(classOf[SameTypeAs]) {
     expectExpressions(lit(true), 1 cast BooleanType) {
-      Seq(lit(true), lit(1)) compatibleWith BooleanType
+      Seq(lit(true), lit(1)) sameTypeAs BooleanType
     }
 
     check[TypeMismatchException] {
-      Seq(lit(true), lit(false)) compatibleWith LongType
+      Seq(lit(true), lit(false)) sameTypeAs LongType
     }
   }
 
-  testTypeConstraint(classOf[SubtypeOf]) {
+  testTypeConstraint(classOf[SameSubtypesOf]) {
     expectExpressions((1: Byte) cast IntType, (1: Short) cast IntType, lit(1)) {
-      Seq(lit(1: Byte), lit(1: Short), lit(1)) subtypeOf IntegralType
+      Seq(lit(1: Byte), lit(1: Short), lit(1)) sameSubtypeOf IntegralType
     }
 
     check[TypeMismatchException] {
-      Seq(lit(1F), lit(1D)) subtypeOf IntegralType
+      Seq(lit(1F), lit(1D)) sameSubtypeOf IntegralType
     }
   }
 
-  testTypeConstraint(classOf[AllCompatible]) {
+  testTypeConstraint(classOf[SameType]) {
     expectExpressions(1 cast LongType, 1L) {
-      Seq(lit(1), lit(1L)).allCompatible
+      Seq(lit(1), lit(1L)).sameType
     }
   }
 
   testTypeConstraint(classOf[AndThen]) {
     expectExpressions(1 cast LongType, 1L) {
-      Seq(lit(1), lit(1L)) subtypeOf OrderedType andThen (_.allCompatible)
+      Seq(lit(1), lit(1L)) sameSubtypeOf OrderedType andThen (_.sameType)
     }
   }
 
   testTypeConstraint(classOf[OrElse]) {
-    expectExpressions(1) {
-      lit(1) ofType StringType orElse (lit(1) subtypeOf IntegralType)
+    expectExpressions(1L) {
+      Seq(lit(1L)) sameTypeAs BooleanType orElse (Seq(lit(1L)) sameSubtypeOf IntegralType)
     }
 
     expectExpressions("1") {
-      lit("1") ofType StringType orElse (lit(1) subtypeOf IntegralType)
+      Seq(lit("1")) sameTypeAs StringType orElse (Seq(lit(1)) sameSubtypeOf IntegralType)
     }
   }
 }

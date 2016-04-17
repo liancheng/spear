@@ -13,7 +13,7 @@ trait BinaryComparison extends BinaryOperator {
     }
   }
 
-  override protected def typeConstraint: TypeConstraint = children subtypeOf OrderedType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
 object BinaryComparison {
@@ -75,9 +75,9 @@ case class LtEq(left: Expression, right: Expression) extends BinaryComparison {
 case class In(test: Expression, list: Seq[Expression]) extends Expression {
   override def children: Seq[Expression] = test +: list
 
-  override protected def strictDataType: DataType = BooleanType
+  override protected lazy val strictDataType: DataType = BooleanType
 
-  override protected def typeConstraint: TypeConstraint = list compatibleWith test.dataType
+  override protected lazy val typeConstraint: TypeConstraint = list sameTypeAs test.dataType
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input

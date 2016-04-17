@@ -16,7 +16,7 @@ case object Descending extends SortDirection {
 case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
-  override protected def typeConstraint: TypeConstraint = child subtypeOf OrderedType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 
   override def dataType: DataType = child.dataType
 

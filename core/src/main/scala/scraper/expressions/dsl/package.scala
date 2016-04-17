@@ -76,18 +76,11 @@ package object dsl {
 
   def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
 
-  private[scraper] implicit class TypeConstraintsForExpressions(expressions: Seq[Expression]) {
-    def ofType(dataType: DataType): Exact = Exact(dataType, expressions)
+  private[scraper] implicit class TypeConstraintDSL(args: Seq[Expression]) {
+    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, args)
 
-    def compatibleWith(dataType: DataType): CompatibleWith =
-      CompatibleWith(dataType, expressions)
+    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf = SameSubtypesOf(supertype, args)
 
-    def subtypeOf(parentType: AbstractDataType): SubtypeOf =
-      SubtypeOf(parentType, expressions)
-
-    def allCompatible: AllCompatible = AllCompatible(expressions)
+    def sameType: SameType = SameType(args)
   }
-
-  private[scraper] implicit class TypeConstraintsForExpression(expression: Expression)
-    extends TypeConstraintsForExpressions(expression :: Nil)
 }
