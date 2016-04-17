@@ -16,13 +16,6 @@ trait BinaryComparison extends BinaryOperator {
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
-object BinaryComparison {
-  def unapply(e: Expression): Option[(Expression, Expression)] = e match {
-    case c: BinaryComparison => Some((c.left, c.right))
-    case _                   => None
-  }
-}
-
 case class Eq(left: Expression, right: Expression) extends BinaryComparison {
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = ordering.equiv(lhs, rhs)
 

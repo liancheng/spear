@@ -267,10 +267,6 @@ trait BinaryExpression extends Expression {
   }
 }
 
-object BinaryExpression {
-  def unapply(e: BinaryExpression): Option[(Expression, Expression)] = Some((e.left, e.right))
-}
-
 trait Operator { this: Expression =>
   def operator: String
 }
@@ -278,10 +274,6 @@ trait Operator { this: Expression =>
 trait BinaryOperator extends BinaryExpression with Operator {
   override protected def template(childrenList: Seq[String]): String =
     childrenList mkString ("(", s" $operator ", ")")
-}
-
-object BinaryOperator {
-  def unapply(e: BinaryOperator): Option[(Expression, Expression)] = Some((e.left, e.right))
 }
 
 trait UnaryOperator extends UnaryExpression with Operator {
