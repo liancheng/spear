@@ -76,11 +76,11 @@ package object dsl {
 
   def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
 
-  private[scraper] implicit class TypeConstraintDSL(args: Seq[Expression]) {
-    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, args)
+  private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
+    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)
 
-    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf = SameSubtypesOf(supertype, args)
+    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf = SameSubtypesOf(supertype, input)
 
-    def sameType: SameType = SameType(args)
+    def sameType: SameType = SameType(input)
   }
 }

@@ -61,10 +61,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def references: Seq[Attribute] = children.flatMap(_.references).distinct
 
   /**
-   * [[Try Tries]] to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
+   * Tries to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
    * expression classes only need to override [[Expression.typeConstraint]] by combining built-in
-   * [[TypeConstraint type constraints]], since this lazy val simply delegates to
-   * [[Expression.typeConstraint]] by default.
+   * [[scraper.expressions.typecheck.TypeConstraint type constraints]], since this lazy val simply
+   * delegates to [[Expression.typeConstraint]] by default.
    *
    * To pass type checking, an [[Expression]] `e` must be either strictly-typed or well-typed:
    *

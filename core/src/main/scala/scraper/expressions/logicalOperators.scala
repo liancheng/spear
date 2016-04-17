@@ -39,15 +39,15 @@ case class Not(child: Expression) extends UnaryOperator {
   override protected def template(childString: String): String = s"($operator $childString)"
 }
 
-case class If(condition: Expression, yes: Expression, no: Expression) extends Expression {
+case class If(test: Expression, yes: Expression, no: Expression) extends Expression {
   override protected lazy val strictDataType: DataType = yes.dataType
 
-  override def children: Seq[Expression] = Seq(condition, yes, no)
+  override def children: Seq[Expression] = Seq(test, yes, no)
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (Seq(condition) sameTypeAs BooleanType) ++ Seq(yes, no).sameType
+    (Seq(test) sameTypeAs BooleanType) ++ Seq(yes, no).sameType
 
-  override def evaluate(input: Row): Any = condition.evaluate(input) match {
+  override def evaluate(input: Row): Any = test.evaluate(input) match {
     case null  => null
     case true  => yes evaluate input
     case false => no evaluate input
