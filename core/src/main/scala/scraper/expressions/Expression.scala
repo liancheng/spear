@@ -132,7 +132,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    */
   @throws[TypeCheckException]("If this expression is not well-typed")
   protected def whenWellTyped[T](value: => T): T =
-    if (isWellTyped) value else throw new TypeCheckException(this)
+    if (isWellTyped) value else throw new TypeCheckException(this, strictlyTyped.failed.get)
 
   /**
    * Returns the data type of this [[Expression]] if it's well-typed, or throws

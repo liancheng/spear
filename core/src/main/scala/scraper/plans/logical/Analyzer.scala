@@ -355,10 +355,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       e.references collectFirst {
         case a: AttributeRef => a
       } foreach { a =>
-        val cleaned = e.transformDown {
-          case e: NonSQLExpression => UnquotedName(e as e.debugString)
-        }
-        throw new IllegalAggregationException(part, a, cleaned, keys)
+        throw new IllegalAggregationException(part, a, e, keys)
       }
     }
   }

@@ -39,7 +39,8 @@ class TypeCheckException(message: String, cause: Throwable)
 
   def this(expression: Expression, cause: Throwable) =
     this({
-      s"""Expression [${expression.debugString}] doesn't pass type check:
+      val causeMessage = Option(cause) map (". " + _.getMessage) getOrElse ""
+      s"""Expression ${expression.debugString} doesn't pass type check$causeMessage:
          |${expression.prettyTree}
          |""".stripMargin
     }, cause)
@@ -139,10 +140,10 @@ class IllegalAggregationException(message: String, cause: Throwable)
     keys: Seq[Expression],
     cause: Throwable
   ) = this({
-    val e = expression.sql.get
-    val a = attribute.sql.get
-    val ks = keys map (_.sql.get) mkString ("[", ", ", "]")
-    s"$part $e references $a, which is neither an aggregate function nor a grouping key among $ks"
+    val ks = keys map (_.debugString) mkString ("[", ", ", "]")
+    s"""$part ${expression.debugString} references attribute ${attribute.debugString},
+       |which is neither an aggregate function nor a grouping key among $ks
+     """.straight
   }, cause)
 
   def this(part: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
