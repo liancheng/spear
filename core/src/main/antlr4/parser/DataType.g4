@@ -1,6 +1,6 @@
 grammar DataType;
 
-import SQLLexer;
+import Common, SQLLexer;
 
 dataType
   : primitiveType
@@ -15,6 +15,11 @@ primitiveType
   | name=FLOAT
   | name=DOUBLE
   | name=STRING
+  | decimalType
+  ;
+
+decimalType
+  : DECIMAL ('(' INT_LITERAL (',' INT_LITERAL)? ')')?
   ;
 
 complexType

@@ -1,21 +1,44 @@
 lexer grammar SQLLexer;
 
 ARRAY: 'ARRAY';
+AS: 'AS';
+ASC: 'ASC';
+ASTERISK: '*';
 BIGINT: 'BIGINT';
 BOOLEAN: 'BOOLEAN';
+BY: 'BY';
+DECIMAL: 'DECIMAL';
+DESC: 'DESC';
 DOUBLE: 'DOUBLE';
+EQ: '=';
 FALSE: 'FALSE';
 FLOAT: 'FLOAT';
+FROM: 'FROM';
+GROUP: 'GROUP';
+GT: '>';
+GTEQ: '>=';
+HAVING: 'HAVING';
 INT: 'INT';
+LT: '<';
+LTEQ: '<=';
 MAP: 'MAP';
+MINUS: '-';
+NE: '<>';
+NOT: 'NOT';
 NULL: 'NULL';
+ORDER: 'ORDER';
+PERCENT: '%';
+PLUS: '+';
+SELECT: 'SELECT';
+SLASH: '/';
 SMALLINT: 'SMALLINT';
 STRING: 'STRING';
 STRUCT: 'STRUCT';
 TINYINT: 'TINYINT';
 TRUE: 'TRUE';
+WHERE: 'WHERE';
 
-STRING_LITERAL
+QUOTED_STRING
   : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''
   | '\"' ( ~('\"'|'\\') | ('\\' .) )* '\"'
   ;

@@ -7,7 +7,7 @@ import scraper.types._
 
 class DataTypeVisitorImpl extends DataTypeBaseVisitor[DataType] {
   override def visitPrimitiveType(context: PrimitiveTypeContext): DataType =
-    context.name.getText.toLowerCase match {
+    Option(context.name) map (_.getText.toLowerCase) map {
       case "boolean"  => BooleanType
       case "tinyint"  => ByteType
       case "smallint" => ShortType
@@ -16,7 +16,12 @@ class DataTypeVisitorImpl extends DataTypeBaseVisitor[DataType] {
       case "float"    => FloatType
       case "double"   => DoubleType
       case "string"   => StringType
+    } getOrElse {
+      visitDecimalType(context.decimalType())
     }
+
+  override def visitDecimalType(ctx: DecimalTypeContext): DataType =
+    throw new NotImplementedError("Decimal type not implemented yet")
 
   override def visitArrayType(context: ArrayTypeContext): DataType = ArrayType(
     elementType = visitDataType(context.elementType),
@@ -30,10 +35,10 @@ class DataTypeVisitorImpl extends DataTypeBaseVisitor[DataType] {
   )
 
   override def visitStructType(context: StructTypeContext): DataType = StructType(
-    context.fields.asScala map { fieldCtx =>
+    context.fields.asScala map { fieldContext =>
       StructField(
-        name = fieldCtx.name.getText,
-        dataType = visitDataType(fieldCtx.dataType()),
+        name = fieldContext.name.getText,
+        dataType = visitDataType(fieldContext.dataType()),
         nullable = true
       )
     }
