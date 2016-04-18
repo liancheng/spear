@@ -70,10 +70,13 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val BIGINT = Keyword("BIGINT")
   private val BOOLEAN = Keyword("BOOLEAN")
   private val BY = Keyword("BY")
+  private val CASE = Keyword("CASE")
   private val CAST = Keyword("CAST")
   private val DESC = Keyword("DESC")
   private val DISTINCT = Keyword("DISTINCT")
   private val DOUBLE = Keyword("DOUBLE")
+  private val ELSE = Keyword("ELSE")
+  private val END = Keyword("END")
   private val EXCEPT = Keyword("EXCEPT")
   private val FALSE = Keyword("FALSE")
   private val FIRST = Keyword("FIRST")
@@ -82,6 +85,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val FULL = Keyword("FULL")
   private val GROUP = Keyword("GROUP")
   private val HAVING = Keyword("HAVING")
+  private val IN = Keyword("IN")
   private val INNER = Keyword("INNER")
   private val INT = Keyword("INT")
   private val INTERSECT = Keyword("INTERSECT")
@@ -104,9 +108,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val SMALLINT = Keyword("SMALLINT")
   private val STRING = Keyword("STRING")
   private val STRUCT = Keyword("STRUCT")
+  private val THEN = Keyword("THEN")
   private val TINYINT = Keyword("TINYINT")
   private val TRUE = Keyword("TRUE")
   private val UNION = Keyword("UNION")
+  private val WHEN = Keyword("WHEN")
   private val WHERE = Keyword("WHERE")
   private val WITH = Keyword("WITH")
 
@@ -119,16 +125,6 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def query: Parser[LogicalPlan] =
     selectClause | withClause
-
-  private def withClause: Parser[LogicalPlan] =
-    WITH ~> rep1sep(cteDefinition, ",") ~ selectClause ^^ {
-      case cs ~ q => cs.foldLeft(q) { With(_, _) }
-    }
-
-  private def cteDefinition: Parser[(String, LogicalPlan)] =
-    ident ~ (AS ~ "(" ~> selectClause <~ ")") ^^ {
-      case name ~ query => (name, query)
-    }
 
   private def selectClause: Parser[LogicalPlan] = (
     SELECT ~> DISTINCT.? ~ projectList
@@ -150,108 +146,17 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     }
   )
 
-  private def sortOrders: Parser[Seq[SortOrder]] =
-    rep1sep(sortOrder, ",")
-
-  private def sortOrder: Parser[SortOrder] =
-    expression ~ direction.? ~ nullsFirst.? ^^ {
-      case e ~ d ~ n =>
-        val direction = d getOrElse Ascending
-        val nullsLarger = n map (direction -> _) map {
-          case (Ascending, nullsFirst @ true)   => false
-          case (Ascending, nullsFirst @ false)  => true
-          case (Descending, nullsFirst @ true)  => true
-          case (Descending, nullsFirst @ false) => false
-        } getOrElse settings(NullsLarger)
-
-        SortOrder(e, direction, nullsLarger)
-    }
-
-  private def nullsFirst: Parser[Boolean] =
-    NULLS ~> (FIRST ^^^ true | LAST ^^^ false)
-
-  private def direction: Parser[SortDirection] =
-    ASC ^^^ Ascending | DESC ^^^ Descending
-
-  private def relations: Parser[LogicalPlan] =
-    relation * ("," ^^^ (Join(_: LogicalPlan, _: LogicalPlan, Inner, None)))
-
-  private def relation: Parser[LogicalPlan] =
-    joinedRelation | relationFactor
-
-  private def joinedRelation: Parser[LogicalPlan] =
-    relationFactor ~ ((joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.?).+ ^^ {
-      case r ~ joins =>
-        (joins foldLeft r) {
-          case (lhs, t ~ rhs ~ c) =>
-            Join(lhs, rhs, t getOrElse Inner, c)
-        }
-    }
-
-  private def joinType: Parser[JoinType] = (
-    INNER ^^^ Inner
-    | LEFT ~ SEMI ^^^ LeftSemi
-    | LEFT ~ OUTER.? ^^^ LeftOuter
-    | RIGHT ~ OUTER.? ^^^ RightOuter
-    | FULL ~ OUTER.? ^^^ FullOuter
-  )
-
-  private def joinCondition: Parser[Expression] =
-    ON ~> predicate
-
-  private def relationFactor: Parser[LogicalPlan] = (
-    ident ~ (AS.? ~> ident.?) ^^ {
-      case t ~ Some(a) => Subquery(UnresolvedRelation(t), a)
-      case t ~ None    => UnresolvedRelation(t)
-    }
-    | ("(" ~> selectClause <~ ")") ~ (AS.? ~> ident) ^^ {
-      case s ~ a => Subquery(s, a)
-    }
-  )
-
   private def projectList: Parser[Seq[NamedExpression]] =
-    rep1sep(projection | star, ",") ^^ {
-      case ps => ps map named
-    }
+    rep1sep(projection | star, ",")
 
-  private def projection: Parser[Expression] =
+  private def projection: Parser[NamedExpression] =
     expression ~ (AS.? ~> ident).? ^^ {
       case e ~ Some(a) => e as a
-      case e ~ _       => e
+      case e ~ _       => named(e)
     }
 
-  private def star: Parser[Star] =
-    (ident <~ ".").? <~ "*" ^^ Star
-
   private def expression: Parser[Expression] =
-    arithmetic ||| predicate
-
-  private def arithmetic: Parser[Expression] =
-    termExpression
-
-  private def predicate: Parser[Expression] =
-    orExpression ||| "(" ~> predicate <~ ")"
-
-  private def orExpression: Parser[Expression] =
-    andExpression * (OR ^^^ Or)
-
-  private def andExpression: Parser[Expression] =
-    (notExpression ||| comparison ||| termExpression ||| booleanLiteral) * (AND ^^^ And)
-
-  private def notExpression: Parser[Expression] =
-    NOT ~> predicate ^^ Not
-
-  private def comparison: Parser[Expression] = (
-    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
-    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
-    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
-    | termExpression ~ (">" ~> termExpression) ^^ { case e1 ~ e2 => Gt(e1, e2) }
-    | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
-    | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
-    | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
-    | termExpression <~ IS ~ NULL ^^ IsNull
-    | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
-  )
+    termExpression ||| predicate
 
   private def termExpression: Parser[Expression] = (
     "-" ~> productExpression ^^ Negate
@@ -262,39 +167,24 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def productExpression: Parser[Expression] =
-    baseExpression * (
+    primaryExpression * (
       "*" ^^^ Multiply
       | "/" ^^^ Divide
     )
 
-  private def baseExpression: Parser[Expression] =
-    primary
-
-  private def primary: Parser[Expression] = (
+  private def primaryExpression: Parser[Expression] = (
     literal
     | function
     | attribute
     | cast
+    | caseWhen
     | "(" ~> expression <~ ")"
   )
-
-  private def attribute: Parser[UnresolvedAttribute] =
-    (ident <~ ".").? ~ ident ^^ {
-      case qualifier ~ name => UnresolvedAttribute(name, qualifier)
-    }
 
   private def literal: Parser[Literal] = (
     numericLiteral
     | stringLiteral
     | booleanLiteral
-  )
-
-  private def stringLiteral: Parser[Literal] =
-    stringLit ^^ (Literal(_, StringType))
-
-  private def booleanLiteral: Parser[Literal] = (
-    TRUE ^^^ True
-    | FALSE ^^^ False
   )
 
   private def numericLiteral: Parser[Literal] =
@@ -307,9 +197,6 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case s ~ n => s.mkString + n
     }
 
-  private def sign: Parser[String] =
-    "+" | "-"
-
   private def narrowestIntegralValueOf(numeric: String): Any = {
     val bigInt = BigInt(numeric)
 
@@ -319,8 +206,16 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     }
   }
 
-  private def cast: Parser[Cast] =
-    CAST ~ "(" ~> expression ~ (AS ~> dataType) <~ ")" ^^ { case e ~ t => Cast(e, t) }
+  private def sign: Parser[String] =
+    "+" | "-"
+
+  private def stringLiteral: Parser[Literal] =
+    stringLit ^^ (Literal(_, StringType))
+
+  private def booleanLiteral: Parser[Literal] = (
+    TRUE ^^^ True
+    | FALSE ^^^ False
+  )
 
   private def function: Parser[Expression] =
     ident ~ ("(" ~> functionArgs <~ ")") ^^ {
@@ -330,6 +225,52 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def functionArgs: Parser[Seq[Expression]] = (
     repsep(expression, ",")
     | star ^^ (_ :: Nil)
+  )
+
+  private def attribute: Parser[UnresolvedAttribute] =
+    (ident <~ ".").? ~ ident ^^ {
+      case qualifier ~ name => UnresolvedAttribute(name, qualifier)
+    }
+
+  private def cast: Parser[Cast] =
+    CAST ~ "(" ~> expression ~ (AS ~> dataType) <~ ")" ^^ {
+      case e ~ t => Cast(e, t)
+    }
+
+  private def caseWhen: Parser[CaseWhen] = (
+    CASE ~> expression.?
+    ~ (WHEN ~> expression ~ (THEN ~> expression)).+
+    ~ (ELSE ~> expression).?
+    <~ END ^^ {
+      case k ~ bs ~ a =>
+        val (conditions, values) = bs.map { case c ~ v => c -> v }.unzip
+        k map (CaseKeyWhen(_, conditions, values, a)) getOrElse CaseWhen(conditions, values, a)
+    }
+  )
+
+  private def predicate: Parser[Expression] =
+    negation ||| disjunction ||| conjunction ||| booleanLiteral
+
+  private def negation: Parser[Expression] =
+    NOT ~> predicate ^^ Not
+
+  private def disjunction: Parser[Expression] =
+    conjunction * (OR ^^^ Or)
+
+  private def conjunction: Parser[Expression] =
+    (comparison | termExpression) * (AND ^^^ And)
+
+  private def comparison: Parser[Expression] = (
+    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
+    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
+    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
+    | termExpression ~ (">" ~> termExpression) ^^ { case e1 ~ e2 => Gt(e1, e2) }
+    | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
+    | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
+    | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
+    | termExpression <~ IS ~ NULL ^^ IsNull
+    | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
+    | termExpression ~ (IN ~> termExpression.+) ^^ { case e ~ es => e in es }
   )
 
   private def dataType: Parser[DataType] = (
@@ -364,6 +305,78 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def structField: Parser[StructField] =
     ident ~ (":" ~> dataType) ^^ {
       case i ~ t => StructField(i, t.?)
+    }
+
+  private def star: Parser[Star] =
+    (ident <~ ".").? <~ "*" ^^ Star
+
+  private def relations: Parser[LogicalPlan] =
+    relation * ("," ^^^ (Join(_: LogicalPlan, _: LogicalPlan, Inner, None)))
+
+  private def relation: Parser[LogicalPlan] =
+    joinedRelation | relationFactor
+
+  private def joinedRelation: Parser[LogicalPlan] =
+    relationFactor ~ ((joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.?).+ ^^ {
+      case r ~ joins =>
+        (joins foldLeft r) {
+          case (lhs, t ~ rhs ~ c) =>
+            Join(lhs, rhs, t getOrElse Inner, c)
+        }
+    }
+
+  private def relationFactor: Parser[LogicalPlan] = (
+    ident ~ (AS.? ~> ident.?) ^^ {
+      case t ~ Some(a) => UnresolvedRelation(t) subquery a
+      case t ~ None    => UnresolvedRelation(t)
+    }
+    | ("(" ~> selectClause <~ ")") ~ (AS.? ~> ident) ^^ {
+      case s ~ a => s subquery a
+    }
+  )
+
+  private def joinType: Parser[JoinType] = (
+    INNER ^^^ Inner
+    | LEFT ~ SEMI ^^^ LeftSemi
+    | LEFT ~ OUTER.? ^^^ LeftOuter
+    | RIGHT ~ OUTER.? ^^^ RightOuter
+    | FULL ~ OUTER.? ^^^ FullOuter
+  )
+
+  private def joinCondition: Parser[Expression] =
+    ON ~> predicate
+
+  private def sortOrders: Parser[Seq[SortOrder]] =
+    rep1sep(sortOrder, ",")
+
+  private def sortOrder: Parser[SortOrder] =
+    expression ~ direction.? ~ nullsFirst.? ^^ {
+      case e ~ d ~ n =>
+        val direction = d getOrElse Ascending
+        val nullsLarger = n map (direction -> _) map {
+          case (Ascending, nullsFirst @ true)   => false
+          case (Ascending, nullsFirst @ false)  => true
+          case (Descending, nullsFirst @ true)  => true
+          case (Descending, nullsFirst @ false) => false
+        } getOrElse settings(NullsLarger)
+
+        SortOrder(e, direction, nullsLarger)
+    }
+
+  private def direction: Parser[SortDirection] =
+    ASC ^^^ Ascending | DESC ^^^ Descending
+
+  private def nullsFirst: Parser[Boolean] =
+    NULLS ~> (FIRST ^^^ true | LAST ^^^ false)
+
+  private def withClause: Parser[LogicalPlan] =
+    WITH ~> rep1sep(cteDefinition, ",") ~ selectClause ^^ {
+      case cs ~ q => cs.foldLeft(q) { With(_, _) }
+    }
+
+  private def cteDefinition: Parser[(String, LogicalPlan)] =
+    ident ~ (AS ~ "(" ~> selectClause <~ ")") ^^ {
+      case name ~ query => (name, query)
     }
 }
 
