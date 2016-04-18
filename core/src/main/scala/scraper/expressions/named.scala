@@ -204,22 +204,46 @@ case class AttributeRef(
   qualifier: Option[String] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with a new [[ExpressionID]].
+   */
   override def withID(id: ExpressionID): AttributeRef = copy(expressionID = id)
 
+  /**
+   * Returns a nullable copy of this [[AttributeRef]].
+   */
   override def ? : AttributeRef = withNullability(true)
 
+  /**
+   * Returns a non-nullable copy of this [[AttributeRef]].
+   */
   override def ! : AttributeRef = withNullability(false)
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with given nullability.
+   */
   override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
 
   override def debugString: String = ((qualifier.toSeq map quote) :+ super.debugString) mkString "."
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with given qualifier.
+   */
   def qualifiedBy(qualifier: String): AttributeRef = copy(qualifier = Some(qualifier))
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with given qualifier.
+   */
   def qualifiedBy(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with given qualifier.
+   */
   def of(qualifier: String): AttributeRef = qualifiedBy(qualifier)
 
+  /**
+   * Returns a copy of this [[AttributeRef]] with given qualifier.
+   */
   def of(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
 }
 
@@ -239,6 +263,9 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
     name + ":" + dataType.sql + nullability
   }
 
+  /**
+   * Returns a copy of this [[BoundRef]] bound at given ordinal.
+   */
   def at(ordinal: Int): BoundRef = copy(ordinal = ordinal)
 }
 
