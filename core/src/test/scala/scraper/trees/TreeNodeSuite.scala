@@ -127,6 +127,12 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
       tree.depth == iterations.size + 1
     }
   }
+
+  test("withChildren") {
+    val children = (0 until 3) map (Node(_, Nil))
+    val node = Node(3, children)
+    assert(node.withChildren(children) == node)
+  }
 }
 
 object TreeNodeSuite {

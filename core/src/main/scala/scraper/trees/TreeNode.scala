@@ -107,7 +107,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
           case child if children contains child =>
             val newChild = remainingNewChildren.head
             remainingNewChildren.remove(0)
-            changed = changed || !(newChild same arg.asInstanceOf[Base])
+            changed = changed || !(newChild same child.asInstanceOf[Base])
             newChild
 
           case element =>
