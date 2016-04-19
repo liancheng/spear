@@ -1,8 +1,9 @@
 package scraper.expressions.typecheck
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
-import scraper.exceptions.TypeMismatchException
+import scraper.exceptions.{TypeCheckException, TypeMismatchException}
 import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
 import scraper.expressions.Expression
 import scraper.types.{AbstractDataType, DataType}
@@ -33,6 +34,9 @@ trait TypeConstraint {
    * [[TypeConstraint]].
    */
   def andThen(next: Seq[Expression] => TypeConstraint): AndThen = AndThen(this, next)
+
+  def andThen(predicate: Seq[Expression] => Boolean, message: String): AndThen =
+    AndThen(this, Assert(predicate, message, _))
 
   /**
    * Builds a new [[TypeConstraint]] that requires the argument expressions to conform to either
@@ -137,4 +141,18 @@ case class AndThen(first: TypeConstraint, next: Seq[Expression] => TypeConstrain
  */
 case class OrElse(left: TypeConstraint, right: TypeConstraint) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = left.enforced orElse right.enforced
+}
+
+case class Assert(assertion: Seq[Expression] => Boolean, message: String, input: Seq[Expression])
+  extends TypeConstraint {
+
+  override def enforced: Try[Seq[Expression]] = for {
+    strictArgs <- trySequence(input map (_.strictlyTyped))
+  } yield try {
+    assert(assertion(strictArgs), message)
+    strictArgs
+  } catch {
+    case NonFatal(cause) =>
+      throw new TypeCheckException(s"Type check failed. ${cause.getMessage}", cause)
+  }
 }
