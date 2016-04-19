@@ -351,8 +351,22 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           .select(newProjectList)
     }
 
-    private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] =
-      expressions.flatMap(_ collect { case a: AggregateFunction => a }).distinct
+    private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] = {
+      // `DistinctAggregateFunction`s must be collected first. Otherwise, their child expressions,
+      // which are also `AggregateFunction`s, will also be collected unexpectedly.
+      val distinctAggs = expressions.flatMap(_ collect {
+        case a: DistinctAggregateFunction => a
+      }).distinct
+
+      val aggs = expressions.map(_ transformDown {
+        // Eliminates previously collected `DistinctAggregateFunction`s first
+        case a: DistinctAggregateFunction => AggregationAlias(a).toAttribute
+      }).flatMap(_ collect {
+        case a: AggregateFunction => a
+      }).distinct
+
+      distinctAggs ++ aggs
+    }
 
     private def checkAggregation(
       part: String, keys: Seq[Expression], expressions: Seq[Expression]
