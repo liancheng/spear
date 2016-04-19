@@ -10,7 +10,7 @@ import scraper.types.{AbstractDataType, DataType}
 import scraper.utils.trySequence
 
 /**
- * A trait used to define and enforce type constraints over argument expressions.
+ * A trait used to define and enforce type constraints over input expressions.
  *
  * @see [[Expression.strictlyTyped]]
  * @see [[Expression.dataType]]
