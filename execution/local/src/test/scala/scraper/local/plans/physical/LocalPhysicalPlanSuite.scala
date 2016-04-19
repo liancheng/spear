@@ -36,12 +36,12 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
     val planOrdered = plan.collectFirst { case _: Sort => }.nonEmpty
 
     if (planOrdered) {
-      assert(plan.iterator.toSeq === expectedRows.toSeq)
+      assert(plan.iterator.toSeq == expectedRows.toSeq)
     } else {
       val sort = Sort(_: PhysicalPlan, plan.output map (_.asc))
       val actual = sort(plan).iterator.toSeq
       val expected = sort(LocalRelation(expectedRows.toIterable, plan.output)).iterator.toSeq
-      assert(actual === expected)
+      assert(actual == expected)
     }
   }
 
@@ -164,7 +164,7 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
     )
 
     checkPhysicalPlan(
-      r1 cartesian r2 on a1 =:= a2,
+      r1 cartesian r2 on a1 === a2,
       Row(1, "a", 1, "a")
     )
 

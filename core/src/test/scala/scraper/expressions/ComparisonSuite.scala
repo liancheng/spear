@@ -38,10 +38,10 @@ class ComparisonSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("binary comparison type check") {
-    checkStrictlyTyped('a.int =:= 'b.int, BooleanType)
-    checkStrictlyTyped(('a.long cast IntType) =:= 'b.int, BooleanType)
+    checkStrictlyTyped('a.int === 'b.int, BooleanType)
+    checkStrictlyTyped(('a.long cast IntType) === 'b.int, BooleanType)
 
-    checkWellTyped('a.int =:= 'b.long, BooleanType)
-    checkWellTyped('a.string =:= 'b.long, BooleanType)
+    checkWellTyped('a.int === 'b.long, BooleanType)
+    checkWellTyped('a.string === 'b.long, BooleanType)
   }
 }

@@ -60,7 +60,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("`a``b`", Symbol("a`b"))
 
-  testExpressionParsing("(a = 1)", 'a =:= 1)
+  testExpressionParsing("(a = 1)", 'a === 1)
 
   testExpressionParsing("a AND b", 'a && 'b)
 
@@ -68,7 +68,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("NOT a", !'a)
 
-  testExpressionParsing("a = b", 'a =:= 'b)
+  testExpressionParsing("a = b", 'a === 'b)
 
   testExpressionParsing("a != b", 'a =/= 'b)
 
@@ -110,12 +110,12 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing(
     "CASE a WHEN 1 THEN 'x' WHEN 2 THEN 'y' END",
-    when('a =:= 1, "x") when ('a =:= 2, "y")
+    when('a === 1, "x") when ('a === 2, "y")
   )
 
   testExpressionParsing(
     "CASE a WHEN 1 THEN 'x' WHEN 2 THEN 'y' ELSE 'z' END",
-    when('a =:= 1, "x") when ('a =:= 2, "y") otherwise "z"
+    when('a === 1, "x") when ('a === 2, "y") otherwise "z"
   )
 
   test("invalid query") {
@@ -241,7 +241,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 INNER JOIN t1 ON t0.a = t1.a",
-    table('t0) join table("t1") on $"t0.a" =:= $"t1.a" select '*
+    table('t0) join table("t1") on $"t0.a" === $"t1.a" select '*
   )
 
   testQueryParsing(

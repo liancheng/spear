@@ -101,5 +101,5 @@ object CaseKeyWhen {
     candidates: Seq[Expression],
     consequences: Seq[Expression],
     alternative: Option[Expression]
-  ): CaseWhen = CaseWhen(candidates map (key =:= _), consequences, alternative)
+  ): CaseWhen = CaseWhen(candidates map (key === _), consequences, alternative)
 }

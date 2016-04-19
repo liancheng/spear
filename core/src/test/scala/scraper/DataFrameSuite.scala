@@ -27,7 +27,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("column") {
     val df = range(10)
-    assert(df('id) === df.queryExecution.analyzedPlan.output.head)
+    assert(df('id) == df.queryExecution.analyzedPlan.output.head)
 
     intercept[ResolutionFailureException] {
       df('bad)
@@ -114,8 +114,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("join") {
     checkLogicalPlan(
-      table('t) subquery 'x join (table('t) subquery 'y) on $"x.a" =:= $"y.a",
-      r1 subquery 't subquery 'x join (r1 subquery 't subquery 'y) on ('a of 'x) =:= ('a of 'y)
+      table('t) subquery 'x join (table('t) subquery 'y) on $"x.a" === $"y.a",
+      r1 subquery 't subquery 'x join (r1 subquery 't subquery 'y) on ('a of 'x) === ('a of 'y)
     )
   }
 

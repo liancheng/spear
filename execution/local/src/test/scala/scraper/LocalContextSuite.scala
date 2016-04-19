@@ -124,7 +124,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     )
 
     checkDataFrame(
-      df subquery 'a join (df subquery 'b) on $"a.id" =:= $"b.id",
+      df subquery 'a join (df subquery 'b) on $"a.id" === $"b.id",
       Row(0, 0), Row(1, 1)
     )
   }
@@ -133,7 +133,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val df = context range 3
 
     checkDataFrame(
-      df subquery 'a join (df subquery 'b) on $"a.id" =:= $"b.id" where $"b.id" > 0,
+      df subquery 'a join (df subquery 'b) on $"a.id" === $"b.id" where $"b.id" > 0,
       Row(1, 1), Row(2, 2)
     )
   }
@@ -175,14 +175,14 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
 
   test("bool_and") {
     checkDataFrame(
-      context range 2 agg bool_and('id % 2 =:= 0),
+      context range 2 agg bool_and('id % 2 === 0),
       Row(false)
     )
   }
 
   test("bool_or") {
     checkDataFrame(
-      context range 2 agg bool_or('id % 2 =:= 0),
+      context range 2 agg bool_or('id % 2 === 0),
       Row(true)
     )
   }

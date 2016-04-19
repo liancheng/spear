@@ -98,7 +98,7 @@ object Optimizer {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case !(!(child))           => child
       case !(lhs =:= rhs)        => lhs =/= rhs
-      case !(lhs =/= rhs)        => lhs =:= rhs
+      case !(lhs =/= rhs)        => lhs === rhs
 
       case !(lhs > rhs)          => lhs <= rhs
       case !(lhs >= rhs)         => lhs < rhs

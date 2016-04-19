@@ -11,7 +11,7 @@ abstract class SQLBuilderTest
 
   protected def checkSQL(e: Expression, expectedSQL: String): Unit = {
     try {
-      assert(e.sql.get === expectedSQL)
+      assert(e.sql.get == expectedSQL)
     } catch {
       case NonFatal(cause) =>
         fail(

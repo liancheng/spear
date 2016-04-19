@@ -260,7 +260,7 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   )
 
   override def resultExpression: Expression =
-    If(count =:= 0L, lit(null), sum / (count cast dataType))
+    If(count === 0L, lit(null), sum / (count cast dataType))
 
   override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
 }
