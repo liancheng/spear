@@ -228,7 +228,8 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   override def zeroValue: Expression = 0L
 
-  override def updateExpression: Expression = If(child.isNull, count, count + 1L)
+  override def updateExpression: Expression =
+    if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
 
   override def mergeExpression: Expression = count.left + count.right
 
@@ -250,7 +251,7 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 
   override def updateExpressions: Seq[Expression] = Seq(
     coalesce((child cast dataType) + sum, child cast dataType, sum),
-    count + If(child.isNull, 0L, 1L)
+    if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
   )
 
   override def mergeExpressions: Seq[Expression] = Seq(
