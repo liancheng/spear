@@ -117,32 +117,50 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val WITH = Keyword("WITH")
 
   override protected def start: Parser[LogicalPlan] =
-    query * (
-      UNION ~ ALL ^^^ Union
-      | INTERSECT ^^^ Intersect
+    query
+
+  private def query: Parser[LogicalPlan] =
+    ctes.? ~ queryNoWith ^^ {
+      case cs ~ q =>
+        cs.map(_.foldLeft(q) { With(_, _) }).getOrElse(q)
+    }
+
+  private def ctes: Parser[Seq[(String, LogicalPlan)]] =
+    WITH ~> rep1sep(namedQuery, ",")
+
+  private def namedQuery: Parser[(String, LogicalPlan)] =
+    ident ~ (AS.? ~ "(" ~> queryNoWith <~ ")") ^^ {
+      case name ~ plan => name -> plan
+    }
+
+  private def queryNoWith: Parser[LogicalPlan] =
+    queryTerm ~ queryOrganization ^^ { case p ~ f => f(p) }
+
+  private def queryTerm: Parser[LogicalPlan] =
+    queryPrimary * (
+      INTERSECT ^^^ Intersect
+      | (UNION <~ ALL) ^^^ Union
       | EXCEPT ^^^ Except
     )
 
-  private def query: Parser[LogicalPlan] =
-    selectClause | withClause
+  private def queryPrimary: Parser[LogicalPlan] = (
+    querySpecification
+    | "(" ~> queryNoWith <~ ")"
+  )
 
-  private def selectClause: Parser[LogicalPlan] = (
+  private def querySpecification: Parser[LogicalPlan] = (
     SELECT ~> DISTINCT.? ~ projectList
     ~ (FROM ~> relations).?
     ~ (WHERE ~> predicate).?
     ~ (GROUP ~ BY ~> rep1sep(expression, ",")).?
-    ~ (HAVING ~> predicate).?
-    ~ (ORDER ~ BY ~> sortOrders).?
-    ~ (LIMIT ~> expression).? ^^ {
-      case d ~ ps ~ rs ~ f ~ gs ~ h ~ o ~ n =>
+    ~ (HAVING ~> predicate).? ^^ {
+      case d ~ ps ~ rs ~ f ~ gs ~ h =>
         val base = rs getOrElse SingleRowRelation
         val withFilter = f map base.filter getOrElse base
         val withProject = gs map (withFilter.groupBy(_).agg(ps)) getOrElse (withFilter select ps)
         val withDistinct = d.map(_ => withProject.distinct) getOrElse withProject
         val withHaving = h map withDistinct.filter getOrElse withDistinct
-        val withOrder = o map withHaving.orderBy getOrElse withHaving
-        val withLimit = n map withOrder.limit getOrElse withOrder
-        withLimit
+        withHaving
     }
   )
 
@@ -249,7 +267,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def predicate: Parser[Expression] =
-    negation ||| disjunction ||| conjunction ||| booleanLiteral
+    negation ||| disjunction
 
   private def negation: Parser[Expression] =
     NOT ~> predicate ^^ Not
@@ -330,7 +348,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case t ~ Some(a) => UnresolvedRelation(t) subquery a
       case t ~ None    => UnresolvedRelation(t)
     }
-    | ("(" ~> selectClause <~ ")") ~ (AS.? ~> ident) ^^ {
+    | ("(" ~> queryNoWith <~ ")") ~ (AS.? ~> ident) ^^ {
       case s ~ a => s subquery a
     }
   )
@@ -345,6 +363,18 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def joinCondition: Parser[Expression] =
     ON ~> predicate
+
+  private def queryOrganization: Parser[LogicalPlan => LogicalPlan] = (
+    (ORDER ~ BY ~> sortOrders).?
+    ~ (LIMIT ~> expression).? ^^ {
+      case o ~ n =>
+        (plan: LogicalPlan) => {
+          val ordered = o map plan.orderBy getOrElse plan
+          val limited = n map ordered.limit getOrElse ordered
+          limited
+        }
+    }
+  )
 
   private def sortOrders: Parser[Seq[SortOrder]] =
     rep1sep(sortOrder, ",")
@@ -368,16 +398,6 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def nullsFirst: Parser[Boolean] =
     NULLS ~> (FIRST ^^^ true | LAST ^^^ false)
-
-  private def withClause: Parser[LogicalPlan] =
-    WITH ~> rep1sep(cteDefinition, ",") ~ selectClause ^^ {
-      case cs ~ q => cs.foldLeft(q) { With(_, _) }
-    }
-
-  private def cteDefinition: Parser[(String, LogicalPlan)] =
-    ident ~ (AS ~ "(" ~> selectClause <~ ")") ^^ {
-      case name ~ query => (name, query)
-    }
 }
 
 class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
