@@ -1,7 +1,7 @@
-After experimenting with ANTLR4, it seems that ANTLR4 doesn't help much in fixing my main problems: modularizing parser classes.
+After experimenting with ANTLR4, it seems that ANTLR4 doesn't help much in fixing my main problem: modularizing parser classes.
 
 What I would like to have is to build several different parsers, say one for data types, one for expressions, and one for queries, etc., and then either use them separately for different purposes, or compose them into a single SQL parser.
 
 Although ANTLR4 allows me to split the grammar definition into different files, in the end, all the grammar rules still have to be handled using a single generated visitor abstract class. What makes it worse, in ANTLR4, all visit methods within aa single visitor class can only return a single type. This is disastrous since my SQL parser needs to handle different types of objects: data types, expressions, and query plans. This basically means that my only choice is to build a visitor class of type `AnyRef` and heavily rely on `asInstanceOf[T]`, which is so cumbersome and totally unbearable...
 
-In a word, ANTLR4 introduces more troubles (and more code) but solves none of my original problems. So abandoning this branch.
+In a word, ANTLR4 introduces more troubles (and more code) but doesn't solve my original problem. So abandoning this branch.
