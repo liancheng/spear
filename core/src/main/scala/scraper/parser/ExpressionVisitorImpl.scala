@@ -7,7 +7,8 @@ import scraper.expressions.{ArithmeticExpression, BinaryComparison, Expression, 
 import scraper.parser.ExpressionParser._
 
 class ExpressionVisitorImpl extends ExpressionBaseVisitor[Expression] {
-  override def visitNegation(context: NegationContext): Expression = !visitPredicate(context.predicate())
+  override def visitNegation(context: NegationContext): Expression =
+    !visitPredicate(context.predicate())
 
   override def visitComparison(context: ComparisonContext): BinaryComparison =
     context.operator.getText match {
