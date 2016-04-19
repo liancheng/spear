@@ -188,6 +188,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     primaryExpression * (
       "*" ^^^ Multiply
       | "/" ^^^ Divide
+      | "%" ^^^ Remainder
     )
 
   private def primaryExpression: Parser[Expression] = (
