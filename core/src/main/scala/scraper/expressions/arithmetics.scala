@@ -101,8 +101,7 @@ abstract class GreatestLike extends Expression {
 
   override protected lazy val strictDataType: DataType = children.head.dataType
 
-  override protected lazy val typeConstraint: TypeConstraint =
-    (children sameSubtypeOf OrderedType) andThen (_.sameType)
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullsLarger)
 }
