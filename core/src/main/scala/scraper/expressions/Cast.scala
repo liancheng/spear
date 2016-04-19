@@ -66,7 +66,7 @@ object Cast {
   private val asInt = (_: Any) match { case v: Int => v }
 
   private val implicitlyFromInt: PartialFunction[DataType, Any => Any] = {
-    case BooleanType => asInt andThen (_ == 0)
+    case BooleanType => asInt andThen (_ == 1)
     case LongType    => asInt andThen (_.toLong)
     case FloatType   => asInt andThen (_.toFloat)
     case DoubleType  => asInt andThen (_.toDouble)
