@@ -4,6 +4,7 @@ import scraper.{LoggingFunSuite, Test, TestUtils}
 import scraper.exceptions.ParsingException
 import scraper.expressions.Expression
 import scraper.expressions.dsl._
+import scraper.expressions.functions._
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.logical.dsl._
 import scraper.types._
@@ -94,6 +95,28 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   testExpressionParsing("a * b", 'a * 'b)
 
   testExpressionParsing("a / b", 'a / 'b)
+
+  testExpressionParsing("a % b", 'a % 'b)
+
+  testExpressionParsing(
+    "CASE WHEN 1 THEN 'x' WHEN 2 THEN 'y' END",
+    when(1, "x") when (2, "y")
+  )
+
+  testExpressionParsing(
+    "CASE WHEN 1 THEN 'x' WHEN 2 THEN 'y' ELSE 'z' END",
+    when(1, "x") when (2, "y") otherwise "z"
+  )
+
+  testExpressionParsing(
+    "CASE a WHEN 1 THEN 'x' WHEN 2 THEN 'y' END",
+    when('a =:= 1, "x") when ('a =:= 2, "y")
+  )
+
+  testExpressionParsing(
+    "CASE a WHEN 1 THEN 'x' WHEN 2 THEN 'y' ELSE 'z' END",
+    when('a =:= 1, "x") when ('a =:= 2, "y") otherwise "z"
+  )
 
   test("invalid query") {
     intercept[ParsingException] {

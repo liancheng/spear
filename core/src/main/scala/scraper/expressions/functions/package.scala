@@ -37,12 +37,8 @@ package object functions {
 
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 
-  def when(condition: Expression)(consequence: => Expression): IfBuilder =
-    IfBuilder(condition, consequence)
-
-  case class IfBuilder(condition: Expression, consequence: Expression) {
-    def otherwise(alternative: => Expression): If = If(condition, consequence, alternative)
-  }
+  def when(condition: Expression, consequence: Expression): CaseWhen =
+    CaseWhen(condition :: Nil, consequence :: Nil, None)
 
   def concat(expressions: Seq[Expression]): Concat = Concat(expressions)
 

@@ -86,6 +86,13 @@ case class CaseWhen(
     val cases = (tests, values).zipped map ("WHEN " + _ + " THEN " + _) mkString " "
     s"CASE $cases$elsePart END"
   }
+
+  def when(condition: Expression, consequence: Expression): CaseWhen = copy(
+    conditions = conditions :+ condition,
+    consequences = consequences :+ consequence
+  )
+
+  def otherwise(expression: Expression): CaseWhen = copy(alternative = Some(expression))
 }
 
 object CaseKeyWhen {
