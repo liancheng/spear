@@ -122,7 +122,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private def query: Parser[LogicalPlan] =
     ctes.? ~ queryNoWith ^^ {
       case cs ~ q =>
-        cs.map(_.foldLeft(q) { With(_, _) }).getOrElse(q)
+        cs map (_.foldLeft(q) { With(_, _) }) getOrElse q
     }
 
   private def ctes: Parser[Seq[(String, LogicalPlan)]] =
