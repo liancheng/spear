@@ -1,0 +1,34 @@
+package scraper.expressions
+
+import java.util.regex.Pattern
+
+import scraper.Row
+import scraper.expressions.dsl._
+import scraper.expressions.typecheck.TypeConstraint
+import scraper.types.{BooleanType, DataType, StringType}
+
+case class Concat(children: Seq[Expression]) extends Expression {
+  override def dataType: DataType = StringType
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs StringType
+
+  override def evaluate(input: Row): Any =
+    (children map (_ evaluate input) map (_.asInstanceOf[String]) filter (_ != null)).mkString
+}
+
+case class RLike(string: Expression, pattern: Expression) extends Expression {
+  override def dataType: DataType = BooleanType
+
+  override protected lazy val typeConstraint: TypeConstraint =
+    (Seq(string) sameTypeAs StringType) ++ (Seq(pattern) sameTypeAs StringType andThen (
+      _.forall(_.isFoldable),
+      "RLIKE pattern must be constant"
+    ))
+
+  private lazy val evaluatedPattern: String = pattern.evaluated.asInstanceOf[String]
+
+  override def children: Seq[Expression] = string :: pattern :: Nil
+
+  override def evaluate(input: Row): Any =
+    Pattern.compile(evaluatedPattern) matcher string.evaluate(input).asInstanceOf[String] find 0
+}

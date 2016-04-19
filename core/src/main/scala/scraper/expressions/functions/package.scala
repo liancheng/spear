@@ -43,4 +43,12 @@ package object functions {
   case class IfBuilder(condition: Expression, consequence: Expression) {
     def otherwise(alternative: => Expression): If = If(condition, consequence, alternative)
   }
+
+  def concat(expressions: Seq[Expression]): Concat = Concat(expressions)
+
+  def concat(first: Expression, rest: Expression*): Concat = Concat(first +: rest)
+
+  def rlike(string: Expression, pattern: Expression): RLike = RLike(string, pattern)
+
+  def rlike(string: Expression, pattern: String): RLike = RLike(string, pattern)
 }
