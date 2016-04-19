@@ -242,8 +242,8 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     }
 
   private def functionArgs: Parser[Seq[Expression]] = (
-    repsep(expression, ",")
-    | star ^^ (_ :: Nil)
+    star ^^ (_ :: Nil)
+    | repsep(expression, ",")
   )
 
   private def attribute: Parser[UnresolvedAttribute] =

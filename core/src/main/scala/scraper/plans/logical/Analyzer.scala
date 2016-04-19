@@ -231,6 +231,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object ResolveFunctions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case UnresolvedFunction(name, (_: Star) :: Nil) if name.toLowerCase == "count" =>
+        Count(1)
+
+      case UnresolvedFunction(name, (_: Star) :: Nil) =>
+        throw new AnalysisException("Only COUNT function may have star as argument")
+
       case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
         val fnInfo = catalog.functionRegistry.lookupFunction(name)
         fnInfo.builder(args)

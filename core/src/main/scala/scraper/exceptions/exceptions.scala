@@ -13,8 +13,11 @@ class BrokenContractException(message: String, cause: Throwable)
   def this(message: String) = this(message, null)
 }
 
-abstract class AnalysisException(message: String, cause: Throwable)
-  extends RuntimeException(message, cause)
+class AnalysisException(message: String, cause: Throwable)
+  extends RuntimeException(message, cause) {
+
+  def this(message: String) = this(message, null)
+}
 
 class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
   extends AnalysisException(s"Expression ${expression.debugString} is unevaluable", cause) {

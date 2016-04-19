@@ -1,11 +1,13 @@
 package scraper.plans.logical
 
+import scraper.expressions
 import scraper.expressions._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
+import scraper.plans.logical
 import scraper.plans.logical.Optimizer._
 import scraper.plans.logical.dsl._
 import scraper.trees.{Rule, RulesExecutor}
