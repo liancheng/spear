@@ -58,6 +58,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object InlineCTERelationsAsSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+      case plan @ With(_, (_, _: With)) =>
+        plan
+
       case child With ((name, plan)) =>
         child transformDown {
           case UnresolvedRelation(`name`) => plan subquery name
@@ -190,12 +193,14 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           })
       } map {
         case (oldPlan, newPlan) =>
-          val attributeRewrites = (oldPlan.output map (_.expressionID) zip newPlan.output).toMap
+          val rewrite = (
+            oldPlan.output map (_.expressionID) zip (newPlan.output map (_.expressionID))
+          ).toMap
 
           right transformDown {
             case plan if plan == oldPlan => newPlan
           } transformAllExpressions {
-            case a: Attribute => attributeRewrites getOrElse (a.expressionID, a)
+            case a: AttributeRef => rewrite get a.expressionID map a.withID getOrElse a
           }
       } getOrElse right
     }

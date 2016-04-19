@@ -12,7 +12,7 @@ import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
 import scraper.plans.logical.dsl._
 import scraper.types.{DataType, NullType}
-import scraper.utils.quote
+import scraper.utils._
 
 class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
   private val catalog = new InMemoryCatalog
@@ -270,7 +270,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  test("CTE substitution") {
+  test("CTE") {
     checkAnalyzedPlan(
       let('s -> (relation subquery 't select 'a)) {
         table('s) select '*
@@ -279,10 +279,39 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  test("CTE substitution in SQL") {
+  test("CTE in SQL") {
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
       relation subquery 't select `t.a` subquery 's select (a of 's)
+    )
+  }
+
+  test("multiple CTE") {
+    checkAnalyzedPlan(
+      let('s0 -> (relation subquery 't)) {
+        let('s1 -> (relation subquery 't)) {
+          table('s0) union table('s1)
+        }
+      },
+      relation subquery 't subquery 's0 union (
+        relation.newInstance() subquery 't subquery 's1
+      )
+    )
+  }
+
+  test("multiple CTE in SQL") {
+    val x0 = 'x.int.!
+    val x1 = x0 withID newExpressionID()
+
+    checkAnalyzedPlan(
+      """WITH
+        |s0 AS (SELECT 1 AS x),
+        |s1 AS (SELECT 2 AS x)
+        |SELECT * FROM s0 UNION ALL SELECT * FROM s1
+      """.straight,
+      values(1 as 'x) subquery 's0 select (x0 of 's0) union (
+        values(2 as 'x) subquery 's1 select (x1 of 's1)
+      )
     )
   }
 

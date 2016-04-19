@@ -157,13 +157,11 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
 
   override def withID(id: ExpressionID): Attribute = this
 
-  def qualifiedBy(qualifier: String): UnresolvedAttribute = copy(qualifier = Some(qualifier))
+  def qualifiedBy(qualifier: Option[String]): UnresolvedAttribute = copy(qualifier = qualifier)
 
-  def qualifiedBy(qualifier: Symbol): UnresolvedAttribute = qualifiedBy(qualifier.name)
+  def of(qualifier: String): UnresolvedAttribute = qualifiedBy(Some(qualifier))
 
-  def of(qualifier: String): UnresolvedAttribute = qualifiedBy(qualifier)
-
-  def of(qualifier: Symbol): UnresolvedAttribute = qualifiedBy(qualifier.name)
+  def of(qualifier: Symbol): UnresolvedAttribute = of(qualifier.name)
 
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, isNullable = true, newExpressionID())
@@ -229,22 +227,17 @@ case class AttributeRef(
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
-  def qualifiedBy(qualifier: String): AttributeRef = copy(qualifier = Some(qualifier))
+  def qualifiedBy(qualifier: Option[String]): AttributeRef = copy(qualifier = qualifier)
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
-  def qualifiedBy(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
+  def of(qualifier: String): AttributeRef = qualifiedBy(Some(qualifier))
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
-  def of(qualifier: String): AttributeRef = qualifiedBy(qualifier)
-
-  /**
-   * Returns a copy of this [[AttributeRef]] with given qualifier.
-   */
-  def of(qualifier: Symbol): AttributeRef = qualifiedBy(qualifier.name)
+  def of(qualifier: Symbol): AttributeRef = of(qualifier.name)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
