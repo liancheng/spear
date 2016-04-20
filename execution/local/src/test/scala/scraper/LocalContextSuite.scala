@@ -207,6 +207,20 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
       Row(1)
     )
   }
+
+  test("rand") {
+    withTable("t") {
+      context range 10 asTable 't
+      """SELECT *
+        |FROM (
+        |  SELECT id AS key, CAST(RAND(42) * 100 AS INT) AS value
+        |  FROM t
+        |) s
+        |WHERE value % 2 = 0
+        |ORDER BY value DESC
+      """.stripMargin.q.explanation(extended = true)
+    }
+  }
 }
 
 object LocalContextSuite {

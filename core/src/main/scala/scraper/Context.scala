@@ -61,6 +61,7 @@ class InMemoryCatalog extends Catalog {
 
   private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
 
+  functionRegistry.registerFunction(FunctionInfo(classOf[Rand], Rand))
   functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
   functionRegistry.registerFunction(FunctionInfo(classOf[Sum], Sum))
   functionRegistry.registerFunction(FunctionInfo(classOf[Max], Max))

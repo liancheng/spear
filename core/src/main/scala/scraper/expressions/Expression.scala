@@ -188,9 +188,11 @@ trait StatefulExpression[State] extends Expression {
   override lazy val isFoldable: Boolean = false
 
   override protected def makeCopy(args: Seq[AnyRef]): Expression = {
-    state.foreach(throw new BrokenContractException(
-      "Stateful expression cannot be copied after initialization"
-    ))
+    state.foreach { currentState =>
+      throw new BrokenContractException(
+        s"Stateful expression $this with state $currentState cannot be copied after initialization"
+      )
+    }
     super.makeCopy(args)
   }
 
