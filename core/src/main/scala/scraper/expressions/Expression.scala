@@ -303,8 +303,13 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
   ))
 }
 
-case class UnresolvedFunction(name: String, args: Seq[Expression]) extends UnresolvedExpression {
+case class UnresolvedFunction(name: String, args: Seq[Expression], distinct: Boolean)
+  extends UnresolvedExpression {
+
   override def children: Seq[Expression] = args
 
-  override def debugString: String = s"$nodeName($name, ${args map (_.debugString) mkString ", "})"
+  override def debugString: String = {
+    val distinctString = if (distinct) "DISTINCT " else ""
+    s"?$name?($distinctString${args map (_.debugString) mkString ", "})"
+  }
 }

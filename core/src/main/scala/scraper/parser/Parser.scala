@@ -238,12 +238,13 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
 
   private def function: Parser[Expression] =
     ident ~ ("(" ~> functionArgs <~ ")") ^^ {
-      case functionName ~ args => UnresolvedFunction(functionName, args)
+      case functionName ~ ((distinct, args)) =>
+        UnresolvedFunction(functionName, args, distinct)
     }
 
-  private def functionArgs: Parser[Seq[Expression]] = (
-    star ^^ (_ :: Nil)
-    | repsep(expression, ",")
+  private def functionArgs: Parser[(Boolean, Seq[Expression])] = (
+    star ^^ { case s => false -> (s :: Nil) }
+    | DISTINCT.? ~ repsep(expression, ",") ^^ { case d ~ es => d.isDefined -> es }
   )
 
   private def attribute: Parser[UnresolvedAttribute] =
@@ -437,11 +438,13 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     }
 
     // Single-quoted string literals
+    // TODO Handles escaped characters
     | '\'' ~> chrExcept('\'', '\n', EofCh).* <~ '\'' ^^ {
       case cs => StringLit(cs.mkString)
     }
 
     // Double-quoted string literals
+    // TODO Handles escaped characters
     | '"' ~> chrExcept('"', '\n', EofCh).* <~ '"' ^^ {
       case cs => StringLit(cs.mkString)
     }

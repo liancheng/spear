@@ -231,15 +231,27 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object ResolveFunctions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case UnresolvedFunction(name, (_: Star) :: Nil) if name.toLowerCase == "count" =>
+      case UnresolvedFunction(name, (_: Star) :: Nil, false) if name.toLowerCase == "count" =>
         Count(1)
 
-      case UnresolvedFunction(name, (_: Star) :: Nil) =>
+      case UnresolvedFunction(_, (_: Star) :: Nil, true) =>
+        throw new AnalysisException("DISTINCT cannot be used together with star")
+
+      case UnresolvedFunction(name, (_: Star) :: Nil, _) =>
         throw new AnalysisException("Only COUNT function may have star as argument")
 
-      case UnresolvedFunction(name, args) if args forall (_.isResolved) =>
+      case UnresolvedFunction(name, args, distinct) if args forall (_.isResolved) =>
         val fnInfo = catalog.functionRegistry.lookupFunction(name)
-        fnInfo.builder(args)
+        fnInfo.builder(args) match {
+          case f: AggregateFunction if distinct =>
+            DistinctAggregateFunction(f)
+
+          case f if distinct =>
+            throw new AnalysisException(s"Function $name is not an aggregate function")
+
+          case f =>
+            f
+        }
     }
   }
 
@@ -327,7 +339,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
         // Aliases all found aggregate functions
-        val aggs = collectAggregation(projectList ++ conditions ++ order)
+        val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
         val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
@@ -357,7 +369,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           .select(newProjectList)
     }
 
-    private def collectAggregation(expressions: Seq[Expression]): Seq[AggregateFunction] = {
+    def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
       // `DistinctAggregateFunction`s must be collected first. Otherwise, their child expressions,
       // which are also `AggregateFunction`s, will also be collected unexpectedly.
       val distinctAggs = expressions.flatMap(_ collect {
@@ -366,7 +378,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
       val aggs = expressions.map(_ transformDown {
         // Eliminates previously collected `DistinctAggregateFunction`s first
-        case a: DistinctAggregateFunction => AggregationAlias(a).toAttribute
+        case AggregationAlias(a: DistinctAggregateFunction, _) => AggregationAlias(a).toAttribute
       }).flatMap(_ collect {
         case a: AggregateFunction => a
       }).distinct
@@ -385,9 +397,25 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
   }
 
+  object ResolveDistinctAggregateFunctions extends Rule[LogicalPlan] {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      // Removes unnecessary distinct aggregations for Max and Min
+      case f @ DistinctAggregateFunction(_: Max | _: Min) => f.child
+    } transformDown {
+      case Aggregate(child, keys, aggs) if containsDistinctAggs(aggs) =>
+        ???
+    }
+
+    def collectDistinctAggs(aggs: Seq[AggregationAlias]): Seq[DistinctAggregateFunction] =
+      aggs.map(_.child).collect { case a: DistinctAggregateFunction => a }.distinct
+
+    def containsDistinctAggs(aggs: Seq[AggregationAlias]): Boolean =
+      collectDistinctAggs(aggs).nonEmpty
+  }
+
   /**
    * This rule tries to transform all resolved logical plans operators (and expressions within them)
-   * into strictly typed form.
+   * into strictly-typed form.
    */
   @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object TypeCheck extends Rule[LogicalPlan] {

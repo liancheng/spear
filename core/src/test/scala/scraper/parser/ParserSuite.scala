@@ -120,7 +120,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   test("invalid query") {
     intercept[ParsingException] {
-      new Parser(Test.defaultSettings) parse "garbage"
+      parse("garbage")
     }
   }
 
@@ -260,6 +260,11 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   )
 
   testQueryParsing(
+    "SELECT COUNT(a) FROM t0",
+    table('t0) select function('COUNT, 'a)
+  )
+
+  testQueryParsing(
     "SELECT COUNT(a) FROM t0 GROUP BY b",
     table('t0) groupBy 'b agg function('COUNT, 'a)
   )
@@ -273,6 +278,17 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     "SELECT COUNT(a) FROM t0 GROUP BY b ORDER BY COUNT(b) ASC NULLS FIRST",
     table('t0) groupBy 'b agg function('COUNT, 'a) orderBy function('COUNT, 'b).asc.nullsFirst
   )
+
+  testQueryParsing(
+    "SELECT COUNT(DISTINCT a) FROM t0",
+    table('t0) select distinctFunction('COUNT, 'a)
+  )
+
+  test("DISTINCT can't be used with star") {
+    intercept[ParsingException] {
+      parse("SELECT COUNT(DISTINCT *) FROM t0")
+    }
+  }
 
   testQueryParsing(
     "SELECT * FROM t0 a JOIN t1 b",

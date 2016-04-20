@@ -57,17 +57,18 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def dataType: DataType = child.dataType
 
-  override def aggBufferSchema: StructType = error()
+  override def aggBufferSchema: StructType = child.aggBufferSchema
 
-  override def supportPartialAggregation: Boolean = error()
+  override def supportPartialAggregation: Boolean = child.supportPartialAggregation
 
-  override def zero(aggBuffer: MutableRow): Unit = error()
+  override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
 
-  override def update(input: Row, aggBuffer: MutableRow): Unit = error()
+  override def update(input: Row, aggBuffer: MutableRow): Unit = child.update(input, aggBuffer)
 
-  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit = error()
+  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit =
+    child.merge(fromAggBuffer, intoAggBuffer)
 
-  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = error()
+  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = result(into, ordinal, from)
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
@@ -79,10 +80,6 @@ case class DistinctAggregateFunction(child: AggregateFunction)
     val name = child.nodeName.toUpperCase
     s"$name(DISTINCT ${args mkString ", "})"
   }
-
-  private def error(): Nothing = throw new BrokenContractException(
-    s"${getClass.getName} cannot be evaluated directly."
-  )
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {

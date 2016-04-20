@@ -315,6 +315,25 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
+  test("distinct aggregate functions - utility methods") {
+    import analyze.ResolveAggregates._
+    import analyze.ResolveDistinctAggregateFunctions._
+
+    val aggs = Seq(
+      sum('a),
+      distinct(count('b)),
+      distinct(avg('c))
+    )
+
+    assertResult(Seq(distinct(count('b)), distinct(avg('c)))) {
+      collectDistinctAggs(aggs map (AggregationAlias(_)))
+    }
+
+    assertResult(Seq(distinct(count('b)), distinct(avg('c)), sum('a))) {
+      collectAggregateFunctions(aggs map (AggregationAlias(_)))
+    }
+  }
+
   private def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
     checkAnalyzedPlan(new Parser(Test.defaultSettings) parse sql, expected)
 

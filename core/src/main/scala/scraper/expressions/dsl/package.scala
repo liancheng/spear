@@ -72,9 +72,16 @@ package object dsl {
     }
   }
 
-  def function(name: String, args: Expression*): UnresolvedFunction = UnresolvedFunction(name, args)
+  def function(name: String, args: Expression*): UnresolvedFunction =
+    UnresolvedFunction(name, args, distinct = false)
 
   def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
+
+  def distinctFunction(name: String, args: Expression*): UnresolvedFunction =
+    UnresolvedFunction(name, args, distinct = true)
+
+  def distinctFunction(name: Symbol, args: Expression*): UnresolvedFunction =
+    distinctFunction(name.name, args: _*)
 
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)
