@@ -185,11 +185,14 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def productExpression: Parser[Expression] =
-    primaryExpression * (
+    powerExpression * (
       "*" ^^^ Multiply
       | "/" ^^^ Divide
       | "%" ^^^ Remainder
     )
+
+  private def powerExpression: Parser[Expression] =
+    primaryExpression * ("^" ^^^ Power)
 
   private def primaryExpression: Parser[Expression] = (
     literal

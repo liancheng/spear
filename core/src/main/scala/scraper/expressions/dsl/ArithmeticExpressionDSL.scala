@@ -13,6 +13,8 @@ trait ArithmeticExpressionDSL { this: Expression =>
 
   def %(that: Expression): Remainder = Remainder(this, that)
 
+  def ^(that: Expression): Power = Power(this, that)
+
   def unary_- : Negate = Negate(this)
 
   def isNaN: IsNaN = IsNaN(this)

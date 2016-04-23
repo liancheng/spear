@@ -1,5 +1,7 @@
 package scraper.expressions
 
+import scala.math.pow
+
 import scraper.{NullSafeOrdering, Row}
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
@@ -77,6 +79,17 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
   override def operator: String = "%"
 
   override def nullSafeEvaluate(lhs: Any, rhs: Any): Any = integral.rem(lhs, rhs)
+}
+
+case class Power(left: Expression, right: Expression) extends BinaryArithmeticOperator {
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs DoubleType
+
+  override def dataType: DataType = DoubleType
+
+  override def operator: String = "^"
+
+  override def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
+    pow(lhs.asInstanceOf[Double], rhs.asInstanceOf[Double])
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {

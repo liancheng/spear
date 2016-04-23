@@ -98,6 +98,10 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("a % b", 'a % 'b)
 
+  testExpressionParsing("a ^ b", 'a ^ 'b)
+
+  testExpressionParsing("a + b * c ^ d", 'a + ('b * ('c ^ 'd)))
+
   testExpressionParsing(
     "CASE WHEN 1 THEN 'x' WHEN 2 THEN 'y' END",
     when(1, "x") when (2, "y")
