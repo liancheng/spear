@@ -85,23 +85,11 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 trait DeclarativeAggregateFunction extends AggregateFunction {
   def aggBufferAttributes: Seq[AttributeRef]
 
-  def zeroValues: Seq[Expression] = zeroValue :: Nil
+  def zeroValues: Seq[Expression]
 
-  def zeroValue: Expression = throw new BrokenContractException(
-    s"${getClass.getName} must override either zeroValue or zeroValues."
-  )
+  def updateExpressions: Seq[Expression]
 
-  def updateExpressions: Seq[Expression] = updateExpression :: Nil
-
-  def updateExpression: Expression = throw new BrokenContractException(
-    s"${getClass.getName} must override either updateExpression or updateExpressions."
-  )
-
-  def mergeExpressions: Seq[Expression] = mergeExpression :: Nil
-
-  def mergeExpression: Expression = throw new BrokenContractException(
-    s"${getClass.getName} must override either mergeExpression or mergeExpressions."
-  )
+  def mergeExpressions: Seq[Expression]
 
   def resultExpression: Expression
 
@@ -223,12 +211,15 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   override def aggBufferAttributes: Seq[AttributeRef] = Seq(count)
 
-  override def zeroValue: Expression = 0L
+  override def zeroValues: Seq[Expression] = 0L :: Nil
 
-  override def updateExpression: Expression =
+  override def updateExpressions: Seq[Expression] = Seq(
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
+  )
 
-  override def mergeExpression: Expression = count.left + count.right
+  override def mergeExpressions: Seq[Expression] = Seq(
+    count.left + count.right
+  )
 
   override def resultExpression: Expression = count
 }
