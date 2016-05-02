@@ -6,7 +6,6 @@ import scraper._
 import scraper.expressions._
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
-import scraper.local.plans.physical.dsl._
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 
 case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
