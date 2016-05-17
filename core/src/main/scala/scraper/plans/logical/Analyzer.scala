@@ -5,7 +5,7 @@ import scraper.exceptions.{AnalysisException, IllegalAggregationException, Resol
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.AutoAlias.AnonymousColumnName
-import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
+import scraper.expressions.NamedExpression.{UnquotedName, newExpressionID}
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns._
 import scraper.trees.{Rule, RulesExecutor}
@@ -89,16 +89,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         })
     }
 
-    def expand(maybeQualifier: Option[String], input: Seq[Attribute]): Seq[Attribute] =
-      maybeQualifier match {
-        case None =>
-          input
-
-        case Some(qualifier) =>
-          input.collect {
-            case a: AttributeRef if a.qualifier contains qualifier => a
-          }
-      }
+    private def expand(maybeQualifier: Option[String], input: Seq[Attribute]): Seq[Attribute] =
+      maybeQualifier map { qualifier =>
+        input collect {
+          case ref: AttributeRef if ref.qualifier contains qualifier => ref
+        }
+      } getOrElse input
   }
 
   /**
@@ -395,22 +391,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         throw new IllegalAggregationException(part, a, e, keys)
       }
     }
-  }
-
-  object ResolveDistinctAggregateFunctions extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      // Removes unnecessary distinct aggregations for Max and Min
-      case f @ DistinctAggregateFunction(_: Max | _: Min) => f.child
-    } transformDown {
-      case Aggregate(child, keys, aggs) if containsDistinctAggs(aggs) =>
-        ???
-    }
-
-    def collectDistinctAggs(aggs: Seq[AggregationAlias]): Seq[DistinctAggregateFunction] =
-      aggs.map(_.child).collect { case a: DistinctAggregateFunction => a }.distinct
-
-    def containsDistinctAggs(aggs: Seq[AggregationAlias]): Boolean =
-      collectDistinctAggs(aggs).nonEmpty
   }
 
   /**
