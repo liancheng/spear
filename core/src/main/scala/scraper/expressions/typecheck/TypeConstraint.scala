@@ -17,8 +17,8 @@ import scraper.utils.trySequence
  */
 trait TypeConstraint {
   /**
-   * Tries to return a copy of argument expressions with constraint defined by this
-   * [[TypeConstraint]] enforced.
+   * Tries to return a copy of argument expressions that satisfy the constraint defined by this
+   * [[TypeConstraint]].
    */
   def enforced: Try[Seq[Expression]]
 
@@ -47,7 +47,7 @@ trait TypeConstraint {
 
 /**
  * A [[TypeConstraint]] that simply converts all `input` expressions to their strictly-typed form
- * without any further constraints.
+ * without enforcing any further constraints.
  */
 case class PassThrough(input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = trySequence(input map (_.strictlyTyped))
