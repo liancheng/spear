@@ -2,7 +2,7 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.{Attribute, AttributeRef, Expression}
+import scraper.expressions.{Attribute, AttributeRef}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
 
@@ -19,28 +19,37 @@ object ComplexType extends AbstractDataType {
   override def toString: String = "complex type"
 }
 
-case class ArrayType(
-  elementType: DataType,
-  elementNullable: Boolean
-) extends ComplexType {
+case class ArrayType(elementType: DataType, elementNullable: Boolean) extends ComplexType {
   override def sql: String = s"ARRAY<${elementType.sql}>"
 }
 
-object ArrayType {
+object ArrayType extends AbstractDataType {
   def apply(fieldSpec: FieldSpec): ArrayType = ArrayType(fieldSpec.dataType, fieldSpec.nullable)
+
+  override val defaultType: Option[DataType] = None
+
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: ArrayType => true
+    case _            => false
+  }
 }
 
-case class MapType(
-  keyType: DataType,
-  valueType: DataType,
-  valueNullable: Boolean
-) extends ComplexType {
+case class MapType(keyType: DataType, valueType: DataType, valueNullable: Boolean)
+  extends ComplexType {
+
   override def sql: String = s"MAP<${keyType.sql}, ${valueType.sql}>"
 }
 
-object MapType {
+object MapType extends AbstractDataType {
   def apply(keyType: DataType, valueFieldSpec: FieldSpec): MapType =
     MapType(keyType, valueFieldSpec.dataType, valueFieldSpec.nullable)
+
+  override val defaultType: Option[DataType] = None
+
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: MapType => true
+    case _          => false
+  }
 }
 
 case class StructField(name: String, dataType: DataType, nullable: Boolean)
@@ -98,11 +107,18 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
   }
 }
 
-object StructType {
+object StructType extends AbstractDataType {
   val empty: StructType = StructType(Nil)
 
   def apply(first: StructField, rest: StructField*): StructType = StructType(first +: rest)
 
   def fromAttributes(attributes: Seq[Attribute]): StructType =
     StructType(attributes.map(a => StructField(a.name, a.dataType, a.isNullable)))
+
+  override val defaultType: Option[DataType] = None
+
+  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: StructType => true
+    case _             => false
+  }
 }
