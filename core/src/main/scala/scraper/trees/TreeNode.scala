@@ -196,7 +196,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder ++= nodeCaption
     builder ++= "\n"
 
-    buildVirtualTreeNodes(depth, lastChildren, builder)
+    buildNestedTree(depth, lastChildren, builder)
 
     if (children.nonEmpty) {
       children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
@@ -212,7 +212,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    *
    * @see [[buildPrettyTree]] for more details.
    */
-  protected def buildVirtualTreeNodes(
+  protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = ()
 

@@ -97,7 +97,7 @@ case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
 
   // The only expression nodes of `LocalRelation` are output attributes, which are not interesting
   // to be shown in the query plan tree
-  override protected def buildVirtualTreeNodes(
+  override protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = ()
 }
@@ -304,7 +304,7 @@ case class With(child: LogicalPlan, cteRelation: (String, LogicalPlan)) extends 
 
   override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
 
-  override protected def buildVirtualTreeNodes(
+  override protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = CTENode.tupled(cteRelation).buildPrettyTree(
     depth + 1, lastChildren :+ children.isEmpty, builder

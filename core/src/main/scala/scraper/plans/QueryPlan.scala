@@ -149,7 +149,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     Seq(s"$nodeName:", argsString, arrow, outputString) filter (_.nonEmpty) mkString " "
   }
 
-  override protected def buildVirtualTreeNodes(
+  override protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = if (expressions.nonEmpty) {
     val expressionNodes = expressions.distinct.zipWithIndex.map {
