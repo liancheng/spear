@@ -1,6 +1,6 @@
 package scraper.types
 
-trait NumericType extends PrimitiveType with OrderedType {
+trait NumericType extends PrimitiveType {
   val numeric: Numeric[InternalType]
 
   def genericNumeric: Numeric[Any] = numeric.asInstanceOf[Numeric[Any]]
@@ -41,7 +41,7 @@ case object ByteType extends IntegralType {
 
   override val numeric: Numeric[Byte] = implicitly[Numeric[Byte]]
 
-  override val ordering: Ordering[Byte] = implicitly[Ordering[Byte]]
+  override val ordering: Option[Ordering[Byte]] = Some(implicitly[Ordering[Byte]])
 
   override def sql: String = "TINYINT"
 }
@@ -53,7 +53,7 @@ case object ShortType extends IntegralType {
 
   override val numeric: Numeric[Short] = implicitly[Numeric[Short]]
 
-  override val ordering: Ordering[Short] = implicitly[Ordering[Short]]
+  override val ordering: Option[Ordering[Short]] = Some(implicitly[Ordering[Short]])
 
   override def sql: String = "SMALLINT"
 }
@@ -65,7 +65,7 @@ case object IntType extends IntegralType {
 
   override val numeric: Numeric[Int] = implicitly[Numeric[Int]]
 
-  override val ordering: Ordering[Int] = implicitly[Ordering[Int]]
+  override val ordering: Option[Ordering[Int]] = Some(implicitly[Ordering[Int]])
 
   override def sql: String = "INT"
 }
@@ -77,7 +77,7 @@ case object LongType extends IntegralType {
 
   override val numeric: Numeric[Long] = implicitly[Numeric[Long]]
 
-  override val ordering: Ordering[Long] = implicitly[Ordering[Long]]
+  override val ordering: Option[Ordering[Long]] = Some(implicitly[Ordering[Long]])
 
   override def sql: String = "BIGINT"
 }
@@ -106,7 +106,7 @@ case object FloatType extends FractionalType {
 
   override val numeric: Numeric[Float] = implicitly[Numeric[Float]]
 
-  override val ordering: Ordering[Float] = implicitly[Ordering[Float]]
+  override val ordering: Option[Ordering[Float]] = Some(implicitly[Ordering[Float]])
 
   override def sql: String = "FLOAT"
 }
@@ -118,7 +118,7 @@ case object DoubleType extends FractionalType {
 
   override val numeric: Numeric[Double] = implicitly[Numeric[Double]]
 
-  override val ordering: Ordering[Double] = implicitly[Ordering[Double]]
+  override val ordering: Option[Ordering[Double]] = Some(implicitly[Ordering[Double]])
 
   override def sql: String = "DOUBLE"
 }
