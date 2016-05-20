@@ -2,7 +2,8 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.expressions.{Attribute, AttributeRef}
+import scraper.RowOrdering
+import scraper.expressions.{Attribute, AttributeRef, BoundRef}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
 
@@ -20,6 +21,10 @@ object ComplexType extends AbstractDataType {
 }
 
 case class ArrayType(elementType: DataType, elementNullable: Boolean) extends ComplexType {
+  override def genericOrdering: Option[Ordering[Any]] = elementType.genericOrdering map {
+    Ordering.Iterable(_).asInstanceOf[Ordering[Any]]
+  }
+
   override def sql: String = s"ARRAY<${elementType.sql}>"
 }
 
@@ -36,6 +41,8 @@ object ArrayType extends AbstractDataType {
 
 case class MapType(keyType: DataType, valueType: DataType, valueNullable: Boolean)
   extends ComplexType {
+
+  override def genericOrdering: Option[Ordering[Any]] = None
 
   override def sql: String = s"MAP<${keyType.sql}, ${valueType.sql}>"
 }
@@ -80,6 +87,17 @@ object StructField {
 }
 
 case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType {
+  override val genericOrdering: Option[Ordering[Any]] =
+    if (fields.map(_.dataType.genericOrdering).forall(_.isDefined)) {
+      val sortOrders = fields.zipWithIndex map {
+        case (field, index) =>
+          BoundRef(index, field.dataType, field.nullable).asc
+      }
+      Some(new RowOrdering(sortOrders).asInstanceOf[Ordering[Any]])
+    } else {
+      None
+    }
+
   def apply(fieldName: String): StructField = fields.find(_.name == fieldName).get
 
   def apply(index: Int): StructField = fields(index)

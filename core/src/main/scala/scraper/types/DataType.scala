@@ -8,7 +8,7 @@ import scraper.expressions.Cast.{castable, compatible}
 import scraper.trees.TreeNode
 
 trait DataType { self =>
-  def genericOrdering: Option[Ordering[Any]] = None
+  def genericOrdering: Option[Ordering[Any]]
 
   /** Returns a nullable [[FieldSpec]] of this [[DataType]]. */
   def ? : FieldSpec = FieldSpec(this, nullable = true)
@@ -181,7 +181,7 @@ case object NullType extends PrimitiveType {
 case object StringType extends PrimitiveType {
   override type InternalType = String
 
-  override val ordering: Option[Ordering[String]] = Some(implicitly[Ordering[String]])
+  override val ordering: Option[Ordering[String]] = Some(Ordering.String)
 
   override def sql: String = "STRING"
 }
@@ -189,7 +189,7 @@ case object StringType extends PrimitiveType {
 case object BooleanType extends PrimitiveType {
   override type InternalType = Boolean
 
-  override val ordering: Option[Ordering[Boolean]] = Some(implicitly[Ordering[Boolean]])
+  override val ordering: Option[Ordering[Boolean]] = Some(Ordering.Boolean)
 
   override def sql: String = "BOOLEAN"
 }

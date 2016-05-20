@@ -150,4 +150,32 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
       testSchema.prettyTree
     )
   }
+
+  test("orderable ArrayType") {
+    val arrayType = ArrayType(IntType)
+    assert(arrayType subtypeOf OrderedType)
+  }
+
+  test("non-orderable ArrayType") {
+    val arrayType = ArrayType(MapType(IntType, StringType))
+    assert(!(arrayType subtypeOf OrderedType))
+  }
+
+  test("orderable StructType") {
+    val schema = StructType(
+      'f0 -> IntType.!,
+      'f1 -> DoubleType.!
+    )
+
+    assert(schema subtypeOf OrderedType)
+  }
+
+  test("non-orderable StructType") {
+    val schema = StructType(
+      'f0 -> IntType.!,
+      'f1 -> MapType(IntType, StringType)
+    )
+
+    assert(!(schema subtypeOf OrderedType))
+  }
 }
