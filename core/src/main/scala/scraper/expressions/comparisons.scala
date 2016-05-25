@@ -8,9 +8,7 @@ trait BinaryComparison extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
   protected lazy val ordering: Ordering[Any] = whenStrictlyTyped {
-    left.dataType match {
-      case t: OrderedType => t.genericOrdering
-    }
+    OrderedType.orderingOf(left.dataType)
   }
 
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
@@ -75,14 +73,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input
     val listValues = list map (_ evaluate input)
-
-    dataType match {
-      case t: OrderedType =>
-        listValues exists (t.genericOrdering.compare(testValue, _) == 0)
-
-      case _ =>
-        false
-    }
+    listValues contains testValue
   }
 
   override protected def template(childList: Seq[String]): String = {

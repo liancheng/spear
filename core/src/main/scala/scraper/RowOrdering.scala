@@ -5,9 +5,7 @@ import scraper.expressions.BoundRef.bind
 import scraper.types.{DataType, OrderedType}
 
 class NullSafeOrdering(dataType: DataType, nullsLarger: Boolean) extends Ordering[Any] {
-  private val baseOrdering = dataType match {
-    case t: OrderedType => t.genericOrdering
-  }
+  private val baseOrdering = OrderedType.orderingOf(dataType)
 
   override def compare(lhs: Any, rhs: Any): Int = (lhs, rhs) match {
     case (null, null) => 0

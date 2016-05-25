@@ -8,6 +8,8 @@ import scraper.expressions.Cast.{castable, compatible}
 import scraper.trees.TreeNode
 
 trait DataType { self =>
+  def genericOrdering: Option[Ordering[Any]]
+
   /** Returns a nullable [[FieldSpec]] of this [[DataType]]. */
   def ? : FieldSpec = FieldSpec(this, nullable = true)
 
@@ -17,20 +19,20 @@ trait DataType { self =>
   def withNullability(allow: Boolean): FieldSpec = FieldSpec(this, nullable = allow)
 
   /** Shortcut method for [[scraper.expressions.Cast.compatible]] */
-  def compatibleWith(that: DataType): Boolean = compatible(this, that)
+  def isCompatibleWith(that: DataType): Boolean = compatible(this, that)
 
   /** Shortcut method for [[scraper.expressions.Cast.castable]] */
-  def castableTo(that: DataType): Boolean = castable(this, that)
+  def isCastableTo(that: DataType): Boolean = castable(this, that)
 
-  def subtypeOf(superType: AbstractDataType): Boolean = superType supertypeOf this
+  def isSubtypeOf(superType: AbstractDataType): Boolean = superType isSupertypeOf this
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
    * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[compatibleWith]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
-    case _ if this compatibleWith that => Success(that)
-    case _ if that compatibleWith this => Success(this)
+    case _ if this isCompatibleWith that => Success(that)
+    case _ if that isCompatibleWith this => Success(this)
     case _ => Failure(new TypeMismatchException(
       s"Could not find common type for ${this.sql} and ${that.sql}"
     ))
@@ -127,38 +129,41 @@ object DataType {
 trait AbstractDataType {
   val defaultType: Option[DataType]
 
-  def supertypeOf(dataType: DataType): Boolean
+  def isSupertypeOf(dataType: DataType): Boolean
 
-  def implicitSupertypeOf(dataType: DataType): Boolean = defaultType.exists(dataType.compatibleWith)
+  def isImplicitSupertypeOf(dataType: DataType): Boolean =
+    defaultType.exists(dataType.isCompatibleWith)
 }
 
 case class FieldSpec(dataType: DataType, nullable: Boolean)
 
-trait OrderedType { this: DataType =>
-  type InternalType
-
-  def ordering: Ordering[InternalType]
-
-  def genericOrdering: Ordering[Any] = ordering.asInstanceOf[Ordering[Any]]
-}
-
 object OrderedType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
-    case _: OrderedType => true
-    case _              => false
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType.genericOrdering.isDefined
+
+  def orderingOf(dataType: DataType): Ordering[Any] = dataType.genericOrdering getOrElse {
+    throw new TypeMismatchException(
+      s"Data type ${dataType.sql} doesn't have an ordering"
+    )
   }
 
   override def toString: String = "ordered type"
 }
 
-trait PrimitiveType extends DataType
+trait PrimitiveType extends DataType {
+  type InternalType
+
+  protected def ordering: Option[Ordering[InternalType]] = None
+
+  override def genericOrdering: Option[Ordering[Any]] =
+    ordering map (_.asInstanceOf[Ordering[Any]])
+}
 
 object PrimitiveType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: PrimitiveType => true
     case _                => false
   }
@@ -166,26 +171,26 @@ object PrimitiveType extends AbstractDataType {
   override def toString: String = "primitive type"
 }
 
-case object NullType extends PrimitiveType with OrderedType {
+case object NullType extends PrimitiveType {
   override type InternalType = Null
 
-  override val ordering: Ordering[Null] = implicitly[Ordering[Null]]
+  override val ordering: Option[Ordering[Null]] = Some(implicitly[Ordering[Null]])
 
   override def sql: String = "NULL"
 }
 
-case object StringType extends PrimitiveType with OrderedType {
+case object StringType extends PrimitiveType {
   override type InternalType = String
 
-  override val ordering: Ordering[String] = implicitly[Ordering[String]]
+  override val ordering: Option[Ordering[String]] = Some(Ordering.String)
 
   override def sql: String = "STRING"
 }
 
-case object BooleanType extends PrimitiveType with OrderedType {
+case object BooleanType extends PrimitiveType {
   override type InternalType = Boolean
 
-  override val ordering: Ordering[Boolean] = implicitly[Ordering[Boolean]]
+  override val ordering: Option[Ordering[Boolean]] = Some(Ordering.Boolean)
 
   override def sql: String = "BOOLEAN"
 }
