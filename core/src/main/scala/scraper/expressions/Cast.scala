@@ -197,9 +197,9 @@ object Cast {
    * already of the target type, `e` is returned untouched.
    */
   def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
-    case _ if e.dataType == dataType             => e
-    case _ if e.dataType compatibleWith dataType => e cast dataType
-    case _                                       => throw new ImplicitCastException(e, dataType)
+    case _ if e.dataType == dataType               => e
+    case _ if e.dataType isCompatibleWith dataType => e cast dataType
+    case _                                         => throw new ImplicitCastException(e, dataType)
   }
 
   /**

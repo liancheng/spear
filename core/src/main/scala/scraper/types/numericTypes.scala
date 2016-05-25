@@ -9,7 +9,7 @@ trait NumericType extends PrimitiveType {
 object NumericType extends AbstractDataType {
   override val defaultType: Option[DataType] = Some(DoubleType)
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: NumericType => true
     case _              => false
   }
@@ -26,7 +26,7 @@ trait IntegralType extends NumericType {
 object IntegralType extends AbstractDataType {
   val defaultType: Option[DataType] = Some(IntType)
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: IntegralType => true
     case _               => false
   }
@@ -91,7 +91,7 @@ trait FractionalType extends NumericType {
 object FractionalType extends AbstractDataType {
   val defaultType: Option[DataType] = Some(DoubleType)
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: FractionalType => true
     case _                 => false
   }

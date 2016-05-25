@@ -19,20 +19,20 @@ trait DataType { self =>
   def withNullability(allow: Boolean): FieldSpec = FieldSpec(this, nullable = allow)
 
   /** Shortcut method for [[scraper.expressions.Cast.compatible]] */
-  def compatibleWith(that: DataType): Boolean = compatible(this, that)
+  def isCompatibleWith(that: DataType): Boolean = compatible(this, that)
 
   /** Shortcut method for [[scraper.expressions.Cast.castable]] */
-  def castableTo(that: DataType): Boolean = castable(this, that)
+  def isCastableTo(that: DataType): Boolean = castable(this, that)
 
-  def subtypeOf(superType: AbstractDataType): Boolean = superType supertypeOf this
+  def isSubtypeOf(superType: AbstractDataType): Boolean = superType isSupertypeOf this
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
    * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[compatibleWith]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
-    case _ if this compatibleWith that => Success(that)
-    case _ if that compatibleWith this => Success(this)
+    case _ if this isCompatibleWith that => Success(that)
+    case _ if that isCompatibleWith this => Success(this)
     case _ => Failure(new TypeMismatchException(
       s"Could not find common type for ${this.sql} and ${that.sql}"
     ))
@@ -129,9 +129,10 @@ object DataType {
 trait AbstractDataType {
   val defaultType: Option[DataType]
 
-  def supertypeOf(dataType: DataType): Boolean
+  def isSupertypeOf(dataType: DataType): Boolean
 
-  def implicitSupertypeOf(dataType: DataType): Boolean = defaultType.exists(dataType.compatibleWith)
+  def isImplicitSupertypeOf(dataType: DataType): Boolean =
+    defaultType.exists(dataType.isCompatibleWith)
 }
 
 case class FieldSpec(dataType: DataType, nullable: Boolean)
@@ -139,7 +140,7 @@ case class FieldSpec(dataType: DataType, nullable: Boolean)
 object OrderedType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType.genericOrdering.isDefined
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType.genericOrdering.isDefined
 
   def orderingOf(dataType: DataType): Ordering[Any] = dataType.genericOrdering getOrElse {
     throw new TypeMismatchException(
@@ -162,7 +163,7 @@ trait PrimitiveType extends DataType {
 object PrimitiveType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: PrimitiveType => true
     case _                => false
   }

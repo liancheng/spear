@@ -62,8 +62,8 @@ case class SameTypeAs(targetType: DataType, input: Seq[Expression]) extends Type
   override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(input map (_.strictlyTyped))
   } yield strictArgs map {
-    case e if e.dataType compatibleWith targetType => promoteDataType(e, targetType)
-    case e                                         => throw new TypeMismatchException(e, targetType)
+    case e if e.dataType isCompatibleWith targetType => promoteDataType(e, targetType)
+    case e => throw new TypeMismatchException(e, targetType)
   }
 }
 
@@ -80,7 +80,7 @@ case class SameSubtypesOf(supertype: AbstractDataType, input: Seq[Expression])
     strictArgs <- trySequence(input map (_.strictlyTyped))
 
     // Finds all expressions whose data types are already subtype of `superType`.
-    candidates = for (e <- strictArgs if e.dataType subtypeOf supertype) yield e
+    candidates = for (e <- strictArgs if e.dataType isSubtypeOf supertype) yield e
 
     // Ensures that there's at least one expression whose data type is directly a subtype of
     // `superType`. In this way, expressions like

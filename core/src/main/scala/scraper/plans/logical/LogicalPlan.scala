@@ -140,7 +140,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
       case e if e.isFoldable && e.dataType == IntType =>
         Literal(e.evaluated, IntType)
 
-      case e if e.isFoldable && (e.dataType castableTo IntType) =>
+      case e if e.isFoldable && (e.dataType isCastableTo IntType) =>
         Literal(e.evaluated) cast IntType
 
       case _ =>

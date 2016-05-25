@@ -12,7 +12,7 @@ trait ComplexType extends DataType
 object ComplexType extends AbstractDataType {
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: ComplexType => true
     case _              => false
   }
@@ -33,7 +33,7 @@ object ArrayType extends AbstractDataType {
 
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: ArrayType => true
     case _            => false
   }
@@ -53,7 +53,7 @@ object MapType extends AbstractDataType {
 
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: MapType => true
     case _          => false
   }
@@ -135,7 +135,7 @@ object StructType extends AbstractDataType {
 
   override val defaultType: Option[DataType] = None
 
-  override def supertypeOf(dataType: DataType): Boolean = dataType match {
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: StructType => true
     case _             => false
   }

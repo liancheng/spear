@@ -153,12 +153,12 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("orderable ArrayType") {
     val arrayType = ArrayType(IntType)
-    assert(arrayType subtypeOf OrderedType)
+    assert(arrayType isSubtypeOf OrderedType)
   }
 
   test("non-orderable ArrayType") {
     val arrayType = ArrayType(MapType(IntType, StringType))
-    assert(!(arrayType subtypeOf OrderedType))
+    assert(!(arrayType isSubtypeOf OrderedType))
   }
 
   test("orderable StructType") {
@@ -167,7 +167,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
       'f1 -> DoubleType.!
     )
 
-    assert(schema subtypeOf OrderedType)
+    assert(schema isSubtypeOf OrderedType)
   }
 
   test("non-orderable StructType") {
@@ -176,6 +176,6 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
       'f1 -> MapType(IntType, StringType)
     )
 
-    assert(!(schema subtypeOf OrderedType))
+    assert(!(schema isSubtypeOf OrderedType))
   }
 }
