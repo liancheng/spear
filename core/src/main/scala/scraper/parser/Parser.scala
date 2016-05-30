@@ -388,12 +388,12 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     expression ~ direction.? ~ nullsFirst.? ^^ {
       case e ~ d ~ n =>
         val direction = d getOrElse Ascending
-        val nullsLarger = n map (direction -> _) map {
+        val nullsLarger = n map (direction -> _) forall {
           case (Ascending, nullsFirst @ true)   => false
           case (Ascending, nullsFirst @ false)  => true
           case (Descending, nullsFirst @ true)  => true
           case (Descending, nullsFirst @ false) => false
-        } getOrElse settings(NullsLarger)
+        }
 
         SortOrder(e, direction, nullsLarger)
     }

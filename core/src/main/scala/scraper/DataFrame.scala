@@ -2,7 +2,6 @@ package scraper
 
 import java.io.PrintStream
 
-import scraper.config.Keys.NullsLarger
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions._
 import scraper.expressions.AutoAlias.named
@@ -69,7 +68,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
 
   def orderBy(first: Expression, rest: Expression*): DataFrame =
-    orderBy(first +: rest map (SortOrder(_, Ascending, context settings NullsLarger)))
+    orderBy(first +: rest map (SortOrder(_, Ascending, nullsLarger = true)))
 
   def subquery(name: String): DataFrame = withPlan(_ subquery name)
 
@@ -139,7 +138,7 @@ class DataFrame(val queryExecution: QueryExecution) {
 
         if (truncate && content.length > 20) (content take 17) + "..." else content
       }
-    }.toSeq
+    }
 
     tabulate(rows, rowCount, truncate, hasMoreData)
   }
