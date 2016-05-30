@@ -120,12 +120,22 @@ object Cast {
     case FloatType => asDouble andThen (_.toFloat)
   }
 
-  private val booleanStrings = Set("yes", "no", "y", "n", "true", "false", "t", "f", "on", "off")
+  private[scraper] val booleanTrueStrings = Set("yes", "y", "true", "t", "on")
+
+  private[scraper] val booleanFalseStrings = Set("no", "n", "false", "f", "off")
+
+  private[scraper] val booleanStrings = booleanTrueStrings ++ booleanFalseStrings
 
   private val asString = (_: Any) match { case v: String => v }
 
+  private def stringToBoolean(value: String): Boolean = value match {
+    case _ if booleanTrueStrings contains value  => true
+    case _ if booleanFalseStrings contains value => false
+    case _                                       => throw new TypeCastException(s"Can't cast string [$value] to boolean")
+  }
+
   private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
-    case BooleanType => asString andThen (_.toLowerCase) andThen booleanStrings.contains
+    case BooleanType => asString andThen (_.toLowerCase) andThen stringToBoolean
     case ByteType    => asString andThen (_.toByte)
     case ShortType   => asString andThen (_.toShort)
     case IntType     => asString andThen (_.toInt)
@@ -194,9 +204,9 @@ object Cast {
   /**
    * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
    * [[types.DataType DataType]] of `e` is [[compatible]] to `dataType`.  If `e` is
-   * already of the target type, `e` is returned untouched.
+   * already of the target type, it is returned untouched.
    */
-  def promoteDataType(e: Expression, dataType: DataType): Expression = e match {
+  def widenDataType(e: Expression, dataType: DataType): Expression = e match {
     case _ if e.dataType == dataType               => e
     case _ if e.dataType isCompatibleWith dataType => e cast dataType
     case _                                         => throw new ImplicitCastException(e, dataType)

@@ -4,7 +4,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 import scraper.exceptions.{TypeCheckException, TypeMismatchException}
-import scraper.expressions.Cast.{promoteDataType, widestTypeOf}
+import scraper.expressions.Cast.{widenDataType, widestTypeOf}
 import scraper.expressions.Expression
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils.trySequence
@@ -62,7 +62,7 @@ case class SameTypeAs(targetType: DataType, input: Seq[Expression]) extends Type
   override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(input map (_.strictlyTyped))
   } yield strictArgs map {
-    case e if e.dataType isCompatibleWith targetType => promoteDataType(e, targetType)
+    case e if e.dataType isCompatibleWith targetType => widenDataType(e, targetType)
     case e => throw new TypeMismatchException(e, targetType)
   }
 }
@@ -98,7 +98,7 @@ case class SameSubtypesOf(supertype: AbstractDataType, input: Seq[Expression])
     } else {
       throw new TypeMismatchException(input.head, supertype)
     }
-  } yield strictArgs map (promoteDataType(_, widestSubType))
+  } yield strictArgs map (widenDataType(_, widestSubType))
 }
 
 /**
@@ -111,7 +111,7 @@ case class SameType(input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = for {
     strictArgs <- trySequence(input map (_.strictlyTyped))
     widestType <- widestTypeOf(strictArgs map (_.dataType))
-  } yield strictArgs map (promoteDataType(_, widestType))
+  } yield strictArgs map (widenDataType(_, widestType))
 }
 
 /**

@@ -63,6 +63,8 @@ class TypeCheckException(message: String, cause: Throwable)
 class TypeCastException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
+  def this(message: String) = this(message, null)
+
   def this(from: DataType, to: DataType, cause: Throwable) =
     this(s"Cannot convert data type $from to $to", cause)
 
