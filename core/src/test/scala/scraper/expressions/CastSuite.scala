@@ -44,11 +44,15 @@ class CastSuite extends LoggingFunSuite {
 
   test("cast string type to boolean type") {
     for (trueString <- booleanTrueStrings) {
-      assert((trueString cast BooleanType).evaluated == true)
+      assertResult(true) {
+        (trueString cast BooleanType).evaluated
+      }
     }
 
     for (falseString <- booleanFalseStrings) {
-      assert((falseString cast BooleanType).evaluated == false)
+      assertResult(false) {
+        (falseString cast BooleanType).evaluated
+      }
     }
 
     intercept[Exception] {

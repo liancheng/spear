@@ -131,7 +131,8 @@ object Cast {
   private def stringToBoolean(value: String): Boolean = value match {
     case _ if booleanTrueStrings contains value  => true
     case _ if booleanFalseStrings contains value => false
-    case _                                       => throw new TypeCastException(s"Can't cast string [$value] to boolean")
+    case _ =>
+      throw new TypeCastException(s"Can't cast string [$value] to boolean")
   }
 
   private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
