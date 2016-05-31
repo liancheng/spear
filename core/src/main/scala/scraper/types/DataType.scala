@@ -28,7 +28,7 @@ trait DataType { self =>
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is `y` [[compatibleWith]] `x`.
+   * `x` and `y`, `x` is considered to be wider than `y` iff `y` [[isCompatibleWith]] `x`.
    */
   def widest(that: DataType): Try[DataType] = (this, that) match {
     case _ if this isCompatibleWith that => Success(that)

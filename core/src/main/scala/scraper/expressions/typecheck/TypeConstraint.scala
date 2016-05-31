@@ -56,7 +56,7 @@ case class PassThrough(input: Seq[Expression]) extends TypeConstraint {
 /**
  * A [[TypeConstraint]] that first converts all `input` expressions to their strictly-typed form,
  * and then casts them to `targetType` when necessary. It requires data types of all `input`
- * expressions to be [[scraper.types.DataType.compatibleWith compatible with]] `targetType`.
+ * expressions to be [[scraper.types.DataType.isCompatibleWith compatible with]] `targetType`.
  */
 case class SameTypeAs(targetType: DataType, input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = for {
@@ -71,7 +71,7 @@ case class SameTypeAs(targetType: DataType, input: Seq[Expression]) extends Type
  * A [[TypeConstraint]] that first converts all `input` expressions to their strictly-typed form,
  * and then casts them to the same subtype of `supertype` when necessary. It requires data type of
  * at least one `input` expression is a subtype `t` of `supertype`, and data types of all the rest
- * `input` expressions to be [[scraper.types.DataType.compatibleWith compatible with]] `t`.
+ * `input` expressions to be [[scraper.types.DataType.isCompatibleWith compatible with]] `t`.
  */
 case class SameSubtypesOf(supertype: AbstractDataType, input: Seq[Expression])
   extends TypeConstraint {
@@ -105,7 +105,7 @@ case class SameSubtypesOf(supertype: AbstractDataType, input: Seq[Expression])
  * A [[TypeConstraint]] that first converts all `input` expressions to their strictly-typed form,
  * finds the widest data type `t` among all the `input` expressions, and then casts them to `t` when
  * necessary. It requires data types of all `input` expressions to be
- * [[scraper.types.DataType.compatibleWith compatible with]] each other.
+ * [[scraper.types.DataType.isCompatibleWith compatible with]] each other.
  */
 case class SameType(input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = for {
