@@ -86,9 +86,9 @@ trait TestUtils { this: FunSuite =>
       case NonFatal(cause) =>
         fail(
           s"""Query execution failed:
-           |
-           |${df.explanation(extended = true)}
-         """.stripMargin,
+             |
+             |${df.explanation(extended = true)}
+             |""".stripMargin,
           cause
         )
     }

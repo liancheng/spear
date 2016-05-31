@@ -21,10 +21,6 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val `t.a` = a of 't
-
-  private val `t.b` = b of 't
-
   private val (groupA, groupB, aggCountA, aggCountB) = (
     GroupingAlias(a),
     GroupingAlias(b),
@@ -56,21 +52,21 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("resolve references in SQL") {
     checkAnalyzedPlan(
       "SELECT a + 1 AS s FROM t",
-      relation subquery 't select ((`t.a` + 1) as 's)
+      relation subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references") {
     checkAnalyzedPlan(
       relation subquery 't select (($"t.a" + 1) as 's),
-      relation subquery 't select ((`t.a` + 1) as 's)
+      relation subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references in SQL") {
     checkAnalyzedPlan(
       "SELECT t.a + 1 AS s FROM t",
-      relation subquery 't select ((`t.a` + 1) as 's)
+      relation subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
@@ -102,7 +98,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("expand stars in SQL") {
     checkAnalyzedPlan(
       "SELECT * FROM t",
-      relation subquery 't select (`t.a`, `t.b`)
+      relation subquery 't select (a of 't, b of 't)
     )
   }
 
@@ -130,15 +126,15 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("self-join in SQL") {
-    val `t.a'` = a withID newExpressionID() of 't
-    val `t.b'` = b withID newExpressionID() of 't
+    val a0 = a withID newExpressionID()
+    val b0 = b withID newExpressionID()
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
       relation
         subquery 't
         join (relation.newInstance() subquery 't)
-        select (`t.a`, `t.b`, `t.a'`, `t.b'`)
+        select (a of 't, b of 't, a0 of 't, b0 of 't)
     )
   }
 
@@ -170,7 +166,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   test("global aggregate in SQL") {
-    val aggCountA = AggregationAlias(count(`t.a`))
+    val aggCountA = AggregationAlias(count(a of 't))
 
     checkAnalyzedPlan(
       "SELECT COUNT(a) FROM t",
@@ -214,7 +210,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  test("aggregate with multiple alternate having and order by clauses") {
+  test("aggregate with multiple alternating having and order by clauses") {
     checkAnalyzedPlan(
       relation
         groupBy 'a agg 'a
@@ -266,7 +262,11 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("order by columns not appearing in project list in SQL") {
     checkAnalyzedPlan(
       "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
-      relation subquery 't select (`t.b`, `t.a`) orderBy ((`t.a` + 1).asc, `t.b`.desc) select `t.b`
+      relation
+        subquery 't
+        select (b of 't, a of 't)
+        orderBy (((a of 't) + 1).asc, (b of 't).desc)
+        select (b of 't)
     )
   }
 
@@ -275,14 +275,14 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       let('s -> (relation subquery 't select 'a)) {
         table('s) select '*
       },
-      relation subquery 't select `t.a` subquery 's select (a of 's)
+      relation subquery 't select (a of 't) subquery 's select (a of 's)
     )
   }
 
   test("CTE in SQL") {
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
-      relation subquery 't select `t.a` subquery 's select (a of 's)
+      relation subquery 't select (a of 't) subquery 's select (a of 's)
     )
   }
 
@@ -305,9 +305,10 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       """WITH
-        |s0 AS (SELECT 1 AS x),
-        |s1 AS (SELECT 2 AS x)
-        |SELECT * FROM s0 UNION ALL SELECT * FROM s1
+        |  s0 AS (SELECT 1 AS x),
+        |  s1 AS (SELECT 2 AS x)
+        |SELECT *
+        |FROM s0 UNION ALL SELECT * FROM s1
       """.straight,
       values(1 as 'x) subquery 's0 select (x0 of 's0) union (
         values(2 as 'x) subquery 's1 select (x1 of 's1)
