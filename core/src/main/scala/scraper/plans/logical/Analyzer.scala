@@ -58,10 +58,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object InlineCTERelationsAsSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan @ With(_, (_, _: With)) =>
+      case plan @ With(_, _, _: With) =>
         plan
 
-      case child With ((name, plan)) =>
+      case With(child, name, plan) =>
         child transformDown {
           case UnresolvedRelation(`name`) => plan subquery name
         }

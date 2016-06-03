@@ -107,6 +107,6 @@ package object dsl {
 
   def let(cteRelation: (Symbol, LogicalPlan))(body: LogicalPlan): With = {
     val (name, value) = cteRelation
-    With(body, (name.name, value))
+    With(body, name.name, value)
   }
 }

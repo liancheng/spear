@@ -299,14 +299,16 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
   override def output: Seq[Attribute] = child.output
 }
 
-case class With(child: LogicalPlan, cteRelation: (String, LogicalPlan)) extends UnaryLogicalPlan {
+case class With(child: LogicalPlan, name: String, cteRelation: LogicalPlan)
+  extends UnaryLogicalPlan {
+
   override def output: Seq[Attribute] = child.output
 
   override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
 
   override protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = CTENode.tupled(cteRelation).buildPrettyTree(
+  ): Unit = CTENode(name, cteRelation).buildPrettyTree(
     depth + 1, lastChildren :+ children.isEmpty, builder
   )
 }
