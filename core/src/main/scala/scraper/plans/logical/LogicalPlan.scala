@@ -5,13 +5,13 @@ import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 import scraper.Row
+import scraper.annotations.Explain
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.plans.QueryPlan
-import scraper.plans.logical.With.CTENode
 import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
@@ -87,19 +87,11 @@ case object SingleRowRelation extends Relation {
   override val output: Seq[Attribute] = Nil
 }
 
-case class LocalRelation(data: Iterable[Row], output: Seq[Attribute])
-  extends MultiInstanceRelation {
-
-  // Overrides this to avoid showing individual local data entry
-  override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
-
+case class LocalRelation(
+  @Explain(hidden = true) data: Iterable[Row],
+  @Explain(hidden = true) output: Seq[Attribute]
+) extends MultiInstanceRelation {
   override def newInstance(): LogicalPlan = copy(output = output map (_ withID newExpressionID()))
-
-  // The only expression nodes of `LocalRelation` are output attributes, which are not interesting
-  // to be shown in the query plan tree
-  override protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = ()
 }
 
 object LocalRelation {
@@ -271,8 +263,6 @@ case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan 
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
-
-  override protected def argStrings: Seq[String] = s"alias=${quote(alias)}" :: Nil
 }
 
 /**
@@ -299,28 +289,12 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
   override def output: Seq[Attribute] = child.output
 }
 
-case class With(child: LogicalPlan, name: String, cteRelation: LogicalPlan)
-  extends UnaryLogicalPlan {
-
+case class With(
+  child: LogicalPlan,
+  name: String,
+  @Explain(hidden = true, nestedTree = true) cteRelation: LogicalPlan
+) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
-
-  override protected def argValueStrings: Seq[Option[String]] = Seq(None, None)
-
-  override protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = CTENode(name, cteRelation).buildPrettyTree(
-    depth + 1, lastChildren :+ children.isEmpty, builder
-  )
-}
-
-object With {
-  case class CTENode(name: String, child: LogicalPlan) extends UnaryLogicalPlan {
-    override def output: Seq[Attribute] = child.output
-
-    override def nodeName: String = "CTE"
-
-    override protected def argStrings: Seq[String] = s"name=${quote(name)}" :: Nil
-  }
 }
 
 case class Expand(child: LogicalPlan, projectLists: Seq[Seq[NamedExpression]])
