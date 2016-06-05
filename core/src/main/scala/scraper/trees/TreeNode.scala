@@ -168,14 +168,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   def nodeCaption: String = {
-    val pairs = explainArgs(includeChildren = false, verbose = true) map {
+    val pairs = explainArgs map {
       case (name, value) => s"$name=$value"
     }
 
     Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
-  protected def explainArgs(includeChildren: Boolean, verbose: Boolean): Seq[(String, String)] = {
+  protected def explainArgs: Seq[(String, String)] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
     val annotations = constructorParamExplainAnnotations
 
@@ -184,7 +184,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
         None
 
       case (name, value, explain) =>
-        explainArgValue(value, explain, includeChildren, verbose).map(name -> _)
+        explainArgValue(value, explain).map(name -> _)
     }.flatten
   }
 
@@ -194,9 +194,9 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
 
   protected def explainArgValue(
-    value: Any, annotation: Option[Explain], includeChildren: Boolean, verbose: Boolean
+    value: Any, annotation: Option[Explain]
   ): Option[String] = value match {
-    case arg if !includeChildren && (children contains arg) =>
+    case arg if children contains arg =>
       None
 
     case arg: Seq[_] if arg.forall(children.contains) =>
@@ -205,15 +205,15 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     case arg: Seq[_] =>
       Some {
         arg flatMap {
-          case e if !includeChildren && (children contains e) => None
-          case e => Some(e.toString)
+          case e if children contains e => None
+          case e                        => Some(e.toString)
         } mkString ("[", ", ", "]")
       }
 
     case arg: Some[_] =>
       arg flatMap {
-        case e if !includeChildren && (children contains e) => None
-        case e => Some("Some(" + e.toString + ")")
+        case e if children contains e => None
+        case e                        => Some("Some(" + e.toString + ")")
       }
 
     case arg =>
