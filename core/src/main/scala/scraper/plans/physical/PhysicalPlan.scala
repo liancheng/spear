@@ -1,6 +1,7 @@
 package scraper.plans.physical
 
 import scraper._
+import scraper.annotations.Explain
 import scraper.expressions._
 import scraper.plans.QueryPlan
 
@@ -34,22 +35,12 @@ case object SingleRowRelation extends LeafPhysicalPlan {
 
 case class NotImplemented(
   logicalPlanName: String,
-  input: Seq[PhysicalPlan],
-  output: Seq[Attribute]
+  @Explain(hidden = true) input: Seq[PhysicalPlan],
+  @Explain(hidden = true) output: Seq[Attribute]
 ) extends PhysicalPlan {
   override def children: Seq[PhysicalPlan] = input
 
   override def iterator: Iterator[Row] = throw new UnsupportedOperationException(
     s"$logicalPlanName is not implemented yet"
   )
-
-  override protected def argValueStrings: Seq[Option[String]] = Seq(
-    Some(logicalPlanName), None, None
-  )
-
-  // The only expression nodes of `NotImplemented` are output attributes, which are not interesting
-  // to be shown in the query plan tree
-  override protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = ()
 }

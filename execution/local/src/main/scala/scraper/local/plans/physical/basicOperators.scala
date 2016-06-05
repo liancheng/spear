@@ -3,24 +3,18 @@ package scraper.local.plans.physical
 import scala.collection.mutable.ArrayBuffer
 
 import scraper._
+import scraper.annotations.Explain
 import scraper.expressions._
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 
-case class LocalRelation(data: Iterable[Row], override val output: Seq[Attribute])
-  extends LeafPhysicalPlan {
+case class LocalRelation(
+  @Explain(hidden = true) data: Iterable[Row],
+  @Explain(hidden = true) override val output: Seq[Attribute]
+) extends LeafPhysicalPlan {
 
   override def iterator: Iterator[Row] = data.iterator
-
-  // Overrides this to avoid showing individual local data entry
-  override protected def argValueStrings: Seq[Option[String]] = Some("<local-data>") :: None :: Nil
-
-  // The only expression nodes of `LocalRelation` are output attributes, which are not interesting
-  // to be shown in the query plan tree
-  override protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = ()
 }
 
 case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])

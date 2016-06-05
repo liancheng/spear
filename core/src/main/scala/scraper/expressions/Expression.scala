@@ -165,8 +165,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   lazy val childrenTypes: Seq[DataType] = children map (_.dataType)
 
-  override def nodeCaption: String = getClass.getSimpleName
-
   /**
    * A template method for building `debugString` and `sql`.
    */
@@ -271,6 +269,8 @@ trait BinaryExpression extends Expression {
 
 trait Operator { this: Expression =>
   def operator: String
+
+  override def nodeName: String = operator
 }
 
 trait BinaryOperator extends BinaryExpression with Operator {

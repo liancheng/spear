@@ -3,8 +3,6 @@ package scraper.plans
 import scala.collection.mutable.ArrayBuffer
 
 import scraper.expressions._
-import scraper.plans.QueryPlan.ExpressionNode
-import scraper.reflection.constructorParams
 import scraper.trees.TreeNode
 import scraper.types.StructType
 
@@ -86,90 +84,14 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     None
   }
 
-  // TODO We can probably replace this with annotation tricks
-  /**
-   * Returns optional string representations of all constructor argument values in declaration
-   * order.  If an argument value is mapped to `None`, it won't be shown in the plan tree.  By
-   * default, constructor arguments corresponding to children plans are hidden.
-   */
-  protected def argValueStrings: Seq[Option[String]] = {
-    // Avoids duplicating string representation of expression nodes.  Replaces them with `$n`,
-    // where `n` is the index of the expression.
-    def expressionHolder(e: Expression): String = s"$$${expressions indexOf e}"
-
-    productIterator.toSeq map {
-      case arg if children contains arg =>
-        None
-
-      case arg: Seq[_] =>
-        val values = arg map {
-          case plan if children contains plan => None
-          case e: Expression                  => Some(expressionHolder(e))
-          case _                              => Some(arg.toString)
-        }
-        if (values forall (_.nonEmpty)) Some(values.flatten mkString ("[", ", ", "]")) else None
-
-      case None =>
-        Some("None")
-
-      case arg: Some[_] =>
-        val value = arg flatMap {
-          case plan if children contains plan => None
-          case e: Expression                  => Some(expressionHolder(e))
-          case _                              => Some(arg.toString)
-        }
-        if (value.nonEmpty) Some(value mkString ("Some(", "", ")")) else None
-
-      case arg: Expression =>
-        Some(expressionHolder(arg))
-
-      case arg =>
-        Some(arg.toString)
-    }
-  }
-
-  /**
-   * Returns string representations of constructor arguments of this query plan in the form of
-   * `&lt;arg&gt;=&lt;value&gt;`.
-   */
-  protected def argStrings: Seq[String] = {
-    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
-    argNames zip argValueStrings collect { case (name, Some(arg)) => s"$name=$arg" }
-  }
-
   /**
    * Returns string representations of each output attribute of this query plan.
    */
   protected def outputStrings: Seq[String] = output map (_.debugString)
 
   override def nodeCaption: String = {
-    val argsString = argStrings mkString ", "
     val outputString = outputStrings mkString ("[", ", ", "]")
     val arrow = "\u21d2"
-    Seq(s"$nodeName:", argsString, arrow, outputString) filter (_.nonEmpty) mkString " "
-  }
-
-  override protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = if (expressions.nonEmpty) {
-    val expressionNodes = expressions.distinct.zipWithIndex.map {
-      case (expression, index) => ExpressionNode(expression, index)
-    }
-
-    expressionNodes.init.foreach {
-      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
-    }
-
-    expressionNodes.last.buildPrettyTree(
-      depth + 2, lastChildren :+ children.isEmpty :+ true, builder
-    )
-  }
-}
-
-object QueryPlan {
-  private case class ExpressionNode(child: Expression, index: Int)
-    extends LeafExpression with UnevaluableExpression {
-
-    override def nodeCaption: String = s"$$$index: ${child.debugString}"
+    Seq(super.nodeCaption, arrow, outputString) mkString " "
   }
 }

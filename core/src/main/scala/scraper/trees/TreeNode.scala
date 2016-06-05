@@ -3,6 +3,8 @@ package scraper.trees
 import scala.collection.{mutable, Traversable}
 import scala.languageFeature.reflectiveCalls
 
+import scraper.annotations.Explain
+import scraper.reflection.constructorParams
 import scraper.types.StructType
 
 trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
@@ -165,7 +167,58 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
-  def nodeCaption: String = nodeName
+  def nodeCaption: String = {
+    val pairs = explainArgs(includeChildren = false, verbose = true) map {
+      case (name, value) => s"$name=$value"
+    }
+
+    Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
+  }
+
+  protected def explainArgs(includeChildren: Boolean, verbose: Boolean): Seq[(String, String)] = {
+    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
+    val annotations = constructorParamExplainAnnotations
+
+    (argNames, productIterator.toSeq, annotations).zipped.map {
+      case (_, _, explain) if explain.exists(_.hidden()) =>
+        None
+
+      case (name, value, explain) =>
+        explainArgValue(value, explain, includeChildren, verbose).map(name -> _)
+    }.flatten
+  }
+
+  private def constructorParamExplainAnnotations: Seq[Option[Explain]] =
+    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
+      _.collectFirst { case a: Explain => a }
+    }
+
+  protected def explainArgValue(
+    value: Any, annotation: Option[Explain], includeChildren: Boolean, verbose: Boolean
+  ): Option[String] = value match {
+    case arg if !includeChildren && (children contains arg) =>
+      None
+
+    case arg: Seq[_] if arg.forall(children.contains) =>
+      None
+
+    case arg: Seq[_] =>
+      Some {
+        arg flatMap {
+          case e if !includeChildren && (children contains e) => None
+          case e => Some(e.toString)
+        } mkString ("[", ", ", "]")
+      }
+
+    case arg: Some[_] =>
+      arg flatMap {
+        case e if !includeChildren && (children contains e) => None
+        case e => Some("Some(" + e.toString + ")")
+      }
+
+    case arg =>
+      Some(arg.toString)
+  }
 
   override def toString: String = "\n" + prettyTree
 
@@ -206,15 +259,22 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder
   }
 
-  /**
-   * Adds "virtual" nodes that are not members of [[children]] to the pretty printed tree string.
-   * Used by [[scraper.plans.QueryPlan QueryPlan]] to bake expression tree nodes.
-   *
-   * @see [[buildPrettyTree]] for more details.
-   */
   protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = ()
+  ): Unit = {
+    val nestedTreeMarks = constructorParamExplainAnnotations.map(_ exists (_.nestedTree()))
+    val nestedTrees = productIterator.toSeq.zip(nestedTreeMarks).collect {
+      case (tree: TreeNode[_], true) => tree
+    }
+
+    if (nestedTrees.nonEmpty) {
+      nestedTrees.init.foreach {
+        _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
+      }
+
+      nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
+    }
+  }
 
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 
