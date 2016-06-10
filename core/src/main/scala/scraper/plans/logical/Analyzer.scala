@@ -101,10 +101,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * This rule tries to resolve [[scraper.expressions.UnresolvedAttribute UnresolvedAttribute]]s in
    * an logical plan operator using output [[scraper.expressions.Attribute Attribute]]s of its
    * children.
+   *
+   * @throws ResolutionFailureException If no candidate or multiple ambiguous candidate input
+   *         attributes can be found.
    */
-  @throws[ResolutionFailureException](
-    "If no candidate or multiple ambiguous candidate input attributes can be found"
-  )
   object ResolveReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Unresolved(plan) if plan.isDeduplicated =>
@@ -396,8 +396,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   /**
    * This rule tries to transform all resolved logical plans operators (and expressions within them)
    * into strictly-typed form.
+   *
+   * @throws AnalysisException If some resolved logical query plan operator doesn't type check.
    */
-  @throws[AnalysisException]("If some resolved logical query plan operator doesn't type check")
   object TypeCheck extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case Resolved(plan) => plan.strictlyTyped.get
