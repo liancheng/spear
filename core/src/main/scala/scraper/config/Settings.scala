@@ -73,4 +73,6 @@ object Settings {
         .withFallback(ConfigFactory.load())
         .resolve()
     )
+
+  def load(): Settings = load("scraper.conf")
 }

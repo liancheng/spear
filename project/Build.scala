@@ -43,6 +43,13 @@ object Build extends sbt.Build {
       .settings(dependencyOverrides ++= Dependencies.overrides)
       .settings(unmanagedClasspath in Runtime += baseDirectory.value.getParentFile / "conf")
 
+  lazy val examples =
+    Project("examples", file("examples"))
+      .dependsOn(core, localExecution)
+      .enablePlugins(sbtPlugins: _*)
+      .settings(commonSettings)
+      .settings(unmanagedClasspath in Runtime += baseDirectory.value.getParentFile / "conf")
+
   lazy val coreDependencies = {
     import Dependencies._
     test ++ config ++ log4j ++ scala ++ scopt ++ slf4j
