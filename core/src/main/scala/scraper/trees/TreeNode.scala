@@ -167,58 +167,69 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
+  /**
+   * Returns a single line string representation of this [[TreeNode]] when it is shown as a node in
+   * a pretty-printed tree string.
+   *
+   * @see [[prettyTree]]
+   */
   def nodeCaption: String = {
-    val pairs = explainArgs map {
+    val pairs = explainParams map {
       case (name, value) => s"$name=$value"
     }
 
     Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
-  protected def explainArgs: Seq[(String, String)] = {
+  /**
+   * String pairs representing constructor parameters of this [[TreeNode]]. Parameters annotated
+   * with `@Explain(hidden = true)` are not included here.
+   */
+  private lazy val explainParams: Seq[(String, String)] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
     val annotations = constructorParamExplainAnnotations
 
     (argNames, productIterator.toSeq, annotations).zipped.map {
-      case (_, _, explain) if explain.exists(_.hidden()) =>
+      case (_, _, maybeAnnotated) if maybeAnnotated exists (_.hidden()) =>
         None
 
-      case (name, value, explain) =>
-        explainArgValue(value, explain).map(name -> _)
+      case (name, value, maybeAnnotated) =>
+        explainParamValue(value, maybeAnnotated) map (name -> _)
     }.flatten
   }
 
-  private def constructorParamExplainAnnotations: Seq[Option[Explain]] =
+  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
     getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
-      _.collectFirst { case a: Explain => a }
+      _ collectFirst { case a: Explain => a }
     }
 
-  protected def explainArgValue(
-    value: Any, annotation: Option[Explain]
-  ): Option[String] = value match {
-    case arg if children contains arg =>
-      None
+  private def explainParamValue(value: Any, annotation: Option[Explain]): Option[String] =
+    value match {
+      case arg if children contains arg =>
+        // Hides child nodes since they will be printed as sub-tree nodes
+        None
 
-    case arg: Seq[_] if arg.forall(children.contains) =>
-      None
+      case arg: Seq[_] if arg forall children.contains =>
+        // If a `Seq` contains only child nodes, hides it entirely.
+        None
 
-    case arg: Seq[_] =>
-      Some {
+      case arg: Seq[_] =>
+        Some {
+          arg flatMap {
+            case e if children contains e => None
+            case e                        => Some(e.toString)
+          } mkString ("[", ", ", "]")
+        }
+
+      case arg: Some[_] =>
         arg flatMap {
           case e if children contains e => None
-          case e                        => Some(e.toString)
-        } mkString ("[", ", ", "]")
-      }
+          case e                        => Some("Some(" + e.toString + ")")
+        }
 
-    case arg: Some[_] =>
-      arg flatMap {
-        case e if children contains e => None
-        case e                        => Some("Some(" + e.toString + ")")
-      }
-
-    case arg =>
-      Some(arg.toString)
-  }
+      case arg =>
+        Some(arg.toString)
+    }
 
   override def toString: String = "\n" + prettyTree
 
@@ -262,9 +273,9 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = {
-    val nestedTreeMarks = constructorParamExplainAnnotations.map(_ exists (_.nestedTree()))
-    val nestedTrees = productIterator.toSeq.zip(nestedTreeMarks).collect {
-      case (tree: TreeNode[_], true) => tree
+    val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
+    val nestedTrees = productIterator.toSeq zip nestedTreeMarks collect {
+      case (tree: TreeNode[_], showAsNestedTree @ true) => tree
     }
 
     if (nestedTrees.nonEmpty) {

@@ -171,7 +171,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected def template(childList: Seq[String]): String =
     childList mkString (s"${nodeName.toUpperCase}(", ", ", ")")
 
-  def debugString: String = template(children.map(_.debugString))
+  def debugString: String = template(children map (_.debugString))
 
   def sql: Try[String] = trySequence(children map (_.sql)) map template
 
