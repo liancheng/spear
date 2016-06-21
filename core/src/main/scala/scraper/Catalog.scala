@@ -11,27 +11,28 @@ import scraper.plans.logical.dsl._
 trait Catalog {
   val functionRegistry: FunctionRegistry
 
-  def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit
+  def registerRelation(tableName: Name, analyzedPlan: LogicalPlan): Unit
 
-  def removeRelation(tableName: String): Unit
+  def removeRelation(tableName: Name): Unit
 
-  def lookupRelation(tableName: String): LogicalPlan
+  def lookupRelation(tableName: Name): LogicalPlan
 }
 
 class InMemoryCatalog extends Catalog {
   override val functionRegistry: FunctionRegistry = new FunctionRegistry {
-    private val functions: mutable.Map[String, FunctionInfo] =
-      mutable.Map.empty[String, FunctionInfo]
+    private val functions: mutable.Map[Name, FunctionInfo] =
+      mutable.Map.empty[Name, FunctionInfo]
 
-    override def lookupFunction(name: String): FunctionInfo =
-      functions.getOrElse(name.toLowerCase, throw new FunctionNotFoundException(name))
+    override def lookupFunction(name: Name): FunctionInfo =
+      functions.getOrElse(name, throw new FunctionNotFoundException(name))
 
-    override def registerFunction(fn: FunctionInfo): Unit = functions(fn.name.toLowerCase) = fn
+    override def registerFunction(fn: FunctionInfo): Unit =
+      functions(Name.ci(fn.name)) = fn
 
-    override def removeFunction(name: String): Unit = functions -= name
+    override def removeFunction(name: Name): Unit = functions -= name
   }
 
-  private val tables: mutable.Map[String, LogicalPlan] = mutable.Map.empty
+  private val tables: mutable.Map[Name, LogicalPlan] = mutable.Map.empty
 
   functionRegistry.registerFunction(FunctionInfo(classOf[Rand], Rand))
   functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
@@ -44,12 +45,12 @@ class InMemoryCatalog extends Catalog {
   functionRegistry.registerFunction(FunctionInfo(classOf[First], First))
   functionRegistry.registerFunction(FunctionInfo(classOf[Last], Last))
 
-  override def registerRelation(tableName: String, analyzedPlan: LogicalPlan): Unit =
+  override def registerRelation(tableName: Name, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan
 
-  override def removeRelation(tableName: String): Unit = tables -= tableName
+  override def removeRelation(tableName: Name): Unit = tables -= tableName
 
-  override def lookupRelation(tableName: String): LogicalPlan =
+  override def lookupRelation(tableName: Name): LogicalPlan =
     tables
       .get(tableName)
       .map(_ subquery tableName)

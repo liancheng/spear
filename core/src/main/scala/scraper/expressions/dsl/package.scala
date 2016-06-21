@@ -2,6 +2,7 @@ package scraper.expressions
 
 import scala.language.implicitConversions
 
+import scraper.Name
 import scraper.config.Settings
 import scraper.expressions.typecheck._
 import scraper.parser.Parser
@@ -25,7 +26,10 @@ package object dsl {
   implicit def `String->Literal`(value: String): Literal = Literal(value, StringType)
 
   implicit def `Symbol->UnresolvedAttribute`(name: Symbol): UnresolvedAttribute =
-    UnresolvedAttribute(name.name)
+    UnresolvedAttribute(Name.ci(name.name))
+
+  implicit def `Name->UnresolvedAttribute`(name: Name): UnresolvedAttribute =
+    UnresolvedAttribute(name)
 
   implicit class StringToUnresolvedAttribute(sc: StringContext) {
     def $(args: Any*): UnresolvedAttribute =
@@ -72,16 +76,23 @@ package object dsl {
     }
   }
 
-  def function(name: String, args: Expression*): UnresolvedFunction =
+  def function(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, distinct = false)
 
-  def function(name: Symbol, args: Expression*): UnresolvedFunction = function(name.name, args: _*)
+  def function(name: String, args: Expression*): UnresolvedFunction =
+    function(Name.cs(name), args: _*)
 
-  def distinctFunction(name: String, args: Expression*): UnresolvedFunction =
+  def function(name: Symbol, args: Expression*): UnresolvedFunction =
+    function(Name.ci(name.name), args: _*)
+
+  def distinctFunction(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, distinct = true)
 
+  def distinctFunction(name: String, args: Expression*): UnresolvedFunction =
+    distinctFunction(Name.cs(name), args: _*)
+
   def distinctFunction(name: Symbol, args: Expression*): UnresolvedFunction =
-    distinctFunction(name.name, args: _*)
+    distinctFunction(Name.ci(name.name), args: _*)
 
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)

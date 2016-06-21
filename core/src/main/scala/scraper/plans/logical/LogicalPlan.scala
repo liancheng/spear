@@ -4,7 +4,7 @@ import scala.reflect.runtime.universe.WeakTypeTag
 import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
-import scraper.Row
+import scraper.{Name, Row}
 import scraper.annotations.Explain
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
@@ -81,7 +81,7 @@ trait MultiInstanceRelation extends Relation {
   def newInstance(): LogicalPlan
 }
 
-case class UnresolvedRelation(name: String) extends Relation with UnresolvedLogicalPlan
+case class UnresolvedRelation(name: Name) extends Relation with UnresolvedLogicalPlan
 
 case object SingleRowRelation extends Relation {
   override val output: Seq[Attribute] = Nil
@@ -258,7 +258,7 @@ case class Join(
     predicates reduceOption And map on getOrElse this
 }
 
-case class Subquery(child: LogicalPlan, alias: String) extends UnaryLogicalPlan {
+case class Subquery(child: LogicalPlan, alias: Name) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output map {
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
@@ -291,7 +291,7 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
 
 case class With(
   child: LogicalPlan,
-  name: String,
+  name: Name,
   @Explain(hidden = true, nestedTree = true) cteRelation: LogicalPlan
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output

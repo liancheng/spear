@@ -1,5 +1,6 @@
 package scraper.exceptions
 
+import scraper.Name
 import scraper.expressions.{AttributeRef, Expression}
 import scraper.plans.logical.LogicalPlan
 import scraper.types.{AbstractDataType, DataType}
@@ -117,16 +118,16 @@ class ResolutionFailureException(message: String, cause: Throwable)
   def this(message: String) = this(message, null)
 }
 
-class TableNotFoundException(tableName: String, cause: Throwable)
+class TableNotFoundException(tableName: Name, cause: Throwable)
   extends AnalysisException(s"Table $tableName not found", cause) {
 
-  def this(tableName: String) = this(tableName, null)
+  def this(tableName: Name) = this(tableName, null)
 }
 
-class FunctionNotFoundException(name: String, cause: Throwable)
+class FunctionNotFoundException(name: Name, cause: Throwable)
   extends AnalysisException(s"Function $name not found", cause) {
 
-  def this(name: String) = this(name, null)
+  def this(name: Name) = this(name, null)
 }
 
 class SchemaIncompatibleException(message: String, cause: Throwable)

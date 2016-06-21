@@ -11,6 +11,8 @@ import scraper.expressions.dsl._
 import scraper.generators.types._
 
 class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
+  import scraper.Name._
+
   // ScalaCheck pretty printing support for `DataType`
   private implicit def prettyDataType(dataType: DataType): Pretty = Pretty {
     _ => "\n" + dataType.prettyTree
@@ -70,14 +72,14 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("StructType instantiation") {
     checkTree(
-      StructType(StructField("f1", IntType, nullable = false) :: Nil),
+      StructType(StructField(ci("f1"), IntType, nullable = false) :: Nil),
       StructType('f1 -> IntType.!)
     )
 
     checkTree(
       StructType(Seq(
-        StructField("f1", IntType, nullable = true),
-        StructField("f2", DoubleType, nullable = false)
+        StructField(ci("f1"), IntType, nullable = true),
+        StructField(ci("f2"), DoubleType, nullable = false)
       )),
       StructType(
         'f1 -> IntType,

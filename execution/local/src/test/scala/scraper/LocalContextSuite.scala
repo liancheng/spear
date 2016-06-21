@@ -2,6 +2,7 @@ package scraper
 
 import scraper.Context._
 import scraper.LocalContextSuite.Person
+import scraper.Name.ci
 import scraper.exceptions.TableNotFoundException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -45,7 +46,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("table") {
-    withTable("t") {
+    withTable(ci("t")) {
       context range 2 asTable "t"
 
       checkDataFrame(
@@ -64,7 +65,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   )
 
   test("mixed") {
-    people filter 'age =/= 21 asTable "people"
+    people filter 'age =/= 21 asTable 'people
 
     checkDataFrame(
       "SELECT name FROM people".q,
@@ -209,7 +210,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("rand") {
-    withTable("t") {
+    withTable(ci("t")) {
       context range 10 asTable 't
       """SELECT *
         |FROM (

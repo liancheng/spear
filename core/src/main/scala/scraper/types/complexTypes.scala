@@ -2,7 +2,7 @@ package scraper.types
 
 import scala.language.implicitConversions
 
-import scraper.RowOrdering
+import scraper.{Name, RowOrdering}
 import scraper.expressions.{Attribute, AttributeRef, BoundRef}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.utils.quote
@@ -59,30 +59,31 @@ object MapType extends AbstractDataType {
   }
 }
 
-case class StructField(name: String, dataType: DataType, nullable: Boolean)
+case class StructField(name: Name, dataType: DataType, nullable: Boolean)
 
 object StructField {
-  def apply(name: String, fieldSpec: FieldSpec): StructField =
+  def apply(name: Name, fieldSpec: FieldSpec): StructField =
     StructField(name, fieldSpec.dataType, fieldSpec.nullable)
 
   implicit def `(String,DataType)->StructField`(pair: (String, DataType)): StructField =
     pair match {
-      case (name, dataType) => StructField(name, dataType, nullable = true)
+      case (name, dataType) => StructField(Name.ci(name), dataType, nullable = true)
     }
 
   implicit def `(Symbol,DataType)->StructField`(pair: (Symbol, DataType)): StructField =
     pair match {
-      case (name, dataType) => StructField(name.name, dataType, nullable = true)
+      case (name, dataType) =>
+        StructField(Name.ci(name.name), dataType, nullable = true)
     }
 
   implicit def `(String,FieldSpec)->StructField`(pair: (String, FieldSpec)): StructField =
     pair match {
-      case (name, fieldSpec) => StructField(name, fieldSpec)
+      case (name, fieldSpec) => StructField(Name.ci(name), fieldSpec)
     }
 
   implicit def `(Symbol,FieldSpec)->StructField`(pair: (Symbol, FieldSpec)): StructField =
     pair match {
-      case (name, fieldSpec) => StructField(name.name, fieldSpec)
+      case (name, fieldSpec) => StructField(Name.ci(name.name), fieldSpec)
     }
 }
 
@@ -110,17 +111,21 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
     field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionID())
   }
 
-  def rename(fieldNames: Seq[String]): StructType = {
+  def rename(fieldNames: Seq[Name]): StructType = {
     assert(fieldNames.length == fields.length)
     StructType(fields zip fieldNames map {
       case (field, name) => field.copy(name = name)
     })
   }
 
-  def rename(firstName: String, restNames: String*): StructType = this rename firstName +: restNames
+  def rename(firstName: String, restNames: String*): StructType =
+    this rename (firstName +: restNames map Name.ci)
 
   override def sql: String = {
-    val fieldsString = fields map (f => s"${quote(f.name)}: ${f.dataType.sql}") mkString ", "
+    val fieldsString = fields map { f =>
+      s"${quote(f.name.casePreserving)}: ${f.dataType.sql}"
+    } mkString ", "
+
     s"STRUCT<$fieldsString>"
   }
 }

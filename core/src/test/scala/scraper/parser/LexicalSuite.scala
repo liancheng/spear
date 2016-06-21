@@ -19,9 +19,9 @@ class LexicalSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("identifier") {
-    checkToken("id", testLexical.Identifier("id"))
-    checkToken("`id`", testLexical.Identifier("id"))
-    checkToken("`i d`", testLexical.Identifier("i d"))
-    checkToken("`i``d`", testLexical.Identifier("i`d"))
+    checkToken("id", testLexical.UnquotedIdentifier("id"))
+    checkToken("`id`", testLexical.QuotedIdentifier("id"))
+    checkToken("`i d`", testLexical.QuotedIdentifier("i d"))
+    checkToken("`i``d`", testLexical.QuotedIdentifier("i`d"))
   }
 }

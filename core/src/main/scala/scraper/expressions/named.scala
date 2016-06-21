@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.util.{Success, Try}
 
-import scraper.Row
+import scraper.{Name, Row}
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
@@ -14,7 +14,7 @@ import scraper.utils._
 case class ExpressionID(id: Long)
 
 trait NamedExpression extends Expression {
-  def name: String
+  def name: Name
 
   def expressionID: ExpressionID
 
@@ -32,7 +32,7 @@ object NamedExpression {
 
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
-  def unapply(e: NamedExpression): Option[(String, DataType)] = Some((e.name, e.dataType))
+  def unapply(e: NamedExpression): Option[(Name, DataType)] = Some((e.name, e.dataType))
 
   /**
    * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
@@ -48,7 +48,7 @@ object NamedExpression {
 
     override lazy val isNullable: Boolean = named.isNullable
 
-    override def sql: Try[String] = Try(named.name)
+    override def sql: Try[String] = Try(named.name.casePreserving)
   }
 
   object UnquotedName {
@@ -57,17 +57,18 @@ object NamedExpression {
   }
 }
 
-case class Star(qualifier: Option[String]) extends LeafExpression with UnresolvedNamedExpression {
-  override def name: String = throw new ExpressionUnresolvedException(this)
+case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedNamedExpression {
+  override def name: Name = throw new ExpressionUnresolvedException(this)
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override protected def template: String = (qualifier map quote).toSeq :+ "*" mkString "."
+  override protected def template: String =
+    (qualifier map (_.casePreserving) map quote).toSeq :+ "*" mkString "."
 }
 
 case class Alias(
   child: Expression,
-  name: String,
+  name: Name,
   override val expressionID: ExpressionID
 ) extends NamedExpression with UnaryExpression {
   override lazy val isFoldable: Boolean = false
@@ -82,9 +83,11 @@ case class Alias(
     UnresolvedAttribute(name)
   }
 
-  override def debugString: String = s"(${child.debugString} AS ${quote(name)}#${expressionID.id})"
+  override def debugString: String =
+    s"(${child.debugString} AS ${quote(name.casePreserving)}#${expressionID.id})"
 
-  override def sql: Try[String] = child.sql map (childSQL => s"$childSQL AS ${quote(name)}")
+  override def sql: Try[String] =
+    child.sql map (childSQL => s"$childSQL AS ${quote(name.casePreserving)}")
 
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
@@ -118,7 +121,7 @@ case class AutoAlias private (child: Expression)
   with UnresolvedNamedExpression
   with UnevaluableExpression {
 
-  override def name: String = throw new ExpressionUnresolvedException(this)
+  override def name: Name = throw new ExpressionUnresolvedException(this)
 
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
@@ -150,16 +153,19 @@ trait Attribute extends NamedExpression with LeafExpression {
   def ! : Attribute = withNullability(false)
 }
 
-case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
+case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   extends Attribute with UnresolvedNamedExpression {
 
-  override protected def template: String = (qualifier.toSeq :+ name) map quote mkString "."
+  override protected def template: String =
+    (qualifier.map(_.casePreserving).toSeq :+ name.casePreserving) map quote mkString "."
 
   override def withID(id: ExpressionID): Attribute = this
 
-  def qualifiedBy(qualifier: Option[String]): UnresolvedAttribute = copy(qualifier = qualifier)
+  def qualifiedBy(qualifier: Option[Name]): UnresolvedAttribute = copy(qualifier = qualifier)
 
-  def of(qualifier: String): UnresolvedAttribute = qualifiedBy(Some(qualifier))
+  def of(qualifier: Name): UnresolvedAttribute = qualifiedBy(Some(qualifier))
+
+  def of(qualifier: String): UnresolvedAttribute = of(Name.ci(qualifier))
 
   def of(qualifier: Symbol): UnresolvedAttribute = of(qualifier.name)
 
@@ -186,20 +192,20 @@ case class UnresolvedAttribute(name: String, qualifier: Option[String] = None)
 trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (isNullable) "?" else "!"
-    s"${quote(name)}:${dataType.sql}$nullability#${expressionID.id}"
+    s"${quote(name.casePreserving)}:${dataType.sql}$nullability#${expressionID.id}"
   }
 
-  override def sql: Try[String] = Success(s"${quote(name)}")
+  override def sql: Try[String] = Success(s"${quote(name.casePreserving)}")
 
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, isNullable)
 }
 
 case class AttributeRef(
-  name: String,
+  name: Name,
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID,
-  qualifier: Option[String] = None
+  qualifier: Option[Name] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
   /**
@@ -222,17 +228,23 @@ case class AttributeRef(
    */
   override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
 
-  override def debugString: String = ((qualifier.toSeq map quote) :+ super.debugString) mkString "."
+  override def debugString: String =
+    ((qualifier.map(_.casePreserving).toSeq map quote) :+ super.debugString) mkString "."
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
-  def qualifiedBy(qualifier: Option[String]): AttributeRef = copy(qualifier = qualifier)
+  def qualifiedBy(qualifier: Option[Name]): AttributeRef = copy(qualifier = qualifier)
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
-  def of(qualifier: String): AttributeRef = qualifiedBy(Some(qualifier))
+  def of(qualifier: Name): AttributeRef = qualifiedBy(Some(qualifier))
+
+  /**
+   * Returns a copy of this [[AttributeRef]] with given qualifier.
+   */
+  def of(qualifier: String): AttributeRef = of(Name.ci(qualifier))
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.
@@ -243,7 +255,7 @@ case class AttributeRef(
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
   extends NamedExpression with LeafExpression with NonSQLExpression {
 
-  override val name: String = s"input[$ordinal]"
+  override val name: Name = Name.ci(s"input[$ordinal]")
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 

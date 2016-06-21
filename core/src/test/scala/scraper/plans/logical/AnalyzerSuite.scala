@@ -3,6 +3,7 @@ package scraper.plans.logical
 import org.scalatest.BeforeAndAfterAll
 
 import scraper._
+import scraper.Name.{ci, cs}
 import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
@@ -31,7 +32,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private val relation = LocalRelation.empty(a, b)
 
   override protected def beforeAll(): Unit = {
-    catalog.registerRelation("t", relation)
+    catalog.registerRelation(ci("t"), relation)
   }
 
   testAlias('a + 1, "(a + 1)")
@@ -325,7 +326,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private def testAlias(expression: Expression, expectedAlias: String): Unit = {
     test(s"auto-alias resolution - $expression AS ${quote(expectedAlias)}") {
       val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
-      assert(actualAlias == expectedAlias)
+      assert(actualAlias == cs(expectedAlias))
     }
   }
 }
