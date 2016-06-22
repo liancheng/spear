@@ -121,7 +121,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
 
   override def sql: String = {
     val fieldsString = fields map { f =>
-      s"${quote(f.name.casePreserving)}: ${f.dataType.sql}"
+      s"${quote(f.name.toString)}: ${f.dataType.sql}"
     } mkString ", "
 
     s"STRUCT<$fieldsString>"

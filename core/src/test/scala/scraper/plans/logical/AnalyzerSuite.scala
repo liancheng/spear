@@ -3,7 +3,6 @@ package scraper.plans.logical
 import org.scalatest.BeforeAndAfterAll
 
 import scraper._
-import scraper.Name.{ci, cs}
 import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
@@ -36,6 +35,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   testAlias('a + 1, "(a + 1)")
+
+  // Case-insensitive name resolution
+  testAlias('B + 1, "(b + 1)")
 
   testAlias($"t.a" + 1, "(a + 1)")
 
@@ -323,10 +325,10 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)
 
-  private def testAlias(expression: Expression, expectedAlias: String): Unit = {
-    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias)}") {
+  private def testAlias(expression: Expression, expectedAlias: Name): Unit = {
+    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias.toString)}") {
       val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
-      assert(actualAlias == cs(expectedAlias))
+      assert(actualAlias == expectedAlias)
     }
   }
 }

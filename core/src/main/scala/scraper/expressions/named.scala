@@ -48,7 +48,7 @@ object NamedExpression {
 
     override lazy val isNullable: Boolean = named.isNullable
 
-    override def sql: Try[String] = Try(named.name.casePreserving)
+    override def sql: Try[String] = Try(named.name.toString)
   }
 
   object UnquotedName {
@@ -63,7 +63,7 @@ case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedN
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override protected def template: String =
-    (qualifier map (_.casePreserving) map quote).toSeq :+ "*" mkString "."
+    (qualifier map (_.toString) map quote).toSeq :+ "*" mkString "."
 }
 
 case class Alias(
@@ -84,10 +84,10 @@ case class Alias(
   }
 
   override def debugString: String =
-    s"(${child.debugString} AS ${quote(name.casePreserving)}#${expressionID.id})"
+    s"(${child.debugString} AS ${quote(name.toString)}#${expressionID.id})"
 
   override def sql: Try[String] =
-    child.sql map (childSQL => s"$childSQL AS ${quote(name.casePreserving)}")
+    child.sql map (childSQL => s"$childSQL AS ${quote(name.toString)}")
 
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
@@ -157,7 +157,7 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   extends Attribute with UnresolvedNamedExpression {
 
   override protected def template: String =
-    (qualifier.map(_.casePreserving).toSeq :+ name.casePreserving) map quote mkString "."
+    (qualifier.map(_.toString).toSeq :+ name.toString) map quote mkString "."
 
   override def withID(id: ExpressionID): Attribute = this
 
@@ -188,10 +188,10 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
 trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (isNullable) "?" else "!"
-    s"${quote(name.casePreserving)}:${dataType.sql}$nullability#${expressionID.id}"
+    s"${quote(name.toString)}:${dataType.sql}$nullability#${expressionID.id}"
   }
 
-  override def sql: Try[String] = Success(s"${quote(name.casePreserving)}")
+  override def sql: Try[String] = Success(s"${quote(name.toString)}")
 
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, isNullable)
 }
@@ -225,7 +225,7 @@ case class AttributeRef(
   override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
 
   override def debugString: String =
-    ((qualifier.map(_.casePreserving).toSeq map quote) :+ super.debugString) mkString "."
+    ((qualifier.map(_.toString).toSeq map quote) :+ super.debugString) mkString "."
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.

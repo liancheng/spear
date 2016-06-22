@@ -9,20 +9,7 @@ trait Name {
 
   def caseInsensitive: Name
 
-  override def equals(other: Any): Boolean = other match {
-    case that: Name if that.isCaseSensitive =>
-      that.casePreserving == this.casePreserving
-
-    case that: Name if !that.isCaseSensitive =>
-      that.casePreserving.compareToIgnoreCase(this.casePreserving) == 0
-
-    case _ =>
-      false
-  }
-
   override def toString: String = casePreserving
-
-  override def hashCode(): Int = isCaseSensitive.hashCode() ^ casePreserving.hashCode
 }
 
 object Name {
@@ -37,6 +24,15 @@ final class CaseSensitiveName(val casePreserving: String) extends Name {
   override def caseSensitive: Name = this
 
   override lazy val caseInsensitive: Name = new CaseInsensitiveName(casePreserving)
+
+  override def toString: String = casePreserving
+
+  override def hashCode(): Int = casePreserving.hashCode
+
+  override def equals(other: Any): Boolean = other match {
+    case that: Name => this.casePreserving == that.casePreserving
+    case _          => false
+  }
 }
 
 final class CaseInsensitiveName(val casePreserving: String) extends Name {
@@ -45,4 +41,19 @@ final class CaseInsensitiveName(val casePreserving: String) extends Name {
   override lazy val caseSensitive: Name = new CaseSensitiveName(casePreserving)
 
   override def caseInsensitive: Name = this
+
+  override def toString: String = casePreserving.toLowerCase
+
+  override def hashCode(): Int = casePreserving.hashCode
+
+  override def equals(other: Any): Boolean = other match {
+    case that: CaseInsensitiveName =>
+      this.casePreserving.compareToIgnoreCase(that.casePreserving) == 0
+
+    case that: CaseSensitiveName =>
+      this.casePreserving == that.casePreserving
+
+    case _ =>
+      false
+  }
 }
