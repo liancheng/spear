@@ -13,9 +13,9 @@ trait Name {
 }
 
 object Name {
-  def cs(name: String): CaseSensitiveName = new CaseSensitiveName(name)
+  def caseSensitive(name: String): CaseSensitiveName = new CaseSensitiveName(name)
 
-  def ci(name: String): CaseInsensitiveName = new CaseInsensitiveName(name)
+  def caseInsensitive(name: String): CaseInsensitiveName = new CaseInsensitiveName(name)
 }
 
 final class CaseSensitiveName(val casePreserving: String) extends Name {
@@ -44,7 +44,7 @@ final class CaseInsensitiveName(val casePreserving: String) extends Name {
 
   override def toString: String = casePreserving.toLowerCase
 
-  override def hashCode(): Int = casePreserving.hashCode
+  override def hashCode(): Int = casePreserving.toLowerCase.hashCode
 
   override def equals(other: Any): Boolean = other match {
     case that: CaseInsensitiveName =>

@@ -1,7 +1,6 @@
 package scraper.plans.logical
 
-import scraper.{Catalog, Name}
-import scraper.Name.ci
+import scraper._
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
@@ -229,7 +228,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object ResolveFunctions extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci("count") =>
+      case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci"count" =>
         Count(1)
 
       case UnresolvedFunction(_, (_: Star) :: Nil, true) =>

@@ -8,7 +8,7 @@ import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
 import scraper.Name
-import scraper.Name.{ci, cs}
+import scraper.Name.{caseInsensitive, caseSensitive}
 import scraper.config.Settings
 import scraper.exceptions.ParsingException
 import scraper.expressions._
@@ -51,12 +51,12 @@ abstract class TokenParser[T] extends StdTokenParsers {
 
   def quotedIdent: Parser[Name] =
     elem("quoted identifier", _.isInstanceOf[QuotedIdentifier]) ^^ {
-      token => cs(token.chars)
+      token => caseSensitive(token.chars)
     }
 
   def unquotedIdent: Parser[Name] =
     elem("unquoted identifier", _.isInstanceOf[UnquotedIdentifier]) ^^ {
-      token => ci(token.chars)
+      token => caseInsensitive(token.chars)
     }
 
   protected case class Keyword(name: String) {

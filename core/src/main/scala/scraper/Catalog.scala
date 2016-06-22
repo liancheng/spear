@@ -3,6 +3,7 @@ package scraper
 import scala.collection.mutable
 import scala.language.existentials
 
+import scraper.Name.caseInsensitive
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlan
@@ -27,7 +28,7 @@ class InMemoryCatalog extends Catalog {
       functions.getOrElse(name, throw new FunctionNotFoundException(name))
 
     override def registerFunction(fn: FunctionInfo): Unit =
-      functions(Name.ci(fn.name)) = fn
+      functions(caseInsensitive(fn.name)) = fn
 
     override def removeFunction(name: Name): Unit = functions -= name
   }

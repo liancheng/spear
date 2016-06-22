@@ -4,7 +4,7 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 import org.scalatest.BeforeAndAfterAll
 
-import scraper.Name.ci
+import scraper.Name.caseInsensitive
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
