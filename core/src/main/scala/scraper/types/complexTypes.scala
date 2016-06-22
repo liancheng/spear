@@ -67,23 +67,22 @@ object StructField {
 
   implicit def `(String,DataType)->StructField`(pair: (String, DataType)): StructField =
     pair match {
-      case (name, dataType) => StructField(Name.ci(name), dataType, nullable = true)
+      case (name, dataType) => StructField(name, dataType, nullable = true)
     }
 
   implicit def `(Symbol,DataType)->StructField`(pair: (Symbol, DataType)): StructField =
     pair match {
-      case (name, dataType) =>
-        StructField(Name.ci(name.name), dataType, nullable = true)
+      case (name, dataType) => StructField(name, dataType, nullable = true)
     }
 
   implicit def `(String,FieldSpec)->StructField`(pair: (String, FieldSpec)): StructField =
     pair match {
-      case (name, fieldSpec) => StructField(Name.ci(name), fieldSpec)
+      case (name, fieldSpec) => StructField(name, fieldSpec)
     }
 
   implicit def `(Symbol,FieldSpec)->StructField`(pair: (Symbol, FieldSpec)): StructField =
     pair match {
-      case (name, fieldSpec) => StructField(Name.ci(name.name), fieldSpec)
+      case (name, fieldSpec) => StructField(name, fieldSpec)
     }
 }
 
@@ -118,8 +117,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
     })
   }
 
-  def rename(firstName: String, restNames: String*): StructType =
-    this rename (firstName +: restNames map Name.ci)
+  def rename(firstName: Name, restNames: Name*): StructType = this rename (firstName +: restNames)
 
   override def sql: String = {
     val fieldsString = fields map { f =>

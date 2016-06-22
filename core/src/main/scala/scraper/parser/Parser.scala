@@ -77,7 +77,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
 class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   def parseAttribute(input: String): UnresolvedAttribute = synchronized {
     val start = attribute | star ^^ {
-      case Star(qualifier) => UnresolvedAttribute(cs("*"), qualifier)
+      case Star(qualifier) => UnresolvedAttribute("*", qualifier)
     }
 
     phrase(start)(new lexical.Scanner(input)) match {

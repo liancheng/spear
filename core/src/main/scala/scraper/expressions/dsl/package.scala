@@ -26,7 +26,7 @@ package object dsl {
   implicit def `String->Literal`(value: String): Literal = Literal(value, StringType)
 
   implicit def `Symbol->UnresolvedAttribute`(name: Symbol): UnresolvedAttribute =
-    UnresolvedAttribute(Name.ci(name.name))
+    UnresolvedAttribute(name)
 
   implicit def `Name->UnresolvedAttribute`(name: Name): UnresolvedAttribute =
     UnresolvedAttribute(name)
@@ -79,20 +79,8 @@ package object dsl {
   def function(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, distinct = false)
 
-  def function(name: String, args: Expression*): UnresolvedFunction =
-    function(Name.cs(name), args: _*)
-
-  def function(name: Symbol, args: Expression*): UnresolvedFunction =
-    function(Name.ci(name.name), args: _*)
-
   def distinctFunction(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, distinct = true)
-
-  def distinctFunction(name: String, args: Expression*): UnresolvedFunction =
-    distinctFunction(Name.cs(name), args: _*)
-
-  def distinctFunction(name: Symbol, args: Expression*): UnresolvedFunction =
-    distinctFunction(Name.ci(name.name), args: _*)
 
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)

@@ -1,7 +1,6 @@
 package scraper.expressions
 
 import scraper.Name
-import scraper.Name.ci
 import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
@@ -25,14 +24,14 @@ object GeneratedNamedExpression {
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
-    override def name: Name = ci("group")
+    override def name: Name = 'group
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override def name: Name = ci("agg")
+    override def name: Name = 'agg
   }
 }
 

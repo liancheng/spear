@@ -53,10 +53,6 @@ trait Context {
   def table(name: Name): DataFrame =
     new DataFrame(catalog lookupRelation name, this)
 
-  def table(name: String): DataFrame = table(Name.cs(name))
-
-  def table(name: Symbol): DataFrame = table(Name.ci(name.name))
-
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(LocalRelation(data), this)
 

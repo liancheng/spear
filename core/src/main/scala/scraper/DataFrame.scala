@@ -27,10 +27,6 @@ class DataFrame(val queryExecution: QueryExecution) {
       throw new ResolutionFailureException(s"Failed to resolve column name $column")
     }
 
-  def apply(column: String): Attribute = apply(Name.cs(column))
-
-  def apply(column: Symbol): Attribute = apply(Name.ci(column.name))
-
   def rename(newNames: String*): DataFrame = {
     assert(newNames.length == schema.fields.length)
     val oldNames = schema.fields map (_.name)
@@ -94,10 +90,6 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def asTable(tableName: Name): Unit =
     context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
-
-  def asTable(tableName: String): Unit = asTable(Name.cs(tableName))
-
-  def asTable(tableName: Symbol): Unit = asTable(Name.ci(tableName.name))
 
   def toSeq: Seq[Row] = iterator.toSeq
 

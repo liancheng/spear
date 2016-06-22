@@ -1,6 +1,7 @@
 package scraper.plans.logical
 
 import scraper.{Catalog, Name}
+import scraper.Name.ci
 import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
@@ -213,11 +214,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case AutoAlias(Resolved(child: Expression)) =>
         // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
-        val newChild = child.transformDown {
+        val alias = child.transformDown {
           case a: AttributeRef                  => UnquotedName(a)
           case Literal(lit: String, StringType) => UnquotedName(lit)
-        }
-        child as (newChild.sql getOrElse AnonymousColumnName)
+        }.sql getOrElse AnonymousColumnName
+
+        child as alias
     }
   }
 
@@ -226,8 +228,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * up function names from the [[Catalog]].
    */
   object ResolveFunctions extends Rule[LogicalPlan] {
-    import scraper.Name._
-
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci("count") =>
         Count(1)

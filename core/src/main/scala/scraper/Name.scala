@@ -26,9 +26,9 @@ trait Name {
 }
 
 object Name {
-  def cs(name: String): Name = new CaseSensitiveName(name)
+  def cs(name: String): CaseSensitiveName = new CaseSensitiveName(name)
 
-  def ci(name: String): Name = new CaseInsensitiveName(name)
+  def ci(name: String): CaseInsensitiveName = new CaseInsensitiveName(name)
 }
 
 final class CaseSensitiveName(val casePreserving: String) extends Name {

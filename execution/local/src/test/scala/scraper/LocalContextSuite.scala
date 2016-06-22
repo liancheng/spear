@@ -2,7 +2,6 @@ package scraper
 
 import scraper.Context._
 import scraper.LocalContextSuite.Person
-import scraper.Name.ci
 import scraper.exceptions.TableNotFoundException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -46,11 +45,11 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("table") {
-    withTable(ci("t")) {
-      context range 2 asTable "t"
+    withTable('t) {
+      context range 2 asTable 't
 
       checkDataFrame(
-        context table "t",
+        context table 't,
         Row(0), Row(1)
       )
     }
@@ -210,7 +209,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("rand") {
-    withTable(ci("t")) {
+    withTable('t) {
       context range 10 asTable 't
       """SELECT *
         |FROM (

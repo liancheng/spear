@@ -39,10 +39,6 @@ package object dsl {
 
     def subquery(name: Name): Subquery = Subquery(plan, name)
 
-    def subquery(name: String): Subquery = plan subquery Name.cs(name)
-
-    def subquery(name: Symbol): Subquery = plan subquery Name.ci(name.name)
-
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
     def leftSemiJoin(that: LogicalPlan): Join = Join(plan, that, LeftSemi, None)
@@ -102,16 +98,12 @@ package object dsl {
 
   def table(name: Name): UnresolvedRelation = UnresolvedRelation(name)
 
-  def table(name: String): UnresolvedRelation = table(Name.cs(name))
-
-  def table(name: Symbol): UnresolvedRelation = table(Name.ci(name.name))
-
   def values(expressions: Seq[Expression]): Project = SingleRowRelation select expressions
 
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
   def let(cteRelation: (Symbol, LogicalPlan))(body: LogicalPlan): With = {
     val (name, value) = cteRelation
-    With(body, Name.ci(name.name), value)
+    With(body, name, value)
   }
 }

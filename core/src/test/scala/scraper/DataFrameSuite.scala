@@ -22,8 +22,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   private val r2 = LocalRelation(Nil, 'a.int.! :: 'b.string.? :: Nil)
 
   override protected def beforeAll(): Unit = {
-    context.catalog.registerRelation(ci("t"), r1)
-    context.catalog.registerRelation(ci("s"), r2)
+    context.catalog.registerRelation('t, r1)
+    context.catalog.registerRelation('s, r2)
   }
 
   test("column") {
@@ -163,7 +163,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   }
 
   test("asTable") {
-    withTable(ci("reverse")) {
+    withTable('reverse) {
       val df = table('t) orderBy 'a.desc
       df asTable 'reverse
 

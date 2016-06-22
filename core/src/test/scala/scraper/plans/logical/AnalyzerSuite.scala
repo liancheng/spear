@@ -32,7 +32,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private val relation = LocalRelation.empty(a, b)
 
   override protected def beforeAll(): Unit = {
-    catalog.registerRelation(ci("t"), relation)
+    catalog.registerRelation('t, relation)
   }
 
   testAlias('a + 1, "(a + 1)")

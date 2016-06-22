@@ -14,10 +14,6 @@ trait ExpressionDSL
 
   def as(alias: Name): Alias = Alias(this, alias, newExpressionID())
 
-  def as(alias: String): Alias = as(Name.cs(alias))
-
-  def as(alias: Symbol): Alias = as(Name.ci(alias.name))
-
   def cast(dataType: DataType): Cast = Cast(this, dataType)
 
   def isNull: IsNull = IsNull(this)

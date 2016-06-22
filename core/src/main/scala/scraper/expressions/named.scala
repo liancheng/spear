@@ -129,7 +129,7 @@ case class AutoAlias private (child: Expression)
 }
 
 object AutoAlias {
-  val AnonymousColumnName = "?column?"
+  val AnonymousColumnName: String = "?column?"
 
   def named(child: Expression): NamedExpression = child match {
     case e: NamedExpression => e
@@ -164,10 +164,6 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   def qualifiedBy(qualifier: Option[Name]): UnresolvedAttribute = copy(qualifier = qualifier)
 
   def of(qualifier: Name): UnresolvedAttribute = qualifiedBy(Some(qualifier))
-
-  def of(qualifier: String): UnresolvedAttribute = of(Name.ci(qualifier))
-
-  def of(qualifier: Symbol): UnresolvedAttribute = of(qualifier.name)
 
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, isNullable = true, newExpressionID())
@@ -240,16 +236,6 @@ case class AttributeRef(
    * Returns a copy of this [[AttributeRef]] with given qualifier.
    */
   def of(qualifier: Name): AttributeRef = qualifiedBy(Some(qualifier))
-
-  /**
-   * Returns a copy of this [[AttributeRef]] with given qualifier.
-   */
-  def of(qualifier: String): AttributeRef = of(Name.ci(qualifier))
-
-  /**
-   * Returns a copy of this [[AttributeRef]] with given qualifier.
-   */
-  def of(qualifier: Symbol): AttributeRef = of(qualifier.name)
 }
 
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
