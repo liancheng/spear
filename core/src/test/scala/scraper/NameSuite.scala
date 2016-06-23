@@ -9,13 +9,13 @@ import org.scalatest.prop.Checkers
 import scraper.Name.{caseInsensitive, caseSensitive}
 
 class NameSuite extends LoggingFunSuite with Checkers {
-  test("comparison") {
+  test("equality") {
     check(all(
       forAll(alphaStr) { name: String =>
         "case-sensitive v.s. case-sensitive" |: {
           val lhs = caseSensitive(name)
           val rhs = caseSensitive(name)
-          lhs == rhs && lhs.## == rhs.##
+          lhs == rhs
         }
       },
 
@@ -23,7 +23,7 @@ class NameSuite extends LoggingFunSuite with Checkers {
         "case-sensitive v.s. case-insensitive" |: {
           val lhs = caseSensitive(name)
           val rhs = caseInsensitive(name)
-          lhs == rhs && lhs.## == rhs.##
+          lhs == rhs
         }
       },
 
@@ -31,7 +31,7 @@ class NameSuite extends LoggingFunSuite with Checkers {
         "case-insensitive v.s. case-sensitive" |: {
           val lhs = caseInsensitive(name)
           val rhs = caseSensitive(name)
-          lhs == rhs && lhs.## == rhs.##
+          lhs == rhs
         }
       },
 
@@ -39,7 +39,7 @@ class NameSuite extends LoggingFunSuite with Checkers {
         "case-insensitive v.s. case-insensitive (in the same case)" |: {
           val lhs = caseInsensitive(name)
           val rhs = caseInsensitive(name)
-          lhs == rhs && lhs.## == rhs.##
+          lhs == rhs
         }
       },
 
@@ -47,7 +47,7 @@ class NameSuite extends LoggingFunSuite with Checkers {
         "case-insensitive v.s. case-insensitive (in different cases)" |: {
           val lhs = caseInsensitive(name)
           val rhs = caseInsensitive(name.toLowerCase)
-          lhs == rhs && lhs.## == rhs.##
+          lhs == rhs
         }
       }
     ))
