@@ -8,8 +8,7 @@ class Name(private val impl: Name.CaseSensitivityAware) {
   override def toString: String =
     if (isCaseSensitive) casePreserving else casePreserving.toLowerCase
 
-  override def hashCode(): Int =
-    if (isCaseSensitive) casePreserving.hashCode else casePreserving.toLowerCase.hashCode
+  override def hashCode(): Int = casePreserving.toLowerCase.hashCode
 
   override def equals(other: Any): Boolean = other match {
     case that: Name if this.isCaseSensitive || that.isCaseSensitive =>
@@ -37,6 +36,9 @@ object Name {
   private case class CaseInsensitive(casePreserving: String) extends CaseSensitivityAware {
     override def isCaseSensitive: Boolean = false
   }
+
+  def apply(name: String, isCaseSensitive: Boolean): Name =
+    if (isCaseSensitive) caseSensitive(name) else caseInsensitive(name)
 
   def caseSensitive(name: String): Name = new Name(CaseSensitive(name))
 
