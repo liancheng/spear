@@ -12,43 +12,49 @@ class NameSuite extends LoggingFunSuite with Checkers {
   test("equality") {
     check(all(
       forAll(alphaStr) { name: String =>
-        "case-sensitive v.s. case-sensitive" |: {
-          val lhs = caseSensitive(name)
-          val rhs = caseSensitive(name)
-          lhs == rhs
+        (name != name.toLowerCase) ==> {
+          "inequality: case-insensitive v.s. case-sensitive" |:
+            caseInsensitive(name.toLowerCase) != caseSensitive(name)
         }
       },
 
       forAll(alphaStr) { name: String =>
-        "case-sensitive v.s. case-insensitive" |: {
-          val lhs = caseSensitive(name)
-          val rhs = caseInsensitive(name)
-          lhs == rhs
+        (name != name.toLowerCase) ==> {
+          "inequality: case-sensitive v.s. case-insensitive" |:
+            caseSensitive(name.toLowerCase) != caseInsensitive(name)
         }
       },
 
       forAll(alphaStr) { name: String =>
-        "case-insensitive v.s. case-sensitive" |: {
-          val lhs = caseInsensitive(name)
-          val rhs = caseSensitive(name)
-          lhs == rhs
+        (name != name.toLowerCase) ==> {
+          "inequality: case-sensitive v.s. case-sensitive" |:
+            caseSensitive(name.toLowerCase) != caseSensitive(name)
         }
       },
 
       forAll(alphaStr) { name: String =>
-        "case-insensitive v.s. case-insensitive (in the same case)" |: {
-          val lhs = caseInsensitive(name)
-          val rhs = caseInsensitive(name)
-          lhs == rhs
-        }
+        "equality: case-sensitive v.s. case-sensitive" |:
+          caseSensitive(name) == caseSensitive(name)
       },
 
       forAll(alphaStr) { name: String =>
-        "case-insensitive v.s. case-insensitive (in different cases)" |: {
-          val lhs = caseInsensitive(name)
-          val rhs = caseInsensitive(name.toLowerCase)
-          lhs == rhs
-        }
+        "equality: case-sensitive v.s. case-insensitive" |:
+          caseSensitive(name) == caseInsensitive(name)
+      },
+
+      forAll(alphaStr) { name: String =>
+        "equality: case-insensitive v.s. case-sensitive" |:
+          caseInsensitive(name) == caseSensitive(name)
+      },
+
+      forAll(alphaStr) { name: String =>
+        "equality: case-insensitive v.s. case-insensitive (in the same case)" |:
+          caseInsensitive(name) == caseInsensitive(name)
+      },
+
+      forAll(alphaStr) { name: String =>
+        "equality: case-insensitive v.s. case-insensitive (in different cases)" |:
+          caseInsensitive(name) == caseInsensitive(name.toLowerCase)
       }
     ))
   }
