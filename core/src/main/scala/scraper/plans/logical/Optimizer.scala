@@ -17,11 +17,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
       FoldConstants,
-      FoldConstantFilters,
       FoldLogicalPredicates,
-
+      EliminateConstantFilters,
       CNFConversion,
-      EliminateCommonPredicates,
 
       ReduceAliases,
       ReduceCasts,
@@ -34,8 +32,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
       PushFiltersThroughProjects,
       PushFiltersThroughJoins,
       PushFiltersThroughAggregates,
-      PushProjectsThroughLimits,
-      PushLimitsThroughUnions
+      PushProjectsThroughLimits
     ))
   )
 
@@ -61,7 +58,7 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
 
 object Optimizer {
   /**
-   * This rule finds all foldable expressions and evaluate them to literals.
+   * This rule finds all foldable expressions and evaluates them into literals.
    */
   object FoldConstants extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
@@ -92,7 +89,7 @@ object Optimizer {
   }
 
   /**
-   * This rule eliminates unnecessary [[expressions.Not Not]] operators.
+   * This rule reduces unnecessary [[expressions.Not Not]] operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
@@ -116,7 +113,7 @@ object Optimizer {
   }
 
   /**
-   * This rule eliminates unnecessary casts.  For example, implicit casts introduced by the
+   * This rule reduces unnecessary casts. For example, implicit casts introduced by the
    * [[Analyzer]] may produce redundant casts.
    */
   object ReduceCasts extends Rule[LogicalPlan] {
@@ -127,7 +124,7 @@ object Optimizer {
   }
 
   /**
-   * This rule reduces adjacent projects.  Aliases are also inlined/substituted when possible.
+   * This rule merges adjacent projects. Aliases are also inlined/substituted when possible.
    */
   object MergeProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -146,21 +143,21 @@ object Optimizer {
   }
 
   /**
-   * This rule reduces adjacent aliases.
+   * This rule reduces unnecessary aliases.
    */
   object ReduceAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Project projectList =>
-        child select (projectList map reduceNonTopLevelAliases)
+        child select (projectList map eliminateNonTopLevelAliases)
 
       case Aggregate(child, keys, functions) =>
-        child resolvedGroupBy keys agg (functions map reduceNonTopLevelAliases)
+        child resolvedGroupBy keys agg (functions map eliminateNonTopLevelAliases)
 
       case plan =>
         plan.transformExpressionsUp { case a: Alias => a.child }
     }
 
-    private def reduceNonTopLevelAliases[T <: NamedExpression](expression: T): T =
+    private def eliminateNonTopLevelAliases[T <: NamedExpression](expression: T): T =
       expression.transformChildrenUp { case a: Alias => a.child }.asInstanceOf[T]
   }
 
@@ -175,16 +172,8 @@ object Optimizer {
    */
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      // TODO CNF budget
+      // TODO CNF budget control
       case plan Filter condition => plan filter toCNF(condition)
-    }
-  }
-
-  object EliminateCommonPredicates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case lhs && rhs if lhs == rhs            => lhs
-      case lhs || rhs if lhs == rhs            => lhs
-      case If(condition, yes, no) if yes == no => Coalesce(condition, yes)
     }
   }
 
@@ -197,7 +186,10 @@ object Optimizer {
     }
   }
 
-  object FoldConstantFilters extends Rule[LogicalPlan] {
+  /**
+   * This rule eliminates [[logical.Filter Filter]]s with constant predicates.
+   */
+  object EliminateConstantFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Filter True  => plan
       case plan Filter False => LocalRelation(Nil, plan.output)
@@ -294,7 +286,7 @@ object Optimizer {
 
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Limit m => Limit(plan, Least(n, m))
+      case plan Limit n Limit m => plan limit Least(n, m)
     }
   }
 
