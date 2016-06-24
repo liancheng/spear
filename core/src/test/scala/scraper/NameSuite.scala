@@ -10,53 +10,38 @@ import scraper.Name.{caseInsensitive, caseSensitive}
 
 class NameSuite extends LoggingFunSuite with Checkers {
   test("equality") {
-    check(all(
+    check {
       forAll(alphaStr) { name =>
-        (name != name.toLowerCase) ==> {
-          "inequality: case-insensitive v.s. case-sensitive" |:
-            caseInsensitive(name.toLowerCase) != caseSensitive(name)
-        }
-      },
+        all(
+          (name != name.toLowerCase) ==>
+            all(
+              "inequality: case-insensitive v.s. case-sensitive" |:
+                caseInsensitive(name.toLowerCase) != caseSensitive(name),
 
-      forAll(alphaStr) { name =>
-        (name != name.toLowerCase) ==> {
-          "inequality: case-sensitive v.s. case-insensitive" |:
-            caseSensitive(name.toLowerCase) != caseInsensitive(name)
-        }
-      },
+              "inequality: case-sensitive v.s. case-insensitive" |:
+                caseSensitive(name.toLowerCase) != caseInsensitive(name),
 
-      forAll(alphaStr) { name =>
-        (name != name.toLowerCase) ==> {
-          "inequality: case-sensitive v.s. case-sensitive" |:
-            caseSensitive(name.toLowerCase) != caseSensitive(name)
-        }
-      },
+              "inequality: case-sensitive v.s. case-sensitive" |:
+                caseSensitive(name.toLowerCase) != caseSensitive(name)
+            ),
 
-      forAll(alphaStr) { name =>
-        "equality: case-sensitive v.s. case-sensitive" |:
-          caseSensitive(name) == caseSensitive(name)
-      },
+          "equality: case-sensitive v.s. case-sensitive" |:
+            caseSensitive(name) == caseSensitive(name),
 
-      forAll(alphaStr) { name =>
-        "equality: case-sensitive v.s. case-insensitive" |:
-          caseSensitive(name) == caseInsensitive(name)
-      },
+          "equality: case-sensitive v.s. case-insensitive" |:
+            caseSensitive(name) == caseInsensitive(name),
 
-      forAll(alphaStr) { name =>
-        "equality: case-insensitive v.s. case-sensitive" |:
-          caseInsensitive(name) == caseSensitive(name)
-      },
+          "equality: case-insensitive v.s. case-sensitive" |:
+            caseInsensitive(name) == caseSensitive(name),
 
-      forAll(alphaStr) { name =>
-        "equality: case-insensitive v.s. case-insensitive (in the same case)" |:
-          caseInsensitive(name) == caseInsensitive(name)
-      },
+          "equality: case-insensitive v.s. case-insensitive (in the same case)" |:
+            caseInsensitive(name) == caseInsensitive(name),
 
-      forAll(alphaStr) { name =>
-        "equality: case-insensitive v.s. case-insensitive (in different cases)" |:
-          caseInsensitive(name) == caseInsensitive(name.toLowerCase)
+          "equality: case-insensitive v.s. case-insensitive (in different cases)" |:
+            caseInsensitive(name) == caseInsensitive(name.toLowerCase)
+        )
       }
-    ))
+    }
   }
 
   test("hashCode and equals contract") {
