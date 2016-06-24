@@ -44,7 +44,7 @@ package object dsl {
 
   private[scraper] object && extends BinaryOperatorPattern[And]
 
-  private[scraper] object =:= extends BinaryOperatorPattern[Eq]
+  private[scraper] object === extends BinaryOperatorPattern[Eq]
 
   private[scraper] object =/= extends BinaryOperatorPattern[NotEq]
 

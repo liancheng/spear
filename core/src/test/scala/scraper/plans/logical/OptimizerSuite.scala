@@ -13,7 +13,7 @@ import scraper.expressions._
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions.dsl._
 import scraper.generators.expressions._
-import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters}
+import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters, ReduceNegations}
 import scraper.plans.logical.dsl._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
@@ -68,6 +68,16 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
       val optimized = optimizer(relation filter p1 filter p2)
       val Seq(condition) = optimized.collect { case f: Filter => f.condition }
       condition == (p1 && p2)
+    }
+  }
+
+  testRule(ReduceNegations, FixedPoint.Unlimited) { optimizer =>
+    implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
+
+    check { (p1: Expression, p2: Expression) =>
+      val optimized = optimizer(relation filter p1)
+      val Seq(condition) = optimized.collect { case f: Filter => f.condition }
+      condition.collectFirst { case _: Not => () }.isEmpty
     }
   }
 }

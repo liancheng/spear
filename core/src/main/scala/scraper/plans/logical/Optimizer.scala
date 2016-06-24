@@ -93,8 +93,11 @@ object Optimizer {
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+      case !(True)               => False
+      case !(False)              => True
+
       case !(!(child))           => child
-      case !(lhs =:= rhs)        => lhs =/= rhs
+      case !(lhs === rhs)        => lhs =/= rhs
       case !(lhs =/= rhs)        => lhs === rhs
 
       case !(lhs > rhs)          => lhs <= rhs
@@ -103,6 +106,9 @@ object Optimizer {
       case !(lhs <= rhs)         => lhs > rhs
 
       case If(!(c), t, f)        => If(c, f, t)
+
+      case !(a && b)             => !a || !b
+      case !(a || b)             => !a && !b
 
       case a && !(b) if a same b => False
       case a || !(b) if a same b => True
