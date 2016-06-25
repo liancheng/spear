@@ -50,9 +50,8 @@ trait Context {
 
   def q(query: String): DataFrame = new DataFrame(parse(query), this)
 
-  def table(name: String): DataFrame = new DataFrame(catalog lookupRelation name, this)
-
-  def table(name: Symbol): DataFrame = table(name.name)
+  def table(name: Name): DataFrame =
+    new DataFrame(catalog lookupRelation name, this)
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(LocalRelation(data), this)

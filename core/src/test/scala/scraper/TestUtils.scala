@@ -189,10 +189,10 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  def withTable(context: Context, name: String)(f: => Unit): Unit = try f finally {
+  def withTable(context: Context, name: Name)(f: => Unit): Unit = try f finally {
     context.catalog.removeRelation(name)
   }
 
-  def withTable(name: String)(f: => Unit)(implicit context: Context): Unit =
+  def withTable(name: Name)(f: => Unit)(implicit context: Context): Unit =
     withTable(context, name)(f)
 }

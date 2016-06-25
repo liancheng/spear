@@ -25,7 +25,7 @@ object FunctionInfo {
 trait FunctionRegistry {
   def registerFunction(fn: FunctionInfo): Unit
 
-  def removeFunction(name: String): Unit
+  def removeFunction(name: Name): Unit
 
-  def lookupFunction(name: String): FunctionInfo
+  def lookupFunction(name: Name): FunctionInfo
 }

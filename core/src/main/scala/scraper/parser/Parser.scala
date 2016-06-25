@@ -7,6 +7,8 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
+import scraper.Name
+import scraper.Name.{caseInsensitive, caseSensitive}
 import scraper.config.Settings
 import scraper.exceptions.ParsingException
 import scraper.expressions._
@@ -20,12 +22,42 @@ trait Tokens extends StdTokens {
   case class FloatLit(chars: String) extends Token {
     override def toString: String = chars
   }
+
+  case class UnquotedIdentifier(chars: String) extends Token {
+    override def toString: String = chars
+  }
+
+  case class QuotedIdentifier(chars: String) extends Token {
+    override def toString: String = chars
+  }
 }
 
 abstract class TokenParser[T] extends StdTokenParsers {
   override type Tokens = Lexical
 
-  private val keywords = mutable.Set.empty[String]
+  import lexical.{FloatLit, QuotedIdentifier, UnquotedIdentifier}
+
+  override lazy val lexical: Tokens = new Lexical(keywords.toSet)
+
+  def parse(input: String): T = synchronized {
+    phrase(start)(new lexical.Scanner(input)) match {
+      case Success(plan, _) => plan
+      case failureOrError   => throw new ParsingException(failureOrError.toString)
+    }
+  }
+
+  def floatLit: Parser[String] =
+    elem("float", _.isInstanceOf[FloatLit]) ^^ (_.chars)
+
+  def quotedIdent: Parser[Name] =
+    elem("quoted identifier", _.isInstanceOf[QuotedIdentifier]) ^^ {
+      token => caseSensitive(token.chars)
+    }
+
+  def unquotedIdent: Parser[Name] =
+    elem("unquoted identifier", _.isInstanceOf[UnquotedIdentifier]) ^^ {
+      token => caseInsensitive(token.chars)
+    }
 
   protected case class Keyword(name: String) {
     keywords += normalized
@@ -35,18 +67,11 @@ abstract class TokenParser[T] extends StdTokenParsers {
     def asParser: Parser[String] = normalized
   }
 
-  override lazy val lexical: Tokens = new Lexical(keywords.toSet)
+  protected def start: Parser[T]
 
   protected implicit def `Keyword->Parser[String]`(k: Keyword): Parser[String] = k.asParser
 
-  def parse(input: String): T = synchronized {
-    phrase(start)(new lexical.Scanner(input)) match {
-      case Success(plan, _) => plan
-      case failureOrError   => throw new ParsingException(failureOrError.toString)
-    }
-  }
-
-  protected def start: Parser[T]
+  private val keywords = mutable.Set.empty[String]
 }
 
 class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
@@ -60,6 +85,9 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
       case failureOrError => throw new ParsingException(failureOrError.toString)
     }
   }
+
+  override protected def start: Parser[LogicalPlan] =
+    query
 
   private val ALL = Keyword("ALL")
   private val AND = Keyword("AND")
@@ -115,9 +143,6 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val WHERE = Keyword("WHERE")
   private val WITH = Keyword("WITH")
 
-  override protected def start: Parser[LogicalPlan] =
-    query
-
   private def query: Parser[LogicalPlan] =
     ctes.? ~ queryNoWith ^^ {
       case cs ~ q =>
@@ -126,13 +151,15 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
         }) getOrElse q
     }
 
-  private def ctes: Parser[Seq[(String, LogicalPlan)]] =
+  private def ctes: Parser[Seq[(Name, LogicalPlan)]] =
     WITH ~> rep1sep(namedQuery, ",")
 
-  private def namedQuery: Parser[(String, LogicalPlan)] =
-    ident ~ (AS.? ~ "(" ~> queryNoWith <~ ")") ^^ {
+  private def namedQuery: Parser[(Name, LogicalPlan)] =
+    identifier ~ (AS.? ~ "(" ~> queryNoWith <~ ")") ^^ {
       case name ~ plan => name -> plan
     }
+
+  def identifier: Parser[Name] = quotedIdent | unquotedIdent
 
   private def queryNoWith: Parser[LogicalPlan] =
     queryTerm ~ queryOrganization ^^ { case p ~ f => f(p) }
@@ -169,7 +196,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     rep1sep(projection | star, ",")
 
   private def projection: Parser[NamedExpression] =
-    expression ~ (AS.? ~> ident).? ^^ {
+    expression ~ (AS.? ~> identifier).? ^^ {
       case e ~ Some(a) => e as a
       case e ~ _       => named(e)
     }
@@ -241,7 +268,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def function: Parser[Expression] =
-    ident ~ ("(" ~> functionArgs <~ ")") ^^ {
+    identifier ~ ("(" ~> functionArgs <~ ")") ^^ {
       case functionName ~ ((distinct, args)) =>
         UnresolvedFunction(functionName, args, distinct)
     }
@@ -252,7 +279,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   )
 
   private def attribute: Parser[UnresolvedAttribute] =
-    (ident <~ ".").? ~ ident ^^ {
+    (identifier <~ ".").? ~ identifier ^^ {
       case qualifier ~ name => UnresolvedAttribute(name, qualifier)
     }
 
@@ -327,12 +354,12 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     STRUCT ~ "<" ~> rep1sep(structField, ",") <~ ">" ^^ (StructType(_))
 
   private def structField: Parser[StructField] =
-    ident ~ (":" ~> dataType) ^^ {
+    identifier ~ (":" ~> dataType) ^^ {
       case i ~ t => StructField(i, t.?)
     }
 
   private def star: Parser[Star] =
-    (ident <~ ".").? <~ "*" ^^ Star
+    (identifier <~ ".").? <~ "*" ^^ Star
 
   private def relations: Parser[LogicalPlan] =
     relation * ("," ^^^ (Join(_: LogicalPlan, _: LogicalPlan, Inner, None)))
@@ -350,11 +377,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     }
 
   private def relationFactor: Parser[LogicalPlan] = (
-    ident ~ (AS.? ~> ident.?) ^^ {
+    identifier ~ (AS.? ~> identifier.?) ^^ {
       case t ~ Some(a) => UnresolvedRelation(t) subquery a
       case t ~ None    => UnresolvedRelation(t)
     }
-    | ("(" ~> queryNoWith <~ ")") ~ (AS.? ~> ident) ^^ {
+    | ("(" ~> queryNoWith <~ ")") ~ (AS.? ~> identifier) ^^ {
       case s ~ a => s subquery a
     }
   )
@@ -432,7 +459,7 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
     // Back-quoted identifiers
     | '`' ~> (chrExcept('`', '\n', EofCh) | ('`' ~ '`') ^^^ '`').* <~ '`' ^^ {
-      case cs => Identifier(cs.mkString)
+      case cs => QuotedIdentifier(cs.mkString)
     }
 
     // Integral and fractional numeric literals
@@ -485,6 +512,6 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
   override protected def processIdent(name: String) = {
     val lowerCased = name.toLowerCase
-    if (reserved contains lowerCased) Keyword(lowerCased) else Identifier(name)
+    if (reserved contains lowerCased) Keyword(lowerCased) else UnquotedIdentifier(name)
   }
 }

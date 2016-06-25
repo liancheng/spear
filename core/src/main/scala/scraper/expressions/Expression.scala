@@ -2,7 +2,7 @@ package scraper.expressions
 
 import scala.util.{Failure, Try}
 
-import scraper.Row
+import scraper.{Name, Row}
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
 import scraper.expressions.typecheck.{PassThrough, TypeConstraint}
@@ -305,7 +305,7 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
   ))
 }
 
-case class UnresolvedFunction(name: String, args: Seq[Expression], distinct: Boolean)
+case class UnresolvedFunction(name: Name, args: Seq[Expression], distinct: Boolean)
   extends UnresolvedExpression {
 
   override def children: Seq[Expression] = args

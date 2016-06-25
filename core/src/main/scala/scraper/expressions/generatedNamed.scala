@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scraper.Name
 import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
@@ -8,7 +9,7 @@ import scraper.utils._
 sealed trait GeneratedNamedExpression extends NamedExpression {
   def purpose: Purpose
 
-  override def name: String = purpose.name
+  override def name: Name = purpose.name
 }
 
 object GeneratedNamedExpression {
@@ -16,27 +17,27 @@ object GeneratedNamedExpression {
    * Indicates the purpose of a [[GeneratedNamedExpression]].
    */
   sealed trait Purpose {
-    def name: String
+    def name: Name
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
-    override def name: String = "group"
+    override def name: Name = 'group
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override def name: String = "agg"
+    override def name: Name = 'agg
   }
 }
 
 trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
   override def debugString: String =
-    s"(${child.debugString} AS g:${quote(name)}#${expressionID.id})"
+    s"(${child.debugString} AS g:${quote(name.toString)}#${expressionID.id})"
 
   override def dataType: DataType = child.dataType
 

@@ -45,11 +45,11 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("table") {
-    withTable("t") {
-      context range 2 asTable "t"
+    withTable('t) {
+      context range 2 asTable 't
 
       checkDataFrame(
-        context table "t",
+        context table 't,
         Row(0), Row(1)
       )
     }
@@ -64,7 +64,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   )
 
   test("mixed") {
-    people filter 'age =/= 21 asTable "people"
+    people filter 'age =/= 21 asTable 'people
 
     checkDataFrame(
       "SELECT name FROM people".q,
@@ -209,7 +209,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("rand") {
-    withTable("t") {
+    withTable('t) {
       context range 10 asTable 't
       """SELECT *
         |FROM (

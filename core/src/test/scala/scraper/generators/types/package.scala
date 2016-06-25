@@ -3,6 +3,7 @@ package scraper.generators
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary._
 
+import scraper.Name.caseInsensitive
 import scraper.Test._
 import scraper.config.Settings
 import scraper.generators.Keys._
@@ -124,7 +125,7 @@ package object types {
         fieldSpecs <- Gen.listOfN(fieldNum, genFieldSpec)
 
         fields = fieldSpecs.zipWithIndex map {
-          case (fieldSpec, ordinal) => StructField(s"c$ordinal", fieldSpec)
+          case (fieldSpec, ordinal) => StructField(caseInsensitive(s"c$ordinal"), fieldSpec)
         }
       } yield StructType(fields))
   }

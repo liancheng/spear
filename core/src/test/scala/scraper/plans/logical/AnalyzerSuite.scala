@@ -31,10 +31,13 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private val relation = LocalRelation.empty(a, b)
 
   override protected def beforeAll(): Unit = {
-    catalog.registerRelation("t", relation)
+    catalog.registerRelation('t, relation)
   }
 
   testAlias('a + 1, "(a + 1)")
+
+  // Case-insensitive name resolution
+  testAlias('B + 1, "(b + 1)")
 
   testAlias($"t.a" + 1, "(a + 1)")
 
@@ -322,8 +325,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)
 
-  private def testAlias(expression: Expression, expectedAlias: String): Unit = {
-    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias)}") {
+  private def testAlias(expression: Expression, expectedAlias: Name): Unit = {
+    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias.toString)}") {
       val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }

@@ -1,5 +1,6 @@
 package scraper.plans.logical
 
+import scraper.Name
 import scraper.expressions._
 import scraper.expressions.AutoAlias.named
 import scraper.expressions.functions._
@@ -8,8 +9,8 @@ package object dsl {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList map {
-        case UnresolvedAttribute("*", qualifier) => Star(qualifier)
-        case e                                   => named(e)
+        case UnresolvedAttribute(name, qualifier) if name.casePreserving == "*" => Star(qualifier)
+        case e => named(e)
       })
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
@@ -36,9 +37,7 @@ package object dsl {
 
     def distinct: Distinct = Distinct(plan)
 
-    def subquery(name: String): Subquery = Subquery(plan, name)
-
-    def subquery(name: Symbol): Subquery = plan subquery name.name
+    def subquery(name: Name): Subquery = Subquery(plan, name)
 
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
@@ -97,9 +96,7 @@ package object dsl {
     def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
   }
 
-  def table(name: String): UnresolvedRelation = UnresolvedRelation(name)
-
-  def table(name: Symbol): UnresolvedRelation = table(name.name)
+  def table(name: Name): UnresolvedRelation = UnresolvedRelation(name)
 
   def values(expressions: Seq[Expression]): Project = SingleRowRelation select expressions
 
@@ -107,6 +104,6 @@ package object dsl {
 
   def let(cteRelation: (Symbol, LogicalPlan))(body: LogicalPlan): With = {
     val (name, value) = cteRelation
-    With(body, name.name, value)
+    With(body, name, value)
   }
 }

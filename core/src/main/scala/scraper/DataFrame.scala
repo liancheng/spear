@@ -22,17 +22,15 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
 
-  def apply(column: String): Attribute =
+  def apply(column: Name): Attribute =
     queryExecution.analyzedPlan.output find (_.name == column) getOrElse {
       throw new ResolutionFailureException(s"Failed to resolve column name $column")
     }
 
-  def apply(column: Symbol): Attribute = this(column.name)
-
   def rename(newNames: String*): DataFrame = {
     assert(newNames.length == schema.fields.length)
     val oldNames = schema.fields map (_.name)
-    val aliases = (oldNames, newNames).zipped map { Symbol(_) as _ }
+    val aliases = (oldNames, newNames).zipped map (_ as _)
     this select aliases
   }
 
@@ -90,10 +88,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
-  def asTable(tableName: String): Unit =
+  def asTable(tableName: Name): Unit =
     context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
-
-  def asTable(tableName: Symbol): Unit = asTable(tableName.name)
 
   def toSeq: Seq[Row] = iterator.toSeq
 
@@ -129,7 +125,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     val hasMoreData = truncated.length > rowCount
     val data = truncated take rowCount
 
-    val rows = schema.fields.map(_.name) +: data.map { row =>
+    val rows = schema.fields.map(_.name.toString) +: data.map { row =>
       row.map { cell =>
         val content = cell match {
           case null => "NULL"

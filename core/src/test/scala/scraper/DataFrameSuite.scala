@@ -4,6 +4,7 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 import org.scalatest.BeforeAndAfterAll
 
+import scraper.Name.caseInsensitive
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
@@ -21,8 +22,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   private val r2 = LocalRelation(Nil, 'a.int.! :: 'b.string.? :: Nil)
 
   override protected def beforeAll(): Unit = {
-    context.catalog.registerRelation("t", r1)
-    context.catalog.registerRelation("s", r2)
+    context.catalog.registerRelation('t, r1)
+    context.catalog.registerRelation('s, r2)
   }
 
   test("column") {
@@ -162,7 +163,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   }
 
   test("asTable") {
-    withTable("reverse") {
+    withTable('reverse) {
       val df = table('t) orderBy 'a.desc
       df asTable 'reverse
 
