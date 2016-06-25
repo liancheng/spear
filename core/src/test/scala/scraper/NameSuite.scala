@@ -9,6 +9,22 @@ import org.scalatest.prop.Checkers
 import scraper.Name.{caseInsensitive, caseSensitive}
 
 class NameSuite extends LoggingFunSuite with Checkers {
+  test("basic properties") {
+    check {
+      forAll(alphaStr) { name =>
+        all(
+          caseSensitive(name).isCaseSensitive,
+
+          !caseInsensitive(name).isCaseSensitive,
+
+          caseSensitive(name).casePreserving == name,
+
+          caseInsensitive(name).casePreserving == name
+        )
+      }
+    }
+  }
+
   test("equality") {
     check {
       forAll(alphaStr) { name =>
@@ -22,7 +38,13 @@ class NameSuite extends LoggingFunSuite with Checkers {
                 caseSensitive(name.toLowerCase) != caseInsensitive(name),
 
               "inequality: case-sensitive v.s. case-sensitive" |:
-                caseSensitive(name.toLowerCase) != caseSensitive(name)
+                caseSensitive(name.toLowerCase) != caseSensitive(name),
+
+              "inequality: case-sensitive v.s. other classes" |:
+                caseSensitive(name) != (name: Any),
+
+              "inequality: case-insensitive v.s. other classes" |:
+                caseSensitive(name) != (name: Any)
             ),
 
           "equality: case-sensitive v.s. case-sensitive" |:
