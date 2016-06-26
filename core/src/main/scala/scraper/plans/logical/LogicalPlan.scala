@@ -124,11 +124,11 @@ case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogica
   override lazy val output: Seq[Attribute] = child.output
 }
 
-case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan {
+case class Limit(child: LogicalPlan, count: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    n <- limit.strictlyTyped map {
+    n <- count.strictlyTyped map {
       case e if e.isFoldable && e.dataType == IntType =>
         Literal(e.evaluated, IntType)
 
@@ -138,7 +138,7 @@ case class Limit(child: LogicalPlan, limit: Expression) extends UnaryLogicalPlan
       case _ =>
         throw new TypeCheckException("Limit must be a constant integer")
     }
-  } yield if (n same limit) this else copy(limit = n)
+  } yield if (n same count) this else copy(count = n)
 }
 
 trait SetOperator extends BinaryLogicalPlan {
@@ -295,10 +295,4 @@ case class With(
   @Explain(hidden = true, nestedTree = true) cteRelation: LogicalPlan
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
-}
-
-case class Expand(child: LogicalPlan, projectLists: Seq[Seq[NamedExpression]])
-  extends UnaryLogicalPlan {
-
-  override def output: Seq[Attribute] = projectLists.head map (_.toAttribute)
 }

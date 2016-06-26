@@ -76,11 +76,6 @@ package object dsl {
 
     def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
       resolvedAgg(first +: rest)
-
-    def expand(projectLists: Seq[Seq[NamedExpression]]): Expand = Expand(plan, projectLists)
-
-    def expand(first: Seq[NamedExpression], rest: Seq[NamedExpression]*): Expand =
-      expand(first +: rest)
   }
 
   class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {

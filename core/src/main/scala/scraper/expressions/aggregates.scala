@@ -12,11 +12,11 @@ import scraper.types._
 import scraper.utils._
 
 /**
- * A trait for aggregate functions, which aggregate a group of values into a single scalar value.
- * When being evaluated, an aggregation buffer, which is essentially a [[MutableRow]], is used to
- * store aggregated intermediate values. The aggregation buffer may have multiple fields. For
- * example, [[Average]] uses two fields to store sum and total count of all input values seen so
- * far.
+ * A trait for aggregate functions, which aggregate grouped values into scalar values. While being
+ * evaluated, an aggregation buffer, which is essentially a [[MutableRow]], is used to store
+ * aggregated intermediate values. An aggregation buffer for an [[AggregateFunction]] may have
+ * multiple fields. For example, [[Average]] uses two fields to store sum and total count of all
+ * input values seen so far.
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
@@ -40,12 +40,6 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   def update(input: Row, aggBuffer: MutableRow): Unit
 
   /**
-   * Merges values in aggregation buffers `fromAggBuffer` and `toAggBuffer`, then writes merged
-   * values into `toAggBuffer`.
-   */
-  def merge(fromAggBuffer: Row, toAggBuffer: MutableRow): Unit
-
-  /**
    * Evaluates the final result value using values in aggregation buffer `aggBuffer`, then writes it
    * into the `ordinal`-th field of `resultBuffer`.
    */
@@ -64,9 +58,6 @@ case class DistinctAggregateFunction(child: AggregateFunction)
   override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
 
   override def update(input: Row, aggBuffer: MutableRow): Unit = child.update(input, aggBuffer)
-
-  override def merge(fromAggBuffer: Row, intoAggBuffer: MutableRow): Unit =
-    child.merge(fromAggBuffer, intoAggBuffer)
 
   override def result(into: MutableRow, ordinal: Int, from: Row): Unit = result(into, ordinal, from)
 
@@ -89,8 +80,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   def updateExpressions: Seq[Expression]
 
-  def mergeExpressions: Seq[Expression]
-
   def resultExpression: Expression
 
   override final lazy val aggBufferSchema: StructType =
@@ -106,9 +95,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   override def update(input: Row, aggBuffer: MutableRow): Unit = updater(aggBuffer, input)
 
-  override def merge(fromAggBuffer: Row, toAggBuffer: MutableRow): Unit =
-    merger(toAggBuffer, fromAggBuffer)
-
   override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
     resultBuffer(ordinal) = boundResultExpression evaluate aggBuffer
 
@@ -118,13 +104,9 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   private lazy val boundUpdateExpressions: Seq[Expression] = updateExpressions map bind
 
-  private lazy val boundMergeExpressions: Seq[Expression] = mergeExpressions map bind
-
   private lazy val boundResultExpression: Expression = bind(resultExpression)
 
   private lazy val updater = updateAggBufferWith(boundUpdateExpressions) _
-
-  private lazy val merger = updateAggBufferWith(boundMergeExpressions) _
 
   /**
    * Updates mutable `aggBuffer` in-place using `expressions` and an `input` row.
@@ -195,10 +177,6 @@ abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression
     coalesce(updateFunction(value, child), value, child)
   )
 
-  override def mergeExpressions: Seq[Expression] = Seq(
-    updateFunction(value.left, value.right)
-  )
-
   override def resultExpression: Expression = value
 }
 
@@ -215,10 +193,6 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   override def updateExpressions: Seq[Expression] = Seq(
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
-  )
-
-  override def mergeExpressions: Seq[Expression] = Seq(
-    count.left + count.right
   )
 
   override def resultExpression: Expression = count
@@ -240,11 +214,6 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
   override def updateExpressions: Seq[Expression] = Seq(
     coalesce((child cast dataType) + sum, child cast dataType, sum),
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
-  )
-
-  override def mergeExpressions: Seq[Expression] = Seq(
-    coalesce(sum.left + sum.right, sum.left, sum.right),
-    coalesce(count.left + count.right, count.left, count.right)
   )
 
   override def resultExpression: Expression =

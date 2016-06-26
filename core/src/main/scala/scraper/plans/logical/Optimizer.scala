@@ -1,5 +1,6 @@
 package scraper.plans.logical
 
+import scraper.exceptions.LogicalPlanUnresolvedException
 import scraper.expressions
 import scraper.expressions._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
@@ -37,13 +38,9 @@ class Optimizer extends RulesExecutor[LogicalPlan] {
   )
 
   override def apply(tree: LogicalPlan): LogicalPlan = {
-    assert(
-      tree.isResolved,
-      s"""Logical query plan not resolved yet:
-         |
-         |${tree.prettyTree}
-         |""".stripMargin
-    )
+    if (!tree.isResolved) {
+      throw new LogicalPlanUnresolvedException(tree)
+    }
 
     logDebug(
       s"""Optimizing logical query plan:
@@ -124,8 +121,8 @@ object Optimizer {
    */
   object ReduceCasts extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case e Cast t if e.dataType == t => e
-      case e Cast _ Cast t             => e cast t
+      case e Cast t if e.dataType == t                  => e
+      case e Cast _ Cast t if e.dataType isCastableTo t => e cast t
     }
   }
 
@@ -164,7 +161,10 @@ object Optimizer {
     }
 
     private def eliminateNonTopLevelAliases[T <: NamedExpression](expression: T): T =
-      expression.transformChildrenUp { case a: Alias => a.child }.asInstanceOf[T]
+      expression.transformChildrenUp {
+        case a: Alias          => a.child
+        case a: GeneratedAlias => a.child
+      }.asInstanceOf[T]
   }
 
   /**
@@ -280,7 +280,7 @@ object Optimizer {
     }
 
     private def containsAggregation(expression: Expression): Boolean =
-      expression.collectFirst { case _: AggregationAttribute => () }.nonEmpty
+      expression.collectFirst { case _: AggregationNamedExpression => () }.nonEmpty
   }
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
@@ -293,13 +293,6 @@ object Optimizer {
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => plan limit Least(n, m)
-    }
-  }
-
-  object PushLimitsThroughUnions extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (left Union right) Limit n =>
-        left limit n union (right limit n) limit n
     }
   }
 

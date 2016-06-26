@@ -130,9 +130,6 @@ trait AbstractDataType {
   val defaultType: Option[DataType]
 
   def isSupertypeOf(dataType: DataType): Boolean
-
-  def isImplicitSupertypeOf(dataType: DataType): Boolean =
-    defaultType.exists(dataType.isCompatibleWith)
 }
 
 case class FieldSpec(dataType: DataType, nullable: Boolean)

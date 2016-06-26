@@ -9,14 +9,17 @@ import org.scalatest.prop.Checkers
 
 import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
 import scraper.Test.defaultSettings
+import scraper.exceptions.LogicalPlanUnresolvedException
 import scraper.expressions._
 import scraper.expressions.Predicate.splitConjunction
 import scraper.expressions.dsl._
+import scraper.expressions.functions._
 import scraper.generators.expressions._
-import scraper.plans.logical.Optimizer.{CNFConversion, MergeFilters, ReduceNegations}
+import scraper.plans.logical.Optimizer._
 import scraper.plans.logical.dsl._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
+import scraper.types.{DoubleType, IntType, LongType}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private implicit def prettyExpression(expression: Expression): Pretty = Pretty {
@@ -30,7 +33,9 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   private val relation = LocalRelation.empty(a, b)
 
   private def testRule(
-    rule: Rule[LogicalPlan], endCondition: EndCondition
+    rule: Rule[LogicalPlan],
+    endCondition: EndCondition,
+    needsAnalyzer: Boolean = true
   )(
     f: (LogicalPlan => LogicalPlan) => Unit
   ): Unit = {
@@ -41,7 +46,17 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         )
       }
 
-      f(analyzer andThen optimizer)
+      if (needsAnalyzer) {
+        f(analyzer andThen optimizer)
+      } else {
+        f(optimizer)
+      }
+    }
+  }
+
+  test("optimizer should reject unresolved logical plan") {
+    intercept[LogicalPlanUnresolvedException] {
+      (new Optimizer)(UnresolvedRelation('t))
     }
   }
 
@@ -74,10 +89,116 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   testRule(ReduceNegations, FixedPoint.Unlimited) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
 
-    check { (p1: Expression, p2: Expression) =>
-      val optimized = optimizer(relation filter p1)
+    check { p: Expression =>
+      val optimized = optimizer(relation filter p)
       val Seq(condition) = optimized.collect { case f: Filter => f.condition }
       condition.collectFirst { case _: Not => () }.isEmpty
     }
+  }
+
+  testRule(PushFiltersThroughAggregates, FixedPoint.Unlimited, needsAnalyzer = false) { optimizer =>
+    val groupA = GroupingAlias(a)
+    val aggCountB = AggregationAlias(count(b))
+
+    checkPlan(
+      optimizer(
+        relation
+          resolvedGroupBy groupA
+          agg aggCountB
+          having groupA > 3
+      ),
+      relation
+        filter groupA > 3
+        resolvedGroupBy groupA
+        agg aggCountB
+    )
+
+    checkPlan(
+      optimizer(
+        relation
+          resolvedGroupBy groupA
+          agg aggCountB
+          having aggCountB > 0
+      ),
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
+        having aggCountB > 0
+    )
+
+    checkPlan(
+      optimizer(
+        relation
+          resolvedGroupBy groupA
+          agg aggCountB
+          having groupA > 3 && aggCountB > 0
+      ),
+      relation
+        filter groupA > 3
+        resolvedGroupBy groupA
+        agg aggCountB
+        having aggCountB > 0
+    )
+  }
+
+  testRule(ReduceLimits, FixedPoint.Unlimited) { optimizer =>
+    checkPlan(
+      optimizer(relation limit 10 limit 3),
+      relation limit Least(10, 3)
+    )
+  }
+
+  testRule(PushProjectsThroughLimits, FixedPoint.Unlimited) { optimizer =>
+    checkPlan(
+      optimizer(relation limit 1 select a),
+      relation select a limit 1
+    )
+  }
+
+  testRule(EliminateConstantFilters, FixedPoint.Unlimited) { optimizer =>
+    checkPlan(
+      optimizer(relation filter Literal.True),
+      relation
+    )
+
+    checkPlan(
+      optimizer(relation filter Literal.False),
+      LocalRelation(Nil, relation.output)
+    )
+  }
+
+  testRule(PushFiltersThroughJoins, FixedPoint.Unlimited) { optimizer =>
+    val newRelation = relation.newInstance()
+    val Seq(newA: AttributeRef, newB: AttributeRef) = newRelation.output
+
+    checkPlan(
+      optimizer(
+        relation
+          subquery 'x
+          join (relation subquery 'y)
+          filter $"x.a" === $"y.a" && $"x.a" > 0 && $"y.b".notNull
+      ),
+      relation
+        subquery 'x
+        filter (a of 'x) > 0
+        join (
+          newRelation
+          subquery 'y
+          filter (newB of 'y).notNull
+        )
+          on ((a of 'x) === (newA of 'y))
+    )
+  }
+
+  testRule(ReduceCasts, FixedPoint.Unlimited) { optimizer =>
+    checkPlan(
+      optimizer(relation select (a cast IntType as 'x)),
+      relation select (a as 'x)
+    )
+
+    checkPlan(
+      optimizer(relation select (a cast LongType cast DoubleType as 'x)),
+      relation select (a cast DoubleType as 'x)
+    )
   }
 }

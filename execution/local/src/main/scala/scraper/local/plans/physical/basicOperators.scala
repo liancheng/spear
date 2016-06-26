@@ -110,16 +110,3 @@ case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysica
     buffer.sorted(rowOrdering).iterator
   }
 }
-
-case class Expand(child: PhysicalPlan, projectLists: Seq[Seq[NamedExpression]])
-  extends UnaryPhysicalPlan {
-
-  private lazy val boundProjectLists = projectLists map (_ map bind(child.output))
-
-  override def output: Seq[Attribute] = projectLists.head map (_.toAttribute)
-
-  override def iterator: Iterator[Row] = for {
-    row <- child.iterator
-    projectList <- boundProjectLists
-  } yield Row.fromSeq(projectList map (_ evaluate row))
-}

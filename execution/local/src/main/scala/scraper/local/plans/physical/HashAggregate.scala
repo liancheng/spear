@@ -44,9 +44,6 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq
 
   def +=(input: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(input, _))
 
-  def ++=(other: AggregationBuffer): Unit =
-    (boundFunctions, other.slices, slices).zipped foreach (_.merge(_, _))
-
   def result(mutableResult: MutableRow): Unit = mutableResult.indices foreach { i =>
     boundFunctions(i).result(mutableResult, i, slices(i))
   }

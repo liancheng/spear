@@ -115,14 +115,13 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case unresolved @ UnresolvedAttribute(name, qualifier) =>
         def reportResolutionFailure(message: String): Nothing = {
           throw new ResolutionFailureException(
-            s"""Failed to resolve attribute $name in logical query plan:
+            s"""Failed to resolve attribute ${unresolved.debugString} in logical query plan:
                |${plan.prettyTree}
                |$message
                |""".stripMargin
           )
         }
 
-        // TODO Considers case insensitive name resolution
         val candidates = plan.children flatMap (_.output) collect {
           case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
           case a: AttributeRef if a.name == name && qualifier.isEmpty        => a

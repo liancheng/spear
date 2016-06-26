@@ -25,10 +25,14 @@ case class RLike(string: Expression, pattern: Expression) extends Expression {
       "RLIKE pattern must be constant"
     ))
 
-  private lazy val evaluatedPattern: String = pattern.evaluated.asInstanceOf[String]
+  private lazy val compiledPattern = {
+    val evaluatedPattern: String = pattern.evaluated.asInstanceOf[String]
+    Pattern.compile(evaluatedPattern)
+  }
 
   override def children: Seq[Expression] = string :: pattern :: Nil
 
-  override def evaluate(input: Row): Any =
-    Pattern.compile(evaluatedPattern) matcher string.evaluate(input).asInstanceOf[String] find 0
+  override def evaluate(input: Row): Any = {
+    compiledPattern.matcher(string.evaluate(input).asInstanceOf[String]).matches()
+  }
 }

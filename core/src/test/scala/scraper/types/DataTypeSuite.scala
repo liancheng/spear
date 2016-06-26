@@ -6,6 +6,7 @@ import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
 import scraper.{LoggingFunSuite, TestUtils}
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.{Attribute, ExpressionID}
 import scraper.expressions.dsl._
 import scraper.generators.types._
@@ -177,5 +178,13 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
     )
 
     assert(!(schema isSubtypeOf OrderedType))
+  }
+
+  test("ordering") {
+    OrderedType.orderingOf(IntType)
+
+    intercept[TypeMismatchException] {
+      OrderedType.orderingOf(MapType(IntType, StringType))
+    }
   }
 }
