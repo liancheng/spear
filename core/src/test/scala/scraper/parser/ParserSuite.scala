@@ -2,7 +2,7 @@ package scraper.parser
 
 import scraper.{LoggingFunSuite, Test, TestUtils}
 import scraper.exceptions.ParsingException
-import scraper.expressions.Expression
+import scraper.expressions.{Expression, If}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.logical.LogicalPlan
@@ -120,6 +120,11 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   testExpressionParsing(
     "CASE a WHEN 1 THEN 'x' WHEN 2 THEN 'y' ELSE 'z' END",
     when('a === 1, "x") when ('a === 2, "y") otherwise "z"
+  )
+
+  testExpressionParsing(
+    "IF(a > 0, 1, 2)",
+    If('a > 0, 1, 2)
   )
 
   test("invalid query") {

@@ -112,6 +112,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
   private val FULL = Keyword("FULL")
   private val GROUP = Keyword("GROUP")
   private val HAVING = Keyword("HAVING")
+  private val IF = Keyword("IF")
   private val IN = Keyword("IN")
   private val INNER = Keyword("INNER")
   private val INT = Keyword("INT")
@@ -228,6 +229,7 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
     | attribute
     | cast
     | caseWhen
+    | condition
     | "(" ~> expression <~ ")"
   )
 
@@ -298,6 +300,11 @@ class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
         k map (CaseKeyWhen(_, conditions, values, a)) getOrElse CaseWhen(conditions, values, a)
     }
   )
+
+  private def condition: Parser[If] =
+    IF ~ "(" ~> predicate ~ ("," ~> expression) ~ ("," ~> expression) <~ ")" ^^ {
+      case condition ~ consequence ~ alternative => If(condition, consequence, alternative)
+    }
 
   private def predicate: Parser[Expression] =
     negation ||| disjunction
