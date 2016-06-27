@@ -182,11 +182,8 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         subquery 'x
         filter (a of 'x) > 0
         join (
-          newRelation
-          subquery 'y
-          filter (newB of 'y).notNull
-        )
-          on ((a of 'x) === (newA of 'y))
+          newRelation subquery 'y filter (newB of 'y).notNull
+        ) on ((a of 'x) === (newA of 'y))
     )
   }
 
