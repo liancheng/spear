@@ -245,6 +245,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     }
   }
 
+  test("illegal nested aggregate function") {
+    intercept[IllegalAggregationException] {
+      analyze(relation groupBy 'a agg max(count('b)))
+    }
+  }
+
   test("distinct") {
     checkAnalyzedPlan(
       relation.distinct,
@@ -312,7 +318,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         |  s1 AS (SELECT 2 AS x)
         |SELECT *
         |FROM s0 UNION ALL SELECT * FROM s1
-      """.straight,
+      """.oneLine,
       values(1 as 'x) subquery 's0 select (x0 of 's0) union (
         values(2 as 'x) subquery 's1 select (x1 of 's1)
       )

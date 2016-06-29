@@ -69,9 +69,8 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit = {
+  def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
     checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
-  }
 
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)

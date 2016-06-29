@@ -32,12 +32,12 @@ package object utils {
     }
   } mkString ("\n", "\n", "")
 
-  implicit class StraightString(string: String) {
-    def straight: String = straight('|', " ")
+  implicit class OneLineString(string: String) {
+    def oneLine: String = oneLine('|', " ")
 
-    def straight(joiner: String): String = straight('|', joiner)
+    def oneLine(joiner: String): String = oneLine('|', joiner)
 
-    def straight(marginChar: Char, joiner: String): String =
+    def oneLine(marginChar: Char, joiner: String): String =
       ((string stripMargin marginChar).lines mkString joiner).trim
   }
 

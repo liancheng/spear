@@ -334,8 +334,11 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
-        // Aliases all found aggregate functions
+        // Collects all aggregate functions and checks for nested ones (which are illegal).
         val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
+        aggs foreach checkNestedAggregateFunction
+
+        // Aliases all found aggregate functions
         val aggAliases = aggs map (AggregationAlias(_))
         val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
@@ -381,6 +384,12 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
       distinctAggs ++ aggs
     }
+
+    private def checkNestedAggregateFunction(agg: AggregateFunction): Unit =
+      agg.children.foreach(_ collectFirst {
+        case nested: AggregateFunction =>
+          throw new IllegalAggregationException(agg, nested)
+      })
 
     private def checkAggregation(
       part: String, keys: Seq[Expression], expressions: Seq[Expression]

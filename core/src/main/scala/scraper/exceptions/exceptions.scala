@@ -1,7 +1,7 @@
 package scraper.exceptions
 
 import scraper.Name
-import scraper.expressions.{AttributeRef, Expression}
+import scraper.expressions.{AggregateFunction, AttributeRef, Expression}
 import scraper.plans.logical.LogicalPlan
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils._
@@ -78,7 +78,7 @@ class ImplicitCastException(message: String, cause: Throwable)
   def this(from: Expression, to: DataType, cause: Throwable) = this({
     s"""Cannot convert expression [${from.debugString}]
        |of data type ${from.dataType} to $to implicitly.
-     """.straight
+     """.oneLine
   }, cause)
 
   def this(from: Expression, to: DataType) = this(from, to, null)
@@ -149,8 +149,14 @@ class IllegalAggregationException(message: String, cause: Throwable)
     val ks = keys map (_.debugString) mkString ("[", ", ", "]")
     s"""$part ${expression.debugString} references attribute ${attribute.debugString},
        |which is neither an aggregate function nor a grouping key among $ks
-     """.straight
+     """.oneLine
   }, cause)
+
+  def this(outer: AggregateFunction, inner: AggregateFunction) = this({
+    s"""Aggregate function (${inner.nodeName.toUpperCase}) can't be nested within
+       |another aggregate function (${outer.nodeName.toUpperCase}).
+     """.oneLine
+  }, null)
 
   def this(part: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
     this(part, attribute, expression, keys, null)

@@ -149,7 +149,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
           throw new BrokenContractException(
             s"""Attribute $a in child expression $child of aggregate function $this
                |hasn't been bound yet
-             """.straight
+             """.oneLine
           )
       }
     }
