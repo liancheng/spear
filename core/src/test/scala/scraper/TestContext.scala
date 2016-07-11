@@ -5,7 +5,7 @@ import scraper.expressions.Attribute
 import scraper.parser.Parser
 import scraper.plans.QueryExecution
 import scraper.plans.logical.{Analyzer, LogicalPlan, Optimizer}
-import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan, SingleRowRelation}
+import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan}
 
 class TestContext extends Context {
   override type QueryExecution = TestQueryExecution
@@ -16,7 +16,7 @@ class TestContext extends Context {
 
   override val catalog: Catalog = new InMemoryCatalog
 
-  override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
+  override def parse(query: String): LogicalPlan = new Parser parse query
 
   private val analyzer = new Analyzer(catalog)
 

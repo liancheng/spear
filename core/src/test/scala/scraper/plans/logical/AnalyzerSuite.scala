@@ -326,7 +326,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   }
 
   private def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
-    checkAnalyzedPlan(new Parser(Test.defaultSettings) parse sql, expected)
+    checkAnalyzedPlan(new Parser parse sql, expected)
 
   private def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)

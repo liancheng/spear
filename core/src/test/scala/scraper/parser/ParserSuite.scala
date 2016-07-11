@@ -1,6 +1,6 @@
 package scraper.parser
 
-import scraper.{LoggingFunSuite, Test, TestUtils}
+import scraper.{LoggingFunSuite, TestUtils}
 import scraper.exceptions.ParsingException
 import scraper.expressions.{Expression, If}
 import scraper.expressions.dsl._
@@ -392,5 +392,5 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     }
   }
 
-  private def parse(query: String): LogicalPlan = new Parser(Test.defaultSettings) parse query
+  private def parse(query: String): LogicalPlan = new Parser parse query
 }

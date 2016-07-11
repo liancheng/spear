@@ -9,7 +9,6 @@ import scala.util.parsing.input.CharArrayReader.EofCh
 
 import scraper.Name
 import scraper.Name.{caseInsensitive, caseSensitive}
-import scraper.config.Settings
 import scraper.exceptions.ParsingException
 import scraper.expressions._
 import scraper.expressions.AutoAlias.named
@@ -74,7 +73,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
   private val keywords = mutable.Set.empty[String]
 }
 
-class Parser(settings: Settings) extends TokenParser[LogicalPlan] {
+class Parser extends TokenParser[LogicalPlan] {
   def parseAttribute(input: String): UnresolvedAttribute = synchronized {
     val start = attribute | star ^^ {
       case Star(qualifier) => UnresolvedAttribute("*", qualifier)

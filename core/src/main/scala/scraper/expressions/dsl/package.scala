@@ -3,7 +3,6 @@ package scraper.expressions
 import scala.language.implicitConversions
 
 import scraper.Name
-import scraper.config.Settings
 import scraper.expressions.typecheck._
 import scraper.parser.Parser
 import scraper.types._
@@ -33,7 +32,7 @@ package object dsl {
 
   implicit class StringToUnresolvedAttribute(sc: StringContext) {
     def $(args: Any*): UnresolvedAttribute =
-      new Parser(Settings.empty).parseAttribute(sc.s(args: _*))
+      (new Parser).parseAttribute(sc.s(args: _*))
   }
 
   private[scraper] trait BinaryOperatorPattern[T <: BinaryExpression] {

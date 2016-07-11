@@ -17,7 +17,7 @@ class LocalContext(val settings: Settings) extends Context {
 
   override val catalog: Catalog = new Catalog
 
-  override def parse(query: String): LogicalPlan = new Parser(settings).parse(query)
+  override def parse(query: String): LogicalPlan = new Parser parse query
 
   private val analyzer = new Analyzer(catalog)
 
