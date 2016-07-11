@@ -19,10 +19,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )),
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
-      ResolveRelations,
+      new ResolveRelations(catalog),
+      new ResolveFunctions(catalog),
       ExpandStars,
       ResolveReferences,
-      ResolveFunctions,
       ResolveAliases,
       DeduplicateReferences,
 
@@ -71,7 +71,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   /**
    * This rule resolves unresolved relations by looking up the table name from the `catalog`.
    */
-  object ResolveRelations extends Rule[LogicalPlan] {
+  class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
       case UnresolvedRelation(name) => catalog lookupRelation name
     }
@@ -225,7 +225,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * This rule resolves [[scraper.expressions.UnresolvedFunction unresolved functions]] by looking
    * up function names from the [[Catalog]].
    */
-  object ResolveFunctions extends Rule[LogicalPlan] {
+  class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci"count" =>
         Count(1)
@@ -316,7 +316,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    * expressions, and a top-level [[Project]].
    */
   object ResolveAggregates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    override def apply(tree: LogicalPlan): LogicalPlan =
+      tree transformDown (skip orElse resolveUnresolvedAggregate)
+
+    private val skip: PartialFunction[LogicalPlan, LogicalPlan] = {
       // Waits until all adjacent having conditions are merged
       case plan @ ((_: UnresolvedAggregate) Filter _) =>
         plan
@@ -328,7 +331,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       // Waits until projected list, having condition, and sort order expressions are all resolved
       case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
+    }
 
+    private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
       case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
         // Aliases all grouping keys
         val keyAliases = keys map (GroupingAlias(_))
@@ -336,6 +341,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
         // Collects all aggregate functions and checks for nested ones (which are illegal).
         val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
+
+        // Checks for invalid expressions like `MAX(COUNT(*))`.
         aggs foreach checkNestedAggregateFunction
 
         // Aliases all found aggregate functions
@@ -368,7 +375,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           .select(newProjectList)
     }
 
-    def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
+    private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
       // `DistinctAggregateFunction`s must be collected first. Otherwise, their child expressions,
       // which are also `AggregateFunction`s, will also be collected unexpectedly.
       val distinctAggs = expressions.flatMap(_ collect {
