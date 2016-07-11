@@ -2,6 +2,7 @@ package scraper.expressions
 
 import scala.util.{Success, Try}
 
+import scraper.Row
 import scraper.exceptions.{ImplicitCastException, TypeCastException}
 import scraper.expressions.Cast.{buildCast, castable}
 import scraper.types._
@@ -23,19 +24,25 @@ case class Cast(child: Expression, override val dataType: DataType) extends Unar
 }
 
 object Cast {
-  private val implicitlyFromBoolean: PartialFunction[DataType, Any => Any] = {
+  private type PartialCastBuilder = PartialFunction[DataType, Any => Any]
+
+  private type CastBuilder = PartialFunction[DataType, PartialCastBuilder]
+
+  private type DataTypeComparator = (DataType, DataType) => Boolean
+
+  private val implicitlyFromBoolean: PartialCastBuilder = {
     case StringType => _.toString
   }
 
   private val asBoolean = (_: Any) match { case v: Boolean => v }
 
-  private val explicitlyFromBoolean: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromBoolean: PartialCastBuilder = {
     case IntType => asBoolean andThen (if (_) 1 else 0)
   }
 
   private val asByte = (_: Any) match { case v: Byte => v }
 
-  private val implicitlyFromByte: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromByte: PartialCastBuilder = {
     case ShortType  => asByte andThen (_.toShort)
     case IntType    => asByte andThen (_.toInt)
     case LongType   => asByte andThen (_.toLong)
@@ -44,13 +51,13 @@ object Cast {
     case StringType => _.toString
   }
 
-  private val explicitlyFromByte: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromByte: PartialCastBuilder = {
     case _ if false => identity
   }
 
   private val asShort = (_: Any) match { case v: Short => v }
 
-  private val implicitlyFromShort: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromShort: PartialCastBuilder = {
     case IntType    => asShort andThen (_.toInt)
     case LongType   => asShort andThen (_.toLong)
     case FloatType  => asShort andThen (_.toFloat)
@@ -58,13 +65,13 @@ object Cast {
     case StringType => _.toString
   }
 
-  private val explicitlyFromShort: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromShort: PartialCastBuilder = {
     case ByteType => asShort andThen (_.toByte)
   }
 
   private val asInt = (_: Any) match { case v: Int => v }
 
-  private val implicitlyFromInt: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromInt: PartialCastBuilder = {
     case BooleanType => asInt andThen (_ == 1)
     case LongType    => asInt andThen (_.toLong)
     case FloatType   => asInt andThen (_.toFloat)
@@ -72,20 +79,20 @@ object Cast {
     case StringType  => _.toString
   }
 
-  private val explicitlyFromInt: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromInt: PartialCastBuilder = {
     case ByteType  => asInt andThen (_.toByte)
     case ShortType => asInt andThen (_.toShort)
   }
 
   private val asLong = (_: Any) match { case v: Long => v }
 
-  private val implicitlyFromLong: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromLong: PartialCastBuilder = {
     case FloatType  => asLong andThen (_.toFloat)
     case DoubleType => asLong andThen (_.toDouble)
     case StringType => _.toString
   }
 
-  private val explicitlyFromLong: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromLong: PartialCastBuilder = {
     case ByteType  => asLong andThen (_.toByte)
     case ShortType => asLong andThen (_.toShort)
     case IntType   => asLong andThen (_.toInt)
@@ -93,25 +100,25 @@ object Cast {
 
   private val asFloat = (_: Any) match { case v: Float => v }
 
-  private val implicitlyFromFloat: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromFloat: PartialCastBuilder = {
     case DoubleType => asFloat andThen (_.toDouble)
     case StringType => _.toString
   }
 
-  private val explicitlyFromFloat: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromFloat: PartialCastBuilder = {
     case ByteType  => asFloat andThen (_.toByte)
     case ShortType => asFloat andThen (_.toShort)
     case IntType   => asFloat andThen (_.toInt)
     case LongType  => asFloat andThen (_.toLong)
   }
 
-  private val implicitlyFromDouble: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromDouble: PartialCastBuilder = {
     case StringType => _.toString
   }
 
   private val asDouble = (_: Any) match { case v: Double => v }
 
-  private val explicitlyFromDouble: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromDouble: PartialCastBuilder = {
     case ByteType  => asDouble andThen (_.toByte)
     case ShortType => asDouble andThen (_.toShort)
     case IntType   => asDouble andThen (_.toInt)
@@ -134,11 +141,11 @@ object Cast {
       throw new TypeCastException(s"Can't cast string [$value] to boolean")
   }
 
-  private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromString: PartialCastBuilder = {
     case BooleanType => asString andThen (_.toLowerCase) andThen stringToBoolean
   }
 
-  private val explicitlyFromString: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromString: PartialCastBuilder = {
     case ByteType   => asString andThen (_.toByte)
     case ShortType  => asString andThen (_.toShort)
     case IntType    => asString andThen (_.toInt)
@@ -147,46 +154,110 @@ object Cast {
     case DoubleType => asString andThen (_.toDouble)
   }
 
-  private val implicitlyFromNull: PartialFunction[DataType, Any => Any] = {
+  private val implicitlyFromNull: PartialCastBuilder = {
     // NullType can be casted to any other type, and only has a single value `null`.
     case _ => _ => null
   }
 
-  private val explicitlyFromNull: PartialFunction[DataType, Any => Any] = {
+  private val explicitlyFromNull: PartialCastBuilder = {
     case _ if false => identity
   }
 
-  private type CastBuilder = PartialFunction[DataType, PartialFunction[DataType, Any => Any]]
+  private val asSeq = (_: Any) match { case v: Seq[_] => v }
+
+  private def compareArrayType(x: ArrayType, y: ArrayType, fn: DataTypeComparator): Boolean = {
+    fn(x.elementType, y.elementType) && (!x.elementNullable || y.elementNullable)
+  }
+
+  private def implicitlyFromArrayType(from: ArrayType): PartialCastBuilder =
+    castFromArrayType(from, compatible)
+
+  private def explicitlyFromArrayType(from: ArrayType): PartialCastBuilder =
+    castFromArrayType(from, castable)
+
+  private def castFromArrayType(from: ArrayType, fn: DataTypeComparator): PartialCastBuilder = {
+    case to: ArrayType if compareArrayType(from, to, fn) =>
+      val castElement = buildCast(to.elementType, from.elementType).get
+      asSeq andThen (_ map castElement)
+  }
+
+  private val asMap = (_: Any) match { case v: Map[_, _] => v }
+
+  private def compareMapType(x: MapType, y: MapType, fn: DataTypeComparator): Boolean = {
+    (!x.valueNullable || y.valueNullable) &&
+      fn(x.keyType, y.keyType) &&
+      fn(x.valueType, y.valueType)
+  }
+
+  private def implicitlyFromMapType(from: MapType): PartialCastBuilder =
+    castFromMapType(from, compatible)
+
+  private def explicitlyFromMapType(from: MapType): PartialCastBuilder =
+    castFromMapType(from, castable)
+
+  private def castFromMapType(from: MapType, fn: DataTypeComparator): PartialCastBuilder = {
+    case to: MapType if compareMapType(from, to, fn) =>
+      val castKey = buildCast(from.keyType, to.keyType).get
+      val castValue = buildCast(from.valueType, to.valueType).get
+      asMap andThen (_ map { case (key, value) => castKey(key) -> castValue(value) })
+  }
+
+  private def compareStructType(x: StructType, y: StructType, fn: DataTypeComparator): Boolean = {
+    x.fields.length == y.fields.length && (x.fields zip y.fields).forall {
+      case (from, to) => (!from.nullable || to.nullable) && fn(from.dataType, to.dataType)
+    }
+  }
+
+  private val asRow = (_: Any) match { case v: Row => v }
+
+  private def implicitlyFromStructType(from: StructType): PartialCastBuilder =
+    castFromStructType(from, compatible)
+
+  private def explicitlyFromStructType(from: StructType): PartialCastBuilder =
+    castFromStructType(from, castable)
+
+  private def castFromStructType(from: StructType, fn: DataTypeComparator): PartialCastBuilder = {
+    case to: StructType if compareStructType(from, to, fn) =>
+      val castFields = (from.fieldTypes, to.fieldTypes).zipped map (buildCast(_, _).get)
+      asRow.andThen { row =>
+        Row.fromSeq(row zip castFields map { case (value, cast) => cast(value) })
+      }
+  }
 
   private val buildImplicitCast: CastBuilder = {
-    case BooleanType => implicitlyFromBoolean
-    case ByteType    => implicitlyFromByte
-    case ShortType   => implicitlyFromShort
-    case IntType     => implicitlyFromInt
-    case LongType    => implicitlyFromLong
-    case FloatType   => implicitlyFromFloat
-    case DoubleType  => implicitlyFromDouble
-    case StringType  => implicitlyFromString
-    case NullType    => implicitlyFromNull
+    case BooleanType   => implicitlyFromBoolean
+    case ByteType      => implicitlyFromByte
+    case ShortType     => implicitlyFromShort
+    case IntType       => implicitlyFromInt
+    case LongType      => implicitlyFromLong
+    case FloatType     => implicitlyFromFloat
+    case DoubleType    => implicitlyFromDouble
+    case StringType    => implicitlyFromString
+    case NullType      => implicitlyFromNull
+    case t: ArrayType  => implicitlyFromArrayType(t)
+    case t: MapType    => implicitlyFromMapType(t)
+    case t: StructType => implicitlyFromStructType(t)
   }
 
   private val buildExplicitCast: CastBuilder = {
-    case BooleanType => explicitlyFromBoolean
-    case ByteType    => explicitlyFromByte
-    case ShortType   => explicitlyFromShort
-    case IntType     => explicitlyFromInt
-    case LongType    => explicitlyFromLong
-    case FloatType   => explicitlyFromFloat
-    case DoubleType  => explicitlyFromDouble
-    case StringType  => explicitlyFromString
-    case NullType    => explicitlyFromNull
+    case BooleanType   => explicitlyFromBoolean
+    case ByteType      => explicitlyFromByte
+    case ShortType     => explicitlyFromShort
+    case IntType       => explicitlyFromInt
+    case LongType      => explicitlyFromLong
+    case FloatType     => explicitlyFromFloat
+    case DoubleType    => explicitlyFromDouble
+    case StringType    => explicitlyFromString
+    case NullType      => explicitlyFromNull
+    case t: ArrayType  => explicitlyFromArrayType(t)
+    case t: MapType    => explicitlyFromMapType(t)
+    case t: StructType => explicitlyFromStructType(t)
   }
 
-  private def buildCast(x: DataType, y: DataType): Option[Any => Any] = {
-    val maybeImplicitCast = buildImplicitCast lift x flatMap (_ lift y)
-    val maybeExplicitCast = buildExplicitCast lift x flatMap (_ lift y)
-    maybeImplicitCast orElse maybeExplicitCast
-  }
+  private def buildCast(x: DataType, y: DataType): Option[Any => Any] =
+    buildImplicitCast lift x flatMap (_ lift y) orElse {
+      buildExplicitCast lift x flatMap (_ lift y)
+    }
 
   /**
    * Returns true iff `x` equals to `y` or `x` can be implicitly casted to `y`.
