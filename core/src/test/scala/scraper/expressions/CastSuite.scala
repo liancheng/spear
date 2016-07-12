@@ -4,6 +4,7 @@ import scala.util.Success
 
 import org.scalacheck.Prop.{all, forAll, BooleanOperators}
 import org.scalatest.prop.Checkers
+
 import scraper.LoggingFunSuite
 import scraper.expressions.Cast.{booleanFalseStrings, booleanTrueStrings, compatible, widestTypeOf}
 import scraper.types._
