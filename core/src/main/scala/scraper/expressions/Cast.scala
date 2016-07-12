@@ -72,7 +72,7 @@ object Cast {
   private val asInt = (_: Any) match { case v: Int => v }
 
   private val implicitlyFromInt: PartialCastBuilder = {
-    case BooleanType => asInt andThen (_ == 1)
+    case BooleanType => asInt andThen (_ != 0)
     case LongType    => asInt andThen (_.toLong)
     case FloatType   => asInt andThen (_.toFloat)
     case DoubleType  => asInt andThen (_.toDouble)
