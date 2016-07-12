@@ -2,7 +2,8 @@ package scraper.repl
 
 import scala.io.Source
 
-import ammonite.repl.{Main => AmmoniteMain}
+import ammonite.ops.Path
+import ammonite.repl.{Storage, Main => AmmoniteMain}
 
 object Main {
   private val scalaVersion = scala.util.Properties.versionNumberString
@@ -11,17 +12,17 @@ object Main {
 
   private val banner =
     s"""Welcome to
-      |     ____
-      |    / __/__________ ____  ___ ____
-      |   _\\ \\/ __/ __/ _ `/ _ \\/ -_) __/
-      |  /___/\\__/_/  \\_,_/ .__/\\__/_/
-      |                  /_/
-      |
-      |Scala version: $scalaVersion
-      |Java version: $javaVersion
-      |
-      |The default context object is available as `context'.
-      |""".stripMargin
+       |     ____
+       |    / __/__________ ____  ___ ____
+       |   _\\ \\/ __/ __/ _ `/ _ \\/ -_) __/
+       |  /___/\\__/_/  \\_,_/ .__/\\__/_/
+       |                  /_/
+       |
+       |Scala version: $scalaVersion
+       |Java version: $javaVersion
+       |
+       |The default context object is available as `context'.
+       |""".stripMargin
 
   def main(args: Array[String]) {
     val predef = {
@@ -30,6 +31,10 @@ object Main {
       Source.fromInputStream(stream, "UTF-8").mkString
     }
 
-    AmmoniteMain(predef = predef, welcomeBanner = Some(banner)).run()
+    AmmoniteMain(
+      predef = predef,
+      storageBackend = Storage.Folder(Path.home / ".scraper"),
+      welcomeBanner = Some(banner)
+    ).run()
   }
 }
