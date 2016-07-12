@@ -18,9 +18,9 @@ case class HashAggregate(
 
   private lazy val boundFunctions = functions map (_.child) map bind(child.output)
 
-  private val bufferBuilder = new AggregationBufferBuilder(boundFunctions)
+  private lazy val bufferBuilder = new AggregationBufferBuilder(boundFunctions)
 
-  private val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
+  private lazy val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
 
   override def iterator: Iterator[Row] = {
     child.iterator foreach { input =>

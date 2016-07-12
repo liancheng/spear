@@ -1,5 +1,6 @@
 package scraper.plans
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import scraper.expressions._
@@ -35,7 +36,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   def transformExpressionsUp(rule: Rule): Plan = transformExpressions(rule, _ transformUp _)
 
-  protected def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
+  private def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
     def applyRule(e: Expression): (Expression, Boolean) = {
       val transformed = next(e, rule)
       if (e same transformed) e -> false else transformed -> true
@@ -89,9 +90,32 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
    */
   protected def outputStrings: Seq[String] = output map (_.debugString)
 
+  override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
+    case (e, index) => QueryPlan.ExpressionNode(index, e)
+  } ++ super.nestedTrees
+
+  override protected def explainParams(show: Any => String): Seq[(String, String)] = {
+    val remainingExpressions = mutable.Stack(expressions.indices: _*)
+
+    super.explainParams({
+      case e: Expression => s"$$${remainingExpressions.pop()}"
+      case other         => other.toString
+    })
+  }
+
   override def nodeCaption: String = {
     val outputString = outputStrings mkString ("[", ", ", "]")
     val arrow = "\u21d2"
     Seq(super.nodeCaption, arrow, outputString) mkString " "
+  }
+}
+
+object QueryPlan {
+  case class ExpressionNode(index: Int, expression: Expression)
+    extends TreeNode[ExpressionNode] {
+
+    override def children: Seq[ExpressionNode] = Nil
+
+    override def nodeCaption: String = s"$$$index: ${expression.debugString}"
   }
 }

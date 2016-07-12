@@ -8,6 +8,7 @@ import scraper.expressions._
 import scraper.expressions.BoundRef.bind
 import scraper.expressions.Literal.True
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
+import scraper.trees.TreeNode
 
 case class LocalRelation(
   @Explain(hidden = true) data: Iterable[Row],
@@ -15,6 +16,8 @@ case class LocalRelation(
 ) extends LeafPhysicalPlan {
 
   override def iterator: Iterator[Row] = data.iterator
+
+  override protected def nestedTrees: Seq[TreeNode[_]] = Nil
 }
 
 case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])

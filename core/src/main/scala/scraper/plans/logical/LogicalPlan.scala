@@ -14,6 +14,7 @@ import scraper.expressions.dsl._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
+import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
 import scraper.utils._
 
@@ -91,6 +92,8 @@ case class LocalRelation(
   @Explain(hidden = true) output: Seq[Attribute]
 ) extends MultiInstanceRelation {
   override def newInstance(): LogicalPlan = copy(output = output map (_ withID newExpressionID()))
+
+  override protected def nestedTrees: Seq[TreeNode[_]] = Nil
 }
 
 object LocalRelation {

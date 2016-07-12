@@ -174,10 +174,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * @see [[prettyTree]]
    */
   def nodeCaption: String = {
-    val pairs = explainParams map {
-      case (name, value) => s"$name=$value"
-    }
-
+    val pairs = explainParams(_.toString) map (_.productIterator.mkString("="))
     Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
@@ -185,7 +182,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * String pairs representing constructor parameters of this [[TreeNode]]. Parameters annotated
    * with `@Explain(hidden = true)` are not included here.
    */
-  private lazy val explainParams: Seq[(String, String)] = {
+  protected def explainParams(show: Any => String): Seq[(String, String)] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
     val annotations = constructorParamExplainAnnotations
 
@@ -193,42 +190,41 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       case (_, _, maybeAnnotated) if maybeAnnotated exists (_.hidden()) =>
         None
 
-      case (name, value, maybeAnnotated) =>
-        explainParamValue(value, maybeAnnotated) map (name -> _)
+      case (name, value, _) =>
+        explainParamValue(value, show) map (name -> _)
     }.flatten
+  }
+
+  private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
+    case arg if children contains arg =>
+      // Hides child nodes since they will be printed as sub-tree nodes
+      None
+
+    case arg: Seq[_] if arg forall children.contains =>
+      // If a `Seq` contains only child nodes, hides it entirely.
+      None
+
+    case arg: Seq[_] =>
+      Some {
+        arg flatMap {
+          case e if children contains e => None
+          case e                        => Some(show(e))
+        } mkString ("[", ", ", "]")
+      }
+
+    case arg: Some[_] =>
+      arg flatMap {
+        case e if children contains e => None
+        case e                        => Some("Some(" + show(e) + ")")
+      }
+
+    case arg =>
+      Some(show(arg))
   }
 
   private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
     getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
       _ collectFirst { case a: Explain => a }
-    }
-
-  private def explainParamValue(value: Any, annotation: Option[Explain]): Option[String] =
-    value match {
-      case arg if children contains arg =>
-        // Hides child nodes since they will be printed as sub-tree nodes
-        None
-
-      case arg: Seq[_] if arg forall children.contains =>
-        // If a `Seq` contains only child nodes, hides it entirely.
-        None
-
-      case arg: Seq[_] =>
-        Some {
-          arg flatMap {
-            case e if children contains e => None
-            case e                        => Some(e.toString)
-          } mkString ("[", ", ", "]")
-        }
-
-      case arg: Some[_] =>
-        arg flatMap {
-          case e if children contains e => None
-          case e                        => Some("Some(" + e.toString + ")")
-        }
-
-      case arg =>
-        Some(arg.toString)
     }
 
   override def toString: String = "\n" + prettyTree
@@ -270,21 +266,21 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder
   }
 
-  protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = {
+  protected def nestedTrees: Seq[TreeNode[_]] = {
     val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
-    val nestedTrees = productIterator.toSeq zip nestedTreeMarks collect {
+    productIterator.toSeq zip nestedTreeMarks collect {
       case (tree: TreeNode[_], showAsNestedTree @ true) => tree
     }
+  }
 
-    if (nestedTrees.nonEmpty) {
-      nestedTrees.init.foreach {
-        _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
-      }
-
-      nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
+  protected def buildNestedTree(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = if (nestedTrees.nonEmpty) {
+    nestedTrees.init.foreach {
+      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
     }
+
+    nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
   }
 
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
