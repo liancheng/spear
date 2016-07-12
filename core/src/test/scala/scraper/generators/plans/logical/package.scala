@@ -7,7 +7,6 @@ import scraper.generators._
 import scraper.generators.Keys._
 import scraper.generators.expressions._
 import scraper.plans.logical._
-import scraper.plans.logical.dsl._
 
 package object logical {
   def genLogicalPlan(input: Seq[LogicalPlan])(implicit settings: Settings): Gen[LogicalPlan] = for {

@@ -16,7 +16,6 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.generators.expressions._
 import scraper.plans.logical.Optimizer._
-import scraper.plans.logical.dsl._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint}
 import scraper.types.{DoubleType, IntType, LongType}

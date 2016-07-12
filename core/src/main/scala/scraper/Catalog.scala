@@ -7,7 +7,6 @@ import scraper.Name.caseInsensitive
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlan
-import scraper.plans.logical.dsl._
 
 trait Catalog {
   val functionRegistry: FunctionRegistry

@@ -12,7 +12,6 @@ import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.dsl._
 import scraper.plans.QueryPlan
-import scraper.plans.logical.dsl._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
 import scraper.types.{DataType, IntType, StructType}
@@ -295,4 +294,8 @@ case class With(
   @Explain(hidden = true, nestedTree = true) cteRelation: LogicalPlan
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
+}
+
+object LogicalPlan {
+  implicit class LogicalPlanDSL(val plan: LogicalPlan) extends dsl.LogicalPlanDSL
 }

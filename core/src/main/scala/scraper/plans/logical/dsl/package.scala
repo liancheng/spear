@@ -6,7 +6,9 @@ import scraper.expressions.AutoAlias.named
 import scraper.expressions.functions._
 
 package object dsl {
-  implicit class LogicalPlanDSL(plan: LogicalPlan) {
+  trait LogicalPlanDSL {
+    def plan: LogicalPlan
+
     def select(projectList: Seq[Expression]): Project =
       Project(plan, projectList map {
         case UnresolvedAttribute(name, qualifier) if name.casePreserving == "*" => Star(qualifier)

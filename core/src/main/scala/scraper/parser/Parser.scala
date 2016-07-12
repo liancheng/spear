@@ -14,7 +14,6 @@ import scraper.expressions._
 import scraper.expressions.AutoAlias.named
 import scraper.expressions.Literal.{False, True}
 import scraper.plans.logical._
-import scraper.plans.logical.dsl._
 import scraper.types._
 
 trait Tokens extends StdTokens {

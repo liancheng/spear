@@ -9,7 +9,6 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.plans.QueryExecution
 import scraper.plans.logical._
-import scraper.plans.logical.dsl._
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
