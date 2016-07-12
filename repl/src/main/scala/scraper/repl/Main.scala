@@ -3,7 +3,7 @@ package scraper.repl
 import scala.io.Source
 
 import ammonite.ops.Path
-import ammonite.repl.{Storage, Main => AmmoniteMain}
+import ammonite.repl.{Main => AmmoniteMain, Storage}
 
 object Main {
   private val scalaVersion = scala.util.Properties.versionNumberString
