@@ -5,7 +5,6 @@ import scala.language.implicitConversions
 import scraper.{Name, RowOrdering}
 import scraper.expressions.{Attribute, AttributeRef, BoundRef}
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.utils.quote
 
 trait ComplexType extends DataType
 
@@ -75,12 +74,22 @@ object StructField {
       case (name, dataType) => StructField(name, dataType, nullable = true)
     }
 
+  implicit def `(Name,DataType)->StructField`(pair: (Name, DataType)): StructField =
+    pair match {
+      case (name, dataType) => StructField(name, dataType)
+    }
+
   implicit def `(String,FieldSpec)->StructField`(pair: (String, FieldSpec)): StructField =
     pair match {
       case (name, fieldSpec) => StructField(name, fieldSpec)
     }
 
   implicit def `(Symbol,FieldSpec)->StructField`(pair: (Symbol, FieldSpec)): StructField =
+    pair match {
+      case (name, fieldSpec) => StructField(name, fieldSpec)
+    }
+
+  implicit def `(Name,FieldSpec)->StructField`(pair: (Name, FieldSpec)): StructField =
     pair match {
       case (name, fieldSpec) => StructField(name, fieldSpec)
     }
@@ -121,7 +130,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
 
   override def sql: String = {
     val fieldsString = fields map { f =>
-      s"${quote(f.name.toString)}: ${f.dataType.sql}"
+      s"${f.name.toString}: ${f.dataType.sql}"
     } mkString ", "
 
     s"STRUCT<$fieldsString>"

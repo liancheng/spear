@@ -1,14 +1,16 @@
 package scraper
 
+import scraper.utils.quote
+
 class Name(private val impl: Name.CaseSensitivityAware) {
   def isCaseSensitive: Boolean = impl.isCaseSensitive
 
   def casePreserving: String = impl.casePreserving
 
   override def toString: String =
-    if (isCaseSensitive) casePreserving else casePreserving.toLowerCase
+    if (isCaseSensitive) quote(casePreserving) else casePreserving
 
-  override def hashCode(): Int = casePreserving.toLowerCase.hashCode
+  override def hashCode(): Int = casePreserving.toUpperCase.hashCode
 
   override def equals(other: Any): Boolean = other match {
     case that: Name if this.isCaseSensitive || that.isCaseSensitive =>

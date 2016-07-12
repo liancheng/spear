@@ -4,7 +4,6 @@ import scraper.Name
 import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
-import scraper.utils._
 
 sealed trait GeneratedNamedExpression extends NamedExpression {
   def purpose: Purpose
@@ -37,7 +36,7 @@ object GeneratedNamedExpression {
 
 trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
   override def debugString: String =
-    s"(${child.debugString} AS g:${quote(name.toString)}#${expressionID.id})"
+    s"(${child.debugString} AS g:${name.toString}#${expressionID.id})"
 
   override def dataType: DataType = child.dataType
 

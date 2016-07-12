@@ -226,7 +226,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci"count" =>
+      case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == i"count" =>
         Count(1)
 
       case Count((_: Star)) =>

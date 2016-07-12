@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
-import scraper.{LoggingFunSuite, TestUtils}
+import scraper._
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.{Attribute, ExpressionID}
 import scraper.expressions.dsl._
@@ -120,7 +120,7 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
         'latitude -> DoubleType.!,
         'longitude -> DoubleType.!
       ),
-      "phone-numbers" -> ArrayType(StringType.!),
+      i"phone-numbers" -> ArrayType(StringType.!),
       'addresses -> MapType(StringType, StringType.!)
     )
 

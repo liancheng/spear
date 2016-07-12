@@ -10,7 +10,6 @@ import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureExcep
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.types._
-import scraper.utils._
 
 case class ExpressionID(id: Long)
 
@@ -54,7 +53,7 @@ object NamedExpression {
 
   object UnquotedName {
     def apply(stringLiteral: String): UnquotedName =
-      UnquotedName(lit(stringLiteral) as stringLiteral)
+      UnquotedName(lit(stringLiteral) as Name.caseInsensitive(stringLiteral))
   }
 }
 
@@ -64,7 +63,7 @@ case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedN
   override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
 
   override protected def template: String =
-    (qualifier map (_.toString) map quote).toSeq :+ "*" mkString "."
+    (qualifier map (_.toString)).toSeq :+ "*" mkString "."
 }
 
 case class Alias(
@@ -85,10 +84,10 @@ case class Alias(
   }
 
   override def debugString: String =
-    s"(${child.debugString} AS ${quote(name.toString)}#${expressionID.id})"
+    s"(${child.debugString} AS ${name.toString}#${expressionID.id})"
 
   override def sql: Try[String] =
-    child.sql map (childSQL => s"$childSQL AS ${quote(name.toString)}")
+    child.sql map (childSQL => s"$childSQL AS ${name.toString}")
 
   def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
@@ -158,7 +157,7 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   extends Attribute with UnresolvedNamedExpression {
 
   override protected def template: String =
-    (qualifier.map(_.toString).toSeq :+ name.toString) map quote mkString "."
+    (qualifier.map(_.toString).toSeq :+ name.toString) mkString "."
 
   override def withID(id: ExpressionID): Attribute = this
 
@@ -189,10 +188,10 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
 trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (isNullable) "?" else "!"
-    s"${quote(name.toString)}:${dataType.sql}$nullability#${expressionID.id}"
+    s"${name.toString}:${dataType.sql}$nullability#${expressionID.id}"
   }
 
-  override def sql: Try[String] = Success(s"${quote(name.toString)}")
+  override def sql: Try[String] = Success(s"${name.toString}")
 
   def at(ordinal: Int): BoundRef = BoundRef(ordinal, dataType, isNullable)
 }
@@ -226,7 +225,7 @@ case class AttributeRef(
   override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
 
   override def debugString: String =
-    ((qualifier.map(_.toString).toSeq map quote) :+ super.debugString) mkString "."
+    (qualifier.map(_.toString).toSeq :+ super.debugString) mkString "."
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.

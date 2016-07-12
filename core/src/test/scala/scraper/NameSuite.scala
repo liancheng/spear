@@ -83,12 +83,7 @@ class NameSuite extends LoggingFunSuite with Checkers {
   }
 
   test("interpolation") {
-    val caseSensitive = cs"Hello"
-    val caseInsensitive = ci"Hello"
-
-    assert(caseSensitive.isCaseSensitive)
-    assert(caseSensitive.casePreserving == "Hello")
-
+    val caseInsensitive = i"Hello"
     assert(!caseInsensitive.isCaseSensitive)
     assert(caseInsensitive.casePreserving == "Hello")
   }

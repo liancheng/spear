@@ -240,7 +240,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       relation
         resolvedGroupBy groupA
         agg aggCount1
-        select (aggCount1.attr as ci"COUNT(1)")
+        select (aggCount1.attr as i"COUNT(1)")
     )
   }
 
@@ -346,7 +346,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     checkPlan(analyze(unresolved), expected)
 
   private def testAlias(expression: Expression, expectedAlias: Name): Unit = {
-    test(s"auto-alias resolution - $expression AS ${quote(expectedAlias.toString)}") {
+    test(s"auto-alias resolution - $expression AS ${expectedAlias.toString}") {
       val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }

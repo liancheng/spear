@@ -24,11 +24,11 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
     val a = 'a.int
     val b = 'b.int
 
-    checkSQL(a + b, "(`a` + `b`)")
-    checkSQL(a - b, "(`a` - `b`)")
-    checkSQL(a * b, "(`a` * `b`)")
-    checkSQL(a / b, "(`a` / `b`)")
-    checkSQL(-a, "(-`a`)")
+    checkSQL(a + b, "(a + b)")
+    checkSQL(a - b, "(a - b)")
+    checkSQL(a * b, "(a * b)")
+    checkSQL(a / b, "(a / b)")
+    checkSQL(-a, "(-a)")
   }
 
   test("logical operators") {
@@ -36,10 +36,10 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
     val b = 'b.boolean
     val c = 'c.boolean
 
-    checkSQL(a && b, "(`a` AND `b`)")
-    checkSQL(a || b, "(`a` OR `b`)")
-    checkSQL(!a, "(NOT `a`)")
-    checkSQL(If(a, b, c), "IF(`a`, `b`, `c`)")
+    checkSQL(a && b, "(a AND b)")
+    checkSQL(a || b, "(a OR b)")
+    checkSQL(!a, "(NOT a)")
+    checkSQL(If(a, b, c), "IF(a, b, c)")
   }
 
   test("non-SQL expressions") {
@@ -51,18 +51,18 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
   test("casting") {
     val a = 'a.int
 
-    checkSQL(a cast BooleanType, "CAST(`a` AS BOOLEAN)")
-    checkSQL(a cast ByteType, "CAST(`a` AS TINYINT)")
-    checkSQL(a cast ShortType, "CAST(`a` AS SMALLINT)")
-    checkSQL(a cast IntType, "CAST(`a` AS INT)")
-    checkSQL(a cast LongType, "CAST(`a` AS BIGINT)")
-    checkSQL(a cast FloatType, "CAST(`a` AS FLOAT)")
-    checkSQL(a cast DoubleType, "CAST(`a` AS DOUBLE)")
-    checkSQL(a cast ArrayType(IntType.?), "CAST(`a` AS ARRAY<INT>)")
-    checkSQL(a cast MapType(IntType, StringType.?), "CAST(`a` AS MAP<INT, STRING>)")
+    checkSQL(a cast BooleanType, "CAST(a AS BOOLEAN)")
+    checkSQL(a cast ByteType, "CAST(a AS TINYINT)")
+    checkSQL(a cast ShortType, "CAST(a AS SMALLINT)")
+    checkSQL(a cast IntType, "CAST(a AS INT)")
+    checkSQL(a cast LongType, "CAST(a AS BIGINT)")
+    checkSQL(a cast FloatType, "CAST(a AS FLOAT)")
+    checkSQL(a cast DoubleType, "CAST(a AS DOUBLE)")
+    checkSQL(a cast ArrayType(IntType.?), "CAST(a AS ARRAY<INT>)")
+    checkSQL(a cast MapType(IntType, StringType.?), "CAST(a AS MAP<INT, STRING>)")
     checkSQL(
       a cast StructType('name -> StringType.?, 'age -> IntType.?),
-      "CAST(`a` AS STRUCT<`name`: STRING, `age`: INT>)"
+      "CAST(a AS STRUCT<name: STRING, age: INT>)"
     )
   }
 }

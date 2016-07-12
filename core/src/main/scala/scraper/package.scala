@@ -8,8 +8,6 @@ package object scraper {
   implicit def `Symbol->CaseInsensitiveName`(symbol: Symbol): Name = caseInsensitive(symbol.name)
 
   implicit class NameHelper(sc: StringContext) {
-    def cs(args: Any*): Name = caseSensitive(sc.s(args: _*))
-
-    def ci(args: Any*): Name = caseInsensitive(sc.s(args: _*))
+    def i(args: Any*): Name = caseInsensitive(sc.s(args: _*))
   }
 }
