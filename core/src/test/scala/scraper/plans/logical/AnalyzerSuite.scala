@@ -21,11 +21,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val (groupA, groupB, aggCountA, aggCountB) = (
+  private val (groupA, groupB, aggCountA, aggCountB, aggCount1) = (
     GroupingAlias(a),
     GroupingAlias(b),
     AggregationAlias(count(a)),
-    AggregationAlias(count(b))
+    AggregationAlias(count(b)),
+    AggregationAlias(count(1))
   )
 
   private val relation = LocalRelation.empty(a, b)
@@ -216,7 +217,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("aggregate with multiple alternating having and order by clauses") {
     checkAnalyzedPlan(
       relation
-        groupBy 'a agg 'a
+        groupBy 'a
+        agg 'a
         having 'a > 1
         orderBy 'a.asc
         having count('b) < 10L
@@ -227,6 +229,18 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         having groupA.attr > 1 && (aggCountB.attr < 10L)
         orderBy aggCountB.attr.asc
         select (groupA.attr as 'a)
+    )
+  }
+
+  test("aggregate with count(*)") {
+    checkAnalyzedPlan(
+      relation
+        groupBy 'a
+        agg count(),
+      relation
+        resolvedGroupBy groupA
+        agg aggCount1
+        select (aggCount1.attr as ci"COUNT(1)")
     )
   }
 

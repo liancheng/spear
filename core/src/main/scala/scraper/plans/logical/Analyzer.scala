@@ -217,7 +217,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
           case Literal(lit: String, StringType) => UnquotedName(lit)
         }.sql getOrElse AnonymousColumnName
 
-        child as alias
+        child as Name.caseInsensitive(alias)
     }
   }
 
@@ -228,6 +228,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
       case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == ci"count" =>
+        Count(1)
+
+      case Count((_: Star)) =>
         Count(1)
 
       case UnresolvedFunction(_, (_: Star) :: Nil, true) =>

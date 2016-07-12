@@ -37,7 +37,7 @@ package object reflection {
       StructType(params.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
         val FieldSpec(dataType, nullable) = fieldSpecFor(paramType)
-        StructField(param.name.toString, dataType, nullable)
+        StructField(Name.caseSensitive(param.name.toString), dataType, nullable)
       }).?
   }
 

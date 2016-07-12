@@ -16,6 +16,8 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
+  def count(): Count = Count(Star(None))
+
   def first(expression: Expression): First = First(expression)
 
   def last(expression: Expression): Last = Last(expression)
