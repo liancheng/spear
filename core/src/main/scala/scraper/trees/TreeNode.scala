@@ -8,12 +8,7 @@ import scraper.reflection.constructorParams
 import scraper.types.StructType
 
 trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
-  private type Rule = PartialFunction[Base, Base]
-
   def children: Seq[Base]
-
-  protected def sameChildren(newChildren: Seq[Base]): Boolean =
-    (newChildren, children).zipped forall (_ same _)
 
   /**
    * Returns whether this [[nodeCaption]] and `that` point to the same reference or equal
@@ -37,50 +32,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def transformChildrenUp(rule: PartialFunction[Base, Base]): Base =
     this transformChildren (rule, _ transformUp _)
 
-  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
-    // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
-    // equivalent to the original one
-    def applyRule(tree: Base): (Base, Boolean) = {
-      val transformed = next(tree, rule)
-      if (tree same transformed) tree -> false else transformed -> true
-    }
+  def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 
-    val (newArgs, argsChanged) = productIterator.map {
-      case t: TreeNode[_] if children contains t =>
-        applyRule(t.asInstanceOf[Base])
+  def size: Int = 1 + children.map(_.size).sum
 
-      case Some(t: TreeNode[_]) if children contains t =>
-        val (ruleApplied, transformed) = applyRule(t.asInstanceOf[Base])
-        Some(ruleApplied) -> transformed
-
-      case arg: Traversable[_] =>
-        val (newElements, elementsChanged) = arg.map {
-          case node: TreeNode[_] if children contains node => applyRule(node.asInstanceOf[Base])
-          case element                                     => element -> false
-        }.unzip
-        newElements -> (elementsChanged exists (_ == true))
-
-      case arg: AnyRef =>
-        arg -> false
-
-      case null =>
-        (null, false)
-    }.toSeq.unzip
-
-    if (argsChanged contains true) makeCopy(newArgs) else this
-  }
-
-  protected def makeCopy(args: Seq[AnyRef]): Base = {
-    val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
-    assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
-    val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
-    try {
-      defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
-    } catch {
-      case cause: IllegalArgumentException =>
-        throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
-    }
-  }
+  def isLeaf: Boolean = children.isEmpty
 
   def withChildren(newChildren: Seq[Base]): Base = {
     assert(newChildren.length == children.length)
@@ -165,6 +121,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     false
   }
 
+  override def toString: String = "\n" + prettyTree
+
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   /**
@@ -178,58 +136,22 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
-  /**
-   * String pairs representing constructor parameters of this [[TreeNode]]. Parameters annotated
-   * with `@Explain(hidden = true)` are not included here.
-   */
-  protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
-    val annotations = constructorParamExplainAnnotations
-
-    (argNames, productIterator.toSeq, annotations).zipped.map {
-      case (_, _, maybeAnnotated) if maybeAnnotated exists (_.hidden()) =>
-        None
-
-      case (name, value, _) =>
-        explainParamValue(value, show) map (name -> _)
-    }.flatten
-  }
-
-  private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
-    case arg if children contains arg =>
-      // Hides child nodes since they will be printed as sub-tree nodes
-      None
-
-    case arg: Seq[_] if arg forall children.contains =>
-      // If a `Seq` contains only child nodes, hides it entirely.
-      None
-
-    case arg: Seq[_] =>
-      Some {
-        arg flatMap {
-          case e if children contains e => None
-          case e                        => Some(show(e))
-        } mkString ("[", ", ", "]")
-      }
-
-    case arg: Some[_] =>
-      arg flatMap {
-        case e if children contains e => None
-        case e                        => Some("Some(" + show(e) + ")")
-      }
-
-    case arg =>
-      Some(show(arg))
-  }
-
-  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
-    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
-      _ collectFirst { case a: Explain => a }
-    }
-
-  override def toString: String = "\n" + prettyTree
-
   def nodeName: String = getClass.getSimpleName stripSuffix "$"
+
+  protected def sameChildren(newChildren: Seq[Base]): Boolean =
+    (newChildren, children).zipped forall (_ same _)
+
+  protected def makeCopy(args: Seq[AnyRef]): Base = {
+    val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
+    assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
+    val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
+    try {
+      defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
+    } catch {
+      case cause: IllegalArgumentException =>
+        throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
+    }
+  }
 
   /**
    * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
@@ -266,13 +188,6 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder
   }
 
-  protected def nestedTrees: Seq[TreeNode[_]] = {
-    val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
-    productIterator.toSeq zip nestedTreeMarks collect {
-      case (tree: TreeNode[_], showAsNestedTree @ true) => tree
-    }
-  }
-
   protected def buildNestedTree(
     depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
   ): Unit = if (nestedTrees.nonEmpty) {
@@ -283,9 +198,94 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
   }
 
-  def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
+  protected def nestedTrees: Seq[TreeNode[_]] = {
+    val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
+    productIterator.toSeq zip nestedTreeMarks collect {
+      case (tree: TreeNode[_], showAsNestedTree @ true) => tree
+    }
+  }
 
-  def size: Int = 1 + children.map(_.size).sum
+  /**
+   * String pairs representing constructor parameters of this [[TreeNode]]. Parameters annotated
+   * with `@Explain(hidden = true)` are not included here.
+   */
+  protected def explainParams(show: Any => String): Seq[(String, String)] = {
+    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
+    val annotations = constructorParamExplainAnnotations
 
-  def isLeaf: Boolean = children.isEmpty
+    (argNames, productIterator.toSeq, annotations).zipped.map {
+      case (_, _, maybeAnnotated) if maybeAnnotated exists (_.hidden()) =>
+        None
+
+      case (name, value, _) =>
+        explainParamValue(value, show) map (name -> _)
+    }.flatten
+  }
+
+  private type Rule = PartialFunction[Base, Base]
+
+  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
+    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
+      _ collectFirst { case a: Explain => a }
+    }
+
+  private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
+    // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
+    // equivalent to the original one
+    def applyRule(tree: Base): (Base, Boolean) = {
+      val transformed = next(tree, rule)
+      if (tree same transformed) tree -> false else transformed -> true
+    }
+
+    val (newArgs, argsChanged) = productIterator.map {
+      case t: TreeNode[_] if children contains t =>
+        applyRule(t.asInstanceOf[Base])
+
+      case Some(t: TreeNode[_]) if children contains t =>
+        val (ruleApplied, transformed) = applyRule(t.asInstanceOf[Base])
+        Some(ruleApplied) -> transformed
+
+      case arg: Traversable[_] =>
+        val (newElements, elementsChanged) = arg.map {
+          case node: TreeNode[_] if children contains node => applyRule(node.asInstanceOf[Base])
+          case element                                     => element -> false
+        }.unzip
+        newElements -> (elementsChanged exists (_ == true))
+
+      case arg: AnyRef =>
+        arg -> false
+
+      case null =>
+        (null, false)
+    }.toSeq.unzip
+
+    if (argsChanged contains true) makeCopy(newArgs) else this
+  }
+
+  private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
+    case arg if children contains arg =>
+      // Hides child nodes since they will be printed as sub-tree nodes
+      None
+
+    case arg: Seq[_] if arg forall children.contains =>
+      // If a `Seq` contains only child nodes, hides it entirely.
+      None
+
+    case arg: Seq[_] =>
+      Some {
+        arg flatMap {
+          case e if children contains e => None
+          case e                        => Some(show(e))
+        } mkString ("[", ", ", "]")
+      }
+
+    case arg: Some[_] =>
+      arg flatMap {
+        case e if children contains e => None
+        case e                        => Some("Some(" + show(e) + ")")
+      }
+
+    case arg =>
+      Some(show(arg))
+  }
 }

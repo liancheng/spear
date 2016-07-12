@@ -8,8 +8,6 @@ import scraper.trees.TreeNode
 import scraper.types.StructType
 
 trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
-  private type Rule = PartialFunction[Expression, Expression]
-
   def output: Seq[Attribute]
 
   lazy val outputSet: Set[Attribute] = output.toSet
@@ -35,6 +33,53 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)
 
   def transformExpressionsUp(rule: Rule): Plan = transformExpressions(rule, _ transformUp _)
+
+  def collectFromAllExpressions[T](rule: PartialFunction[Expression, T]): Seq[T] = {
+    val builder = ArrayBuffer.newBuilder[T]
+
+    transformAllExpressions {
+      case e if rule isDefinedAt e =>
+        builder += rule(e)
+        e
+    }
+
+    builder.result()
+  }
+
+  def collectFirstFromAllExpressions[T](rule: PartialFunction[Expression, T]): Option[T] = {
+    transformAllExpressions {
+      case e if rule isDefinedAt e =>
+        return Some(rule(e))
+    }
+
+    None
+  }
+
+  override def nodeCaption: String = {
+    val outputString = outputStrings mkString ("[", ", ", "]")
+    val arrow = "\u21d2"
+    Seq(super.nodeCaption, arrow, outputString) mkString " "
+  }
+
+  /**
+   * Returns string representations of each output attribute of this query plan.
+   */
+  protected def outputStrings: Seq[String] = output map (_.debugString)
+
+  override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
+    case (e, index) => QueryPlan.ExpressionNode(index, e)
+  } ++ super.nestedTrees
+
+  override protected def explainParams(show: Any => String): Seq[(String, String)] = {
+    val remainingExpressions = mutable.Stack(expressions.indices: _*)
+
+    super.explainParams({
+      case e: Expression => s"$$${remainingExpressions.pop()}"
+      case other         => other.toString
+    })
+  }
+
+  private type Rule = PartialFunction[Expression, Expression]
 
   private def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
     def applyRule(e: Expression): (Expression, Boolean) = {
@@ -62,51 +107,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     }.toSeq.unzip
 
     if (argsChanged contains true) makeCopy(newArgs) else this
-  }
-
-  def collectFromAllExpressions[T](rule: PartialFunction[Expression, T]): Seq[T] = {
-    val builder = ArrayBuffer.newBuilder[T]
-
-    transformAllExpressions {
-      case e if rule isDefinedAt e =>
-        builder += rule(e)
-        e
-    }
-
-    builder.result()
-  }
-
-  def collectFirstFromAllExpressions[T](rule: PartialFunction[Expression, T]): Option[T] = {
-    transformAllExpressions {
-      case e if rule isDefinedAt e =>
-        return Some(rule(e))
-    }
-
-    None
-  }
-
-  /**
-   * Returns string representations of each output attribute of this query plan.
-   */
-  protected def outputStrings: Seq[String] = output map (_.debugString)
-
-  override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
-    case (e, index) => QueryPlan.ExpressionNode(index, e)
-  } ++ super.nestedTrees
-
-  override protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val remainingExpressions = mutable.Stack(expressions.indices: _*)
-
-    super.explainParams({
-      case e: Expression => s"$$${remainingExpressions.pop()}"
-      case other         => other.toString
-    })
-  }
-
-  override def nodeCaption: String = {
-    val outputString = outputStrings mkString ("[", ", ", "]")
-    val arrow = "\u21d2"
-    Seq(super.nodeCaption, arrow, outputString) mkString " "
   }
 }
 
