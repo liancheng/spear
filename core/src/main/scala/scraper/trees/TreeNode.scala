@@ -153,51 +153,6 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
   }
 
-  /**
-   * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
-   *
-   * @param depth Depth of the current node.  Depth of the root node is 0.
-   * @param lastChildren The `i`-th element in `lastChildren` indicates whether the direct ancestor
-   *        of this [[TreeNode]] at depth `i + 1` is the last child of its own parent at depth `i`.
-   *        For root node, `lastChildren` is empty (`Nil`).
-   * @param builder The string builder used to build the tree string.
-   */
-  protected[scraper] def buildPrettyTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): StringBuilder = {
-    val pipe = "\u2502"
-    val tee = "\u251c"
-    val corner = "\u2570"
-    val bar = "\u2574"
-
-    if (depth > 0) {
-      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
-      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
-    }
-
-    builder ++= nodeCaption
-    builder ++= "\n"
-
-    buildNestedTree(depth, lastChildren, builder)
-
-    if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
-      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
-    }
-
-    builder
-  }
-
-  protected def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = if (nestedTrees.nonEmpty) {
-    nestedTrees.init.foreach {
-      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
-    }
-
-    nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
-  }
-
   protected def nestedTrees: Seq[TreeNode[_]] = {
     val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
     productIterator.toSeq zip nestedTreeMarks collect {
@@ -260,6 +215,51 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }.toSeq.unzip
 
     if (argsChanged contains true) makeCopy(newArgs) else this
+  }
+
+  /**
+   * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
+   *
+   * @param depth Depth of the current node.  Depth of the root node is 0.
+   * @param lastChildren The `i`-th element in `lastChildren` indicates whether the direct ancestor
+   *        of this [[TreeNode]] at depth `i + 1` is the last child of its own parent at depth `i`.
+   *        For root node, `lastChildren` is empty (`Nil`).
+   * @param builder The string builder used to build the tree string.
+   */
+  private def buildPrettyTree(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): StringBuilder = {
+    val pipe = "\u2502"
+    val tee = "\u251c"
+    val corner = "\u2570"
+    val bar = "\u2574"
+
+    if (depth > 0) {
+      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
+      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
+    }
+
+    builder ++= nodeCaption
+    builder ++= "\n"
+
+    buildNestedTree(depth, lastChildren, builder)
+
+    if (children.nonEmpty) {
+      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
+      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
+    }
+
+    builder
+  }
+
+  private def buildNestedTree(
+    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  ): Unit = if (nestedTrees.nonEmpty) {
+    nestedTrees.init.foreach {
+      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
+    }
+
+    nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
   }
 
   private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
