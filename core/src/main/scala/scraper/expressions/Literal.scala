@@ -5,7 +5,7 @@ import scala.util.Try
 import scraper.Row
 import scraper.types._
 
-case class Literal(value: Any, override val dataType: PrimitiveType) extends LeafExpression {
+case class Literal(value: Any, override val dataType: DataType) extends LeafExpression {
   override def isNullable: Boolean = value == null
 
   override def evaluate(input: Row): Any = value

@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scraper.Name
 import scraper.parser.Parser
 
 package object functions {
@@ -48,4 +49,11 @@ package object functions {
   def rlike(string: Expression, pattern: Expression): RLike = RLike(string, pattern)
 
   def rlike(string: Expression, pattern: String): RLike = RLike(string, pattern)
+
+  def named_struct(
+    first: (Expression, Expression), rest: (Expression, Expression)*
+  ): CreateNamedStruct = {
+    val (names, values) = (first +: rest).unzip
+    CreateNamedStruct(names, values)
+  }
 }

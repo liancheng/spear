@@ -58,7 +58,7 @@ object Optimizer {
    */
   object FoldConstants extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-      case e if e.isFoldable => lit(e.evaluated)
+      case e if e.isFoldable => Literal(e.evaluated, e.dataType)
     }
   }
 
