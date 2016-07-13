@@ -21,11 +21,9 @@ import scraper.utils._
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
 
-  lazy val isDeduplicated: Boolean = isChildrenResolved && (
+  lazy val isDeduplicated: Boolean = children.forall(_.isResolved) && (
     children.length < 2 || (children map (_.outputSet) reduce (_ intersectByID _)).isEmpty
   )
-
-  def isChildrenResolved: Boolean = children forall (_.isResolved)
 
   /**
    * Tries to return a copy of this plan node where all expressions are strictly-typed.

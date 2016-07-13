@@ -159,7 +159,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
    */
   object DeduplicateReferences extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan if plan.isChildrenResolved && !plan.isDeduplicated =>
+      case plan if plan.children.forall(_.isResolved) && !plan.isDeduplicated =>
         plan match {
           case node: Join      => node.copy(right = deduplicateRight(node.left, node.right))
           case node: Union     => node.copy(right = deduplicateRight(node.left, node.right))
@@ -431,12 +431,29 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     }
 
     private def ensureResolved(tree: LogicalPlan): Unit = if (!tree.isResolved) {
-      throw new ResolutionFailureException(
-        s"""Logical plan not fully resolved:
-           |
-           |${tree.prettyTree}
-           |""".stripMargin
-      )
+      // Tries to collect a "minimum" unresolved logical plan node.
+      tree.collectFirst {
+        case Unresolved(plan) if plan.children.forall(_.isResolved) =>
+          // Tries to collect a "minimum" unresolved expression.
+          plan.collectFirstFromAllExpressions {
+            case Unresolved(e) if e.children.forall(_.isResolved) =>
+              throw new ResolutionFailureException(
+                s"""Expression ${e.debugString} in the following logical plan is not fully resolved:
+                   |
+                   |${plan.prettyTree}
+                   |""".stripMargin
+              )
+          }
+
+          // For unresolved logical plan nodes whose expressions are all resolved (e.g.,
+          // `UnresolvedAggregate`), simply report the logical plan.
+          throw new ResolutionFailureException(
+            s"""The following logical plan is not fully resolved:
+               |
+               |${tree.prettyTree}
+               |""".stripMargin
+          )
+      }
     }
 
     private def ensureNoGeneratedOutputAttributes(tree: LogicalPlan): Unit = {
