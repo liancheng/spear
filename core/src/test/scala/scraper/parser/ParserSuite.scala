@@ -2,8 +2,7 @@ package scraper.parser
 
 import scraper.{LoggingFunSuite, TestUtils}
 import scraper.exceptions.ParsingException
-import scraper.expressions.{Expression, If}
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.logical._
 import scraper.plans.logical.LogicalPlan

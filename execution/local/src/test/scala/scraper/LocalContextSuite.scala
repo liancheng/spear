@@ -3,7 +3,7 @@ package scraper
 import scraper.Context._
 import scraper.LocalContextSuite.Person
 import scraper.exceptions.TableNotFoundException
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.local.LocalContext
 import scraper.types.StringType

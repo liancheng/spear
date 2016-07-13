@@ -1,7 +1,7 @@
 package scraper.local.plans.physical
 
 import scraper.{LoggingFunSuite, Row, TestUtils}
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.local.plans.physical.dsl._
 import scraper.plans.physical.{PhysicalPlan, SingleRowRelation}
 

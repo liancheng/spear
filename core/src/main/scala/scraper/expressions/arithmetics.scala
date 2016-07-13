@@ -3,6 +3,7 @@ package scraper.expressions
 import scala.math.pow
 
 import scraper.{NullSafeOrdering, Row}
+import scraper.expressions.functions.lit
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
 
@@ -100,8 +101,8 @@ case class IsNaN(child: Expression) extends UnaryExpression {
   override def evaluate(input: Row): Any = {
     val value = child evaluate input
     if (value == null) false else (value, dataType) match {
-      case (v: Double, DoubleType) => v.isNaN
-      case (v: Float, FloatType)   => v.isNaN
+      case (v: Double, DoubleType) => lit(v).isNaN
+      case (v: Float, FloatType)   => lit(v).isNaN
       case _                       => false
     }
   }

@@ -7,8 +7,7 @@ import org.scalatest.prop.Checkers
 
 import scraper._
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.{Attribute, ExpressionID}
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.generators.types._
 
 class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {

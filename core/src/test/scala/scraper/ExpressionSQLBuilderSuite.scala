@@ -1,8 +1,7 @@
 package scraper
 
-import scraper.expressions.{If, Literal}
+import scraper.expressions._
 import scraper.expressions.Literal.{False, True}
-import scraper.expressions.dsl._
 import scraper.types._
 
 class ExpressionSQLBuilderSuite extends SQLBuilderTest {

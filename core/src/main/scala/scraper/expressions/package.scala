@@ -1,13 +1,12 @@
-package scraper.expressions
+package scraper
 
 import scala.language.implicitConversions
 
-import scraper.Name
 import scraper.expressions.typecheck._
 import scraper.parser.Parser
 import scraper.types._
 
-package object dsl {
+package object expressions {
   implicit def `Boolean->Literal`(value: Boolean): Literal = Literal(value, BooleanType)
 
   implicit def `Byte->Literal`(value: Byte): Literal = Literal(value, ByteType)

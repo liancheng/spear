@@ -2,8 +2,7 @@ package scraper.expressions.typecheck
 
 import scraper.LoggingFunSuite
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Expression
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.types._
 
