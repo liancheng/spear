@@ -10,7 +10,6 @@ import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
-import scraper.plans.logical.dsl._
 import scraper.types.{DataType, NullType}
 import scraper.utils._
 

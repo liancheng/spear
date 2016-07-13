@@ -5,8 +5,8 @@ import scraper.exceptions.ParsingException
 import scraper.expressions.{Expression, If}
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
+import scraper.plans.logical._
 import scraper.plans.logical.LogicalPlan
-import scraper.plans.logical.dsl._
 import scraper.types._
 
 class ParserSuite extends LoggingFunSuite with TestUtils {
