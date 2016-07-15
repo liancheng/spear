@@ -256,6 +256,10 @@ case class Join(
 
   def on(condition: Expression): Join = copy(condition = Some(condition))
 
+  /**
+   * Returns a new [[Join]] operator with a join condition formed by combining all given
+   * `predicates`. If `predicates` is empty, simply returns this [[Join]] operator untouched.
+   */
   def onOption(predicates: Seq[Expression]): Join =
     predicates reduceOption And map on getOrElse this
 }
@@ -291,6 +295,25 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
   override def output: Seq[Attribute] = child.output
 }
 
+/**
+ * A logical plan operator used to implement CTE. Note that one [[With]] operator only holds a
+ * single CTE relation. Queries involving multiple CTE relations should use nested [[With]]
+ * operators. E.g., the following query
+ * {{{
+ *   WITH s0 AS (SELECT * FROM x), s1 AS (SELECT * FROM y)
+ *   SELECT * FROM s0, s1
+ * }}}
+ * is translated into a query plan like this:
+ * {{{
+ *   With name=s0
+ *    | +- Relation x
+ *    +- With name=s1
+ *        | +- Relation y
+ *        +- Join
+ *            +- Relation s0
+ *            +- Relation s1
+ * }}}
+ */
 case class With(
   child: LogicalPlan,
   name: Name,
