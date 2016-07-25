@@ -33,7 +33,7 @@ object Main {
 
     AmmoniteMain(
       predef = predef,
-      storageBackend = Storage.Folder(Path.home / ".scraper"),
+      storageBackend = new Storage.Folder(Path.home / ".scraper"),
       welcomeBanner = Some(banner)
     ).run()
   }
