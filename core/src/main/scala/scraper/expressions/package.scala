@@ -23,6 +23,10 @@ package object expressions {
 
   implicit def `String->Literal`(value: String): Literal = Literal(value, StringType)
 
+  implicit class OfDataType(value: Any) {
+    def of(dataType: DataType): Literal = Literal(value, dataType)
+  }
+
   implicit def `Symbol->UnresolvedAttribute`(name: Symbol): UnresolvedAttribute =
     UnresolvedAttribute(name)
 

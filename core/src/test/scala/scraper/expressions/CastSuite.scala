@@ -2,31 +2,40 @@ package scraper.expressions
 
 import scala.util.Success
 
+import org.scalacheck.Arbitrary._
+import org.scalacheck.Prop
 import org.scalacheck.Prop.{all, forAll, BooleanOperators}
 import org.scalatest.prop.Checkers
 
 import scraper.LoggingFunSuite
-import scraper.expressions.Cast.{booleanFalseStrings, booleanTrueStrings, compatible, widestTypeOf}
+import scraper.exceptions.TypeCastException
+import scraper.expressions.Cast.{booleanFalseStrings, booleanTrueStrings, widestTypeOf}
+import scraper.expressions.functions.lit
 import scraper.types._
 
 class CastSuite extends LoggingFunSuite with Checkers {
-  test("implicit casts between numeric types") {
+  test("invalid casting") {
+    intercept[TypeCastException] {
+      (lit(1) cast ArrayType(IntType)).strictlyTyped.get
+    }
+  }
+
+  test("implicit casting between numeric types") {
     for {
       (fromType, index) <- numericTypes.zipWithIndex
       toType <- numericTypes drop index
-    } assert(fromType isCompatibleWith toType)
+    } assert(fromType isCastableTo toType)
   }
 
-  test("explicit casts between numeric types") {
+  test("explicit casting between numeric types") {
     for {
       fromType <- numericTypes
       toType <- numericTypes
     } assert(fromType isCastableTo toType)
   }
 
-  test("casts between primitive types and string type") {
+  test("casting between primitive types and string type") {
     for (primitiveType <- primitiveTypes) {
-      assert(primitiveType isCompatibleWith StringType)
       assert(primitiveType isCastableTo StringType)
       assert(StringType isCastableTo primitiveType)
     }
@@ -34,14 +43,14 @@ class CastSuite extends LoggingFunSuite with Checkers {
     assert(StringType isCompatibleWith BooleanType)
   }
 
-  test("casts from null type to primitive types") {
+  test("casting from null type to primitive types") {
     for (primitiveType <- primitiveTypes) {
       assert(NullType isCompatibleWith primitiveType)
       assert(NullType isCastableTo primitiveType)
     }
   }
 
-  test("cast string type to boolean type") {
+  test("casting string type to boolean type") {
     for (trueString <- booleanTrueStrings) {
       assertResult(true) {
         (trueString cast BooleanType).evaluated
@@ -64,210 +73,110 @@ class CastSuite extends LoggingFunSuite with Checkers {
     assert(widestTypeOf(Seq(ByteType, ArrayType(IntType), IntType)).isFailure)
   }
 
-  test("array type") {
-    assert(compatible(ArrayType(IntType), ArrayType(LongType)))
-    assert(!compatible(ArrayType(LongType), ArrayType(IntType)))
-
-    assert(compatible(ArrayType(IntType.!), ArrayType(LongType.!)))
-    assert(compatible(ArrayType(IntType.!), ArrayType(LongType.?)))
-    assert(compatible(ArrayType(IntType.?), ArrayType(LongType.?)))
-    assert(!compatible(ArrayType(IntType.?), ArrayType(LongType.!)))
-
-    assert(compatible(
-      ArrayType(ArrayType(IntType)),
-      ArrayType(ArrayType(LongType))
-    ))
-  }
-
-  test("cast boolean values") {
+  test("casting boolean values") {
     check {
       forAll { value: Boolean =>
         all(
-          "cast from boolean to boolean" |:
-            checkCast(value, BooleanType, value, BooleanType),
-
-          "cast from boolean to int" |:
-            checkCast(value, BooleanType, if (value) 1 else 0, IntType),
-
-          "cast from boolean to string" |:
-            checkCast(value, BooleanType, value.toString, StringType)
+          checkCast(value of BooleanType, value of BooleanType),
+          checkCast(value of BooleanType, if (value) 1 else 0 of IntType),
+          checkCast(value of BooleanType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast byte values") {
+  test("casting byte values") {
     check {
       forAll { value: Byte =>
         all(
-          "cast from byte to byte" |:
-            checkCast(value, ByteType, value, ByteType),
-
-          "cast from byte to short" |:
-            checkCast(value, ByteType, value.toShort, ShortType),
-
-          "cast from byte to int" |:
-            checkCast(value, ByteType, value.toInt, IntType),
-
-          "cast from byte to long" |:
-            checkCast(value, ByteType, value.toLong, LongType),
-
-          "cast from byte to float" |:
-            checkCast(value, ByteType, value.toFloat, FloatType),
-
-          "cast from byte to double" |:
-            checkCast(value, ByteType, value.toDouble, DoubleType),
-
-          "cast from byte to string" |:
-            checkCast(value, ByteType, value.toString, StringType)
+          checkCast(value of ByteType, value of ByteType),
+          checkCast(value of ByteType, value.toShort of ShortType),
+          checkCast(value of ByteType, value.toInt of IntType),
+          checkCast(value of ByteType, value.toLong of LongType),
+          checkCast(value of ByteType, value.toFloat of FloatType),
+          checkCast(value of ByteType, value.toDouble of DoubleType),
+          checkCast(value of ByteType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast short values") {
+  test("casting short values") {
     check {
       forAll { value: Short =>
         all(
-          "cast from short to byte" |:
-            checkCast(value, ShortType, value.toByte, ByteType),
-
-          "cast from short to short" |:
-            checkCast(value, ShortType, value, ShortType),
-
-          "cast from short to int" |:
-            checkCast(value, ShortType, value.toInt, IntType),
-
-          "cast from short to long" |:
-            checkCast(value, ShortType, value.toLong, LongType),
-
-          "cast from short to float" |:
-            checkCast(value, ShortType, value.toFloat, FloatType),
-
-          "cast from short to double" |:
-            checkCast(value, ShortType, value.toDouble, DoubleType),
-
-          "cast from short to string" |:
-            checkCast(value, ShortType, value.toString, StringType)
+          checkCast(value of ShortType, value.toByte of ByteType),
+          checkCast(value of ShortType, value of ShortType),
+          checkCast(value of ShortType, value.toInt of IntType),
+          checkCast(value of ShortType, value.toLong of LongType),
+          checkCast(value of ShortType, value.toFloat of FloatType),
+          checkCast(value of ShortType, value.toDouble of DoubleType),
+          checkCast(value of ShortType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast int values") {
+  test("casting int values") {
     check {
       forAll { value: Int =>
         all(
-          "cast from int to boolean" |:
-            checkCast(value, IntType, value != 0, BooleanType),
-
-          "cast from int to byte" |:
-            checkCast(value, IntType, value.toByte, ByteType),
-
-          "cast from int to short" |:
-            checkCast(value, IntType, value.toShort, ShortType),
-
-          "cast from int to int" |:
-            checkCast(value, IntType, value, IntType),
-
-          "cast from int to long" |:
-            checkCast(value, IntType, value.toLong, LongType),
-
-          "cast from int to float" |:
-            checkCast(value, IntType, value.toFloat, FloatType),
-
-          "cast from int to double" |:
-            checkCast(value, IntType, value.toDouble, DoubleType),
-
-          "cast from int to string" |:
-            checkCast(value, IntType, value.toString, StringType)
+          checkCast(value of IntType, value != 0 of BooleanType),
+          checkCast(value of IntType, value.toByte of ByteType),
+          checkCast(value of IntType, value.toShort of ShortType),
+          checkCast(value of IntType, value of IntType),
+          checkCast(value of IntType, value.toLong of LongType),
+          checkCast(value of IntType, value.toFloat of FloatType),
+          checkCast(value of IntType, value.toDouble of DoubleType),
+          checkCast(value of IntType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast long values") {
+  test("casting long values") {
     check {
       forAll { value: Long =>
         all(
-          "cast from long to byte" |:
-            checkCast(value, LongType, value.toByte, ByteType),
-
-          "cast from long to short" |:
-            checkCast(value, LongType, value.toShort, ShortType),
-
-          "cast from long to int" |:
-            checkCast(value, LongType, value.toInt, IntType),
-
-          "cast from long to long" |:
-            checkCast(value, LongType, value, LongType),
-
-          "cast from long to float" |:
-            checkCast(value, LongType, value.toFloat, FloatType),
-
-          "cast from long to double" |:
-            checkCast(value, LongType, value.toDouble, DoubleType),
-
-          "cast from long to string" |:
-            checkCast(value, LongType, value.toString, StringType)
+          checkCast(value of LongType, value.toByte of ByteType),
+          checkCast(value of LongType, value.toShort of ShortType),
+          checkCast(value of LongType, value.toInt of IntType),
+          checkCast(value of LongType, value of LongType),
+          checkCast(value of LongType, value.toFloat of FloatType),
+          checkCast(value of LongType, value.toDouble of DoubleType),
+          checkCast(value of LongType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast float values") {
+  test("casting float values") {
     check {
       forAll { value: Float =>
         all(
-          "cast from float to byte" |:
-            checkCast(value, FloatType, value.toByte, ByteType),
-
-          "cast from float to short" |:
-            checkCast(value, FloatType, value.toShort, ShortType),
-
-          "cast from float to int" |:
-            checkCast(value, FloatType, value.toInt, IntType),
-
-          "cast from float to long" |:
-            checkCast(value, FloatType, value.toLong, LongType),
-
-          "cast from float to float" |:
-            checkCast(value, FloatType, value, FloatType),
-
-          "cast from float to double" |:
-            checkCast(value, FloatType, value.toDouble, DoubleType),
-
-          "cast from float to string" |:
-            checkCast(value, FloatType, value.toString, StringType)
+          checkCast(value of FloatType, value.toByte of ByteType),
+          checkCast(value of FloatType, value.toShort of ShortType),
+          checkCast(value of FloatType, value.toInt of IntType),
+          checkCast(value of FloatType, value.toLong of LongType),
+          checkCast(value of FloatType, value of FloatType),
+          checkCast(value of FloatType, value.toDouble of DoubleType),
+          checkCast(value of FloatType, value.toString of StringType)
         )
       }
     }
   }
 
-  test("cast double values") {
+  test("casting double values") {
     check {
       forAll { value: Double =>
         all(
-          "cast from double to byte" |:
-            checkCast(value, DoubleType, value.toByte, ByteType),
-
-          "cast from double to short" |:
-            checkCast(value, DoubleType, value.toShort, ShortType),
-
-          "cast from double to int" |:
-            checkCast(value, DoubleType, value.toInt, IntType),
-
-          "cast from double to long" |:
-            checkCast(value, DoubleType, value.toLong, LongType),
-
-          "cast from double to double" |:
-            checkCast(value, DoubleType, value.toFloat, FloatType),
-
-          "cast from double to double" |:
-            checkCast(value, DoubleType, value, DoubleType),
-
-          "cast from double to string" |:
-            checkCast(value, DoubleType, value.toString, StringType)
+          checkCast(value of DoubleType, value.toByte of ByteType),
+          checkCast(value of DoubleType, value.toShort of ShortType),
+          checkCast(value of DoubleType, value.toInt of IntType),
+          checkCast(value of DoubleType, value.toLong of LongType),
+          checkCast(value of DoubleType, value.toFloat of FloatType),
+          checkCast(value of DoubleType, value of DoubleType),
+          checkCast(value of DoubleType, value.toString of StringType)
         )
       }
     }
@@ -277,7 +186,8 @@ class CastSuite extends LoggingFunSuite with Checkers {
 
   private val primitiveTypes = numericTypes ++ Seq(BooleanType, StringType)
 
-  private def checkCast(value: Any, fromType: DataType, casted: Any, toType: DataType): Boolean = {
-    Literal(value, fromType).cast(toType).evaluated == casted
+  private def checkCast(from: Literal, to: Literal): Prop = {
+    val cast = from cast to.dataType
+    cast.debugString |: (cast.evaluated == to.value)
   }
 }
