@@ -5,7 +5,6 @@ import scala.util.Try
 import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.BrokenContractException
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
@@ -171,7 +170,7 @@ abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression
 
   override def aggBufferAttributes: Seq[AttributeRef] = Seq(value)
 
-  override def zeroValues: Seq[Expression] = Seq(lit(null) cast dataType)
+  override def zeroValues: Seq[Expression] = Seq(Literal(null, dataType))
 
   override def updateExpressions: Seq[Expression] = Seq(
     coalesce(updateFunction(value, child), value, child)

@@ -4,7 +4,6 @@ import scala.util.Success
 
 import scraper.LoggingFunSuite
 import scraper.expressions.Cast.{booleanFalseStrings, booleanTrueStrings, widestTypeOf}
-import scraper.expressions.dsl._
 import scraper.types._
 
 class CastSuite extends LoggingFunSuite {
