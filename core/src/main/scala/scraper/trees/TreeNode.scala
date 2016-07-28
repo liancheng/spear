@@ -126,8 +126,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   /**
-   * Returns a single line string representation of this [[TreeNode]] when it is shown as a node in
-   * a pretty-printed tree string.
+   * Returns a single line string representation of this [[scraper.trees.TreeNode TreeNode]] when it
+   * is shown as a node in a pretty-printed tree string.
    *
    * @see [[prettyTree]]
    */
@@ -161,8 +161,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   /**
-   * String pairs representing constructor parameters of this [[TreeNode]]. Parameters annotated
-   * with `@Explain(hidden = true)` are not included here.
+   * String pairs representing constructor parameters of this [[scraper.trees.TreeNode TreeNode]].
+   * Parameters annotated with `@Explain(hidden = true)` are not included here.
    */
   protected def explainParams(show: Any => String): Seq[(String, String)] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
