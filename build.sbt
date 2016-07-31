@@ -1,89 +1,97 @@
-import com.typesafe.sbt.SbtScalariform
-import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
-import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
-import net.virtualvoid.sbt.graph.{Plugin => SbtDependencyGraph}
-import sbt.Keys._
-import sbt._
-import scalariform.formatter.preferences.PreferencesImporterExporter
-import scoverage.ScoverageSbtPlugin
+import Dependencies._
 
 lazy val scraper = (project in file("."))
   .aggregate(core, localExecution, repl)
-  .settings(commonSettings)
 
 lazy val core = (project in file("core"))
   .enablePlugins(sbtPlugins: _*)
   .settings(commonSettings)
-  .settings(libraryDependencies ++= coreDependencies)
-  // Explicitly overrides all conflicting transitive dependencies
-  .settings(dependencyOverrides ++= Dependencies.overrides)
+  .settings(
+    libraryDependencies ++= typesafeConfig ++ logging ++ scala ++ scopt,
+    libraryDependencies ++= Dependencies.testing
+  )
 
 lazy val localExecution = (project in file("execution/local"))
   .dependsOn(core % "compile->compile;test->test")
   .enablePlugins(sbtPlugins: _*)
-  .settings(name := "execution-local")
   .settings(commonSettings)
-  .settings(libraryDependencies ++= localExecutionDependencies)
-  // Explicitly overrides all conflicting transitive dependencies
-  .settings(dependencyOverrides ++= Dependencies.overrides)
 
 lazy val repl = (project in file("repl"))
   .dependsOn(core % "compile->compile;test->test")
   .dependsOn(localExecution % "compile->compile;test->test")
   .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings)
-  .settings(libraryDependencies ++= Dependencies.ammonite)
-  // Explicitly overrides all conflicting transitive dependencies
-  .settings(dependencyOverrides ++= Dependencies.overrides)
-  .settings(unmanagedClasspath in Runtime += baseDirectory.value.getParentFile / "conf")
+  .settings(commonSettings ++ runtimeConfSettings)
+  .settings(libraryDependencies ++= ammonite)
 
 lazy val examples = (project in file("examples"))
   .dependsOn(core, localExecution)
   .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings)
-  .settings(unmanagedClasspath in Runtime += baseDirectory.value.getParentFile / "conf")
-
-lazy val coreDependencies = {
-  import Dependencies._
-  test ++ config ++ log4j ++ scala ++ scopt ++ slf4j
-}
-
-lazy val localExecutionDependencies = Dependencies.test
+  .settings(commonSettings ++ runtimeConfSettings)
 
 lazy val sbtPlugins = Seq(
   // For packaging
   JavaAppPackaging,
-  // For JMH benchmarking
-  JmhPlugin,
   // For Scala code formatting
   SbtScalariform,
   // For Scala test coverage reporting
   ScoverageSbtPlugin
 )
 
-lazy val commonSettings = basicSettings ++ generalDependencySettings ++ scalariformSettings
+lazy val commonSettings = {
+  val basicSettings = Seq(
+    organization := "scraper",
+    version := "0.1.0-SNAPSHOT",
+    scalaVersion := Versions.scala,
+    scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
+    javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g", "-Xlint:-options")
+  )
 
-lazy val basicSettings = Seq(
-  organization := "scraper",
-  version := "0.1.0-SNAPSHOT",
-  scalaVersion := Dependencies.Versions.scala,
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
-  javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g", "-Xlint:-options"),
-  fork := false,
-  parallelExecution in Test := false,
-  // Shows duration and full exception stack trace
-  testOptions in Test += Tests.Argument("-oDF")
-)
+  val commonTestSettings = Seq(
+    fork := false,
+    parallelExecution in Test := false,
+    // Shows duration and full exception stack trace
+    testOptions in Test += Tests.Argument("-oDF")
+  )
 
-lazy val generalDependencySettings = SbtDependencyGraph.graphSettings ++ Seq(
-  // Does not copy managed dependencies into `lib_managed`
-  retrieveManaged := false,
-  // Enables extra resolvers
-  resolvers ++= Dependencies.extraResolvers,
-  // Disables auto conflict resolution
-  conflictManager := ConflictManager.strict
-)
+  val commonDependencySettings = {
+    import net.virtualvoid.sbt.graph.Plugin.graphSettings
 
-lazy val scalariformSettings = SbtScalariform.scalariformSettings ++ Seq(
-  preferences := PreferencesImporterExporter.loadPreferences("scalariform.properties")
+    graphSettings ++ Seq(
+      // Does not copy managed dependencies into `lib_managed`
+      retrieveManaged := false,
+      // Enables extra resolvers
+      resolvers ++= extraResolvers,
+      // Disables auto conflict resolution
+      conflictManager := ConflictManager.strict,
+      // Explicitly overrides all conflicting transitive dependencies
+      dependencyOverrides ++= overrides
+    )
+  }
+
+  val scalariformPluginSettings = {
+    import com.typesafe.sbt.SbtScalariform.scalariformSettings
+    import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
+    import scalariform.formatter.preferences.PreferencesImporterExporter.loadPreferences
+
+    scalariformSettings ++ Seq(preferences := loadPreferences("scalariform.properties"))
+  }
+
+  val taskSettings = Seq(
+    // Runs scalastyle before compilation
+    compile in Compile <<= compile in Compile dependsOn (scalastyle in Compile toTask ""),
+    // Runs scalastyle before running tests
+    test in Test <<= test in Test dependsOn (scalastyle in Test toTask "")
+  )
+
+  Seq(
+    basicSettings,
+    commonTestSettings,
+    commonDependencySettings,
+    scalariformPluginSettings,
+    taskSettings
+  ).flatten
+}
+
+lazy val runtimeConfSettings = Seq(
+  unmanagedClasspath in Runtime += baseDirectory(_.getParentFile / "conf").value
 )

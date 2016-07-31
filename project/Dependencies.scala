@@ -25,7 +25,7 @@ object Dependencies {
     "com.lihaoyi" % "ammonite-repl_2.11.8" % Versions.ammonite
   )
 
-  val config = Seq(
+  val typesafeConfig = Seq(
     "com.typesafe" % "config" % Versions.config
   )
 
@@ -66,7 +66,9 @@ object Dependencies {
     "org.slf4j" % "jul-to-slf4j" % Versions.slf4j
   )
 
-  val test = scalaCheck ++ scalaTest
+  val testing = scalaCheck ++ scalaTest
 
-  val overrides = Set.empty ++ jline ++ protobuf ++ scala
+  val logging = log4j ++ slf4j
+
+  val overrides = (jline ++ protobuf ++ scala).toSet
 }
