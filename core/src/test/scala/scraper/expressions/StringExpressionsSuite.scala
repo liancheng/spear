@@ -4,7 +4,6 @@ import org.scalacheck.Gen
 import org.scalacheck.Prop.forAll
 import org.scalatest.prop.Checkers
 
-import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.LoggingFunSuite
 

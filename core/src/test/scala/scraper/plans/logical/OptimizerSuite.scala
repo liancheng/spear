@@ -12,7 +12,6 @@ import scraper.Test.defaultSettings
 import scraper.exceptions.LogicalPlanUnresolvedException
 import scraper.expressions._
 import scraper.expressions.Predicate.splitConjunction
-import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.generators.expressions._
 import scraper.plans.logical.Optimizer._

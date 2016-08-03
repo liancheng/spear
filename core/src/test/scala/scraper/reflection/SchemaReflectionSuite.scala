@@ -1,6 +1,5 @@
 package scraper.reflection
 
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 import scraper.{LoggingFunSuite, TestUtils}

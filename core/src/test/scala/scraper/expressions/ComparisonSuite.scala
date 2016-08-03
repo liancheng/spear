@@ -3,7 +3,6 @@ package scraper.expressions
 import org.scalatest.prop.Checkers
 
 import scraper.{LoggingFunSuite, TestUtils}
-import scraper.expressions.dsl._
 import scraper.types.{BooleanType, IntType}
 
 class ComparisonSuite extends LoggingFunSuite with TestUtils with Checkers {

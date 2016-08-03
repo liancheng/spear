@@ -8,10 +8,9 @@ import scraper.{Name, Row}
 import scraper.annotations.Explain
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
+import scraper.expressions.AutoAlias.named
 import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.dsl._
-import scraper.expressions.AutoAlias.named
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
 import scraper.plans.logical.patterns.Unresolved

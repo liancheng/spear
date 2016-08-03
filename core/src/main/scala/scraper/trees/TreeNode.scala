@@ -1,7 +1,6 @@
 package scraper.trees
 
 import scala.collection.{mutable, Traversable}
-import scala.languageFeature.reflectiveCalls
 
 import scraper.annotations.Explain
 import scraper.reflection.constructorParams

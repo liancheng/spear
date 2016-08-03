@@ -1,7 +1,6 @@
 package scraper
 
 import scala.collection.mutable
-import scala.language.existentials
 
 import scraper.Name.caseInsensitive
 import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}

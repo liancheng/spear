@@ -1,6 +1,5 @@
 package scraper.expressions
 
-import scraper.expressions.dsl._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.FixedPoint
 

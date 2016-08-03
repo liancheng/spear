@@ -1,7 +1,6 @@
 package scraper
 
 import scala.collection.Iterable
-import scala.language.existentials
 import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings

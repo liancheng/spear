@@ -1,7 +1,6 @@
 package scraper.expressions
 
 import scraper.{LoggingFunSuite, TestUtils}
-import scraper.expressions.dsl._
 import scraper.types.{IntType, LongType}
 
 class NullExpressionsSuite extends LoggingFunSuite with TestUtils {

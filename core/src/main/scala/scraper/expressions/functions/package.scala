@@ -1,6 +1,5 @@
 package scraper.expressions
 
-import scraper.Name
 import scraper.parser.Parser
 
 package object functions {

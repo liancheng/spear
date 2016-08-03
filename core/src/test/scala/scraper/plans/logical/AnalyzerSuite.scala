@@ -6,7 +6,6 @@ import scraper._
 import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.dsl._
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL

@@ -1,7 +1,5 @@
 package scraper.expressions.dsl
 
-import scala.language.implicitConversions
-
 import scraper.Name
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
