@@ -3,7 +3,6 @@ package scraper.expressions
 import java.util.regex.Pattern
 
 import scraper.Row
-import scraper.expressions.dsl._
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{BooleanType, DataType, StringType}
 
