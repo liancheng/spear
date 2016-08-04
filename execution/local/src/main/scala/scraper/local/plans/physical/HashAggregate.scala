@@ -1,6 +1,7 @@
 package scraper.local.plans.physical
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 import scraper._
 import scraper.expressions._
@@ -14,11 +15,12 @@ case class HashAggregate(
 ) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 
-  private lazy val boundKeys = keys map (_.child) map bind(child.output)
+  private lazy val boundKeys: Seq[Expression] = keys map (_.child) map bind(child.output)
 
-  private lazy val boundFunctions = functions map (_.child) map bind(child.output)
-
-  private lazy val bufferBuilder = new AggregationBufferBuilder(boundFunctions)
+  private lazy val bufferBuilder = {
+    val boundFunctions = functions map (_.child) map bind(child.output)
+    new AggregationBufferBuilder(boundFunctions)
+  }
 
   private lazy val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
 
@@ -52,14 +54,18 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq
 class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
   private val (bufferLength, slicesBuilder) = {
     val lengths = boundFunctions map (_.aggBufferSchema.length)
-    val begins = lengths.inits.toSeq.tail reverseMap (_.sum)
-    val bufferLength = lengths.sum
 
-    def slicesBuilder(row: MutableRow) = (begins, lengths).zipped.map {
+    val beginIndices = ArrayBuffer.empty[Int]
+    if (lengths.nonEmpty) {
+      beginIndices += 0
+      lengths.init.foreach(beginIndices += beginIndices.last + _)
+    }
+
+    def slicesBuilder(row: MutableRow) = (beginIndices, lengths).zipped.map {
       new MutableRowSlice(row, _, _)
     }
 
-    (bufferLength, slicesBuilder _)
+    (lengths.sum, slicesBuilder _)
   }
 
   def newBuffer(): AggregationBuffer = {
