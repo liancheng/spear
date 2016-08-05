@@ -56,6 +56,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    */
   lazy val isResolved: Boolean = children forall (_.isResolved)
 
+  lazy val isBound: Boolean = isResolved && children.forall(_.isBound)
+
   def referenceSet: Set[Attribute] = references.toSet
 
   def references: Seq[Attribute] = children.flatMap(_.references).distinct
@@ -133,6 +135,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   @throws[TypeCheckException]("If this expression is not well-typed")
   protected def whenWellTyped[T](value: => T): T =
     if (isWellTyped) value else throw new TypeCheckException(this, strictlyTyped.failed.get)
+
+  protected def whenBound[T](value: => T): T =
+    if (isBound) value else throw new ExpressionNotBoundException(this)
 
   /**
    * Returns the data type of this [[Expression]] if it's well-typed, or throws

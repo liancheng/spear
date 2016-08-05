@@ -26,7 +26,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
    * Whether this [[AggregateFunction]] supports partial aggregation
    */
-  def supportPartialAggregation: Boolean = true
+  def supportsPartialAggregation: Boolean = false
 
   /**
    * Initializes the aggregation buffer with zero value(s).
@@ -36,7 +36,12 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
    * Updates aggregation buffer with new `input` row.
    */
-  def update(input: Row, aggBuffer: MutableRow): Unit
+  def update(aggBuffer: MutableRow, input: Row): Unit
+
+  /**
+   * Merges another aggregation buffer into an existing aggregtion buffer.
+   */
+  def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit
 
   /**
    * Evaluates the final result value using values in aggregation buffer `aggBuffer`, then writes it
@@ -52,13 +57,17 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def aggBufferSchema: StructType = child.aggBufferSchema
 
-  override def supportPartialAggregation: Boolean = child.supportPartialAggregation
+  override def supportsPartialAggregation: Boolean = child.supportsPartialAggregation
 
   override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
 
-  override def update(input: Row, aggBuffer: MutableRow): Unit = child.update(input, aggBuffer)
+  override def update(aggBuffer: MutableRow, input: Row): Unit = child.update(aggBuffer, input)
 
-  override def result(into: MutableRow, ordinal: Int, from: Row): Unit = result(into, ordinal, from)
+  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit =
+    child.merge(aggBuffer, inputAggBuffer)
+
+  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
+    result(resultBuffer, ordinal, aggBuffer)
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
@@ -73,13 +82,29 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
-  def aggBufferAttributes: Seq[AttributeRef]
+  val aggBufferAttributes: Seq[AttributeRef]
 
-  def zeroValues: Seq[Expression]
+  /**
+   * Initial values aggregation buffer fields. Must be literals.
+   */
+  val zeroValues: Seq[Expression]
 
-  def updateExpressions: Seq[Expression]
+  /**
+   * Expressions used to update aggregation buffer fields. Must be resolved but unbound expressions.
+   */
+  val updateExpressions: Seq[Expression]
 
-  def resultExpression: Expression
+  /**
+   * Expressions used to merge two aggregation buffers fields. Must be resolved but unbound
+   * expressions.
+   */
+  val mergeExpressions: Seq[Expression]
+
+  /**
+   * Expression used to compute the final aggregation result. Must be a resolved but unbound
+   * expression.
+   */
+  val resultExpression: Expression
 
   override final lazy val aggBufferSchema: StructType =
     StructType.fromAttributes(aggBufferAttributes)
@@ -92,20 +117,41 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     }
   }
 
-  override def update(input: Row, aggBuffer: MutableRow): Unit = updater(aggBuffer, input)
+  override def update(aggBuffer: MutableRow, input: Row): Unit = updater(aggBuffer, input)
+
+  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit =
+    merger(aggBuffer, inputAggBuffer)
 
   override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
     resultBuffer(ordinal) = boundResultExpression evaluate aggBuffer
+
+  protected implicit class AggBufferAttribute(val left: AttributeRef) {
+    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes.indexOf(left))
+  }
 
   private lazy val inputAggBufferAttributes = aggBufferAttributes map (_ withID newExpressionID())
 
   private lazy val joinedRow: JoinedRow = new JoinedRow()
 
-  private lazy val boundUpdateExpressions: Seq[Expression] = updateExpressions map bind
+  private lazy val boundResultExpression: Expression = whenBound {
+    require(resultExpression.isResolved)
+    require(!resultExpression.isBound)
+    bind(resultExpression)
+  }
 
-  private lazy val boundResultExpression: Expression = bind(resultExpression)
+  private lazy val updater: (MutableRow, Row) => Unit = whenBound {
+    require(updateExpressions forall (_.isResolved))
+    require(updateExpressions forall (!_.isBound))
+    val boundUpdateExpressions = updateExpressions map bind
+    updateAggBufferWith(boundUpdateExpressions) _
+  }
 
-  private lazy val updater = updateAggBufferWith(boundUpdateExpressions) _
+  private lazy val merger: (MutableRow, Row) => Unit = whenBound {
+    require(mergeExpressions forall (_.isResolved))
+    require(mergeExpressions forall (!_.isBound))
+    val boundMergeExpressions = mergeExpressions map bind
+    updateAggBufferWith(boundMergeExpressions) _
+  }
 
   /**
    * Updates mutable `aggBuffer` in-place using `expressions` and an `input` row.
@@ -153,10 +199,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
       }
     }
   }
-
-  protected implicit class AggBufferAttribute(val left: AttributeRef) {
-    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes.indexOf(left))
-  }
 }
 
 abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression)
@@ -168,15 +210,19 @@ abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression
 
   protected lazy val value = 'value of dataType withNullability isNullable
 
-  override def aggBufferAttributes: Seq[AttributeRef] = Seq(value)
+  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(value)
 
-  override def zeroValues: Seq[Expression] = Seq(Literal(null, dataType))
+  override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, dataType))
 
-  override def updateExpressions: Seq[Expression] = Seq(
+  override lazy val updateExpressions: Seq[Expression] = Seq(
     coalesce(updateFunction(value, child), value, child)
   )
 
-  override def resultExpression: Expression = value
+  override lazy val mergeExpressions: Seq[Expression] = Seq(
+    updateFunction(value.left, value.right)
+  )
+
+  override lazy val resultExpression: Expression = value
 }
 
 case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
@@ -186,15 +232,19 @@ case class Count(child: Expression) extends UnaryExpression with DeclarativeAggr
 
   private lazy val count = ('count of dataType).!
 
-  override def aggBufferAttributes: Seq[AttributeRef] = Seq(count)
+  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(count)
 
-  override def zeroValues: Seq[Expression] = 0L :: Nil
+  override lazy val zeroValues: Seq[Expression] = 0L :: Nil
 
-  override def updateExpressions: Seq[Expression] = Seq(
+  override lazy val updateExpressions: Seq[Expression] = Seq(
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
   )
 
-  override def resultExpression: Expression = count
+  override lazy val mergeExpressions: Seq[Expression] = Seq(
+    count.left + count.right
+  )
+
+  override lazy val resultExpression: Expression = count
 }
 
 case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
@@ -206,16 +256,21 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 
   private lazy val count = 'count.long.!
 
-  override def aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
+  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
 
-  override def zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
+  override lazy val zeroValues: Seq[Expression] = Seq(lit(null) cast child.dataType, 0L)
 
-  override def updateExpressions: Seq[Expression] = Seq(
+  override lazy val updateExpressions: Seq[Expression] = Seq(
     coalesce((child cast dataType) + sum, child cast dataType, sum),
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
   )
 
-  override def resultExpression: Expression =
+  override lazy val mergeExpressions: Seq[Expression] = Seq(
+    sum.left + sum.right,
+    count.left + count.right
+  )
+
+  override lazy val resultExpression: Expression =
     If(count === 0L, lit(null), sum / (count cast dataType))
 
   override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType

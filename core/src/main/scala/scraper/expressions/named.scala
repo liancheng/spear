@@ -204,6 +204,8 @@ case class AttributeRef(
   qualifier: Option[Name] = None
 ) extends ResolvedAttribute with UnevaluableExpression {
 
+  override lazy val isBound: Boolean = false
+
   /**
    * Returns a copy of this [[AttributeRef]] with a new [[ExpressionID]].
    */
@@ -242,6 +244,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   extends NamedExpression with LeafExpression with NonSQLExpression {
 
   override val name: Name = caseInsensitive(s"input[$ordinal]")
+
+  override lazy val isBound: Boolean = true
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 

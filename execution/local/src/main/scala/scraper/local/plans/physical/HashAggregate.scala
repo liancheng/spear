@@ -15,9 +15,11 @@ case class HashAggregate(
 ) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
 
+  // Bound grouping key expressions
   private lazy val boundKeys: Seq[Expression] = keys map (_.child) map bind(child.output)
 
-  private lazy val bufferBuilder = {
+  private lazy val bufferBuilder: AggregationBufferBuilder = {
+    // Bound aggregate function expressions
     val boundFunctions = functions map (_.child) map bind(child.output)
     new AggregationBufferBuilder(boundFunctions)
   }
@@ -25,6 +27,7 @@ case class HashAggregate(
   private lazy val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
 
   override def iterator: Iterator[Row] = {
+    // Builds the hash map by consuming all input rows
     child.iterator foreach { input =>
       val groupingRow = Row.fromSeq(boundKeys map (_ evaluate input))
       hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer()) += input
@@ -44,7 +47,7 @@ case class HashAggregate(
 case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq[MutableRow]) {
   (boundFunctions, slices).zipped foreach (_ zero _)
 
-  def +=(input: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(input, _))
+  def +=(input: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(_, input))
 
   def result(mutableResult: MutableRow): Unit = mutableResult.indices foreach { i =>
     boundFunctions(i).result(mutableResult, i, slices(i))

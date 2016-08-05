@@ -32,6 +32,12 @@ class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
   def this(expression: Expression) = this(expression, null)
 }
 
+class ExpressionNotBoundException(expression: Expression, cause: Throwable)
+  extends AnalysisException(s"Expression ${expression.nodeCaption} is not bound", cause) {
+
+  def this(expression: Expression) = this(expression, null)
+}
+
 class LogicalPlanUnresolvedException(plan: LogicalPlan, cause: Throwable)
   extends AnalysisException(s"Unresolved logical query plan:\n\n${plan.prettyTree}", cause) {
 
