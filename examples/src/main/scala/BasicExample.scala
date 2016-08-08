@@ -1,5 +1,5 @@
 import scraper.config.Settings
-import scraper.expressions.dsl._
+import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.local.LocalContext
 
@@ -24,5 +24,28 @@ object BasicExample {
     val countGender = people groupBy 'gender agg ('gender, count() as 'count)
     countGender.explain()
     countGender.show()
+
+    people.asTable('people)
+
+    val adultsSQL = context.q(
+      """SELECT name, gender
+        |FROM people
+        |WHERE age >= 18
+      """.stripMargin
+    )
+
+    adultsSQL.explain()
+    adultsSQL.show()
+
+    val countGenderSQL = context.q(
+      """SELECT gender, MAX(age), COUNT(*)
+        |FROM people
+        |GROUP BY gender
+        |HAVING gender = 'M'
+      """.stripMargin
+    )
+
+    countGenderSQL.explain()
+    countGenderSQL.show()
   }
 }

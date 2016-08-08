@@ -73,21 +73,10 @@ object GeneratedAlias {
   ): Expression = betaReduction(expression, collectAliases(targets, purposes: _*))
 }
 
-abstract class GeneratedAttribute(alias: GeneratedAlias)
-  extends GeneratedNamedExpression
+abstract class GeneratedAttribute extends GeneratedNamedExpression
   with ResolvedAttribute
   with LeafExpression
   with UnevaluableExpression {
-
-  require(alias.purpose == this.purpose)
-
-  override def dataType: DataType = alias.dataType
-
-  override def isNullable: Boolean = alias.isNullable
-
-  override def expressionID: ExpressionID = alias.expressionID
-
-  override def withID(id: ExpressionID): Attribute = (alias withID id).toAttribute
 
   override def debugString: String = "g:" + super.debugString
 }
@@ -100,13 +89,20 @@ case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedAlias with GroupingNamedExpression {
-  override def toAttribute: GroupingAttribute = GroupingAttribute(this)
+  override def toAttribute: GroupingAttribute =
+    GroupingAttribute(purpose, dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): GroupingAlias = copy(expressionID = id)
 }
 
-case class GroupingAttribute(alias: GeneratedAlias)
-  extends GeneratedAttribute(alias) with GroupingNamedExpression
+case class GroupingAttribute(
+  override val purpose: Purpose,
+  override val dataType: DataType,
+  override val isNullable: Boolean,
+  override val expressionID: ExpressionID
+) extends GeneratedAttribute with GroupingNamedExpression {
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+}
 
 trait AggregationNamedExpression extends GeneratedNamedExpression {
   override def purpose: Purpose = ForAggregation
@@ -116,10 +112,17 @@ case class AggregationAlias(
   child: AggregateFunction,
   override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedAlias with AggregationNamedExpression {
-  override def toAttribute: AggregationAttribute = AggregationAttribute(this)
+  override def toAttribute: AggregationAttribute =
+    AggregationAttribute(purpose, dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): AggregationAlias = copy(expressionID = id)
 }
 
-case class AggregationAttribute(alias: GeneratedAlias)
-  extends GeneratedAttribute(alias) with AggregationNamedExpression
+case class AggregationAttribute(
+  override val purpose: Purpose,
+  override val dataType: DataType,
+  override val isNullable: Boolean,
+  override val expressionID: ExpressionID
+) extends GeneratedAttribute with AggregationNamedExpression {
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+}

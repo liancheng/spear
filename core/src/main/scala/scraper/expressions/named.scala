@@ -48,7 +48,7 @@ object NamedExpression {
 
     override lazy val isNullable: Boolean = named.isNullable
 
-    override def sql: Try[String] = Try(named.name.toString)
+    override def sql: Try[String] = Try(named.name.casePreserving)
   }
 
   object UnquotedName {

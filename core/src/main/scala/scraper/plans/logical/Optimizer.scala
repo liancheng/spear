@@ -267,10 +267,10 @@ object Optimizer {
           })
         }
 
-        val reducedPushDown = pushDown map (GeneratedAlias.betaReduction(_, keys, ForGrouping))
+        val rewrittenPushDown = pushDown map (GeneratedAlias.betaReduction(_, keys, ForGrouping))
 
         child
-          .filterOption(reducedPushDown)
+          .filterOption(rewrittenPushDown)
           .resolvedGroupBy(keys)
           .agg(functions)
           .filterOption(stayUp)

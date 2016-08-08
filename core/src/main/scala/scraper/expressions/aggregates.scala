@@ -126,7 +126,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     resultBuffer(ordinal) = boundResultExpression evaluate aggBuffer
 
   protected implicit class AggBufferAttribute(val left: AttributeRef) {
-    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes.indexOf(left))
+    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes indexOf left)
   }
 
   private lazy val inputAggBufferAttributes = aggBufferAttributes map (_ withID newExpressionID())

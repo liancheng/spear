@@ -123,7 +123,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     val hasMoreData = truncated.length > rowCount
     val data = truncated take rowCount
 
-    val rows = schema.fields.map(_.name.toString) +: data.map { row =>
+    val rows = schema.fields.map(_.name.casePreserving) +: data.map { row =>
       row.map { cell =>
         val content = cell match {
           case null => "NULL"
