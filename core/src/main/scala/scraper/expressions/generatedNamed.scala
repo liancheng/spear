@@ -50,27 +50,28 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
 }
 
 object GeneratedAlias {
-  def collectAliases(
+  /**
+   * Collects all [[GeneratedAlias]]es with the given `purposes` from `expressions`.
+   */
+  private def collectAliases(
     expressions: Seq[NamedExpression],
     purposes: Purpose*
-  ): Map[GeneratedAttribute, Expression] =
-    expressions
-      .collect { case a: GeneratedAlias if purposes contains a.purpose => a }
-      .map(a => a.toAttribute -> a.child)
-      .toMap
+  ): Map[GeneratedAttribute, Expression] = expressions.collect {
+    case a: GeneratedAlias if purposes contains a.purpose => a
+  }.map(a => a.toAttribute -> a.child).toMap
 
-  def betaReduction(
+  def inlineAliases(
     expression: Expression,
     aliases: Map[GeneratedAttribute, Expression]
   ): Expression = expression.transformUp {
     case a: GeneratedAttribute => aliases.getOrElse(a, a)
   }
 
-  def betaReduction(
+  def inlineAliases(
     expression: Expression,
     targets: Seq[NamedExpression],
     purposes: Purpose*
-  ): Expression = betaReduction(expression, collectAliases(targets, purposes: _*))
+  ): Expression = inlineAliases(expression, collectAliases(targets, purposes: _*))
 }
 
 abstract class GeneratedAttribute extends GeneratedNamedExpression
@@ -89,8 +90,9 @@ case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
 ) extends GeneratedAlias with GroupingNamedExpression {
-  override def toAttribute: GroupingAttribute =
-    GroupingAttribute(purpose, dataType, isNullable, expressionID)
+  override def toAttribute: GroupingAttribute = GroupingAttribute(
+    purpose, dataType, isNullable, expressionID
+  )
 
   override def withID(id: ExpressionID): GroupingAlias = copy(expressionID = id)
 }

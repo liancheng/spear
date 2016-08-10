@@ -135,9 +135,9 @@ object Optimizer {
         val aliases = Alias.collectAliases(innerList)
 
         plan select (outerList map {
-          case a: Alias        => a.copy(child = Alias.betaReduction(a.child, aliases))
-          case a: AttributeRef => Alias.betaReduction(a, aliases) as a.name withID a.expressionID
-          case e               => Alias.betaReduction(e, aliases)
+          case a: Alias        => a.copy(child = Alias.inlineAliases(a.child, aliases))
+          case a: AttributeRef => Alias.inlineAliases(a, aliases) as a.name withID a.expressionID
+          case e               => Alias.inlineAliases(e, aliases)
         })
     }
   }
@@ -205,7 +205,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        plan filter Alias.betaReduction(condition, projectList) select projectList
+        plan filter Alias.inlineAliases(condition, projectList) select projectList
     }
   }
 
@@ -267,7 +267,7 @@ object Optimizer {
           })
         }
 
-        val rewrittenPushDown = pushDown map (GeneratedAlias.betaReduction(_, keys, ForGrouping))
+        val rewrittenPushDown = pushDown map (GeneratedAlias.inlineAliases(_, keys, ForGrouping))
 
         child
           .filterOption(rewrittenPushDown)

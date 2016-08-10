@@ -99,13 +99,13 @@ object Alias {
       .map(a => a.attr -> a.child)
       .toMap
 
-  def betaReduction(expression: Expression, aliases: Map[Attribute, Expression]): Expression =
+  def inlineAliases(expression: Expression, aliases: Map[Attribute, Expression]): Expression =
     expression transformUp {
       case a: AttributeRef => aliases.getOrElse(a, a)
     }
 
-  def betaReduction(expression: Expression, targets: Seq[NamedExpression]): Expression =
-    betaReduction(expression, collectAliases(targets))
+  def inlineAliases(expression: Expression, targets: Seq[NamedExpression]): Expression =
+    inlineAliases(expression, collectAliases(targets))
 }
 
 /**
