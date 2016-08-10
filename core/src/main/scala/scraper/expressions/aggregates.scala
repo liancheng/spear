@@ -4,6 +4,7 @@ import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.BrokenContractException
+import scraper.expressions.FoldLeft.UpdateFunction
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.TypeConstraint
@@ -201,60 +202,10 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   }
 }
 
-abstract class ReduceLeft(updateFunction: (Expression, Expression) => Expression)
-  extends UnaryExpression with DeclarativeAggregateFunction {
-
-  override def dataType: DataType = child.dataType
-
-  override def isNullable: Boolean = child.isNullable
-
-  protected lazy val value = 'value of dataType withNullability isNullable
-
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(value)
-
-  override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, dataType))
-
-  override lazy val updateExpressions: Seq[Expression] = Seq(
-    coalesce(updateFunction(value, child), value, child)
-  )
-
-  override lazy val mergeExpressions: Seq[Expression] = Seq(
-    updateFunction(value.left, value.right)
-  )
-
-  override lazy val resultExpression: Expression = value
-}
-
-case class Count(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
-  override def dataType: DataType = LongType
-
-  override lazy val isNullable: Boolean = false
-
-  private lazy val count = ('count of dataType).!
-
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(count)
-
-  override lazy val zeroValues: Seq[Expression] = 0L :: Nil
-
-  override lazy val updateExpressions: Seq[Expression] = Seq(
-    if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
-  )
-
-  override lazy val mergeExpressions: Seq[Expression] = Seq(
-    count.left + count.right
-  )
-
-  override lazy val resultExpression: Expression = count
-}
-
 case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
   override def nodeName: String = "AVG"
 
   override def dataType: DataType = DoubleType
-
-  private lazy val sum = 'sum of dataType withNullability child.isNullable
-
-  private lazy val count = 'count.long.!
 
   override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
 
@@ -274,32 +225,89 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
     If(count === 0L, lit(null), sum / (count cast dataType))
 
   override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
+
+  private lazy val sum = 'sum of dataType withNullability child.isNullable
+
+  private lazy val count = 'count.long.!
 }
 
-case class First(child: Expression) extends ReduceLeft(coalesce(_, _))
+abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunction {
+  def updateFunction: UpdateFunction
 
-case class Last(child: Expression) extends ReduceLeft(
-  (agg: Expression, input: Expression) => coalesce(input, agg)
-)
+  def zeroValue: Expression
 
-abstract class NumericReduceLeft(updateFunction: (Expression, Expression) => Expression)
-  extends ReduceLeft(updateFunction) {
+  override def isNullable: Boolean = child.isNullable
 
+  override lazy val dataType: DataType = zeroValue.dataType
+
+  override lazy val zeroValues: Seq[Expression] = Seq(zeroValue)
+
+  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(value)
+
+  override lazy val updateExpressions: Seq[Expression] = Seq(
+    coalesce(updateFunction(value, child), value, child)
+  )
+
+  override lazy val mergeExpressions: Seq[Expression] = Seq(
+    updateFunction(value.left, value.right)
+  )
+
+  override lazy val resultExpression: Expression = value
+
+  protected lazy val value = 'value of dataType withNullability isNullable
+}
+
+object FoldLeft {
+  type UpdateFunction = (Expression, Expression) => Expression
+}
+
+case class Count(child: Expression) extends FoldLeft {
+  override lazy val zeroValue: Expression = 0L
+
+  override lazy val updateFunction: UpdateFunction = if (child.isNullable) {
+    (count: Expression, input: Expression) => If(child.isNull, count, count + 1L)
+  } else {
+    (count: Expression, _: Expression) => count + 1L
+  }
+}
+
+abstract class NullableReduceLeft extends FoldLeft {
+  override lazy val zeroValue: Expression = Literal(null, child.dataType)
+}
+
+case class First(child: Expression) extends NullableReduceLeft {
+  override val updateFunction: UpdateFunction = coalesce(_, _)
+}
+
+case class Last(child: Expression) extends NullableReduceLeft {
+  override val updateFunction: UpdateFunction =
+    (last: Expression, input: Expression) => coalesce(input, last)
+}
+
+abstract class NumericNullableReduceLeft extends NullableReduceLeft {
   override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
 }
 
-case class Sum(child: Expression) extends NumericReduceLeft(Plus)
+case class Sum(child: Expression) extends NumericNullableReduceLeft {
+  override val updateFunction: UpdateFunction = Plus
+}
 
-case class Max(child: Expression) extends NumericReduceLeft(Greatest(_, _))
+case class Max(child: Expression) extends NumericNullableReduceLeft {
+  override val updateFunction: UpdateFunction = Greatest(_, _)
+}
 
-case class Min(child: Expression) extends NumericReduceLeft(Least(_, _))
+case class Min(child: Expression) extends NumericNullableReduceLeft {
+  override val updateFunction: UpdateFunction = Least(_, _)
+}
 
-abstract class LogicalReduceLeft(updateFunction: (Expression, Expression) => Expression)
-  extends ReduceLeft(updateFunction) {
-
+abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
   override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameTypeAs BooleanType
 }
 
-case class BoolAnd(child: Expression) extends LogicalReduceLeft(And)
+case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
+  override val updateFunction: UpdateFunction = And
+}
 
-case class BoolOr(child: Expression) extends LogicalReduceLeft(Or)
+case class BoolOr(child: Expression) extends LogicalNullableReduceLeft {
+  override val updateFunction: UpdateFunction = Or
+}
