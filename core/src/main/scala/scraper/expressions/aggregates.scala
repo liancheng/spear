@@ -60,15 +60,13 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def supportsPartialAggregation: Boolean = child.supportsPartialAggregation
 
-  override def zero(aggBuffer: MutableRow): Unit = child.zero(aggBuffer)
+  override def zero(aggBuffer: MutableRow): Unit = bugReport()
 
-  override def update(aggBuffer: MutableRow, input: Row): Unit = child.update(aggBuffer, input)
+  override def update(aggBuffer: MutableRow, input: Row): Unit = bugReport()
 
-  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit =
-    child.merge(aggBuffer, inputAggBuffer)
+  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = bugReport()
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
-    result(resultBuffer, ordinal, aggBuffer)
+  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit = bugReport()
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
@@ -80,6 +78,10 @@ case class DistinctAggregateFunction(child: AggregateFunction)
     val name = child.nodeName.toUpperCase
     s"$name(DISTINCT ${args mkString ", "})"
   }
+
+  private def bugReport(): Nothing = throw new BrokenContractException(
+    "This method should never be invoked. You probably hit an internal bug."
+  )
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
