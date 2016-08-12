@@ -4,7 +4,6 @@ import scala.util.{Success, Try}
 
 import scraper.exceptions.{ImplicitCastException, TypeCastException}
 import scraper.expressions.Cast.{buildCast, castable}
-import scraper.types
 import scraper.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
@@ -203,9 +202,9 @@ object Cast {
   def castable(x: DataType, y: DataType): Boolean = x == y || buildCast(x, y).isDefined
 
   /**
-   * Returns a new [[Expression]] that [[Cast]]s [[Expression]] `e` to `dataType` if the
-   * [[types.DataType DataType]] of `e` is [[compatible]] to `dataType`.  If `e` is
-   * already of the target type, it is returned untouched.
+   * Returns a new [[Expression]] that casts [[Expression]] `e` to `dataType` if the data type of
+   * `e` is [[compatible]] to `dataType`.  If `e` is * already of the target type, it is returned
+   * untouched.
    */
   def widenDataType(e: Expression, dataType: DataType): Expression = e match {
     case _ if e.dataType == dataType               => e
@@ -214,9 +213,8 @@ object Cast {
   }
 
   /**
-   * Tries to figure out the widest type of all input [[types.DataType DataType]]s.  For two types
-   * `x` and `y`, `x` is considered to be wider than `y` iff `y` is [[compatible]] to
-   * `x`.
+   * Tries to figure out the widest type of all input data types.  For two types `x` and `y`, `x` is
+   * considered to be wider than `y` iff `y` is [[compatible]] to `x`.
    */
   def widestTypeOf(types: Seq[DataType]): Try[DataType] = (types.tail foldLeft Try(types.head)) {
     case (Success(x), y) => x widest y

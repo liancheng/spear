@@ -1,12 +1,10 @@
 package scraper.plans.logical
 
 import scraper.exceptions.LogicalPlanUnresolvedException
-import scraper.expressions
 import scraper.expressions._
 import scraper.expressions.GeneratedNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
-import scraper.plans.logical
 import scraper.plans.logical.Optimizer._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.FixedPoint
@@ -83,7 +81,7 @@ object Optimizer {
   }
 
   /**
-   * This rule reduces unnecessary [[expressions.Not Not]] operators.
+   * This rule reduces unnecessary `Not` operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
@@ -106,6 +104,9 @@ object Optimizer {
 
       case a && !(b) if a same b => False
       case a || !(b) if a same b => True
+
+      case !(a) && b if a same b => False
+      case !(a) || b if a same b => True
 
       case !(IsNull(child))      => IsNotNull(child)
       case !(IsNotNull(child))   => IsNull(child)
@@ -168,8 +169,7 @@ object Optimizer {
    * This rule converts a predicate to CNF (Conjunctive Normal Form).
    *
    * Since we don't support existential/universal quantifiers or implications, this rule simply
-   * pushes negations inwards by applying De Morgan's law and distributes [[expressions.Or Or]]s
-   * inwards over [[expressions.And And]]s.
+   * pushes negations inwards by applying De Morgan's law and distributes `Or`s inwards over `And`s.
    *
    * @see https://en.wikipedia.org/wiki/Conjunctive_normal_form
    */
@@ -181,7 +181,7 @@ object Optimizer {
   }
 
   /**
-   * This rule combines adjacent [[logical.Filter Filter]]s into a single [[logical.Filter Filter]].
+   * This rule combines adjacent `Filter` operators into a single `Filter` operator.
    */
   object MergeFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -190,7 +190,7 @@ object Optimizer {
   }
 
   /**
-   * This rule eliminates [[logical.Filter Filter]]s with constant predicates.
+   * This rule eliminates `Filter` operators with constant predicates.
    */
   object EliminateConstantFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -200,17 +200,18 @@ object Optimizer {
   }
 
   /**
-   * This rule pushes [[logical.Filter Filter]]s beneath [[logical.Project Project]]s.
+   * This rule pushes Filter operators beneath `Project` operators.
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        plan filter Alias.inlineAliases(condition, projectList) select projectList
+        val rewrittenCondition = Alias.inlineAliases(condition, projectList)
+        plan filter rewrittenCondition select projectList
     }
   }
 
   /**
-   * This rule pushes [[logical.Filter Filter]]s beneath [[logical.Join Join]]s whenever possible.
+   * This rule pushes `Filter` operators beneath `Join` operators whenever possible.
    */
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -294,8 +295,8 @@ object Optimizer {
   }
 
   /**
-   * This rule eliminates all [[scraper.plans.logical.Subquery Subquery]] operators, since they are
-   * only used to provide scoping information during analysis phase.
+   * This rule eliminates all `Subquery` operators, since they are only useful for providing scoping
+   * information during analysis phase.
    */
   object EliminateSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
