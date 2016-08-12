@@ -41,24 +41,16 @@ class InMemoryCatalog extends Catalog {
 
   private def function[T <: Expression: ClassTag](name: Name): FunctionInfo = {
     val classTag = implicitly[ClassTag[T]]
-    val builder = (args: Seq[Expression]) => {
-      def tryVarargsConstructor: Try[Expression] = Try {
-        classTag.runtimeClass.getDeclaredConstructor(classOf[Seq[_]])
-      } map {
-        _.newInstance(args) match { case fn: Expression => fn }
+    val builder = (args: Seq[Expression]) => Try {
+      val argClasses = Seq.fill(args.length)(classOf[Expression])
+      classTag.runtimeClass.getDeclaredConstructor(argClasses: _*)
+    } map {
+      _.newInstance(args: _*) match {
+        case fn: Expression => fn
       }
-
-      def tryNormalConstructor: Try[Expression] = Try {
-        val argClasses = Seq.fill(args.length)(classOf[Expression])
-        classTag.runtimeClass.getDeclaredConstructor(argClasses: _*)
-      } map {
-        _.newInstance(args: _*) match { case fn: Expression => fn }
-      }
-
-      tryVarargsConstructor orElse tryNormalConstructor match {
-        case Success(fn)    => fn
-        case Failure(cause) => throw new AnalysisException(cause.getMessage, cause)
-      }
+    } match {
+      case Success(fn)    => fn
+      case Failure(cause) => throw new AnalysisException(cause.getMessage, cause)
     }
 
     FunctionInfo(name, builder)

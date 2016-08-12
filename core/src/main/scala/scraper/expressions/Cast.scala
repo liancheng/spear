@@ -151,7 +151,7 @@ object Cast {
 
   private val implicitlyFromNull: PartialFunction[DataType, Any => Any] = {
     // NullType can be casted to any other type, and only has a single value `null`.
-    case _ => { case _ => null }
+    case _ => _ => null
   }
 
   private val explicitlyFromNull: PartialFunction[DataType, Any => Any] = {

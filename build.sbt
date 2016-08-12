@@ -42,7 +42,7 @@ lazy val commonSettings = {
     organization := "scraper",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := Versions.scala,
-    scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Ywarn-unused-import"),
+    scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xlint"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g", "-Xlint:-options")
   )
 

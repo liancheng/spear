@@ -61,7 +61,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
       case arg: Traversable[_] =>
         arg.map {
-          case child if children contains child =>
+          case child: Any if children contains child =>
             val newChild = remainingNewChildren.head
             remainingNewChildren.remove(0)
             changed = changed || !(newChild same child.asInstanceOf[Base])
@@ -280,8 +280,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     case arg: Some[_] =>
       arg flatMap {
-        case e if children contains e => None
-        case e                        => Some("Some(" + show(e) + ")")
+        case e: Any if children contains e => None
+        case e: Any                        => Some("Some(" + show(e) + ")")
       }
 
     case arg =>

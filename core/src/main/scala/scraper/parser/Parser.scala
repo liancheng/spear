@@ -239,7 +239,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def numericLiteral: Parser[Literal] =
     integral ^^ {
-      case i => Literal(narrowestIntegralValueOf(i))
+      i => Literal(narrowestIntegralValueOf(i))
     }
 
   private def integral: Parser[String] =
@@ -247,13 +247,9 @@ class Parser extends TokenParser[LogicalPlan] {
       case s ~ n => s.mkString + n
     }
 
-  private def narrowestIntegralValueOf(numeric: String): Any = {
-    val bigInt = BigInt(numeric)
-
-    bigInt match {
-      case i if i.isValidInt  => i.intValue()
-      case i if i.isValidLong => i.longValue()
-    }
+  private def narrowestIntegralValueOf(numeric: String): Any = BigInt(numeric) match {
+    case i if i.isValidInt  => i.intValue()
+    case i if i.isValidLong => i.longValue()
   }
 
   private def sign: Parser[String] =
@@ -274,7 +270,7 @@ class Parser extends TokenParser[LogicalPlan] {
     }
 
   private def functionArgs: Parser[(Boolean, Seq[Expression])] = (
-    star ^^ { case s => false -> (s :: Nil) }
+    star ^^ (s => false -> (s :: Nil))
     | DISTINCT.? ~ repsep(expression, ",") ^^ { case d ~ es => d.isDefined -> es }
   )
 
@@ -464,7 +460,7 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
     // Back-quoted identifiers
     | '`' ~> (chrExcept('`', '\n', EofCh) | ('`' ~ '`') ^^^ '`').* <~ '`' ^^ {
-      case cs => QuotedIdentifier(cs.mkString)
+      cs => QuotedIdentifier(cs.mkString)
     }
 
     // Integral and fractional numeric literals
@@ -476,13 +472,13 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     // Single-quoted string literals
     // TODO Handles escaped characters
     | '\'' ~> chrExcept('\'', '\n', EofCh).* <~ '\'' ^^ {
-      case cs => StringLit(cs.mkString)
+      cs => StringLit(cs.mkString)
     }
 
     // Double-quoted string literals
     // TODO Handles escaped characters
     | '"' ~> chrExcept('"', '\n', EofCh).* <~ '"' ^^ {
-      case cs => StringLit(cs.mkString)
+      cs => StringLit(cs.mkString)
     }
 
     // End of input

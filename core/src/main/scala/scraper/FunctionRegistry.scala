@@ -1,7 +1,6 @@
 package scraper
 
 import scala.collection.mutable
-import scala.language.existentials
 
 import scraper.exceptions.FunctionNotFoundException
 import scraper.expressions._

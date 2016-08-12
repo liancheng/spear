@@ -13,7 +13,6 @@ import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.plans.QueryPlan
-import scraper.plans.logical.patterns.Unresolved
 import scraper.reflection.fieldSpecFor
 import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
