@@ -294,6 +294,10 @@ case class Sum(child: Expression) extends NumericNullableReduceLeft {
   override val updateFunction: UpdateFunction = Plus
 }
 
+case class Product_(child: Expression) extends NumericNullableReduceLeft {
+  override val updateFunction: UpdateFunction = Multiply
+}
+
 case class Max(child: Expression) extends NumericNullableReduceLeft {
   override val updateFunction: UpdateFunction = Greatest(_, _)
 }

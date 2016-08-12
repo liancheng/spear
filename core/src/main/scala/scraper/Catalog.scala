@@ -1,9 +1,10 @@
 package scraper
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
-import scraper.Name.caseInsensitive
-import scraper.exceptions.{FunctionNotFoundException, TableNotFoundException}
+import scraper.exceptions.{AnalysisException, TableNotFoundException}
 import scraper.expressions._
 import scraper.plans.logical.LogicalPlan
 
@@ -18,31 +19,50 @@ trait Catalog {
 }
 
 class InMemoryCatalog extends Catalog {
-  override val functionRegistry: FunctionRegistry = new FunctionRegistry {
-    private val functions: mutable.Map[Name, FunctionInfo] =
-      mutable.Map.empty[Name, FunctionInfo]
+  override val functionRegistry: FunctionRegistry = new InMemoryFunctionRegistry
 
-    override def lookupFunction(name: Name): FunctionInfo =
-      functions.getOrElse(name, throw new FunctionNotFoundException(name))
+  private val builtInFunctions = Seq(
+    function[Average](i"avg"),
+    function[BoolAnd](i"bool_and"),
+    function[BoolOr](i"bool_or"),
+    function[Concat](i"concat"),
+    function[Count](i"count"),
+    function[First](i"avg"),
+    function[Last](i"avg"),
+    function[Max](i"max"),
+    function[Min](i"min"),
+    function[Product_](i"product"),
+    function[Rand](i"rand"),
+    function[RLike](i"rlike"),
+    function[Sum](i"sum")
+  )
 
-    override def registerFunction(fn: FunctionInfo): Unit =
-      functions(caseInsensitive(fn.name)) = fn
+  builtInFunctions foreach functionRegistry.registerFunction
 
-    override def removeFunction(name: Name): Unit = functions -= name
+  private def function[T <: Expression: ClassTag](name: Name): FunctionInfo = {
+    val classTag = implicitly[ClassTag[T]]
+    val builder = (args: Seq[Expression]) => {
+      def tryVarargsConstructor: Try[Expression] = Try {
+        classTag.runtimeClass.getDeclaredConstructor(classOf[Seq[_]])
+      } map {
+        _.newInstance(args) match { case fn: Expression => fn }
+      }
+
+      def tryNormalConstructor: Try[Expression] = Try {
+        val argClasses = Seq.fill(args.length)(classOf[Expression])
+        classTag.runtimeClass.getDeclaredConstructor(argClasses: _*)
+      } map {
+        _.newInstance(args: _*) match { case fn: Expression => fn }
+      }
+
+      tryVarargsConstructor orElse tryNormalConstructor match {
+        case Success(fn)    => fn
+        case Failure(cause) => throw new AnalysisException(cause.getMessage, cause)
+      }
+    }
+
+    FunctionInfo(name, builder)
   }
-
-  private val tables: mutable.Map[Name, LogicalPlan] = mutable.Map.empty
-
-  functionRegistry.registerFunction(FunctionInfo(classOf[Rand], Rand))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Count], Count))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Sum], Sum))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Max], Max))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Min], Min))
-  functionRegistry.registerFunction(FunctionInfo(classOf[BoolAnd], BoolAnd))
-  functionRegistry.registerFunction(FunctionInfo(classOf[BoolOr], BoolOr))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Average], Average))
-  functionRegistry.registerFunction(FunctionInfo(classOf[First], First))
-  functionRegistry.registerFunction(FunctionInfo(classOf[Last], Last))
 
   override def registerRelation(tableName: Name, analyzedPlan: LogicalPlan): Unit =
     tables(tableName) = analyzedPlan
@@ -54,4 +74,6 @@ class InMemoryCatalog extends Catalog {
       .get(tableName)
       .map(_ subquery tableName)
       .getOrElse(throw new TableNotFoundException(tableName))
+
+  private val tables: mutable.Map[Name, LogicalPlan] = mutable.Map.empty
 }
