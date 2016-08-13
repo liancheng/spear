@@ -1,11 +1,15 @@
 package scraper.expressions
 
 import scala.math.pow
+import scala.util.Try
 
 import scraper.{NullSafeOrdering, Row}
+import scraper.exceptions.TypeMismatchException
+import scraper.expressions.Cast.{widenDataType, widestTypeOf}
 import scraper.expressions.functions.lit
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
+import scraper.utils.trySequence
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -32,7 +36,45 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = new TypeConstraint {
+    override def enforced: Try[Seq[Expression]] = for {
+      strictChildren <- trySequence(children map (_.strictlyTyped))
+
+      // Finds all expressions whose data types are already subtype of `NumericType`.
+      candidates = strictChildren filter (_.dataType isSubtypeOf NumericType)
+
+      // Ensures that there's at least one expression whose data type is directly a subtype of
+      // `superType`. For example, the following expressions are valid
+      //
+      //   "1":STRING + (2:INT)
+      //   1:INT + 2:BIGINT
+      //
+      // while
+      //
+      //   "1":STRING + "2":STRING
+      //
+      // is invalid. This behavior is consistent with PostgreSQL.
+      widestNumericType <- if (candidates.nonEmpty) {
+        widestTypeOf(candidates map (_.dataType))
+      } else {
+        throw new TypeMismatchException(children.head, NumericType)
+      }
+
+      // As a special case, when referenced as children of binary arithmetic expressions, strings
+      // can be implicitly converted into numeric types. For example, the following expressions are
+      // all valid:
+      //
+      //   1:INT + "2":STRING
+      //   "1":STRING + 2:INT
+      //
+      // Here we cast all children expressions of `StringType` into the widest numeric type. This
+      // behavior is consistent with PostgreSQL.
+      stringsCasted = strictChildren map {
+        case e if e.dataType == StringType => e cast widestNumericType
+        case e                             => e
+      }
+    } yield stringsCasted map (widenDataType(_, widestNumericType))
+  }
 
   override protected lazy val strictDataType: DataType = left.dataType
 }

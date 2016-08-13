@@ -83,16 +83,16 @@ case class SameSubtypesOf(supertype: AbstractDataType, input: Seq[Expression])
     candidates = for (e <- strictArgs if e.dataType isSubtypeOf supertype) yield e
 
     // Ensures that there's at least one expression whose data type is directly a subtype of
-    // `superType`. In this way, expressions like
+    // `superType`. For example, the following expressions are valid
     //
-    //   - "1":STRING + (2:INT)
-    //   - 1:INT + 2:BIGINT
+    //   "1":STRING + (2:INT)
+    //   1:INT + 2:BIGINT
     //
-    // are allowed, but
+    // while
     //
-    //   - "1":STRING + "2":STRING
+    //   "1":STRING + "2":STRING
     //
-    // can be rejected. This behavior is consistent with PostgreSQL.
+    // is invalid. This behavior is consistent with PostgreSQL.
     widestSubType <- if (candidates.nonEmpty) {
       widestTypeOf(candidates map (_.dataType))
     } else {

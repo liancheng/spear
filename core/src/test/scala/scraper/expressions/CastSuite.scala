@@ -29,9 +29,10 @@ class CastSuite extends LoggingFunSuite {
     for (primitiveType <- primitiveTypes) {
       assert(primitiveType isCompatibleWith StringType)
       assert(primitiveType isCastableTo StringType)
-      assert(StringType isCompatibleWith primitiveType)
       assert(StringType isCastableTo primitiveType)
     }
+
+    assert(StringType isCompatibleWith BooleanType)
   }
 
   test("casts from null type to primitive types") {

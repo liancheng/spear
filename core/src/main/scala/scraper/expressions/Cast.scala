@@ -136,16 +136,15 @@ object Cast {
 
   private val implicitlyFromString: PartialFunction[DataType, Any => Any] = {
     case BooleanType => asString andThen (_.toLowerCase) andThen stringToBoolean
-    case ByteType    => asString andThen (_.toByte)
-    case ShortType   => asString andThen (_.toShort)
-    case IntType     => asString andThen (_.toInt)
-    case LongType    => asString andThen (_.toLong)
-    case FloatType   => asString andThen (_.toFloat)
-    case DoubleType  => asString andThen (_.toDouble)
   }
 
   private val explicitlyFromString: PartialFunction[DataType, Any => Any] = {
-    case _ if false => identity
+    case ByteType   => asString andThen (_.toByte)
+    case ShortType  => asString andThen (_.toShort)
+    case IntType    => asString andThen (_.toInt)
+    case LongType   => asString andThen (_.toLong)
+    case FloatType  => asString andThen (_.toFloat)
+    case DoubleType => asString andThen (_.toDouble)
   }
 
   private val implicitlyFromNull: PartialFunction[DataType, Any => Any] = {
@@ -219,5 +218,28 @@ object Cast {
   def widestTypeOf(types: Seq[DataType]): Try[DataType] = (types.tail foldLeft Try(types.head)) {
     case (Success(x), y) => x widest y
     case (failure, _)    => failure
+  }
+
+  def printCastingTable(): Unit = {
+    val numericTypes = Seq(ByteType, ShortType, IntType, LongType, FloatType, DoubleType)
+    val primitiveTypes = Seq(NullType, BooleanType, StringType) ++ numericTypes
+
+    val header = (" " +: primitiveTypes.map(_.sql)).map(t => f"$t%10s").mkString
+    val body = for (from <- primitiveTypes) yield {
+      val marks = for (to <- primitiveTypes) yield from -> to match {
+        case _ if from isCompatibleWith to => "*"
+        case _ if from isCastableTo to     => "o"
+        case _                             => "_"
+      }
+
+      (from.sql +: marks).map(s => f"$s%10s").mkString
+    }
+
+    header +: body foreach println
+
+    println()
+    println("*: Implicitly castable")
+    println("o: Explicitly castable")
+    println(".: Not castable")
   }
 }
