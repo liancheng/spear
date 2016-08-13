@@ -328,7 +328,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       case plan @ ((_: UnresolvedAggregate) Sort _) =>
         plan
 
-      // Waits until projected list, having condition, and sort order expressions are all resolved
+      // Waits until project list, having condition, and sort order expressions are all resolved
       case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
         plan
     }
@@ -339,10 +339,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
         val keyAliases = keys map (GroupingAlias(_))
         val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
-        // Collects all aggregate functions and checks for nested ones (which are illegal).
+        // Collects all aggregate functions
         val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
 
-        // Checks for invalid expressions like `MAX(COUNT(*))`.
+        // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`
         aggs foreach checkNestedAggregateFunction
 
         // Aliases all found aggregate functions
