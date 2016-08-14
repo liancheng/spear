@@ -295,7 +295,7 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
 
 /**
  * A logical plan operator used to implement CTE. Note that one [[With]] operator only holds a
- * single CTE relation. Queries involving multiple CTE relations should use nested [[With]]
+ * single CTE relation. Queries involving multiple CTE relations are represented by nested [[With]]
  * operators. E.g., the following query
  * {{{
  *   WITH s0 AS (SELECT * FROM x), s1 AS (SELECT * FROM y)

@@ -8,6 +8,7 @@ import scraper.local.plans.physical.dsl._
 import scraper.parser.Parser
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
+import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
 
 class LocalContext(val settings: Settings) extends Context {

@@ -114,8 +114,8 @@ object Optimizer {
   }
 
   /**
-   * This rule reduces unnecessary casts. For example, implicit casts introduced by the
-   * [[Analyzer]] may produce redundant casts.
+   * This rule reduces unnecessary casts. For example, implicit casts introduced by the analyzer may
+   * produce redundant casts.
    */
   object ReduceCasts extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
@@ -233,8 +233,9 @@ object Optimizer {
           })
         }
 
-        (left filterOption leftPredicates)
-          .join(right filterOption rightPredicates)
+        left
+          .filterOption(leftPredicates)
+          .join(right.filterOption(rightPredicates))
           .onOption(commonPredicates ++ joinCondition)
     }
 

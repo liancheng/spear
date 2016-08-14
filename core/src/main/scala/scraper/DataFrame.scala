@@ -15,9 +15,6 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def context: Context = queryExecution.context
 
-  private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
-    new DataFrame(f(queryExecution.logicalPlan), context)
-
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
 
   def apply(column: Name): Attribute =
@@ -117,6 +114,9 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
     out.println(tabulate(rowCount, truncate))
+
+  private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
+    new DataFrame(f(queryExecution.logicalPlan), context)
 
   private def tabulate(rowCount: Int = 20, truncate: Boolean = true): String = {
     val truncated = limit(rowCount + 1).toSeq

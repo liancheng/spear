@@ -9,6 +9,7 @@ import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
+import scraper.plans.logical.analysis.Analyzer
 import scraper.types.{DataType, NullType}
 import scraper.utils._
 
