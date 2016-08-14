@@ -133,7 +133,7 @@ case class Limit(child: LogicalPlan, count: Expression) extends UnaryLogicalPlan
         Literal(e.evaluated, IntType)
 
       case e if e.isFoldable && (e.dataType isCastableTo IntType) =>
-        Literal(e.evaluated) cast IntType
+        Literal(e.evaluated, IntType)
 
       case _ =>
         throw new TypeCheckException("Limit must be a constant integer")
