@@ -40,7 +40,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   def update(aggBuffer: MutableRow, input: Row): Unit
 
   /**
-   * Merges another aggregation buffer into an existing aggregtion buffer.
+   * Merges another aggregation buffer into an existing aggregation buffer.
    */
   def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit
 

@@ -9,10 +9,17 @@ package object functions {
 
   def not(predicate: Expression): Not = Not(predicate)
 
+  def when(condition: Expression, consequence: Expression): CaseWhen =
+    CaseWhen(condition :: Nil, consequence :: Nil, None)
+
   def coalesce(first: Expression, second: Expression, rest: Expression*): Coalesce =
     Coalesce(Seq(first, second) ++ rest)
 
   def rand(seed: Int): Rand = Rand(seed)
+
+  // -------------------
+  // Aggregate functions
+  // -------------------
 
   def count(expression: Expression): Count = Count(expression)
 
@@ -28,6 +35,8 @@ package object functions {
 
   def sum(expression: Expression): Sum = Sum(expression)
 
+  def product(expression: Expression): Product_ = Product_(expression)
+
   def max(expression: Expression): Max = Max(expression)
 
   def min(expression: Expression): Min = Min(expression)
@@ -38,8 +47,9 @@ package object functions {
 
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 
-  def when(condition: Expression, consequence: Expression): CaseWhen =
-    CaseWhen(condition :: Nil, consequence :: Nil, None)
+  // ----------------
+  // String functions
+  // ----------------
 
   def concat(expressions: Seq[Expression]): Concat = Concat(expressions)
 
@@ -49,10 +59,24 @@ package object functions {
 
   def rlike(string: Expression, pattern: String): RLike = RLike(string, pattern)
 
+  // -------------------------
+  // Complex type constructors
+  // -------------------------
+
   def named_struct(
     first: (Expression, Expression), rest: (Expression, Expression)*
   ): CreateNamedStruct = {
     val (names, values) = (first +: rest).unzip
     CreateNamedStruct(names, values)
+  }
+
+  def array(first: Expression, rest: Expression*): CreateArray = CreateArray(first +: rest)
+
+  def map(keyValues: Expression*): CreateMap = {
+    require(keyValues.length % 2 == 0)
+    val (keys, values) = keyValues.sliding(2, 2).map {
+      case Seq(key, value) => key -> value
+    }.toSeq.unzip
+    CreateMap(keys, values)
   }
 }

@@ -4,8 +4,8 @@ import scraper.config.Settings
 import scraper.expressions.Attribute
 import scraper.parser.Parser
 import scraper.plans.QueryExecution
-import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.logical.{LogicalPlan, Optimizer}
+import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan}
 
 class TestContext extends Context {

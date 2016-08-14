@@ -55,3 +55,23 @@ case class CreateArray(values: Seq[Expression]) extends Expression {
   override protected lazy val strictDataType: DataType =
     ArrayType(values.head.dataType, values exists (_.isNullable))
 }
+
+case class CreateMap(keys: Seq[Expression], values: Seq[Expression]) extends Expression {
+  assert(keys.length == values.length)
+
+  override def nodeName: String = "MAP"
+
+  override def isNullable: Boolean = false
+
+  override def children: Seq[Expression] = keys ++ values
+
+  override def evaluate(input: Row): Any =
+    (keys map (_ evaluate input) zip (values map (_ evaluate input))).toMap
+
+  override protected lazy val typeConstraint: TypeConstraint = keys.sameType ++ values.sameType
+
+  override protected lazy val strictDataType: DataType = {
+    val valueNullable = values exists (_.isNullable)
+    MapType(keys.head.dataType, values.head.dataType, valueNullable)
+  }
+}

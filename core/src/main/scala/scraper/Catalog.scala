@@ -22,19 +22,26 @@ class InMemoryCatalog extends Catalog {
   override val functionRegistry: FunctionRegistry = new InMemoryFunctionRegistry
 
   private val builtInFunctions = Seq(
-    function[Average](i"avg"),
-    function[BoolAnd](i"bool_and"),
-    function[BoolOr](i"bool_or"),
-    function[Concat](i"concat"),
+    function[Coalesce](i"coalesce"),
+    function[Rand](i"rand"),
+
     function[Count](i"count"),
-    function[First](i"avg"),
-    function[Last](i"avg"),
+    function[First](i"first"),
+    function[Last](i"last"),
     function[Max](i"max"),
     function[Min](i"min"),
+    function[Average](i"avg"),
+    function[Sum](i"sum"),
     function[Product_](i"product"),
-    function[Rand](i"rand"),
+    function[BoolAnd](i"bool_and"),
+    function[BoolOr](i"bool_or"),
+
+    function[Concat](i"concat"),
     function[RLike](i"rlike"),
-    function[Sum](i"sum")
+
+    function[CreateNamedStruct](i"named_struct"),
+    function[CreateArray](i"array"),
+    function[CreateMap](i"map")
   )
 
   builtInFunctions foreach functionRegistry.registerFunction

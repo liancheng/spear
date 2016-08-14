@@ -1,7 +1,6 @@
 package scraper.local.plans.physical
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 import scraper._
 import scraper.expressions._
@@ -57,12 +56,7 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq
 class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
   private val (bufferLength, slicesBuilder) = {
     val lengths = boundFunctions map (_.aggBufferSchema.length)
-
-    val beginIndices = ArrayBuffer.empty[Int]
-    if (lengths.nonEmpty) {
-      beginIndices += 0
-      lengths.init.foreach(beginIndices += beginIndices.last + _)
-    }
+    val beginIndices = lengths.scan(0)(_ + _).init
 
     def slicesBuilder(row: MutableRow) = (beginIndices, lengths).zipped.map {
       new MutableRowSlice(row, _, _)
