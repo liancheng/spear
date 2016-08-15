@@ -45,6 +45,10 @@ package object functions {
 
   def bool_or(expression: Expression): BoolOr = BoolOr(expression)
 
+  def collect_list(child: Expression): CollectList = CollectList(child)
+
+  def collect_set(child: Expression): CollectSet = CollectSet(child)
+
   def distinct(agg: AggregateFunction): DistinctAggregateFunction = DistinctAggregateFunction(agg)
 
   // ----------------

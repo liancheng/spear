@@ -168,6 +168,11 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   def of(dataType: DataType): AttributeRef =
     AttributeRef(name, dataType, isNullable = true, newExpressionID())
 
+  def of(fieldSpec: FieldSpec): AttributeRef = {
+    val FieldSpec(dataType, isNullable) = fieldSpec
+    AttributeRef(name, dataType, isNullable, newExpressionID())
+  }
+
   def boolean: AttributeRef = this of BooleanType
 
   def byte: AttributeRef = this of ByteType

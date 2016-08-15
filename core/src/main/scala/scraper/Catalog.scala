@@ -24,12 +24,15 @@ class InMemoryCatalog extends Catalog {
   private val builtInFunctions = Seq(
     function[Coalesce](i"coalesce"),
     function[Rand](i"rand"),
+    function[CollectList](i"collect_list"),
+    function[CollectSet](i"collect_set"),
 
     function[Count](i"count"),
     function[First](i"first"),
     function[Last](i"last"),
     function[Max](i"max"),
     function[Min](i"min"),
+    function[Average](i"average"),
     function[Average](i"avg"),
     function[Sum](i"sum"),
     function[Product_](i"product"),

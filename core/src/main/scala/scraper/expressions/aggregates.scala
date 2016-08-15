@@ -1,5 +1,7 @@
 package scraper.expressions
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
@@ -27,7 +29,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
    * Whether this [[AggregateFunction]] supports partial aggregation
    */
-  def supportsPartialAggregation: Boolean = false
+  def supportsPartialAggregation: Boolean = true
 
   /**
    * Initializes the aggregation buffer with zero value(s).
@@ -49,6 +51,52 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
    * into the `ordinal`-th field of `resultBuffer`.
    */
   def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit
+}
+
+abstract class Collect(child: Expression) extends AggregateFunction with UnaryExpression {
+  override def isNullable: Boolean = false
+
+  override def aggBufferSchema: StructType = StructType('collection -> dataType.!)
+
+  override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
+}
+
+case class CollectList(child: Expression) extends Collect(child) {
+  override def nodeName: String = "collect_list"
+
+  override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = ArrayBuffer.empty[Any]
+
+  override def update(aggBuffer: MutableRow, input: Row): Unit = {
+    aggBuffer.head.asInstanceOf[ArrayBuffer[Any]] += child.evaluate(input)
+  }
+
+  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = {
+    val from = inputAggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
+    val into = aggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
+    into ++= from
+  }
+
+  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
+    resultBuffer(ordinal) = aggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
+}
+
+case class CollectSet(child: Expression) extends Collect(child) {
+  override def nodeName: String = "collect_set"
+
+  override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = mutable.Set.empty[Any]
+
+  override def update(aggBuffer: MutableRow, input: Row): Unit = {
+    aggBuffer.head.asInstanceOf[mutable.Set[Any]] += child.evaluate(input)
+  }
+
+  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = {
+    val from = inputAggBuffer.head.asInstanceOf[mutable.Set[Any]]
+    val into = aggBuffer.head.asInstanceOf[mutable.Set[Any]]
+    into ++= from
+  }
+
+  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
+    resultBuffer(ordinal) = aggBuffer.head.asInstanceOf[mutable.Set[Any]].toSeq
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)
@@ -115,9 +163,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   override def zero(aggBuffer: MutableRow): Unit = {
     // Checks that all child expressions are bound right before evaluating this aggregate function.
     assertAllChildrenBound()
-    aggBuffer.indices foreach { i =>
-      aggBuffer(i) = zeroValues(i).evaluated
-    }
+    aggBuffer.indices foreach (i => aggBuffer(i) = zeroValues(i).evaluated)
   }
 
   override def update(aggBuffer: MutableRow, input: Row): Unit = updater(aggBuffer, input)
@@ -146,45 +192,45 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     require(updateExpressions forall (_.isResolved))
     require(updateExpressions forall (!_.isBound))
     val boundUpdateExpressions = updateExpressions map bind
-    updateAggBufferWith(boundUpdateExpressions) _
+    updateAggBufferWith(boundUpdateExpressions, _, _)
   }
 
   private lazy val merger: (MutableRow, Row) => Unit = whenBound {
     require(mergeExpressions forall (_.isResolved))
     require(mergeExpressions forall (!_.isBound))
     val boundMergeExpressions = mergeExpressions map bind
-    updateAggBufferWith(boundMergeExpressions) _
+    updateAggBufferWith(boundMergeExpressions, _, _)
   }
 
-  /**
-   * Updates mutable `aggBuffer` in-place using `expressions` and an `input` row.
-   *
-   *  1. Join `aggBuffer` and `input` into a single [[JoinedRow]];
-   *  2. Use the [[JoinedRow]] as input row to evaluate all given `expressions` to produce `n`
-   *     result values, where `n` is the length `aggBuffer` (and `expression`);
-   *  3. Update the i-th cell of `aggBuffer` using the i-th evaluated result value.
-   *
-   * Pre-condition: Length of `expressions` must be equal to length of `aggBuffer`.
-   */
+  // Updates the mutable `aggBuffer` in-place with values evaluated using given `expressions` and an
+  // `input` row.
+  //
+  //  1. Joins `aggBuffer` and `input` into a single `JoinedRow`, with `aggBuffer` on the left hand
+  //     side and `input` on the right hand side;
+  //  2. Uses the `JoinedRow` as input row to evaluate all given `expressions` to produce `n`
+  //     result values, where `n` is the length `aggBuffer` (and `expression`);
+  //  3. Updates the i-th cell of `aggBuffer` using the i-th evaluated result value.
+  //
+  // Pre-condition: Length of `expressions` must be equal to length of `aggBuffer`.
   private def updateAggBufferWith(
-    expressions: Seq[Expression]
-  )(
-    aggBuffer: MutableRow, input: Row
+    expressions: Seq[Expression],
+    aggBuffer: MutableRow,
+    input: Row
   ): Unit = {
     require(expressions.length == aggBuffer.length)
     val row = joinedRow(aggBuffer, input)
     aggBuffer.indices foreach (i => aggBuffer(i) = expressions(i) evaluate row)
   }
 
-  // Used to bind update, merge, and result expressions. Note that we have the following constraints
-  // for `DeclarativeAggregateFunction`:
+  // Used to bind update, merge, and result expressions of a `DeclarativeAggregateFunction`. Note
+  // that the following pre-conditions must hold before these expressions are being bound:
   //
-  //  1. All children expressions must be bound
+  //  1. All children expressions of the `DeclarativeAggregateFunction` must be bound.
   //  2. All expressions in `updateExpressions`, `mergeExpressions`, and `resultExpression` must be
   //     resolved but unbound.
   //
-  // Thus, `AttributeRef`s must be aggregation buffer attributes, and `BoundRef`s only appear in
-  // child expressions.
+  // With these pre-conditions in mind, all `AttributeRef`s must be aggregation buffer attributes,
+  // while all `BoundRef`s must appear in child expressions.
   private def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef => BoundRef.bind(aggBufferAttributes ++ inputAggBufferAttributes)(ref)
     case ref: BoundRef     => ref at (ref.ordinal + aggBufferAttributes.length)
@@ -234,9 +280,9 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 }
 
 abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunction {
-  def updateFunction: UpdateFunction
-
   def zeroValue: Expression
+
+  def updateFunction: UpdateFunction
 
   override def isNullable: Boolean = child.isNullable
 
@@ -269,8 +315,10 @@ case class Count(child: Expression) extends FoldLeft {
   override lazy val updateFunction: UpdateFunction = if (child.isNullable) {
     (count: Expression, input: Expression) => If(child.isNull, count, count + 1L)
   } else {
-    (count: Expression, _: Expression) => count + 1L
+    (count: Expression, _) => count + 1L
   }
+
+  override protected lazy val value = 'value of dataType.!
 }
 
 abstract class NullableReduceLeft extends FoldLeft {
