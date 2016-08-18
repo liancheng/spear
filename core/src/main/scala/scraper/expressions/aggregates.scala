@@ -236,16 +236,14 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     case ref: BoundRef     => ref at (ref.ordinal + aggBufferAttributes.length)
   }
 
-  private def assertAllChildrenBound(): Unit = {
-    children foreach { child =>
-      child.collectFirst {
-        case a: Attribute =>
-          throw new BrokenContractException(
-            s"""Attribute $a in child expression $child of aggregate function $this
-               |hasn't been bound yet
-             """.oneLine
-          )
-      }
+  private def assertAllChildrenBound(): Unit = children foreach { child =>
+    child.collectFirst {
+      case a: Attribute =>
+        throw new BrokenContractException(
+          s"""Attribute $a in child expression $child of aggregate function $this
+             |hasn't been bound yet
+           """.oneLine
+        )
     }
   }
 }
