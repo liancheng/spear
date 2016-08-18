@@ -6,7 +6,7 @@ import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.BrokenContractException
-import scraper.expressions.FoldLeft.UpdateFunction
+import scraper.expressions.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.TypeConstraint
@@ -284,6 +284,8 @@ abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunctio
 
   def updateFunction: UpdateFunction
 
+  def mergeFunction: MergeFunction
+
   override def isNullable: Boolean = child.isNullable
 
   override lazy val dataType: DataType = zeroValue.dataType
@@ -297,7 +299,7 @@ abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunctio
   )
 
   override lazy val mergeExpressions: Seq[Expression] = Seq(
-    updateFunction(value.left, value.right)
+    mergeFunction(value.left, value.right)
   )
 
   override lazy val resultExpression: Expression = value
@@ -307,29 +309,39 @@ abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunctio
 
 object FoldLeft {
   type UpdateFunction = (Expression, Expression) => Expression
+
+  type MergeFunction = (Expression, Expression) => Expression
 }
 
 case class Count(child: Expression) extends FoldLeft {
   override lazy val zeroValue: Expression = 0L
 
   override lazy val updateFunction: UpdateFunction = if (child.isNullable) {
-    (count: Expression, input: Expression) => If(child.isNull, count, count + 1L)
+    (count: Expression, input: Expression) => count + If(input.isNull, 0L, 1L)
   } else {
     (count: Expression, _) => count + 1L
   }
+
+  override def mergeFunction: MergeFunction = _ + _
 
   override protected lazy val value = 'value of dataType.!
 }
 
 abstract class NullableReduceLeft extends FoldLeft {
   override lazy val zeroValue: Expression = Literal(null, child.dataType)
+
+  override def mergeFunction: MergeFunction = updateFunction
 }
 
-case class First(child: Expression) extends NullableReduceLeft {
+case class FirstValue(child: Expression) extends NullableReduceLeft {
+  override def nodeName: String = "first_value"
+
   override val updateFunction: UpdateFunction = coalesce(_, _)
 }
 
-case class Last(child: Expression) extends NullableReduceLeft {
+case class LastValue(child: Expression) extends NullableReduceLeft {
+  override def nodeName: String = "last_value"
+
   override val updateFunction: UpdateFunction =
     (last: Expression, input: Expression) => coalesce(input, last)
 }
@@ -359,9 +371,13 @@ abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
 }
 
 case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
+  override def nodeName: String = "bool_and"
+
   override val updateFunction: UpdateFunction = And
 }
 
 case class BoolOr(child: Expression) extends LogicalNullableReduceLeft {
+  override def nodeName: String = "bool_or"
+
   override val updateFunction: UpdateFunction = Or
 }

@@ -25,9 +25,9 @@ package object functions {
 
   def count(): Count = Count(Star(None))
 
-  def first(expression: Expression): First = First(expression)
+  def first(expression: Expression): FirstValue = FirstValue(expression)
 
-  def last(expression: Expression): Last = Last(expression)
+  def last(expression: Expression): LastValue = LastValue(expression)
 
   def average(expression: Expression): Average = Average(expression)
 
