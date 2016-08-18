@@ -19,35 +19,36 @@ trait Catalog {
 }
 
 class InMemoryCatalog extends Catalog {
-  override val functionRegistry: FunctionRegistry = new InMemoryFunctionRegistry
+  override val functionRegistry: FunctionRegistry = {
+    val registry = new InMemoryFunctionRegistry
 
-  private val builtInFunctions = Seq(
-    function[Coalesce](i"coalesce"),
-    function[Rand](i"rand"),
-    function[CollectList](i"collect_list"),
-    function[CollectSet](i"collect_set"),
+    Seq(
+      function[Coalesce](i"coalesce"),
+      function[Rand](i"rand"),
+      function[CollectList](i"collect_list"),
+      function[CollectSet](i"collect_set"),
 
-    function[Count](i"count"),
-    function[First](i"first"),
-    function[Last](i"last"),
-    function[Max](i"max"),
-    function[Min](i"min"),
-    function[Average](i"average"),
-    function[Average](i"avg"),
-    function[Sum](i"sum"),
-    function[Product_](i"product"),
-    function[BoolAnd](i"bool_and"),
-    function[BoolOr](i"bool_or"),
+      function[Count](i"count"),
+      function[FirstValue](i"first_value"),
+      function[LastValue](i"last_value"),
+      function[Max](i"max"),
+      function[Min](i"min"),
+      function[Average](i"average"),
+      function[Average](i"avg"),
+      function[Sum](i"sum"),
+      function[Product_](i"product"),
+      function[BoolAnd](i"bool_and"),
+      function[BoolOr](i"bool_or"),
 
-    function[Concat](i"concat"),
-    function[RLike](i"rlike"),
+      function[Concat](i"concat"),
 
-    function[CreateNamedStruct](i"named_struct"),
-    function[CreateArray](i"array"),
-    function[CreateMap](i"map")
-  )
+      function[CreateNamedStruct](i"named_struct"),
+      function[CreateArray](i"array"),
+      function[CreateMap](i"map")
+    ) foreach registry.registerFunction
 
-  builtInFunctions foreach functionRegistry.registerFunction
+    registry
+  }
 
   private def function[T <: Expression: ClassTag](name: Name): FunctionInfo = {
     val classTag = implicitly[ClassTag[T]]
