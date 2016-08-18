@@ -15,20 +15,20 @@ package object utils {
     val paddedRhs = rhsLines map (_ padTo (rhsWidth, ' ')) padTo (height, " " * rhsWidth)
 
     val zipped = paddedLhs zip paddedRhs
-    val header = if (withHeader) zipped take 1 else Array.empty[(String, String)]
-    val contents = if (withHeader) zipped drop 1 else zipped
+    val header = if (withHeader) zipped.headOption else None
+    val contents = if (withHeader) zipped.tail else zipped
 
-    def rtrim(str: String): String = str.replaceAll("\\s+$", "")
+    def trimRight(str: String): String = str.replaceAll("\\s+$", "")
 
     val pipe = "\u2502"
 
     header.map {
       case (lhsLine, rhsLine) =>
-        rtrim(s"# $lhsLine # $rhsLine")
+        trimRight(s"# $lhsLine # $rhsLine")
     } ++ contents.map {
       case (lhsLine, rhsLine) =>
-        val diffIndicator = if (rtrim(lhsLine) != rtrim(rhsLine)) "!" else " "
-        rtrim(s"$diffIndicator $lhsLine $pipe $rhsLine")
+        val diffIndicator = if (trimRight(lhsLine) != trimRight(rhsLine)) "!" else " "
+        trimRight(s"$diffIndicator $lhsLine $pipe $rhsLine")
     }
   } mkString ("\n", "\n", "")
 

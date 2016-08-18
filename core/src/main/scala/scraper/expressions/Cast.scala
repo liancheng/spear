@@ -273,7 +273,7 @@ object Cast {
 
   /**
    * Returns a new [[Expression]] that casts [[Expression]] `e` to `dataType` if the data type of
-   * `e` is [[compatible]] to `dataType`.  If `e` is * already of the target type, it is returned
+   * `e` is [[compatible]] to `dataType`.  If `e` is already of the target type, it is returned
    * untouched.
    */
   def widenDataType(e: Expression, dataType: DataType): Expression = e match {
@@ -295,7 +295,7 @@ object Cast {
     val numericTypes = Seq(ByteType, ShortType, IntType, LongType, FloatType, DoubleType)
     val primitiveTypes = Seq(NullType, BooleanType, StringType) ++ numericTypes
 
-    val header = (" " +: primitiveTypes.map(_.sql)).map(t => f"$t%10s").mkString
+    val header = ("from\\to" +: primitiveTypes.map(_.sql)).map(t => f"$t%10s").mkString
     val body = for (from <- primitiveTypes) yield {
       val marks = for (to <- primitiveTypes) yield from -> to match {
         case _ if from isCompatibleWith to => "*"
