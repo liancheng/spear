@@ -8,7 +8,7 @@ import scraper.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 
-class BrokenContractException(message: String, cause: Throwable)
+class ContractBrokenException(message: String, cause: Throwable)
   extends RuntimeException(message, cause) {
 
   def this(message: String) = this(message, null)

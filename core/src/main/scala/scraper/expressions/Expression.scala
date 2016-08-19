@@ -160,7 +160,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    * @see [[strictlyTyped]]
    */
-  protected lazy val strictDataType: DataType = throw new BrokenContractException(
+  protected lazy val strictDataType: DataType = throw new ContractBrokenException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )
 
@@ -192,7 +192,7 @@ trait StatefulExpression[State] extends Expression {
 
   override protected def makeCopy(args: Seq[AnyRef]): Expression = {
     state.foreach { currentState =>
-      throw new BrokenContractException(
+      throw new ContractBrokenException(
         s"Stateful expression $this with state $currentState cannot be copied after initialization"
       )
     }
@@ -237,7 +237,7 @@ trait UnaryExpression extends Expression {
   override def children: Seq[Expression] = Seq(child)
 
   protected def nullSafeEvaluate(value: Any): Any =
-    throw new BrokenContractException(
+    throw new ContractBrokenException(
       s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 
@@ -258,7 +258,7 @@ trait BinaryExpression extends Expression {
   override def children: Seq[Expression] = Seq(left, right)
 
   def nullSafeEvaluate(lhs: Any, rhs: Any): Any =
-    throw new BrokenContractException(
+    throw new ContractBrokenException(
       s"${getClass.getName} must override either evaluate or nullSafeEvaluate"
     )
 

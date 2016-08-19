@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
-import scraper.exceptions.BrokenContractException
+import scraper.exceptions.ContractBrokenException
 import scraper.expressions.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
@@ -127,7 +127,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
     s"$name(DISTINCT ${args mkString ", "})"
   }
 
-  private def bugReport(): Nothing = throw new BrokenContractException(
+  private def bugReport(): Nothing = throw new ContractBrokenException(
     "This method should never be invoked. You probably hit an internal bug."
   )
 }
@@ -265,7 +265,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   private def assertAllChildrenBound(): Unit = children foreach { child =>
     child.collectFirst {
       case a: Attribute =>
-        throw new BrokenContractException(
+        throw new ContractBrokenException(
           s"""Attribute $a in child expression $child of aggregate function $this
              |hasn't been bound yet
            """.oneLine
