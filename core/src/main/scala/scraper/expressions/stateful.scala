@@ -12,7 +12,7 @@ case class Rand(seed: Expression) extends UnaryExpression with StatefulExpressio
   override def child: Expression = seed
 
   override protected lazy val typeConstraint: TypeConstraint =
-    Seq(seed) sameTypeAs LongType andThen (_ forall (_.isFoldable), "Random seed must be constant.")
+    Seq(seed) sameTypeAs LongType andThen (_.foldable)
 
   private lazy val evaluatedSeed: Long = seed.evaluated.asInstanceOf[Long]
 

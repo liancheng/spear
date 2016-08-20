@@ -61,11 +61,15 @@ package object expressions {
     UnresolvedFunction(name, args, distinct = true)
 
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
+    def pass: PassThrough = PassThrough(input)
+
     def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)
 
     def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf =
       SameSubtypesOf(supertype, input)
 
     def sameType: SameType = SameType(input)
+
+    def foldable: Foldable = Foldable(input)
   }
 }

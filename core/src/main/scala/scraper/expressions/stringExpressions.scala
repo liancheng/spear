@@ -19,10 +19,7 @@ case class RLike(string: Expression, pattern: Expression) extends Expression {
   override def dataType: DataType = BooleanType
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (Seq(string) sameTypeAs StringType) ++ (Seq(pattern) sameTypeAs StringType andThen (
-      _.forall(_.isFoldable),
-      "RLIKE pattern must be constant"
-    ))
+    (Seq(string) sameTypeAs StringType) ++ (Seq(pattern) sameTypeAs StringType andThen (_.foldable))
 
   private lazy val compiledPattern = {
     val evaluatedPattern: String = pattern.evaluated.asInstanceOf[String]
