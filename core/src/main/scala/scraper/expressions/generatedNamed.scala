@@ -3,6 +3,7 @@ package scraper.expressions
 import scraper.Name
 import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.aggregates.AggregateFunction
 import scraper.types._
 
 sealed trait GeneratedNamedExpression extends NamedExpression {

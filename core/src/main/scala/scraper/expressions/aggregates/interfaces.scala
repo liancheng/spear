@@ -1,15 +1,13 @@
-package scraper.expressions
+package scraper.expressions.aggregates
 
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-import scraper.{JoinedRow, MutableRow, Name, Row}
+import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.ContractBrokenException
-import scraper.expressions.FoldLeft.{MergeFunction, UpdateFunction}
+import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
-import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
 import scraper.utils._
 
@@ -51,52 +49,6 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
    * into the `ordinal`-th field of `resultBuffer`.
    */
   def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit
-}
-
-abstract class Collect(child: Expression) extends AggregateFunction with UnaryExpression {
-  override def isNullable: Boolean = false
-
-  override def aggBufferSchema: StructType = StructType('collection -> dataType.!)
-
-  override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
-}
-
-case class CollectList(child: Expression) extends Collect(child) {
-  override def nodeName: Name = "collect_list"
-
-  override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = ArrayBuffer.empty[Any]
-
-  override def update(aggBuffer: MutableRow, input: Row): Unit = {
-    aggBuffer.head.asInstanceOf[ArrayBuffer[Any]] += child.evaluate(input)
-  }
-
-  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = {
-    val from = inputAggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
-    val into = aggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
-    into ++= from
-  }
-
-  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
-    resultBuffer(ordinal) = aggBuffer.head.asInstanceOf[ArrayBuffer[Any]]
-}
-
-case class CollectSet(child: Expression) extends Collect(child) {
-  override def nodeName: Name = "collect_set"
-
-  override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = mutable.Set.empty[Any]
-
-  override def update(aggBuffer: MutableRow, input: Row): Unit = {
-    aggBuffer.head.asInstanceOf[mutable.Set[Any]] += child.evaluate(input)
-  }
-
-  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = {
-    val from = inputAggBuffer.head.asInstanceOf[mutable.Set[Any]]
-    val into = aggBuffer.head.asInstanceOf[mutable.Set[Any]]
-    into ++= from
-  }
-
-  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
-    resultBuffer(ordinal) = aggBuffer.head.asInstanceOf[mutable.Set[Any]].toSeq
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)
@@ -274,35 +226,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   }
 }
 
-case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
-  override def nodeName: Name = "AVG"
-
-  override def dataType: DataType = DoubleType
-
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
-
-  override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType), 0L)
-
-  override lazy val updateExpressions: Seq[Expression] = Seq(
-    coalesce((child cast dataType) + sum, child cast dataType, sum),
-    if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
-  )
-
-  override lazy val mergeExpressions: Seq[Expression] = Seq(
-    sum.left + sum.right,
-    count.left + count.right
-  )
-
-  override lazy val resultExpression: Expression =
-    If(count === 0L, lit(null), sum / (count cast dataType))
-
-  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
-
-  private lazy val sum = 'sum of dataType withNullability child.isNullable
-
-  private lazy val count = 'count.long.!
-}
-
 abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunction {
   def zeroValue: Expression
 
@@ -337,77 +260,8 @@ object FoldLeft {
   type MergeFunction = (Expression, Expression) => Expression
 }
 
-case class Count(child: Expression) extends FoldLeft {
-  override lazy val zeroValue: Expression = 0L
-
-  override lazy val updateFunction: UpdateFunction = if (child.isNullable) {
-    (count: Expression, input: Expression) => count + If(input.isNull, 0L, 1L)
-  } else {
-    (count: Expression, _) => count + 1L
-  }
-
-  override def mergeFunction: MergeFunction = _ + _
-
-  override protected lazy val value = 'value of dataType.!
-}
-
 abstract class NullableReduceLeft extends FoldLeft {
   override lazy val zeroValue: Expression = Literal(null, child.dataType)
 
   override def mergeFunction: MergeFunction = updateFunction
-}
-
-case class Max(child: Expression) extends NullableReduceLeft {
-  override val updateFunction: UpdateFunction = Greatest(_, _)
-
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
-}
-
-case class Min(child: Expression) extends NullableReduceLeft {
-  override val updateFunction: UpdateFunction = Least(_, _)
-
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
-}
-
-case class FirstValue(child: Expression) extends NullableReduceLeft {
-  override def nodeName: Name = "first_value"
-
-  override val updateFunction: UpdateFunction = coalesce(_, _)
-}
-
-case class LastValue(child: Expression) extends NullableReduceLeft {
-  override def nodeName: Name = "last_value"
-
-  override val updateFunction: UpdateFunction =
-    (last: Expression, input: Expression) => coalesce(input, last)
-}
-
-abstract class NumericNullableReduceLeft extends NullableReduceLeft {
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
-}
-
-case class Sum(child: Expression) extends NumericNullableReduceLeft {
-  override val updateFunction: UpdateFunction = Plus
-}
-
-case class Product_(child: Expression) extends NumericNullableReduceLeft {
-  override def nodeName: Name = "product"
-
-  override val updateFunction: UpdateFunction = Multiply
-}
-
-abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
-  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
-}
-
-case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
-  override def nodeName: Name = "bool_and"
-
-  override val updateFunction: UpdateFunction = And
-}
-
-case class BoolOr(child: Expression) extends LogicalNullableReduceLeft {
-  override def nodeName: Name = "bool_or"
-
-  override val updateFunction: UpdateFunction = Or
 }

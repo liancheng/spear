@@ -1,5 +1,6 @@
 package scraper.expressions
 
+import scraper.expressions.aggregates._
 import scraper.parser.Parser
 
 package object functions {
@@ -25,9 +26,11 @@ package object functions {
 
   def count(): Count = Count(Star(None))
 
-  def first(expression: Expression): FirstValue = FirstValue(expression)
+  def first(expression: Expression, ignoreNulls: Boolean = true): First =
+    First(expression, ignoreNulls)
 
-  def last(expression: Expression): LastValue = LastValue(expression)
+  def last(expression: Expression, ignoreNulls: Boolean = true): Last =
+    Last(expression, ignoreNulls)
 
   def average(expression: Expression): Average = Average(expression)
 

@@ -1,7 +1,8 @@
 package scraper.exceptions
 
 import scraper.Name
-import scraper.expressions.{AggregateFunction, AttributeRef, Expression}
+import scraper.expressions.{AttributeRef, Expression}
+import scraper.expressions.aggregates.AggregateFunction
 import scraper.plans.logical.LogicalPlan
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils._

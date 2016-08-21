@@ -5,6 +5,7 @@ import scraper.exceptions.{AnalysisException, IllegalAggregationException, Resol
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
 import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
+import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.Analyzer.containsAggregation
 import scraper.trees.{Rule, RulesExecutor}

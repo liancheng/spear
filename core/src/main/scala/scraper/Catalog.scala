@@ -6,6 +6,7 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.{AnalysisException, TableNotFoundException}
 import scraper.expressions._
+import scraper.expressions.aggregates._
 import scraper.plans.logical.LogicalPlan
 
 trait Catalog {
@@ -29,8 +30,10 @@ class InMemoryCatalog extends Catalog {
       function[CollectSet](i"collect_set"),
 
       function[Count](i"count"),
-      function[FirstValue](i"first_value"),
-      function[LastValue](i"last_value"),
+      function[First](i"first"),
+      function[First](i"first_value"),
+      function[Last](i"last"),
+      function[Last](i"last_value"),
       function[Max](i"max"),
       function[Min](i"min"),
       function[Average](i"average"),
