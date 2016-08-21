@@ -357,6 +357,18 @@ abstract class NullableReduceLeft extends FoldLeft {
   override def mergeFunction: MergeFunction = updateFunction
 }
 
+case class Max(child: Expression) extends NullableReduceLeft {
+  override val updateFunction: UpdateFunction = Greatest(_, _)
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+}
+
+case class Min(child: Expression) extends NullableReduceLeft {
+  override val updateFunction: UpdateFunction = Least(_, _)
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+}
+
 case class FirstValue(child: Expression) extends NullableReduceLeft {
   override def nodeName: Name = "first_value"
 
@@ -371,7 +383,7 @@ case class LastValue(child: Expression) extends NullableReduceLeft {
 }
 
 abstract class NumericNullableReduceLeft extends NullableReduceLeft {
-  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameSubtypeOf NumericType
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 }
 
 case class Sum(child: Expression) extends NumericNullableReduceLeft {
@@ -379,19 +391,13 @@ case class Sum(child: Expression) extends NumericNullableReduceLeft {
 }
 
 case class Product_(child: Expression) extends NumericNullableReduceLeft {
+  override def nodeName: Name = "product"
+
   override val updateFunction: UpdateFunction = Multiply
 }
 
-case class Max(child: Expression) extends NumericNullableReduceLeft {
-  override val updateFunction: UpdateFunction = Greatest(_, _)
-}
-
-case class Min(child: Expression) extends NumericNullableReduceLeft {
-  override val updateFunction: UpdateFunction = Least(_, _)
-}
-
 abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
-  override protected lazy val typeConstraint: TypeConstraint = Seq(child) sameTypeAs BooleanType
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 }
 
 case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
