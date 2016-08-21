@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-import scraper.{JoinedRow, MutableRow, Row}
+import scraper.{JoinedRow, MutableRow, Name, Row}
 import scraper.exceptions.ContractBrokenException
 import scraper.expressions.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.NamedExpression.newExpressionID
@@ -62,7 +62,7 @@ abstract class Collect(child: Expression) extends AggregateFunction with UnaryEx
 }
 
 case class CollectList(child: Expression) extends Collect(child) {
-  override def nodeName: String = "collect_list"
+  override def nodeName: Name = "collect_list"
 
   override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = ArrayBuffer.empty[Any]
 
@@ -81,7 +81,7 @@ case class CollectList(child: Expression) extends Collect(child) {
 }
 
 case class CollectSet(child: Expression) extends Collect(child) {
-  override def nodeName: String = "collect_set"
+  override def nodeName: Name = "collect_set"
 
   override def zero(aggBuffer: MutableRow): Unit = aggBuffer(0) = mutable.Set.empty[Any]
 
@@ -118,12 +118,12 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
-    name = child.nodeName.toUpperCase
+    name = child.nodeName
   } yield s"$name(DISTINCT ${argSQL mkString ", "})"
 
   override def debugString: String = {
     val args = child.children map (_.debugString)
-    val name = child.nodeName.toUpperCase
+    val name = child.nodeName
     s"$name(DISTINCT ${args mkString ", "})"
   }
 
@@ -275,7 +275,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 }
 
 case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
-  override def nodeName: String = "AVG"
+  override def nodeName: Name = "AVG"
 
   override def dataType: DataType = DoubleType
 
@@ -358,13 +358,13 @@ abstract class NullableReduceLeft extends FoldLeft {
 }
 
 case class FirstValue(child: Expression) extends NullableReduceLeft {
-  override def nodeName: String = "first_value"
+  override def nodeName: Name = "first_value"
 
   override val updateFunction: UpdateFunction = coalesce(_, _)
 }
 
 case class LastValue(child: Expression) extends NullableReduceLeft {
-  override def nodeName: String = "last_value"
+  override def nodeName: Name = "last_value"
 
   override val updateFunction: UpdateFunction =
     (last: Expression, input: Expression) => coalesce(input, last)
@@ -395,13 +395,13 @@ abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
 }
 
 case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
-  override def nodeName: String = "bool_and"
+  override def nodeName: Name = "bool_and"
 
   override val updateFunction: UpdateFunction = And
 }
 
 case class BoolOr(child: Expression) extends LogicalNullableReduceLeft {
-  override def nodeName: String = "bool_or"
+  override def nodeName: Name = "bool_or"
 
   override val updateFunction: UpdateFunction = Or
 }

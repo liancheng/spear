@@ -85,7 +85,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         (planLater(left) except planLater(right)) :: Nil
 
       case plan =>
-        NotImplemented(plan.nodeName, plan.children map planLater, plan.output) :: Nil
+        NotImplemented(plan.nodeName.toString, plan.children map planLater, plan.output) :: Nil
     }
   }
 }

@@ -159,8 +159,8 @@ class IllegalAggregationException(message: String, cause: Throwable)
   }, cause)
 
   def this(outer: AggregateFunction, inner: AggregateFunction) = this({
-    s"""Aggregate function (${inner.nodeName.toUpperCase}) can't be nested within
-       |another aggregate function (${outer.nodeName.toUpperCase}).
+    s"""Aggregate function (${inner.nodeName.toString}) can't be nested within
+       |another aggregate function (${outer.nodeName.toString}).
      """.oneLine
   }, null)
 

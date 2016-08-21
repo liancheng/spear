@@ -164,7 +164,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("global aggregate") {
     checkAnalyzedPlan(
       relation select count('a),
-      relation resolvedAgg aggCountA select (aggCountA.attr as "COUNT(a)")
+      relation resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
     )
   }
 
@@ -172,8 +172,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     val aggCountA = AggregationAlias(count(a of 't))
 
     checkAnalyzedPlan(
-      "SELECT COUNT(a) FROM t",
-      relation subquery 't resolvedAgg aggCountA select (aggCountA.attr as "COUNT(a)")
+      "SELECT count(a) FROM t",
+      relation subquery 't resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
     )
   }
 
@@ -197,7 +197,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         agg aggCountB
         // Only the last sort order should be preserved
         orderBy aggCountB.attr.asc
-        select (aggCountB.attr as "COUNT(b)")
+        select (aggCountB.attr as "count(b)")
     )
   }
 
@@ -209,7 +209,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         agg aggCountB
         // All having conditions should be preserved
         having groupA.attr > 1 && aggCountB.attr < 3L
-        select (aggCountB.attr as "COUNT(b)")
+        select (aggCountB.attr as "count(b)")
     )
   }
 
@@ -239,7 +239,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
       relation
         resolvedGroupBy groupA
         agg aggCount1
-        select (aggCount1.attr as i"COUNT(1)")
+        select (aggCount1.attr as i"count(1)")
     )
   }
 

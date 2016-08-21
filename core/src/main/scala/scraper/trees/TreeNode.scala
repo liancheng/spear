@@ -2,6 +2,7 @@ package scraper.trees
 
 import scala.collection.{mutable, Traversable}
 
+import scraper.Name
 import scraper.annotations.Explain
 import scraper.reflection.constructorParams
 import scraper.types.StructType
@@ -132,10 +133,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    */
   def nodeCaption: String = {
     val pairs = explainParams(_.toString) map (_.productIterator.mkString("="))
-    Seq(nodeName, pairs mkString ", ") filter (_.nonEmpty) mkString " "
+    Seq(nodeName.casePreserving, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
-  def nodeName: String = getClass.getSimpleName stripSuffix "$"
+  def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
   protected def sameChildren(newChildren: Seq[Base]): Boolean =
     (newChildren, children).zipped forall (_ same _)

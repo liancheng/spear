@@ -174,7 +174,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * A template method for building `debugString` and `sql`.
    */
   protected def template(childList: Seq[String]): String =
-    childList mkString (s"${nodeName.toUpperCase}(", ", ", ")")
+    childList mkString (s"${nodeName.casePreserving}(", ", ", ")")
 
   def debugString: String = template(children map (_.debugString))
 
@@ -275,7 +275,7 @@ trait BinaryExpression extends Expression {
 trait Operator { this: Expression =>
   def operator: String
 
-  override def nodeName: String = operator
+  override def nodeName: Name = operator
 }
 
 trait BinaryOperator extends BinaryExpression with Operator {

@@ -38,7 +38,7 @@ class ExpressionSQLBuilderSuite extends SQLBuilderTest {
     checkSQL(a && b, "(a AND b)")
     checkSQL(a || b, "(a OR b)")
     checkSQL(!a, "(NOT a)")
-    checkSQL(If(a, b, c), "IF(a, b, c)")
+    checkSQL(If(a, b, c), "if(a, b, c)")
   }
 
   test("non-SQL expressions") {
