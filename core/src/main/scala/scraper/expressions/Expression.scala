@@ -15,6 +15,8 @@ import scraper.utils._
  * impure expressions (e.g., [[Rand]]), which are non-deterministic and contain mutable states.
  */
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
+  override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
+
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
    * time. Foldable expressions can be optimized out when being compiled. For example

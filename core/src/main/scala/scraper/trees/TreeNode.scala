@@ -136,7 +136,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     Seq(nodeName.casePreserving, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
-  def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
+  def nodeName: Name = getClass.getSimpleName stripSuffix "$"
 
   protected def sameChildren(newChildren: Seq[Base]): Boolean =
     (newChildren, children).zipped forall (_ same _)

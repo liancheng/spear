@@ -195,16 +195,30 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("first") {
+    val df = context range 4 select (when('id % 2 === 0, lit(null)) otherwise 'id as 'x)
+
     checkDataFrame(
-      context range 2 agg first('id),
-      Row(0)
+      df agg first('x, ignoresNull = true),
+      Row(1)
+    )
+
+    checkDataFrame(
+      df agg first('x, ignoresNull = false),
+      Row(null)
     )
   }
 
   test("last") {
+    val df = context range 4 select (when('id % 2 =/= 0, lit(null)) otherwise 'id as 'x)
+
     checkDataFrame(
-      context range 2 agg last('id),
-      Row(1)
+      df agg last('x, ignoresNull = true),
+      Row(2)
+    )
+
+    checkDataFrame(
+      df agg last('x, ignoresNull = false),
+      Row(null)
     )
   }
 

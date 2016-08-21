@@ -33,22 +33,24 @@ case class Min(child: Expression) extends NullableReduceLeft {
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
-abstract class FirstLike(child: Expression, ignoreNulls: Expression)
+abstract class FirstLike(child: Expression, ignoresNull: Expression)
   extends DeclarativeAggregateFunction {
 
-  override def children: Seq[Expression] = Seq(child, ignoreNulls)
+  override lazy val isPure: Boolean = false
+
+  override def children: Seq[Expression] = Seq(child, ignoresNull)
 
   override def isNullable: Boolean = child.isNullable
 
   override protected lazy val typeConstraint: TypeConstraint =
-    Seq(child).pass ++ Seq(ignoreNulls).foldable
+    Seq(child).pass ++ Seq(ignoresNull).foldable
 
   override protected lazy val strictDataType: DataType = child.dataType
 
-  protected lazy val ignoreNullsBool: Boolean = ignoreNulls.evaluated.asInstanceOf[Boolean]
+  protected lazy val ignoresNullBool: Boolean = ignoresNull.evaluated.asInstanceOf[Boolean]
 }
 
-case class First(child: Expression, ignoreNulls: Expression) extends FirstLike(child, ignoreNulls) {
+case class First(child: Expression, ignoresNull: Expression) extends FirstLike(child, ignoresNull) {
   def this(child: Expression) = this(child, lit(true))
 
   override def nodeName: Name = "first_value"
@@ -57,17 +59,18 @@ case class First(child: Expression, ignoreNulls: Expression) extends FirstLike(c
 
   override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
 
-  override lazy val updateExpressions: Seq[Expression] = if (ignoreNullsBool) {
-    Seq(
-      If(valueSet || child.isNull, first, child),
-      valueSet || child.notNull
-    )
-  } else {
-    Seq(
-      If(valueSet, first, child),
-      true
-    )
-  }
+  override lazy val updateExpressions: Seq[Expression] =
+    if (child.isNullable && ignoresNullBool) {
+      Seq(
+        If(!valueSet, coalesce(child, first), first),
+        valueSet || child.notNull
+      )
+    } else {
+      Seq(
+        If(valueSet, first, child),
+        true
+      )
+    }
 
   override lazy val mergeExpressions: Seq[Expression] = Seq(
     If(valueSet.left, first.left, first.right),
@@ -81,7 +84,7 @@ case class First(child: Expression, ignoreNulls: Expression) extends FirstLike(c
   private lazy val valueSet = 'valueSet of BooleanType.!
 }
 
-case class Last(child: Expression, ignoreNulls: Expression) extends FirstLike(child, ignoreNulls) {
+case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(child, ignoresNull) {
   def this(child: Expression) = this(child, lit(true))
 
   override def nodeName: Name = "last_value"
@@ -90,11 +93,9 @@ case class Last(child: Expression, ignoreNulls: Expression) extends FirstLike(ch
 
   override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType))
 
-  override lazy val updateExpressions: Seq[Expression] = if (ignoreNullsBool) {
-    Seq(coalesce(child, last))
-  } else {
-    Seq(child)
-  }
+  override lazy val updateExpressions: Seq[Expression] = Seq(
+    if (child.isNullable && ignoresNullBool) coalesce(child, last) else child
+  )
 
   override lazy val mergeExpressions: Seq[Expression] = Seq(
     coalesce(last.right, last.left)

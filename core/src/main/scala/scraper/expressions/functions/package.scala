@@ -26,11 +26,11 @@ package object functions {
 
   def count(): Count = Count(Star(None))
 
-  def first(expression: Expression, ignoreNulls: Boolean = true): First =
-    First(expression, ignoreNulls)
+  def first(expression: Expression, ignoresNull: Boolean = true): First =
+    First(expression, ignoresNull)
 
-  def last(expression: Expression, ignoreNulls: Boolean = true): Last =
-    Last(expression, ignoreNulls)
+  def last(expression: Expression, ignoresNull: Boolean = true): Last =
+    Last(expression, ignoresNull)
 
   def average(expression: Expression): Average = Average(expression)
 

@@ -93,20 +93,20 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   val zeroValues: Seq[Expression]
 
   /**
-   * Expressions used to update aggregation buffer fields. All expressions must be resolved but
-   * unbound.
+   * Expressions used to update aggregation buffer fields. All expressions must be either literals
+   * or resolved but unbound expressions.
    */
   val updateExpressions: Seq[Expression]
 
   /**
-   * Expressions used to merge two aggregation buffers fields. All expressions must be resolved but
-   * unbound.
+   * Expressions used to merge two aggregation buffers fields. All expressions must be either
+   * literals or resolved but unbound expressions.
    */
   val mergeExpressions: Seq[Expression]
 
   /**
-   * Expression used to compute the final aggregation result. The expression must be resolved but
-   * unbound.
+   * Expression used to compute the final aggregation result. The expression must be either literals
+   * or resolved but unbound expressions.
    */
   val resultExpression: Expression
 
@@ -136,21 +136,15 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   private lazy val joinedRow: JoinedRow = new JoinedRow()
 
   private lazy val boundResultExpression: Expression = whenBound {
-    require(resultExpression.isResolved)
-    require(!resultExpression.isBound)
     bind(resultExpression)
   }
 
   private lazy val updater: (MutableRow, Row) => Unit = whenBound {
-    require(updateExpressions forall (_.isResolved))
-    require(updateExpressions forall (!_.isBound))
     val boundUpdateExpressions = updateExpressions map bind
     updateAggBufferWith(boundUpdateExpressions, _, _)
   }
 
   private lazy val merger: (MutableRow, Row) => Unit = whenBound {
-    require(mergeExpressions forall (_.isResolved))
-    require(mergeExpressions forall (!_.isBound))
     val boundMergeExpressions = mergeExpressions map bind
     updateAggBufferWith(boundMergeExpressions, _, _)
   }
@@ -181,22 +175,16 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   //  - `mergeExpressions`, and
   //  - `resultExpression`
   //
-  // Note that the following pre-conditions must hold before binding these expressions:
+  // One crucial pre-condition that always holds when binding these expressions is that:
   //
-  //  1. All children expressions of this `DeclarativeAggregateFunction` must have been bound.
+  //   All children expressions of this `DeclarativeAggregateFunction` must have been bound.
   //
-  //     Because this method is only invoked while a `DeclarativeAggregateFunction` is being
-  //     evaluated, which implies the `DeclarativeAggregateFunction`, together with all its child
-  //     expressions, must have been bound.
+  // Because this method is only invoked while a `DeclarativeAggregateFunction` is being evaluated,
+  // which implies the `DeclarativeAggregateFunction`, together with all its child expressions, must
+  // have been bound.
   //
-  //  2. All expressions in `updateExpressions`, `mergeExpressions`, and `resultExpression` must be
-  //     resolved but unbound.
-  //
-  //     This is an explicit contract defined by `DeclarativeAggregateFunction`.
-  //
-  // With these pre-conditions in mind, all `AttributeRef`s found in the target expression must be
-  // aggregation buffer attributes, while all `BoundRef`s found in the target expression must appear
-  // in child expressions.
+  // Thus, all `AttributeRef`s found in the target expression must be aggregation buffer attributes,
+  // while all `BoundRef`s found in the target expression only appear in child expressions.
   private def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef =>
       // Must be an aggregation buffer attribute of either the buffer of the current aggregate
