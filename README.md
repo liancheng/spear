@@ -32,7 +32,7 @@ $ ./build/sbt package
 Scraper has an Ammonite-based REPL for interactive experiments. To start it:
 
 ```
-$ ./build/sbt repl/run
+$ ./build/sbt scraper-repl/run
 ```
 
 Let's create a simple DataFrame of numbers:
