@@ -1,32 +1,37 @@
 import Dependencies._
 
-lazy val scraper = (project in file("."))
-  .aggregate(core, localExecution, repl)
+lazy val scraper =
+  Project(id = "scraper", base = file("."))
+    .aggregate(core, localExecution, repl)
 
-lazy val core = (project in file("core"))
-  .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= typesafeConfig ++ logging ++ scala ++ scopt,
-    libraryDependencies ++= Dependencies.testing
-  )
+lazy val core =
+  Project(id = "scraper-core", base = file("scraper-core"))
+    .enablePlugins(sbtPlugins: _*)
+    .settings(commonSettings)
+    .settings(
+      libraryDependencies ++= typesafeConfig ++ logging ++ scala ++ scopt,
+      libraryDependencies ++= Dependencies.testing
+    )
 
-lazy val localExecution = (project in file("execution/local"))
-  .dependsOn(core % "compile->compile;test->test")
-  .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings)
+lazy val localExecution =
+  Project(id = "scraper-local", base = file("scraper-local"))
+    .dependsOn(core % "compile->compile;test->test")
+    .enablePlugins(sbtPlugins: _*)
+    .settings(commonSettings)
 
-lazy val repl = (project in file("repl"))
-  .dependsOn(core % "compile->compile;test->test")
-  .dependsOn(localExecution % "compile->compile;test->test")
-  .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
-  .settings(libraryDependencies ++= ammonite)
+lazy val repl =
+  Project(id = "scraper-repl", base = file("scraper-repl"))
+    .dependsOn(core % "compile->compile;test->test")
+    .dependsOn(localExecution % "compile->compile;test->test")
+    .enablePlugins(sbtPlugins: _*)
+    .settings(commonSettings ++ runtimeConfSettings)
+    .settings(libraryDependencies ++= ammonite)
 
-lazy val examples = (project in file("examples"))
-  .dependsOn(core, localExecution)
-  .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
+lazy val examples =
+  Project(id = "scraper-examples", base = file("scraper-examples"))
+    .dependsOn(core, localExecution)
+    .enablePlugins(sbtPlugins: _*)
+    .settings(commonSettings ++ runtimeConfSettings)
 
 lazy val sbtPlugins = Seq(
   // For packaging
