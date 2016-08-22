@@ -2,7 +2,7 @@ import Dependencies._
 
 lazy val scraper =
   Project(id = "scraper", base = file("."))
-    .aggregate(core, localExecution, repl)
+    .aggregate(core, local, repl)
 
 lazy val core =
   Project(id = "scraper-core", base = file("scraper-core"))
@@ -13,7 +13,7 @@ lazy val core =
       libraryDependencies ++= Dependencies.testing
     )
 
-lazy val localExecution =
+lazy val local =
   Project(id = "scraper-local", base = file("scraper-local"))
     .dependsOn(core % "compile->compile;test->test")
     .enablePlugins(sbtPlugins: _*)
@@ -22,14 +22,14 @@ lazy val localExecution =
 lazy val repl =
   Project(id = "scraper-repl", base = file("scraper-repl"))
     .dependsOn(core % "compile->compile;test->test")
-    .dependsOn(localExecution % "compile->compile;test->test")
+    .dependsOn(local % "compile->compile;test->test")
     .enablePlugins(sbtPlugins: _*)
     .settings(commonSettings ++ runtimeConfSettings)
     .settings(libraryDependencies ++= ammonite)
 
 lazy val examples =
   Project(id = "scraper-examples", base = file("scraper-examples"))
-    .dependsOn(core, localExecution)
+    .dependsOn(core, local)
     .enablePlugins(sbtPlugins: _*)
     .settings(commonSettings ++ runtimeConfSettings)
 
