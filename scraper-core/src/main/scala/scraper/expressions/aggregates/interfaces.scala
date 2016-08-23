@@ -177,19 +177,19 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   //
   // One crucial pre-condition that always holds when binding these expressions is that:
   //
-  //   All children expressions of this `DeclarativeAggregateFunction` must have been bound.
+  //   All child expressions of this `DeclarativeAggregateFunction` must have been bound.
   //
-  // Because this method is only invoked while a `DeclarativeAggregateFunction` is being evaluated,
-  // which implies the `DeclarativeAggregateFunction`, together with all its child expressions, must
-  // have been bound.
+  // This is because this method is only invoked while a `DeclarativeAggregateFunction` is being
+  // evaluated, which implies the `DeclarativeAggregateFunction`, together with all its child
+  // expressions, must have been bound.
   //
   // Thus, all `AttributeRef`s found in the target expression must be aggregation buffer attributes,
   // while all `BoundRef`s found in the target expression only appear in child expressions.
   private def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef =>
-      // Must be an aggregation buffer attribute of either the buffer of the current aggregate
-      // function, which appears in `aggBufferAttributes`, or the input aggregation buffer to be
-      // merged, which appears in `inputAggBufferAttributes`.
+      // Must be an aggregation buffer attribute of either the current aggregation buffer, which
+      // appears in `aggBufferAttributes`, or the input aggregation buffer to be merged, which
+      // appears in `inputAggBufferAttributes`.
       //
       // Note that here we also rely on the fact that `inputAggBufferAttributes` are only used while
       // merging two aggregation buffers. They always appear on the right side of
