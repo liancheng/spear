@@ -12,7 +12,7 @@ case class Average(child: Expression) extends UnaryExpression with DeclarativeAg
 
   override def dataType: DataType = DoubleType
 
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(sum, count)
+  override lazy val stateAttributes: Seq[AttributeRef] = Seq(sum, count)
 
   override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType), 0L)
 

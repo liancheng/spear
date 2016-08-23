@@ -44,19 +44,21 @@ case class HashAggregate(
   }
 }
 
-case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], slices: Seq[MutableRow]) {
-  (boundFunctions, slices).zipped foreach (_ zero _)
+case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], states: Seq[MutableRow]) {
+  require(boundFunctions.length == states.length)
 
-  def +=(input: Row): Unit = (boundFunctions, slices).zipped foreach (_.update(_, input))
+  (boundFunctions, states).zipped foreach (_ zero _)
+
+  def +=(input: Row): Unit = (boundFunctions, states).zipped foreach (_.update(_, input))
 
   def result(mutableResult: MutableRow): Unit = mutableResult.indices foreach { i =>
-    boundFunctions(i).result(mutableResult, i, slices(i))
+    boundFunctions(i).result(mutableResult, i, states(i))
   }
 }
 
 class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
   private val (bufferLength, slicesBuilder) = {
-    val lengths = boundFunctions map (_.aggBufferSchema.length)
+    val lengths = boundFunctions map (_.stateSchema.length)
     val beginIndices = lengths.scan(0)(_ + _).init
 
     def slicesBuilder(row: MutableRow) = (beginIndices, lengths).zipped.map {

@@ -55,7 +55,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 
   override def nodeName: Name = "first_value"
 
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(first, valueSet)
+  override lazy val stateAttributes: Seq[AttributeRef] = Seq(first, valueSet)
 
   override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
 
@@ -89,7 +89,7 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
 
   override def nodeName: Name = "last_value"
 
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(last)
+  override lazy val stateAttributes: Seq[AttributeRef] = Seq(last)
 
   override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType))
 

@@ -13,42 +13,42 @@ import scraper.utils._
 
 /**
  * A trait for aggregate functions, which aggregate grouped values into scalar values. While being
- * evaluated, an aggregation buffer, which is essentially a [[MutableRow]], is used to store
- * aggregated intermediate values. An aggregation buffer for an [[AggregateFunction]] may have
+ * evaluated, an aggregation state, which is essentially a [[MutableRow]], is used to store
+ * intermediate aggregated values. An aggregation state for an [[AggregateFunction]] may have
  * multiple fields. For example, [[Average]] uses two fields to store sum and total count of all
  * input values seen so far.
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
-   * Schema of the aggregation buffer.
+   * Schema of the aggregation state.
    */
-  def aggBufferSchema: StructType
+  def stateSchema: StructType
 
   /**
-   * Whether this [[AggregateFunction]] supports partial aggregation
+   * Whether this [[AggregateFunction]] supports partial aggregation.
    */
   def supportsPartialAggregation: Boolean = true
 
   /**
-   * Initializes the aggregation buffer with zero value(s).
+   * Initializes the aggregation `state` with zero value(s).
    */
-  def zero(aggBuffer: MutableRow): Unit
+  def zero(state: MutableRow): Unit
 
   /**
-   * Updates aggregation buffer with new `input` row.
+   * Updates aggregation `state` with new `input` row.
    */
-  def update(aggBuffer: MutableRow, input: Row): Unit
+  def update(state: MutableRow, input: Row): Unit
 
   /**
-   * Merges another aggregation buffer into an existing aggregation buffer.
+   * Merges another aggregation state into an existing aggregation state.
    */
-  def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit
+  def merge(state: MutableRow, inputState: Row): Unit
 
   /**
-   * Evaluates the final result value using values in aggregation buffer `aggBuffer`, then writes it
-   * into the `ordinal`-th field of `resultBuffer`.
+   * Evaluates the final result value using values in `state`, then writes it into the `ordinal`-th
+   * field of `resultBuffer`.
    */
-  def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit
+  def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit
 }
 
 case class DistinctAggregateFunction(child: AggregateFunction)
@@ -56,17 +56,17 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def dataType: DataType = child.dataType
 
-  override def aggBufferSchema: StructType = child.aggBufferSchema
+  override def stateSchema: StructType = child.stateSchema
 
   override def supportsPartialAggregation: Boolean = child.supportsPartialAggregation
 
-  override def zero(aggBuffer: MutableRow): Unit = bugReport()
+  override def zero(state: MutableRow): Unit = bugReport()
 
-  override def update(aggBuffer: MutableRow, input: Row): Unit = bugReport()
+  override def update(state: MutableRow, input: Row): Unit = bugReport()
 
-  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit = bugReport()
+  override def merge(state: MutableRow, inputState: Row): Unit = bugReport()
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit = bugReport()
+  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit = bugReport()
 
   override def sql: Try[String] = for {
     argSQL <- trySequence(child.children.map(_.sql))
@@ -85,21 +85,21 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 }
 
 trait DeclarativeAggregateFunction extends AggregateFunction {
-  val aggBufferAttributes: Seq[AttributeRef]
+  val stateAttributes: Seq[AttributeRef]
 
   /**
-   * Initial values aggregation buffer fields. Must be literals.
+   * Initial values aggregation state fields. Must be literals.
    */
   val zeroValues: Seq[Expression]
 
   /**
-   * Expressions used to update aggregation buffer fields. All expressions must be either literals
+   * Expressions used to update aggregation state fields. All expressions must be either literals
    * or resolved but unbound expressions.
    */
   val updateExpressions: Seq[Expression]
 
   /**
-   * Expressions used to merge two aggregation buffers fields. All expressions must be either
+   * Expressions used to merge two aggregation state fields. All expressions must be either
    * literals or resolved but unbound expressions.
    */
   val mergeExpressions: Seq[Expression]
@@ -110,28 +110,26 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
    */
   val resultExpression: Expression
 
-  override final lazy val aggBufferSchema: StructType =
-    StructType.fromAttributes(aggBufferAttributes)
+  override final lazy val stateSchema: StructType = StructType.fromAttributes(stateAttributes)
 
-  override def zero(aggBuffer: MutableRow): Unit = {
+  override def zero(state: MutableRow): Unit = {
     // Checks that all child expressions are bound right before evaluating this aggregate function.
     assertAllChildrenBound()
-    aggBuffer.indices foreach (i => aggBuffer(i) = zeroValues(i).evaluated)
+    state.indices foreach (i => state(i) = zeroValues(i).evaluated)
   }
 
-  override def update(aggBuffer: MutableRow, input: Row): Unit = updater(aggBuffer, input)
+  override def update(state: MutableRow, input: Row): Unit = updater(state, input)
 
-  override def merge(aggBuffer: MutableRow, inputAggBuffer: Row): Unit =
-    merger(aggBuffer, inputAggBuffer)
+  override def merge(state: MutableRow, inputState: Row): Unit = merger(state, inputState)
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, aggBuffer: Row): Unit =
-    resultBuffer(ordinal) = boundResultExpression evaluate aggBuffer
+  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit =
+    resultBuffer(ordinal) = boundResultExpression evaluate state
 
-  protected implicit class AggBufferAttribute(val left: AttributeRef) {
-    def right: AttributeRef = inputAggBufferAttributes(aggBufferAttributes indexOf left)
+  protected implicit class StateAttribute(val left: AttributeRef) {
+    def right: AttributeRef = inputStateAttributes(stateAttributes indexOf left)
   }
 
-  private lazy val inputAggBufferAttributes = aggBufferAttributes map (_ withID newExpressionID())
+  private lazy val inputStateAttributes = stateAttributes map (_ withID newExpressionID())
 
   private lazy val joinedRow: JoinedRow = new JoinedRow()
 
@@ -141,32 +139,28 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   private lazy val updater: (MutableRow, Row) => Unit = whenBound {
     val boundUpdateExpressions = updateExpressions map bind
-    updateAggBufferWith(boundUpdateExpressions, _, _)
+    updateStateWith(boundUpdateExpressions, _, _)
   }
 
   private lazy val merger: (MutableRow, Row) => Unit = whenBound {
     val boundMergeExpressions = mergeExpressions map bind
-    updateAggBufferWith(boundMergeExpressions, _, _)
+    updateStateWith(boundMergeExpressions, _, _)
   }
 
-  // Updates the mutable `aggBuffer` in-place with values evaluated using given `expressions` and an
+  // Updates the mutable `state` in-place with values evaluated using given `expressions` and an
   // `input` row.
   //
-  //  1. Joins `aggBuffer` and `input` into a single `JoinedRow`, with `aggBuffer` on the left hand
-  //     side and `input` on the right hand side;
+  //  1. Joins `state` and `input` into a single `JoinedRow`, with `state` on the left hand side and
+  //     `input` on the right hand side;
   //  2. Uses the `JoinedRow` as input row to evaluate all given `expressions` to produce `n`
-  //     result values, where `n` is the length `aggBuffer` (and `expression`);
-  //  3. Updates the i-th cell of `aggBuffer` using the i-th evaluated result value.
+  //     result values, where `n` is the length `state` (and `expression`);
+  //  3. Updates the i-th cell of `state` using the i-th evaluated result value.
   //
-  // Pre-condition: Length of `expressions` must be equal to length of `aggBuffer`.
-  private def updateAggBufferWith(
-    expressions: Seq[Expression],
-    aggBuffer: MutableRow,
-    input: Row
-  ): Unit = {
-    require(expressions.length == aggBuffer.length)
-    val row = joinedRow(aggBuffer, input)
-    aggBuffer.indices foreach (i => aggBuffer(i) = expressions(i) evaluate row)
+  // Pre-condition: Length of `expressions` must be equal to length of `state`.
+  private def updateStateWith(expressions: Seq[Expression], state: MutableRow, input: Row): Unit = {
+    require(expressions.length == state.length)
+    val row = joinedRow(state, input)
+    state.indices foreach (i => state(i) = expressions(i) evaluate row)
   }
 
   // Used to bind the following expressions of a `DeclarativeAggregateFunction`:
@@ -183,23 +177,22 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   // evaluated, which implies the `DeclarativeAggregateFunction`, together with all its child
   // expressions, must have been bound.
   //
-  // Thus, all `AttributeRef`s found in the target expression must be aggregation buffer attributes,
+  // Thus, all `AttributeRef`s found in the target expression must be aggregation state attributes,
   // while all `BoundRef`s found in the target expression only appear in child expressions.
   private def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef =>
-      // Must be an aggregation buffer attribute of either the current aggregation buffer, which
-      // appears in `aggBufferAttributes`, or the input aggregation buffer to be merged, which
-      // appears in `inputAggBufferAttributes`.
+      // Must be an aggregation state attribute of either the current aggregation state, which
+      // appears in `stateAttributes`, or the input aggregation state to be merged, which appears in
+      // `inputStateAttributes`.
       //
-      // Note that here we also rely on the fact that `inputAggBufferAttributes` are only used while
-      // merging two aggregation buffers. They always appear on the right side of
-      // `aggBufferAttributes`.
-      BoundRef.bind(aggBufferAttributes ++ inputAggBufferAttributes)(ref)
+      // Note that here we also rely on the fact that `inputStateAttributes` are only used while
+      // merging two aggregation states. They always appear on the right side of `stateAttributes`.
+      BoundRef.bind(stateAttributes ++ inputStateAttributes)(ref)
 
     case ref: BoundRef =>
       // Must be a `BoundRef` appearing in the child expressions. Shifts the ordinal since input
-      // rows are always appended to the right side of aggregation buffers.
-      ref at (ref.ordinal + aggBufferAttributes.length)
+      // rows are always appended to the right side of aggregation states.
+      ref at (ref.ordinal + stateAttributes.length)
   }
 
   private def assertAllChildrenBound(): Unit = children foreach { child =>
@@ -227,7 +220,7 @@ abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunctio
 
   override lazy val zeroValues: Seq[Expression] = Seq(zeroValue)
 
-  override lazy val aggBufferAttributes: Seq[AttributeRef] = Seq(value)
+  override lazy val stateAttributes: Seq[AttributeRef] = Seq(value)
 
   override lazy val updateExpressions: Seq[Expression] = Seq(
     coalesce(updateFunction(value, child), value, child)
