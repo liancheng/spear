@@ -27,7 +27,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
    * Whether this [[AggregateFunction]] supports partial aggregation.
    */
-  def supportsPartialAggregation: Boolean = true
+  def supportPartialAggregation: Boolean = true
 
   /**
    * Initializes the aggregation `state` with zero value(s).
@@ -58,7 +58,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def stateSchema: StructType = child.stateSchema
 
-  override def supportsPartialAggregation: Boolean = child.supportsPartialAggregation
+  override def supportPartialAggregation: Boolean = child.supportPartialAggregation
 
   override def zero(state: MutableRow): Unit = bugReport()
 
@@ -112,11 +112,8 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   override final lazy val stateSchema: StructType = StructType.fromAttributes(stateAttributes)
 
-  override def zero(state: MutableRow): Unit = {
-    // Checks that all child expressions are bound right before evaluating this aggregate function.
-    assertAllChildrenBound()
+  override def zero(state: MutableRow): Unit =
     state.indices foreach (i => state(i) = zeroValues(i).evaluated)
-  }
 
   override def update(state: MutableRow, input: Row): Unit = updater(state, input)
 
@@ -139,25 +136,19 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   private lazy val updater: (MutableRow, Row) => Unit = whenBound {
     val boundUpdateExpressions = updateExpressions map bind
-    updateStateWith(boundUpdateExpressions, _, _)
+    updateStateWith(boundUpdateExpressions)
   }
 
   private lazy val merger: (MutableRow, Row) => Unit = whenBound {
     val boundMergeExpressions = mergeExpressions map bind
-    updateStateWith(boundMergeExpressions, _, _)
+    updateStateWith(boundMergeExpressions)
   }
 
   // Updates the mutable `state` in-place with values evaluated using given `expressions` and an
   // `input` row.
   //
-  //  1. Joins `state` and `input` into a single `JoinedRow`, with `state` on the left hand side and
-  //     `input` on the right hand side;
-  //  2. Uses the `JoinedRow` as input row to evaluate all given `expressions` to produce `n`
-  //     result values, where `n` is the length `state` (and `expression`);
-  //  3. Updates the i-th cell of `state` using the i-th evaluated result value.
-  //
   // Pre-condition: Length of `expressions` must be equal to length of `state`.
-  private def updateStateWith(expressions: Seq[Expression], state: MutableRow, input: Row): Unit = {
+  private def updateStateWith(expressions: Seq[Expression])(state: MutableRow, input: Row): Unit = {
     require(expressions.length == state.length)
     val row = joinedRow(state, input)
     state.indices foreach (i => state(i) = expressions(i) evaluate row)
@@ -193,17 +184,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
       // Must be a `BoundRef` appearing in the child expressions. Shifts the ordinal since input
       // rows are always appended to the right side of aggregation states.
       ref at (ref.ordinal + stateAttributes.length)
-  }
-
-  private def assertAllChildrenBound(): Unit = children foreach { child =>
-    child.collectFirst {
-      case a: Attribute =>
-        throw new ContractBrokenException(
-          s"""Attribute $a in child expression $child of aggregate function $this
-             |hasn't been bound yet
-           """.oneLine
-        )
-    }
   }
 }
 
