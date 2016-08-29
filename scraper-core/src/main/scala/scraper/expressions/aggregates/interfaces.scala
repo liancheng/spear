@@ -4,6 +4,7 @@ import scala.util.Try
 
 import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.ContractBrokenException
+import scraper.execution.MutableProjection
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
@@ -88,36 +89,37 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   val stateAttributes: Seq[AttributeRef]
 
   /**
-   * Initial values aggregation state fields. Must be literals.
+   * Initial literal values aggregation state fields.
    */
   val zeroValues: Seq[Expression]
 
   /**
-   * Expressions used to update aggregation state fields. All expressions must be either literals
-   * or resolved but unbound expressions.
+   * Resolved expressions used to update aggregation state fields, must not contain any
+   * [[BoundRef]]s.
    */
   val updateExpressions: Seq[Expression]
 
   /**
-   * Expressions used to merge two aggregation state fields. All expressions must be either
-   * literals or resolved but unbound expressions.
+   * Resolved expressions used to merge two aggregation state fields, must not contain any
+   * [[BoundRef]]s.
    */
   val mergeExpressions: Seq[Expression]
 
   /**
-   * Expression used to compute the final aggregation result. The expression must be either literals
-   * or resolved but unbound expressions.
+   * Resolved expression used to compute the final aggregation result, must not contain any
+   * [[BoundRef]]s.
    */
   val resultExpression: Expression
 
-  override final lazy val stateSchema: StructType = StructType.fromAttributes(stateAttributes)
+  override final lazy val stateSchema: StructType = StructType fromAttributes stateAttributes
 
-  override def zero(state: MutableRow): Unit =
-    state.indices foreach (i => state(i) = zeroValues(i).evaluated)
+  override def zero(state: MutableRow): Unit = (zeroProjection target state)()
 
-  override def update(state: MutableRow, input: Row): Unit = updater(state, input)
+  override def update(state: MutableRow, input: Row): Unit =
+    (updateProjection target state)(joinedRow(state, input))
 
-  override def merge(state: MutableRow, inputState: Row): Unit = merger(state, inputState)
+  override def merge(state: MutableRow, inputState: Row): Unit =
+    (mergeProjection target state)(joinedRow(state, inputState))
 
   override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit =
     resultBuffer(ordinal) = boundResultExpression evaluate state
@@ -134,24 +136,16 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     bind(resultExpression)
   }
 
-  private lazy val updater: (MutableRow, Row) => Unit = whenBound {
-    val boundUpdateExpressions = updateExpressions map bind
-    updateStateWith(boundUpdateExpressions)
+  private lazy val zeroProjection: MutableProjection = whenBound {
+    MutableProjection(zeroValues)
   }
 
-  private lazy val merger: (MutableRow, Row) => Unit = whenBound {
-    val boundMergeExpressions = mergeExpressions map bind
-    updateStateWith(boundMergeExpressions)
+  private lazy val updateProjection: MutableProjection = whenBound {
+    MutableProjection(updateExpressions map bind)
   }
 
-  // Updates the mutable `state` in-place with values evaluated using given `expressions` and an
-  // `input` row.
-  //
-  // Pre-condition: Length of `expressions` must be equal to length of `state`.
-  private def updateStateWith(expressions: Seq[Expression])(state: MutableRow, input: Row): Unit = {
-    require(expressions.length == state.length)
-    val row = joinedRow(state, input)
-    state.indices foreach (i => state(i) = expressions(i) evaluate row)
+  private lazy val mergeProjection: MutableProjection = whenBound {
+    MutableProjection(mergeExpressions map bind)
   }
 
   // Used to bind the following expressions of a `DeclarativeAggregateFunction`:
