@@ -191,3 +191,22 @@ case object BooleanType extends PrimitiveType {
 
   override def sql: String = "BOOLEAN"
 }
+
+case class ObjectType(className: String) extends PrimitiveType {
+  override type InternalType = AnyRef
+
+  override def genericOrdering: Option[Ordering[Any]] = None
+
+  override def sql: String = s"OBJECT<$className>"
+}
+
+object ObjectType extends AbstractDataType {
+  override val defaultType: Option[DataType] = None
+
+  override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
+    case _: ObjectType => true
+    case _             => false
+  }
+
+  override def toString: String = "object type"
+}
