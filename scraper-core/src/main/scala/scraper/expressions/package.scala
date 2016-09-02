@@ -61,26 +61,25 @@ package object expressions {
     UnresolvedFunction(name, args, distinct = true)
 
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
-    def pass: PassThrough = PassThrough(input)
+    def passThrough: TypeConstraint = PassThrough(input)
 
-    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input)
+    def sameTypeAs(dataType: DataType): TypeConstraint = SameTypeAs(input, dataType)
 
-    def sameSubtypeOf(supertype: AbstractDataType): SameSubtypesOf =
-      SameSubtypesOf(supertype, input)
+    def sameSubtypeOf(supertype: AbstractDataType): TypeConstraint = SameSubtypeOf(input, supertype)
 
-    def sameType: SameType = SameType(input)
+    def sameType: TypeConstraint = SameType(input)
 
-    def foldable: Foldable = Foldable(input)
+    def foldable: TypeConstraint = Foldable(input)
   }
 
   private[scraper] implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
-    def pass: PassThrough = PassThrough(input :: Nil)
+    def passThrough: TypeConstraint = PassThrough(input :: Nil)
 
-    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input :: Nil)
+    def sameTypeAs(dataType: DataType): TypeConstraint = SameTypeAs(input :: Nil, dataType)
 
-    def subtypeOf(supertype: AbstractDataType): SameSubtypesOf =
-      SameSubtypesOf(supertype, input :: Nil)
+    def subtypeOf(supertype: AbstractDataType): TypeConstraint =
+      SameSubtypeOf(input :: Nil, supertype)
 
-    def foldable: Foldable = Foldable(input :: Nil)
+    def foldable: TypeConstraint = Foldable(input :: Nil)
   }
 }

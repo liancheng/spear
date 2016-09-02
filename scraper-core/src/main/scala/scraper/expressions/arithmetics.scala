@@ -9,7 +9,6 @@ import scraper.expressions.Cast.{widenDataType, widestTypeOf}
 import scraper.expressions.functions.lit
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
-import scraper.utils.trySequence
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -38,7 +37,7 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
   override protected lazy val typeConstraint: TypeConstraint = new TypeConstraint {
     override def enforced: Try[Seq[Expression]] = for {
-      strictChildren <- trySequence(children map (_.strictlyTyped))
+      strictChildren <- children.passThrough.enforced
 
       // Finds all expressions whose data types are already subtype of `NumericType`.
       candidates = strictChildren filter (_.dataType isSubtypeOf NumericType)

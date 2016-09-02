@@ -27,11 +27,11 @@ class TypeConstraintSuite extends LoggingFunSuite {
 
   testTypeConstraint(classOf[PassThrough]) {
     expectExpressions(1) {
-      lit(1).pass
+      lit(1).passThrough
     }
 
     expectExpressions((1 cast LongType) + 1L) {
-      (lit(1) + 1L).pass
+      (lit(1) + 1L).passThrough
     }
   }
 
@@ -45,7 +45,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
   }
 
-  testTypeConstraint(classOf[SameSubtypesOf]) {
+  testTypeConstraint(classOf[SameSubtypeOf]) {
     expectExpressions((1: Byte) cast IntType, (1: Short) cast IntType, lit(1)) {
       Seq[Expression](1: Byte, 1: Short, 1) sameSubtypeOf IntegralType
     }
@@ -71,19 +71,9 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
   }
 
-  testTypeConstraint(classOf[AndThen]) {
+  test("andThen") {
     expectExpressions(1 cast LongType, 1L) {
       Seq(lit(1), lit(1L)) sameSubtypeOf OrderedType andThen (_.sameType)
-    }
-  }
-
-  testTypeConstraint(classOf[OrElse]) {
-    expectExpressions(1L) {
-      lit(1L) sameTypeAs BooleanType orElse (lit(1L) subtypeOf IntegralType)
-    }
-
-    expectExpressions("1") {
-      lit("1") sameTypeAs StringType orElse (lit(1) subtypeOf IntegralType)
     }
   }
 }

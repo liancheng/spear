@@ -282,6 +282,8 @@ object Cast {
     case _                                         => throw new ImplicitCastException(e, dataType)
   }
 
+  def widenDataType(dataType: DataType)(e: Expression): Expression = widenDataType(e, dataType)
+
   /**
    * Tries to figure out the widest type of all input data types.  For two types `x` and `y`, `x` is
    * considered to be wider than `y` iff `y` is [[compatible]] to `x`.

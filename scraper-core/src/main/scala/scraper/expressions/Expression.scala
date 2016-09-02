@@ -5,7 +5,7 @@ import scala.util.{Failure, Try}
 import scraper.{Name, Row}
 import scraper.exceptions._
 import scraper.expressions.dsl.ExpressionDSL
-import scraper.expressions.typecheck.{PassThrough, TypeConstraint}
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.trees.TreeNode
 import scraper.types.DataType
 import scraper.utils._
@@ -96,14 +96,12 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    * @see [[typeConstraint]]
    */
-  lazy val strictlyTyped: Try[Expression] = for {
-    strictChildren <- typeConstraint.enforced
-  } yield withChildren(strictChildren)
+  lazy val strictlyTyped: Try[Expression] = typeConstraint.enforced map withChildren
 
   /**
    * Type constraint for all input expressions.
    */
-  protected lazy val typeConstraint: TypeConstraint = PassThrough(children)
+  protected lazy val typeConstraint: TypeConstraint = children.passThrough
 
   /**
    * Indicates whether this [[Expression]] is strictly-typed.

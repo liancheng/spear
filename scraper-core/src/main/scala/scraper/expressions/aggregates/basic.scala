@@ -43,7 +43,7 @@ abstract class FirstLike(child: Expression, ignoresNull: Expression)
   override def isNullable: Boolean = child.isNullable
 
   override protected lazy val typeConstraint: TypeConstraint =
-    child.pass ++ ignoresNull.foldable
+    child.passThrough ++ ignoresNull.foldable
 
   override protected lazy val strictDataType: DataType = child.dataType
 

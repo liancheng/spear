@@ -83,7 +83,7 @@ class ImplicitCastException(message: String, cause: Throwable)
   extends TypeCastException(message, cause) {
 
   def this(from: Expression, to: DataType, cause: Throwable) = this({
-    s"""Cannot convert expression [${from.debugString}]
+    s"""Cannot convert expression ${from.debugString}
        |of data type ${from.dataType} to $to implicitly.
      """.oneLine
   }, cause)
