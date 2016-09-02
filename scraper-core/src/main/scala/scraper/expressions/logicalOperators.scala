@@ -45,7 +45,7 @@ case class If(test: Expression, yes: Expression, no: Expression) extends Express
   override def children: Seq[Expression] = Seq(test, yes, no)
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (test sameTypeAs BooleanType) ++ Seq(yes, no).sameType
+    test.sameTypeAs(BooleanType) ++ Seq(yes, no).sameType
 
   override def evaluate(input: Row): Any = test.evaluate(input) match {
     case null  => null
@@ -62,11 +62,6 @@ case class CaseWhen(
 
   require(conditions.nonEmpty && conditions.length == consequences.length)
 
-  override protected lazy val typeConstraint: TypeConstraint =
-    (conditions sameTypeAs BooleanType) ++ (consequences ++ alternative).sameType
-
-  override protected lazy val strictDataType: DataType = consequences.head.dataType
-
   override def children: Seq[Expression] = conditions ++ consequences ++ alternative
 
   override def evaluate(input: Row): Any = {
@@ -79,6 +74,18 @@ case class CaseWhen(
     (hitBranchValue orElse alternativeValue).orNull
   }
 
+  def when(condition: Expression, consequence: Expression): CaseWhen = copy(
+    conditions = conditions :+ condition,
+    consequences = consequences :+ consequence
+  )
+
+  def otherwise(expression: Expression): CaseWhen = copy(alternative = Some(expression))
+
+  override protected lazy val typeConstraint: TypeConstraint =
+    conditions.sameTypeAs(BooleanType) ++ (consequences ++ alternative).sameType
+
+  override protected lazy val strictDataType: DataType = consequences.head.dataType
+
   override protected def template(childList: Seq[String]): String = {
     val (tests, rest) = childList splitAt conditions.length
     val (values, alternativeString) = rest splitAt conditions.length
@@ -86,13 +93,6 @@ case class CaseWhen(
     val cases = (tests, values).zipped map ("WHEN " + _ + " THEN " + _) mkString " "
     s"CASE $cases$elsePart END"
   }
-
-  def when(condition: Expression, consequence: Expression): CaseWhen = copy(
-    conditions = conditions :+ condition,
-    consequences = consequences :+ consequence
-  )
-
-  def otherwise(expression: Expression): CaseWhen = copy(alternative = Some(expression))
 }
 
 object CaseKeyWhen {

@@ -16,7 +16,7 @@ case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) ex
   override def evaluate(input: Row): Any = Row.fromSeq(values map (_ evaluate input))
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (names sameTypeAs StringType andThen (_.foldable)) ++ values.pass
+    names.sameTypeAs(StringType).andThen(_.foldable) ++ values.pass
 
   override protected lazy val strictDataType: DataType = {
     val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {
