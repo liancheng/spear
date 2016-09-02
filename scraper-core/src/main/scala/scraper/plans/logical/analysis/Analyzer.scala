@@ -14,7 +14,7 @@ import scraper.types.StringType
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
-    RuleBatch("Substitution", FixedPoint.Unlimited, Seq(
+    RuleBatch("CTE inlining", FixedPoint.Unlimited, Seq(
       new InlineCTERelationsAsSubqueries(catalog)
     )),
 
@@ -122,9 +122,9 @@ class ResolveReferences(catalog: Catalog) extends Rule[LogicalPlan] {
       def reportResolutionFailure(message: String): Nothing = {
         throw new ResolutionFailureException(
           s"""Failed to resolve attribute ${unresolved.debugString} in logical query plan:
-              |${plan.prettyTree}
-              |$message
-              |""".stripMargin
+             |${plan.prettyTree}
+             |$message
+             |""".stripMargin
         )
       }
 
@@ -153,7 +153,7 @@ class ResolveReferences(catalog: Catalog) extends Rule[LogicalPlan] {
 
 /**
  * This rule resolves ambiguous duplicated attributes/aliases introduced by binary logical query
- * plan operators like [[Join]] and [[SetOperator set operators]].  For example:
+ * plan operators like [[Join]] and [[SetOperator set operators]]. For example:
  * {{{
  *   // Self-join, equivalent to "SELECT * FROM t INNER JOIN t":
  *   val df = context table "t"
@@ -292,8 +292,8 @@ class GlobalAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
 
 /**
  * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a "having condition" in
- * SQL.  Having condition can only reference grouping keys and aggregated expressions, and thus
- * must be resolved together with the [[UnresolvedAggregate]] beneath it.  This rule merges such
+ * SQL. Having condition can only reference grouping keys and aggregated expressions, and thus
+ * must be resolved together with the [[UnresolvedAggregate]] beneath it. This rule merges such
  * having conditions into [[UnresolvedAggregate]]s beneath them so that they can be resolved
  * together later.
  */
@@ -306,9 +306,9 @@ class MergeHavingConditions(catalog: Catalog) extends Rule[LogicalPlan] {
 }
 
 /**
- * A [[Sort]] directly over an [[UnresolvedAggregate]] is special.  Its ordering expressions can
+ * A [[Sort]] directly over an [[UnresolvedAggregate]] is special. Its ordering expressions can
  * only reference grouping keys and aggregated expressions, and thus must be resolved together
- * with the [[UnresolvedAggregate]] beneath it.  This rule merges such [[Sort]]s into
+ * with the [[UnresolvedAggregate]] beneath it. This rule merges such [[Sort]]s into
  * [[UnresolvedAggregate]]s beneath them so that they can be resolved together later.
  */
 class MergeSortsOverAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
@@ -386,7 +386,7 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
 
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
     // `DistinctAggregateFunction`s must be collected first. Otherwise, their child expressions,
-    // which are also `AggregateFunction`s, will also be collected unexpectedly.
+    // which are also `AggregateFunction`s, will be collected unexpectedly.
     val distinctAggs = expressions.flatMap(_ collect {
       case a: DistinctAggregateFunction => a
     }).distinct

@@ -52,6 +52,11 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit
 }
 
+/**
+ * A helper class that represents distinct aggregate functions. This class should not appear in
+ * analyzed logical plans since the analyzer is responsible for resolving it into normal aggregate
+ * functions.
+ */
 case class DistinctAggregateFunction(child: AggregateFunction)
   extends AggregateFunction with UnaryExpression {
 
