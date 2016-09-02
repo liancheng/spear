@@ -20,6 +20,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
+  private val (c, d) = ('c.int.!, 'd.string.?)
+
   private val (groupA, groupB, aggCountA, aggCountB, aggCount1) = (
     GroupingAlias(a),
     GroupingAlias(b),
@@ -28,10 +30,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     AggregationAlias(count(1))
   )
 
-  private val relation = LocalRelation.empty(a, b)
+  private val relation0 = LocalRelation.empty(a, b)
+
+  private val relation1 = LocalRelation.empty(c, d)
 
   override protected def beforeAll(): Unit = {
-    catalog.registerRelation('t, relation)
+    catalog.registerRelation('t, relation0)
   }
 
   testAlias('a + 1, "(a + 1)")
@@ -47,35 +51,35 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("resolve references") {
     checkAnalyzedPlan(
-      relation select (('a + 1) as 's),
-      relation select ((a + 1) as 's)
+      relation0 select (('a + 1) as 's),
+      relation0 select ((a + 1) as 's)
     )
   }
 
   test("resolve references in SQL") {
     checkAnalyzedPlan(
       "SELECT a + 1 AS s FROM t",
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation0 subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references") {
     checkAnalyzedPlan(
-      relation subquery 't select (($"t.a" + 1) as 's),
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation0 subquery 't select (($"t.a" + 1) as 's),
+      relation0 subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
   test("resolve qualified references in SQL") {
     checkAnalyzedPlan(
       "SELECT t.a + 1 AS s FROM t",
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation0 subquery 't select (((a of 't) + 1) as 's)
     )
   }
 
   test("non-existed reference") {
     intercept[ResolutionFailureException] {
-      analyze(relation select 'bad)
+      analyze(relation0 select 'bad)
     }
   }
 
@@ -93,38 +97,38 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("expand stars") {
     checkAnalyzedPlan(
-      relation select '*,
-      relation select (a, b)
+      relation0 select '*,
+      relation0 select (a, b)
     )
   }
 
   test("expand stars in SQL") {
     checkAnalyzedPlan(
       "SELECT * FROM t",
-      relation subquery 't select (a of 't, b of 't)
+      relation0 subquery 't select (a of 't, b of 't)
     )
   }
 
   test("expand stars with qualifier") {
     checkAnalyzedPlan(
-      relation subquery 'x join (relation subquery 'y) select $"x.*",
-      relation subquery 'x join (relation.newInstance() subquery 'y) select (a of 'x, b of 'x)
+      relation0 subquery 'x join (relation0 subquery 'y) select $"x.*",
+      relation0 subquery 'x join (relation0.newInstance() subquery 'y) select (a of 'x, b of 'x)
     )
   }
 
   test("expand stars with qualifier in SQL") {
     checkAnalyzedPlan(
       "SELECT x.* FROM t x JOIN t y",
-      relation subquery 't subquery 'x
-        join (relation.newInstance() subquery 't subquery 'y)
+      relation0 subquery 't subquery 'x
+        join (relation0.newInstance() subquery 't subquery 'y)
         select (a of 'x, b of 'x)
     )
   }
 
   test("self-join") {
     checkAnalyzedPlan(
-      relation join relation,
-      relation join relation.newInstance()
+      relation0 join relation0,
+      relation0 join relation0.newInstance()
     )
   }
 
@@ -134,9 +138,9 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
-      relation
+      relation0
         subquery 't
-        join (relation.newInstance() subquery 't)
+        join (relation0.newInstance() subquery 't)
         select (a of 't, b of 't, a0 of 't, b0 of 't)
     )
   }
@@ -163,8 +167,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("global aggregate") {
     checkAnalyzedPlan(
-      relation select count('a),
-      relation resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
+      relation0 select count('a),
+      relation0 resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
     )
   }
 
@@ -173,14 +177,14 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
     checkAnalyzedPlan(
       "SELECT count(a) FROM t",
-      relation subquery 't resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
+      relation0 subquery 't resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
     )
   }
 
   test("aggregate with both having and order by clauses") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc,
-      relation
+      relation0 groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc,
+      relation0
         resolvedGroupBy groupA
         agg aggCountB
         having groupA.attr > 1
@@ -191,8 +195,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("aggregate with multiple order by clauses") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc,
-      relation
+      relation0 groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc,
+      relation0
         resolvedGroupBy groupA
         agg aggCountB
         // Only the last sort order should be preserved
@@ -203,8 +207,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("aggregate with multiple having conditions") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
-      relation
+      relation0 groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
+      relation0
         resolvedGroupBy groupA
         agg aggCountB
         // All having conditions should be preserved
@@ -215,14 +219,14 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("aggregate with multiple alternating having and order by clauses") {
     checkAnalyzedPlan(
-      relation
+      relation0
         groupBy 'a
         agg 'a
         having 'a > 1
         orderBy 'a.asc
         having count('b) < 10L
         orderBy count('b).asc,
-      relation
+      relation0
         resolvedGroupBy groupA
         agg aggCountB
         having groupA.attr > 1 && (aggCountB.attr < 10L)
@@ -233,10 +237,10 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("aggregate with count(*)") {
     checkAnalyzedPlan(
-      relation
+      relation0
         groupBy 'a
         agg count(),
-      relation
+      relation0
         resolvedGroupBy groupA
         agg aggCount1
         select (aggCount1.attr as i"count(1)")
@@ -247,27 +251,27 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     checkAnalyzedPlan(
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
-      relation groupBy 'a agg 'a,
-      relation resolvedGroupBy groupA agg Nil select (groupA.attr as 'a)
+      relation0 groupBy 'a agg 'a,
+      relation0 resolvedGroupBy groupA agg Nil select (groupA.attr as 'a)
     )
   }
 
   test("illegal aggregation") {
     intercept[IllegalAggregationException] {
-      analyze(relation groupBy 'a agg 'b)
+      analyze(relation0 groupBy 'a agg 'b)
     }
   }
 
   test("illegal nested aggregate function") {
     intercept[IllegalAggregationException] {
-      analyze(relation groupBy 'a agg max(count('b)))
+      analyze(relation0 groupBy 'a agg max(count('b)))
     }
   }
 
   test("distinct") {
     checkAnalyzedPlan(
-      relation.distinct,
-      relation
+      relation0.distinct,
+      relation0
         resolvedGroupBy (groupA, groupB)
         agg Nil
         select (groupA.attr as 'a, groupB.attr as 'b)
@@ -276,15 +280,15 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("order by columns not appearing in project list") {
     checkAnalyzedPlan(
-      relation select 'b orderBy (('a + 1).asc, 'b.desc),
-      relation select (b, a) orderBy ((a + 1).asc, b.desc) select b
+      relation0 select 'b orderBy (('a + 1).asc, 'b.desc),
+      relation0 select (b, a) orderBy ((a + 1).asc, b.desc) select b
     )
   }
 
   test("order by columns not appearing in project list in SQL") {
     checkAnalyzedPlan(
       "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
-      relation
+      relation0
         subquery 't
         select (b of 't, a of 't)
         orderBy (((a of 't) + 1).asc, (b of 't).desc)
@@ -294,29 +298,29 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("CTE") {
     checkAnalyzedPlan(
-      let('s -> (relation subquery 't select 'a)) {
+      let('s -> (relation0 subquery 't select 'a)) {
         table('s) select '*
       },
-      relation subquery 't select (a of 't) subquery 's select (a of 's)
+      relation0 subquery 't select (a of 't) subquery 's select (a of 's)
     )
   }
 
   test("CTE in SQL") {
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
-      relation subquery 't select (a of 't) subquery 's select (a of 's)
+      relation0 subquery 't select (a of 't) subquery 's select (a of 's)
     )
   }
 
   test("multiple CTE") {
     checkAnalyzedPlan(
-      let('s0 -> (relation subquery 't)) {
-        let('s1 -> (relation subquery 't)) {
+      let('s0 -> (relation0 subquery 't)) {
+        let('s1 -> (relation0 subquery 't)) {
           table('s0) union table('s1)
         }
       },
-      relation subquery 't subquery 's0 union (
-        relation.newInstance() subquery 't subquery 's1
+      relation0 subquery 't subquery 's0 union (
+        relation0.newInstance() subquery 't subquery 's1
       )
     )
   }
@@ -338,6 +342,19 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
+  test("nested CTE") {
+    checkAnalyzedPlan(
+      let('s -> (relation0 subquery 't0)) {
+        table('s) union let('s -> (relation1 subquery 't1)) {
+          table('s) select ('c as 'a, 'd as 'b)
+        }
+      },
+      relation0 subquery 't0 subquery 's union (
+        relation1 subquery 't1 subquery 's select (c of 's as 'a, d of 's as 'b)
+      )
+    )
+  }
+
   private def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
     checkAnalyzedPlan(new Parser parse sql, expected)
 
@@ -346,7 +363,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   private def testAlias(expression: Expression, expectedAlias: Name): Unit = {
     test(s"auto-alias resolution - $expression AS ${expectedAlias.toString}") {
-      val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
+      val Seq(actualAlias) = analyze(relation0 subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }
   }

@@ -63,13 +63,12 @@ object Analyzer {
  * This rule inlines CTE relation definitions as sub-queries.
  */
 class InlineCTERelationsAsSubqueries(catalog: Catalog) extends Rule[LogicalPlan] {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case plan @ With(_, _, _: With) =>
-      plan
-
-    case With(child, name, plan) =>
+  // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
+  // shadow outer CTE relations with the same names.
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+    case plan @ With(child, name, cteRelation) =>
       child transformDown {
-        case UnresolvedRelation(`name`) => plan subquery name
+        case UnresolvedRelation(`name`) => cteRelation subquery name
       }
   }
 }
