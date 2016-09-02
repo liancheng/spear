@@ -251,7 +251,9 @@ class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
           DistinctAggregateFunction(f)
 
         case f if distinct =>
-          throw new AnalysisException(s"Function $name is not an aggregate function")
+          throw new AnalysisException(
+            s"Cannot decorate function $name with DISTINCT since it is not an aggregate function"
+          )
 
         case f =>
           f
