@@ -15,20 +15,17 @@ case class Concat(children: Seq[Expression]) extends Expression {
     (children map (_ evaluate input) map (_.asInstanceOf[String]) filter (_ != null)).mkString
 }
 
-case class RLike(string: Expression, pattern: Expression) extends Expression {
+case class RLike(left: Expression, right: Expression) extends BinaryOperator {
+  override def operator: String = "RLIKE"
+
   override def dataType: DataType = BooleanType
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (string sameTypeAs StringType) ++ (pattern sameTypeAs StringType andThen (_.foldable))
+    left.sameTypeAs(StringType) ++ right.sameTypeAs(StringType).andThen(_.foldable)
 
-  private lazy val compiledPattern = {
-    val evaluatedPattern: String = pattern.evaluated.asInstanceOf[String]
-    Pattern.compile(evaluatedPattern)
-  }
+  private lazy val compiledPattern =
+    Pattern.compile(right.evaluated match { case pattern: String => pattern })
 
-  override def children: Seq[Expression] = string :: pattern :: Nil
-
-  override def evaluate(input: Row): Any = {
-    compiledPattern.matcher(string.evaluate(input).asInstanceOf[String]).matches()
-  }
+  override def evaluate(input: Row): Any =
+    compiledPattern.matcher(left.evaluate(input).asInstanceOf[String]).matches()
 }
