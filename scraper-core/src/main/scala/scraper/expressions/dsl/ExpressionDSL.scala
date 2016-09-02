@@ -8,7 +8,8 @@ import scraper.types.DataType
 trait ExpressionDSL
   extends ArithmeticExpressionDSL
   with ComparisonDSL
-  with LogicalOperatorDSL { this: Expression =>
+  with LogicalOperatorDSL
+  with ObjectDSL { this: Expression =>
 
   def as(alias: Name): Alias = Alias(this, alias, newExpressionID())
 
