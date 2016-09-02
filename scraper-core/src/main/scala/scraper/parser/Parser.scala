@@ -129,6 +129,7 @@ class Parser extends TokenParser[LogicalPlan] {
   private val ORDER = Keyword("ORDER")
   private val OUTER = Keyword("OUTER")
   private val RIGHT = Keyword("RIGHT")
+  private val RLIKE = Keyword("RLIKE")
   private val SELECT = Keyword("SELECT")
   private val SEMI = Keyword("SEMI")
   private val SMALLINT = Keyword("SMALLINT")
@@ -256,7 +257,7 @@ class Parser extends TokenParser[LogicalPlan] {
     "+" | "-"
 
   private def stringLiteral: Parser[Literal] =
-    stringLit ^^ (Literal(_, StringType))
+    stringLit.+ ^^ (_.mkString: Literal)
 
   private def booleanLiteral: Parser[Literal] = (
     TRUE ^^^ True
@@ -313,17 +314,21 @@ class Parser extends TokenParser[LogicalPlan] {
     (comparison | termExpression) * (AND ^^^ And)
 
   private def comparison: Parser[Expression] = (
-    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => Eq(e1, e2) }
-    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
-    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => NotEq(e1, e2) }
-    | termExpression ~ (">" ~> termExpression) ^^ { case e1 ~ e2 => Gt(e1, e2) }
-    | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => GtEq(e1, e2) }
-    | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => Lt(e1, e2) }
-    | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => LtEq(e1, e2) }
+    termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => e1 === e2 }
+    | termExpression ~ ("!=" ~> termExpression) ^^ { case e1 ~ e2 => e1 =/= e2 }
+    | termExpression ~ ("<>" ~> termExpression) ^^ { case e1 ~ e2 => e1 =/= e2 }
+    | termExpression ~ (">" ~> termExpression) ^^ { case e1 ~ e2 => e1 > e2 }
+    | termExpression ~ (">=" ~> termExpression) ^^ { case e1 ~ e2 => e1 >= e2 }
+    | termExpression ~ ("<" ~> termExpression) ^^ { case e1 ~ e2 => e1 < e2 }
+    | termExpression ~ ("<=" ~> termExpression) ^^ { case e1 ~ e2 => e1 <= e2 }
     | termExpression <~ IS ~ NULL ^^ IsNull
     | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
-    | termExpression ~ (IN ~> termExpression.+) ^^ { case e ~ es => e in es }
+    | termExpression ~ (IN ~> termExpressionList) ^^ { case e ~ es => e in es }
+    | termExpression ~ (RLIKE ~> termExpression) ^^ { case e1 ~ e2 => e1 rlike e2 }
   )
+
+  private def termExpressionList: Parser[Seq[Expression]] =
+    "(" ~> rep1sep(termExpression, ",") <~ ")"
 
   private def dataType: Parser[DataType] = (
     primitiveType

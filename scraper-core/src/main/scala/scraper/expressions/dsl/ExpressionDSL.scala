@@ -25,4 +25,6 @@ trait ExpressionDSL
   def in(list: Seq[Expression]): In = In(this, list)
 
   def in(first: Expression, rest: Expression*): In = this in (first +: rest)
+
+  def rlike(pattern: Expression): RLike = RLike(this, pattern)
 }

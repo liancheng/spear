@@ -85,6 +85,15 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("a IS NOT NULL", 'a.notNull)
 
+  testExpressionParsing("a IN (1, 2, 3)", 'a in (1, 2, 3))
+
+  testExpressionParsing("a RLIKE 'a*'", 'a rlike "a*")
+
+  testExpressionParsing(
+    "a RLIKE concat('h.llo', ' worl.')",
+    'a rlike function('concat, "h.llo", " worl.")
+  )
+
   testExpressionParsing("-a", -'a)
 
   testExpressionParsing("a + b", 'a + 'b)
