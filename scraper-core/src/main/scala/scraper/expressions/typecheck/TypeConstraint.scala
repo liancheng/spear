@@ -2,7 +2,7 @@ package scraper.expressions.typecheck
 
 import scala.util.Try
 
-import scraper.exceptions.{ContractBrokenException, TypeMismatchException}
+import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{widenDataType, widestTypeOf}
 import scraper.expressions.Expression
 import scraper.types.{AbstractDataType, DataType}
@@ -118,7 +118,7 @@ case class Foldable(input: Seq[Expression]) extends TypeConstraint {
     strictArgs <- trySequence(input map (_.strictlyTyped))
   } yield strictArgs map {
     case e if e.isFoldable => e
-    case e => throw new ContractBrokenException(
+    case e => throw new TypeMismatchException(
       s"Expression $e is not a foldable constant."
     )
   }

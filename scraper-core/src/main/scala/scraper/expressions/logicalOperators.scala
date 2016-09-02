@@ -45,7 +45,7 @@ case class If(test: Expression, yes: Expression, no: Expression) extends Express
   override def children: Seq[Expression] = Seq(test, yes, no)
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (Seq(test) sameTypeAs BooleanType) ++ Seq(yes, no).sameType
+    (test sameTypeAs BooleanType) ++ Seq(yes, no).sameType
 
   override def evaluate(input: Row): Any = test.evaluate(input) match {
     case null  => null

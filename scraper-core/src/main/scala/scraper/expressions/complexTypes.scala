@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.{Name, Row}
-import scraper.expressions.typecheck.{PassThrough, TypeConstraint}
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.types._
 
 case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) extends Expression {
@@ -16,7 +16,7 @@ case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) ex
   override def evaluate(input: Row): Any = Row.fromSeq(values map (_ evaluate input))
 
   override protected lazy val typeConstraint: TypeConstraint =
-    (names sameTypeAs StringType andThen (_.foldable)) ++ PassThrough(values)
+    (names sameTypeAs StringType andThen (_.foldable)) ++ values.pass
 
   override protected lazy val strictDataType: DataType = {
     val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {

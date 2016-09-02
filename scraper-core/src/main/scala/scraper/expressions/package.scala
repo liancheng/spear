@@ -72,4 +72,15 @@ package object expressions {
 
     def foldable: Foldable = Foldable(input)
   }
+
+  private[scraper] implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
+    def pass: PassThrough = PassThrough(input :: Nil)
+
+    def sameTypeAs(dataType: DataType): SameTypeAs = SameTypeAs(dataType, input :: Nil)
+
+    def subtypeOf(supertype: AbstractDataType): SameSubtypesOf =
+      SameSubtypesOf(supertype, input :: Nil)
+
+    def foldable: Foldable = Foldable(input :: Nil)
+  }
 }

@@ -21,43 +21,53 @@ class TypeConstraintSuite extends LoggingFunSuite {
     check(first +: rest)(constraint)
   }
 
-  private def check[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
+  private def expectException[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
     intercept[T](constraint.enforced.get)
   }
 
   testTypeConstraint(classOf[PassThrough]) {
     expectExpressions(1) {
-      PassThrough(Seq(1))
+      lit(1).pass
     }
 
     expectExpressions((1 cast LongType) + 1L) {
-      PassThrough(Seq(lit(1) + 1L))
+      (lit(1) + 1L).pass
     }
   }
 
   testTypeConstraint(classOf[SameTypeAs]) {
-    expectExpressions(lit(true), 1 cast BooleanType) {
-      Seq(lit(true), lit(1)) sameTypeAs BooleanType
+    expectExpressions(true, 1 cast BooleanType) {
+      Seq[Expression](true, 1) sameTypeAs BooleanType
     }
 
-    check[TypeMismatchException] {
-      Seq(lit(true), lit(false)) sameTypeAs LongType
+    expectException[TypeMismatchException] {
+      Seq[Expression](true, false) sameTypeAs LongType
     }
   }
 
   testTypeConstraint(classOf[SameSubtypesOf]) {
     expectExpressions((1: Byte) cast IntType, (1: Short) cast IntType, lit(1)) {
-      Seq(lit(1: Byte), lit(1: Short), lit(1)) sameSubtypeOf IntegralType
+      Seq[Expression](1: Byte, 1: Short, 1) sameSubtypeOf IntegralType
     }
 
-    check[TypeMismatchException] {
-      Seq(lit(1F), lit(1D)) sameSubtypeOf IntegralType
+    expectException[TypeMismatchException] {
+      Seq[Expression](1F, 1D) sameSubtypeOf IntegralType
     }
   }
 
   testTypeConstraint(classOf[SameType]) {
     expectExpressions(1 cast LongType, 1L) {
-      Seq(lit(1), lit(1L)).sameType
+      Seq[Expression](1, 1L).sameType
+    }
+  }
+
+  testTypeConstraint(classOf[Foldable]) {
+    expectExpressions(1, "foo") {
+      Seq[Expression](1, "foo").foldable
+    }
+
+    expectException[TypeMismatchException] {
+      ('a of IntType.!).foldable
     }
   }
 
@@ -69,11 +79,11 @@ class TypeConstraintSuite extends LoggingFunSuite {
 
   testTypeConstraint(classOf[OrElse]) {
     expectExpressions(1L) {
-      Seq(lit(1L)) sameTypeAs BooleanType orElse (Seq(lit(1L)) sameSubtypeOf IntegralType)
+      lit(1L) sameTypeAs BooleanType orElse (lit(1L) subtypeOf IntegralType)
     }
 
     expectExpressions("1") {
-      Seq(lit("1")) sameTypeAs StringType orElse (Seq(lit(1)) sameSubtypeOf IntegralType)
+      lit("1") sameTypeAs StringType orElse (lit(1) subtypeOf IntegralType)
     }
   }
 }
