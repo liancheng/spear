@@ -3,7 +3,7 @@ package scraper.expressions
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{DataType, OrderedType}
 
-abstract sealed class SortDirection
+sealed trait SortDirection
 
 case object Ascending extends SortDirection {
   override def toString: String = "ASC"
@@ -16,33 +16,20 @@ case object Descending extends SortDirection {
 case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
-
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
 
-  def nullsFirst: SortOrder = direction match {
-    case Ascending  => copy(nullsLarger = false)
-    case Descending => copy(nullsLarger = true)
-  }
+  def nullsFirst: SortOrder = copy(nullsLarger = !isAscending)
 
-  def nullsLast: SortOrder = direction match {
-    case Ascending  => copy(nullsLarger = true)
-    case Descending => copy(nullsLarger = false)
-  }
+  def nullsLast: SortOrder = copy(nullsLarger = isAscending)
 
   def isAscending: Boolean = direction == Ascending
 
   def isNullsFirst: Boolean = isAscending ^ nullsLarger
 
-  override protected def template(childString: String): String = {
-    val nullsFirstOrLast = (direction, nullsLarger) match {
-      case (Ascending, false) => "FIRST"
-      case (Descending, true) => "FIRST"
-      case _                  => "LAST"
-    }
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 
-    s"$childString $direction NULLS $nullsFirstOrLast"
-  }
+  override protected def template(childString: String): String =
+    s"$childString $direction NULLS ${if (isNullsFirst) "FIRST" else "LAST"}"
 }
