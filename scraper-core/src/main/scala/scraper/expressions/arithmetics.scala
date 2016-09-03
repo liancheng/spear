@@ -43,14 +43,15 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
       candidates = strictChildren filter (_.dataType isSubtypeOf NumericType)
 
       // Ensures that there's at least one expression whose data type is directly a subtype of
-      // `superType`. For example, the following expressions are valid
+      // `NumericType`. For example, the following expressions are all valid:
       //
-      //   "1":STRING + (2:INT)
-      //   1:INT + 2:BIGINT
+      //  - "1":STRING + 2:INT
+      //  - 1:BIGINT + "2":STRING
+      //  - 1:INT + 2:BIGINT
       //
       // while
       //
-      //   "1":STRING + "2":STRING
+      //   - "1":STRING + "2":STRING
       //
       // is invalid. This behavior is consistent with PostgreSQL.
       widestNumericType <- if (candidates.nonEmpty) {
