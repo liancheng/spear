@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.Row
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
 import scraper.types.{BooleanType, DataType, OrderedType}
 
 trait BinaryComparison extends BinaryOperator {
@@ -68,7 +68,8 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override protected lazy val strictDataType: DataType = BooleanType
 
-  override protected lazy val typeConstraint: TypeConstraint = list sameTypeAs test.dataType
+  override protected lazy val typeConstraint: TypeConstraint =
+    StrictlyTyped(test :: Nil) ++ (list sameTypeAs test.dataType)
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input

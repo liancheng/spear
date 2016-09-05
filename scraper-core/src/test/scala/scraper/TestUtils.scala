@@ -166,13 +166,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkStrictlyTyped(plan: LogicalPlan): Unit = {
-    if (!plan.isWellTyped) {
-      fail(
-        s"""Logical plan not well-typed:
-           |${plan.prettyTree}
-           |""".stripMargin
-      )
-    }
+    checkWellTyped(plan)
 
     if (!plan.isStrictlyTyped) {
       fail(

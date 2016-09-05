@@ -97,26 +97,32 @@ class TypeMismatchException(message: String, cause: Throwable)
   def this(message: String) = this(message, null)
 
   def this(
-    expression: Expression,
+    expressions: Seq[Expression],
     expected: DataType,
     cause: Throwable
-  ) = this(
-    s"Expecting ${expected.sql}, while expression $expression has type ${expression.dataType.sql}",
-    cause
-  )
+  ) = this({
+    val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
+    s"""Expecting expression(s) of type ${expected.sql}, but found the following violators:
+       |${violators mkString "\n"}
+     """.stripMargin
+  }, cause)
 
   def this(
-    expression: Expression,
+    expressions: Seq[Expression],
     expected: AbstractDataType,
     cause: Throwable
-  ) = this(
-    s"Expecting a $expected, while expression $expression has type ${expression.dataType.sql}",
-    cause
-  )
+  ) = this({
+    val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
+    s"""Expecting expression(s) of $expected, but found the following violators:
+       |${violators mkString "\n"}
+     """.stripMargin
+  }, cause)
 
-  def this(expression: Expression, expected: DataType) = this(expression, expected, null)
+  def this(expressions: Seq[Expression], expected: DataType) =
+    this(expressions, expected, null)
 
-  def this(expression: Expression, expected: AbstractDataType) = this(expression, expected, null)
+  def this(expressions: Seq[Expression], expected: AbstractDataType) =
+    this(expressions, expected, null)
 }
 
 class ResolutionFailureException(message: String, cause: Throwable)
@@ -133,6 +139,12 @@ class TableNotFoundException(tableName: Name, cause: Throwable)
 
 class FunctionNotFoundException(name: Name, cause: Throwable)
   extends AnalysisException(s"Function $name not found", cause) {
+
+  def this(name: Name) = this(name, null)
+}
+
+class FunctionInstantiationException(name: Name, cause: Throwable)
+  extends AnalysisException(s"Failed to instantiate function $name", cause) {
 
   def this(name: Name) = this(name, null)
 }

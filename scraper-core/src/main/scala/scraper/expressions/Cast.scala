@@ -282,7 +282,7 @@ object Cast {
     case _                                         => throw new ImplicitCastException(e, dataType)
   }
 
-  def widenDataType(dataType: DataType)(e: Expression): Expression = widenDataType(e, dataType)
+  def widenDataTypeTo(dataType: DataType)(e: Expression): Expression = widenDataType(e, dataType)
 
   /**
    * Tries to figure out the widest type of all input data types.  For two types `x` and `y`, `x` is
@@ -297,7 +297,7 @@ object Cast {
     val numericTypes = Seq(ByteType, ShortType, IntType, LongType, FloatType, DoubleType)
     val primitiveTypes = Seq(NullType, BooleanType, StringType) ++ numericTypes
 
-    val header = ("from\\to" +: primitiveTypes.map(_.sql)).map(t => f"$t%10s").mkString
+    val header = ("from \\ to" +: primitiveTypes.map(_.sql)).map(t => f"$t%10s").mkString
     val body = for (from <- primitiveTypes) yield {
       val marks = for (to <- primitiveTypes) yield from -> to match {
         case _ if from isCompatibleWith to => "*"

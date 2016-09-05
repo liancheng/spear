@@ -1,14 +1,15 @@
 package scraper.expressions
 
 import scala.math.pow
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 import scraper.{NullSafeOrdering, Row}
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.{widenDataType, widestTypeOf}
+import scraper.expressions.Cast.widenDataType
 import scraper.expressions.functions.lit
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
 import scraper.types._
+import scraper.utils._
 
 trait ArithmeticExpression extends Expression {
   lazy val numeric = dataType match {
@@ -17,7 +18,7 @@ trait ArithmeticExpression extends Expression {
 }
 
 trait UnaryArithmeticOperator extends UnaryOperator with ArithmeticExpression {
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
+  override protected def typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 
   override protected lazy val strictDataType: DataType = child.dataType
 }
@@ -35,45 +36,54 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected lazy val typeConstraint: TypeConstraint = new TypeConstraint {
+  // Type constraint for a binary arithmetic operator requires that either of the following two
+  // conditions must hold:
+  //
+  //  1. Both operands are of numeric types
+  //
+  //     In this case, the data type of this binary arithmetic operator is the wider one of the
+  //     two numeric types.
+  //
+  //  2. One operand is of a numeric type `T` while the other one is of string type.
+  //
+  //     In this case, the data type of this binary arithmetic operator is `T`. The string operand
+  //     will also be casted to `T`.
+  //
+  // For example, the following expressions are all valid:
+  //
+  //  - 1:INT + 2:BIGINT
+  //  - 1:INT + '2':STRING
+  //  - '1':STRING + 2:BIGINT
+  //
+  // while
+  //
+  //  - '1':STRING + '2':STRING
+  //  - TRUE:BOOLEAN + '2':STRING
+  //
+  // are invalid. This behavior is consistent with PostgreSQL.
+  override protected def typeConstraint: TypeConstraint = new TypeConstraint {
     override def enforced: Try[Seq[Expression]] = for {
-      strictChildren <- children.passThrough.enforced
+      strictInput <- StrictlyTyped(children).enforced
 
-      // Finds all expressions whose data types are already subtype of `NumericType`.
-      candidates = strictChildren filter (_.dataType isSubtypeOf NumericType)
+      Seq(lhsType, rhsType) = strictInput map (_.dataType)
 
-      // Ensures that there's at least one expression whose data type is directly a subtype of
-      // `NumericType`. For example, the following expressions are all valid:
-      //
-      //  - "1":STRING + 2:INT
-      //  - 1:BIGINT + "2":STRING
-      //  - 1:INT + 2:BIGINT
-      //
-      // while
-      //
-      //   - "1":STRING + "2":STRING
-      //
-      // is invalid. This behavior is consistent with PostgreSQL.
-      widestNumericType <- if (candidates.nonEmpty) {
-        widestTypeOf(candidates map (_.dataType))
-      } else {
-        throw new TypeMismatchException(children.head, NumericType)
+      resultType <- (lhsType, rhsType) match {
+        case (_: NumericType, _: NumericType) => lhsType widest rhsType
+        case (_: NumericType, StringType)     => Success(lhsType)
+        case (StringType, _: NumericType)     => Success(rhsType)
+        case _ =>
+          Failure(new TypeMismatchException(
+            s"""Operator $operator requires at least one operand to be of numeric type and all other
+               |operands to be of either numeric type or string type. However, the left operand
+               |$left is of ${left.dataType.sql} type and the right operand $right is of
+               |${right.dataType.sql} type.
+             """.oneLine
+          ))
       }
-
-      // As a special case, when referenced as children of binary arithmetic expressions, strings
-      // can be implicitly converted into numeric types. For example, the following expressions are
-      // all valid:
-      //
-      //   1:INT + "2":STRING
-      //   "1":STRING + 2:INT
-      //
-      // Here we cast all children expressions of `StringType` into the widest numeric type. This
-      // behavior is consistent with PostgreSQL.
-      stringsCasted = strictChildren map {
-        case e if e.dataType == StringType => e cast widestNumericType
-        case e                             => e
-      }
-    } yield stringsCasted map (widenDataType(_, widestNumericType))
+    } yield strictInput map {
+      case e if e.dataType == StringType => e cast resultType
+      case e                             => widenDataType(e, resultType)
+    }
   }
 
   override protected lazy val strictDataType: DataType = left.dataType
@@ -111,7 +121,8 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 }
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf IntegralType
+  override protected def typeConstraint: TypeConstraint =
+    super.typeConstraint andAlso (_ sameSubtypeOf IntegralType)
 
   override protected lazy val strictDataType: DataType = left.dataType
 
@@ -125,7 +136,8 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 }
 
 case class Power(left: Expression, right: Expression) extends BinaryArithmeticOperator {
-  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs DoubleType
+  override protected def typeConstraint: TypeConstraint =
+    super.typeConstraint andAlso (_ sameTypeAs DoubleType)
 
   override def dataType: DataType = DoubleType
 
@@ -136,7 +148,7 @@ case class Power(left: Expression, right: Expression) extends BinaryArithmeticOp
 }
 
 case class IsNaN(child: Expression) extends UnaryExpression {
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf FractionalType
+  override protected def typeConstraint: TypeConstraint = child subtypeOf FractionalType
 
   override def dataType: DataType = BooleanType
 
@@ -157,7 +169,7 @@ abstract class GreatestLike extends Expression {
 
   override protected lazy val strictDataType: DataType = children.head.dataType
 
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+  override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 
   protected lazy val ordering = new NullSafeOrdering(strictDataType, nullsLarger)
 }

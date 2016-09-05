@@ -28,7 +28,7 @@ case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: B
 
   def isNullsFirst: Boolean = isAscending ^ nullsLarger
 
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+  override protected lazy val typeConstraint: TypeConstraint = child subtypeOf OrderedType
 
   override protected def template(childString: String): String =
     s"$childString $direction NULLS ${if (isNullsFirst) "FIRST" else "LAST"}"

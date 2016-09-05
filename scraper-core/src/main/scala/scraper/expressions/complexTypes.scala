@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.{Name, Row}
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
 import scraper.types._
 
 case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) extends Expression {
@@ -15,8 +15,8 @@ case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) ex
 
   override def evaluate(input: Row): Any = Row.fromSeq(values map (_ evaluate input))
 
-  override protected lazy val typeConstraint: TypeConstraint =
-    names.sameTypeAs(StringType).andThen(_.foldable) ++ values.passThrough
+  override protected def typeConstraint: TypeConstraint =
+    (names sameTypeAs StringType andAlso Foldable) ++ StrictlyTyped(values)
 
   override protected lazy val strictDataType: DataType = {
     val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {
@@ -47,7 +47,7 @@ case class CreateArray(values: Seq[Expression]) extends Expression {
 
   override def evaluate(input: Row): Any = values map (_ evaluate input)
 
-  override protected lazy val typeConstraint: TypeConstraint = values.sameType
+  override protected def typeConstraint: TypeConstraint = values.sameType
 
   override protected lazy val strictDataType: DataType =
     ArrayType(values.head.dataType, values exists (_.isNullable))
@@ -65,7 +65,7 @@ case class CreateMap(keys: Seq[Expression], values: Seq[Expression]) extends Exp
   override def evaluate(input: Row): Any =
     (keys map (_ evaluate input) zip (values map (_ evaluate input))).toMap
 
-  override protected lazy val typeConstraint: TypeConstraint = keys.sameType ++ values.sameType
+  override protected def typeConstraint: TypeConstraint = keys.sameType ++ values.sameType
 
   override protected lazy val strictDataType: DataType = {
     val valueNullable = values exists (_.isNullable)

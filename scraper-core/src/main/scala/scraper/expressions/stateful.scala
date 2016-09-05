@@ -3,7 +3,7 @@ package scraper.expressions
 import scala.util.Random
 
 import scraper.Row
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.expressions.typecheck.{Foldable, TypeConstraint}
 import scraper.types.{DataType, DoubleType, LongType}
 
 case class Rand(seed: Expression) extends UnaryExpression with StatefulExpression[Random] {
@@ -11,8 +11,8 @@ case class Rand(seed: Expression) extends UnaryExpression with StatefulExpressio
 
   override def child: Expression = seed
 
-  override protected lazy val typeConstraint: TypeConstraint =
-    seed sameTypeAs LongType andThen (_.foldable)
+  override protected def typeConstraint: TypeConstraint =
+    seed sameTypeAs LongType andAlso Foldable
 
   private lazy val evaluatedSeed: Long = seed.evaluated.asInstanceOf[Long]
 

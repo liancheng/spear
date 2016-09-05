@@ -4,7 +4,7 @@ import scraper.Name
 import scraper.expressions._
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
-import scraper.expressions.typecheck.TypeConstraint
+import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
 import scraper.types.{BooleanType, DataType, OrderedType}
 
 case class Count(child: Expression) extends FoldLeft {
@@ -24,13 +24,13 @@ case class Count(child: Expression) extends FoldLeft {
 case class Max(child: Expression) extends NullableReduceLeft {
   override val updateFunction: UpdateFunction = Greatest(_, _)
 
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+  override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
 case class Min(child: Expression) extends NullableReduceLeft {
   override val updateFunction: UpdateFunction = Least(_, _)
 
-  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
+  override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
 abstract class FirstLike(child: Expression, ignoresNull: Expression)
@@ -42,8 +42,8 @@ abstract class FirstLike(child: Expression, ignoresNull: Expression)
 
   override def isNullable: Boolean = child.isNullable
 
-  override protected lazy val typeConstraint: TypeConstraint =
-    child.passThrough ++ ignoresNull.foldable
+  override protected def typeConstraint: TypeConstraint =
+    StrictlyTyped(child :: Nil) ++ Foldable(ignoresNull :: Nil)
 
   override protected lazy val strictDataType: DataType = child.dataType
 

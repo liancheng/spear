@@ -32,14 +32,14 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
   test("minus") {
     check(forAll(genNumericLiteralPair) {
       case (a @ Literal(_, t: NumericType), b) =>
-        Minus(a, b).evaluated == t.genericNumeric.minus(a.value, b.value)
+        (a - b).evaluated == t.genericNumeric.minus(a.value, b.value)
     })
   }
 
   test("multiply") {
     check(forAll(genNumericLiteralPair) {
       case (a @ Literal(_, t: NumericType), b) =>
-        Multiply(a, b).evaluated == t.genericNumeric.times(a.value, b.value)
+        (a * b).evaluated == t.genericNumeric.times(a.value, b.value)
     })
   }
 
@@ -55,10 +55,10 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
 
       case (a @ Literal(_, t: FractionalType), b) =>
         if (b.value == 0D) {
-          intercept[ArithmeticException](Divide(a, b).evaluated)
+          intercept[ArithmeticException]((a / b).evaluated)
           true
         } else {
-          Divide(a, b).evaluated == t.genericFractional.div(a.value, b.value)
+          (a / b).evaluated == t.genericFractional.div(a.value, b.value)
         }
     })
   }
@@ -76,6 +76,6 @@ class ArithmeticExpressionSuite extends LoggingFunSuite with TestUtils with Chec
     checkStrictlyTyped(lit(1L) + 1L, LongType)
 
     checkWellTyped(lit(1) + "1", IntType)
-    checkWellTyped(lit(1D) + "1", DoubleType)
+    checkWellTyped(lit("1") + 1, IntType)
   }
 }

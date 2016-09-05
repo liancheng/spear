@@ -1,37 +1,19 @@
 package scraper.expressions.typecheck
 
 import scraper.LoggingFunSuite
-import scraper.exceptions.TypeMismatchException
+import scraper.exceptions.{ImplicitCastException, TypeMismatchException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.types._
 
 class TypeConstraintSuite extends LoggingFunSuite {
-  private def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
-    test(constraintsClass.getSimpleName)(f)
-  }
-
-  private def check(expected: Seq[Expression])(constraint: TypeConstraint): Unit = {
-    assertResult(expected)(constraint.enforced.get)
-  }
-
-  private def expectExpressions(
-    first: Expression, rest: Expression*
-  )(constraint: TypeConstraint): Unit = {
-    check(first +: rest)(constraint)
-  }
-
-  private def expectException[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
-    intercept[T](constraint.enforced.get)
-  }
-
-  testTypeConstraint(classOf[PassThrough]) {
+  testTypeConstraint(classOf[StrictlyTyped]) {
     expectExpressions(1) {
-      lit(1).passThrough
+      StrictlyTyped(1 :: Nil)
     }
 
     expectExpressions((1 cast LongType) + 1L) {
-      (lit(1) + 1L).passThrough
+      StrictlyTyped((lit(1) + 1L) :: Nil)
     }
   }
 
@@ -40,7 +22,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
       Seq[Expression](true, 1) sameTypeAs BooleanType
     }
 
-    expectException[TypeMismatchException] {
+    expectException[ImplicitCastException] {
       Seq[Expression](true, false) sameTypeAs LongType
     }
   }
@@ -51,29 +33,47 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
 
     expectException[TypeMismatchException] {
-      Seq[Expression](1F, 1D) sameSubtypeOf IntegralType
+      Seq[Expression](1F, 1L) sameSubtypeOf IntegralType
     }
   }
 
   testTypeConstraint(classOf[SameType]) {
     expectExpressions(1 cast LongType, 1L) {
-      Seq[Expression](1, 1L).sameType
+      SameType(Seq(1, 1L))
     }
   }
 
   testTypeConstraint(classOf[Foldable]) {
     expectExpressions(1, "foo") {
-      Seq[Expression](1, "foo").foldable
+      Foldable(Seq(1, "foo"))
     }
 
     expectException[TypeMismatchException] {
-      ('a of IntType.!).foldable
+      Foldable(('a of IntType.!) :: Nil)
     }
   }
 
-  test("andThen") {
+  test("andAlso") {
     expectExpressions(1 cast LongType, 1L) {
-      Seq(lit(1), lit(1L)) sameSubtypeOf OrderedType andThen (_.sameType)
+      Seq[Expression](1, 1L) sameSubtypeOf OrderedType andAlso (_.sameType)
     }
+  }
+
+  private def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
+    test(constraintsClass.getSimpleName)(f)
+  }
+
+  private def check(expected: Seq[Expression])(constraint: TypeConstraint): Unit = {
+    assertResult(expected)(constraint.enforced.get)
+  }
+
+  private def expectExpressions(
+                                 first: Expression, rest: Expression*
+                               )(constraint: TypeConstraint): Unit = {
+    check(first +: rest)(constraint)
+  }
+
+  private def expectException[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
+    intercept[T](constraint.enforced.get)
   }
 }
