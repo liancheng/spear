@@ -79,14 +79,16 @@ lazy val commonSettings = {
     import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
     import scalariform.formatter.preferences.PreferencesImporterExporter.loadPreferences
 
-    scalariformSettings ++ Seq(preferences := loadPreferences("scalariform.properties"))
+    scalariformSettings ++ Seq(
+      preferences := loadPreferences("scalariform.properties")
+    )
   }
 
   val taskSettings = Seq(
     // Runs scalastyle before compilation
-    compile in Compile <<= compile in Compile dependsOn (scalastyle in Compile toTask ""),
+    compile in Compile := (compile in Compile dependsOn (scalastyle in Compile toTask "")).value,
     // Runs scalastyle before running tests
-    test in Test <<= test in Test dependsOn (scalastyle in Test toTask "")
+    test in Test := (test in Test dependsOn (scalastyle in Test toTask "")).value
   )
 
   Seq(
