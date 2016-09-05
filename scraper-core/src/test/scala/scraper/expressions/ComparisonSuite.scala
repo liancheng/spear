@@ -43,4 +43,9 @@ class ComparisonSuite extends LoggingFunSuite with TestUtils with Checkers {
     checkWellTyped('a.int === 'b.long, BooleanType)
     checkWellTyped('a.string === 'b.long, BooleanType)
   }
+
+  test("IN") {
+    checkWellTyped("1" in (1, 2, 3), BooleanType)
+    checkWellTyped("1.0" in (1.0, 2, 3), BooleanType)
+  }
 }
