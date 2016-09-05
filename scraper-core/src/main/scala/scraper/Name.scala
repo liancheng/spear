@@ -17,7 +17,7 @@ class Name(private val impl: Name.CaseSensitivityAware) {
       this.casePreserving == that.casePreserving
 
     case that: Name =>
-      this.casePreserving.compareToIgnoreCase(that.casePreserving) == 0
+      (this.casePreserving compareToIgnoreCase that.casePreserving) == 0
 
     case _ =>
       false

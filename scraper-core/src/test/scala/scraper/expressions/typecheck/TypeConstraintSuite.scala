@@ -68,8 +68,8 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   private def expectExpressions(
-                                 first: Expression, rest: Expression*
-                               )(constraint: TypeConstraint): Unit = {
+    first: Expression, rest: Expression*
+  )(constraint: TypeConstraint): Unit = {
     check(first +: rest)(constraint)
   }
 

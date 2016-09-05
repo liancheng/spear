@@ -5,6 +5,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Try}
 
 import com.typesafe.config.{ConfigException, ConfigFactory}
+
 import scraper.LoggingFunSuite
 import scraper.config.Settings.Key
 import scraper.config.SettingsSuite._

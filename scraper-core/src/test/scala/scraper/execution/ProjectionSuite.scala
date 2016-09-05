@@ -11,7 +11,7 @@ class ProjectionSuite extends LoggingFunSuite {
   }
 
   test("mutable projection") {
-    val row = new BasicMutableRow(ArrayBuffer(1, "foo"))
+    val row = new BasicMutableRow(ArrayBuffer[Any](1, "foo"))
     val projection = MutableProjection(Seq(2, "bar")) target row
     assert(projection() == Row(2, "bar"))
   }

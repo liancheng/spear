@@ -38,7 +38,7 @@ object BasicExample {
     adultsSQL.show()
 
     val countGenderSQL = context.q(
-      """SELECT gender, MAX(age), COUNT(*)
+      """SELECT gender, max(age), count(*)
         |FROM people
         |GROUP BY gender
         |HAVING gender = 'M'
