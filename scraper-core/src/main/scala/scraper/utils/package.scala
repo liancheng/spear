@@ -46,5 +46,5 @@ package object utils {
     case Seq(x, xs @ _*)  => for (head <- x; tail <- trySequence(xs)) yield head +: tail
   }
 
-  def quote(name: String): String = "`" + name.replace("`", "``") + "`"
+  def quote(string: String): String = "'" + string.replace("\\", "\\\\").replace("'", "\\'") + "'"
 }

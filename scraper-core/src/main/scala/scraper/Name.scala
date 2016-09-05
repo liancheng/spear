@@ -1,6 +1,6 @@
 package scraper
 
-import scraper.utils.quote
+import scraper.Name.quote
 
 class Name(private val impl: Name.CaseSensitivityAware) {
   def isCaseSensitive: Boolean = impl.isCaseSensitive
@@ -45,4 +45,6 @@ object Name {
   def caseSensitive(name: String): Name = new Name(CaseSensitive(name))
 
   def caseInsensitive(name: String): Name = new Name(CaseInsensitive(name))
+
+  def quote(name: String): String = "`" + name.replace("`", "``") + "`"
 }
