@@ -50,6 +50,8 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
    * field of `resultBuffer`.
    */
   def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit
+
+  def distinct: DistinctAggregateFunction = DistinctAggregateFunction(this)
 }
 
 /**

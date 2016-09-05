@@ -3,13 +3,14 @@ package scraper.plans.logical
 import org.scalatest.BeforeAndAfterAll
 
 import scraper._
-import scraper.exceptions.{IllegalAggregationException, ResolutionFailureException}
+import scraper.exceptions.{AnalysisException, IllegalAggregationException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.aggregates.{Count, Sum}
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
-import scraper.plans.logical.analysis.Analyzer
+import scraper.plans.logical.analysis.{Analyzer, ResolveFunctions}
 import scraper.types.{DataType, NullType}
 import scraper.utils._
 
@@ -38,16 +39,56 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     catalog.registerRelation('t, relation0)
   }
 
-  testAlias('a + 1, "(a + 1)")
+  testAutoAliasing('a + 1, "(a + 1)")
 
   // Case-insensitive name resolution
-  testAlias('B + 1, "(b + 1)")
+  testAutoAliasing('B + 1, "(b + 1)")
 
-  testAlias($"t.a" + 1, "(a + 1)")
+  testAutoAliasing($"t.a" + 1, "(a + 1)")
 
-  testAlias(lit("foo"), "foo")
+  testAutoAliasing(lit("foo"), "foo")
 
-  testAlias(NonSQL, "?column?")
+  testAutoAliasing(NonSQL, "?column?")
+
+  testFunctionResolution(
+    function('count, Star(None)),
+    Count(1)
+  )
+
+  testFunctionResolution(
+    function('COUNT, Star(None)),
+    Count(1)
+  )
+
+  testFunctionResolution(
+    distinctFunction('sum, 1),
+    Sum(1).distinct
+  )
+
+  testFunctionResolution(
+    function('concat, "1", "2"),
+    Concat(Seq("1", "2"))
+  )
+
+  interceptFunctionResolution[AnalysisException](
+    distinctFunction('count, Star(None)),
+    "DISTINCT cannot be used together with star"
+  )
+
+  interceptFunctionResolution[AnalysisException](
+    distinctFunction('foo, Star(None)),
+    "DISTINCT cannot be used together with star"
+  )
+
+  interceptFunctionResolution[AnalysisException](
+    function('foo, Star(None)),
+    "Only function \"count\" may have star as argument"
+  )
+
+  interceptFunctionResolution[AnalysisException](
+    distinctFunction('coalesce, 'a.int.!),
+    "Cannot decorate function coalesce with DISTINCT since it is not an aggregate function"
+  )
 
   test("resolve references") {
     checkAnalyzedPlan(
@@ -361,10 +402,27 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   private def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)
 
-  private def testAlias(expression: Expression, expectedAlias: Name): Unit = {
+  private def testAutoAliasing(expression: Expression, expectedAlias: Name): Unit = {
     test(s"auto-alias resolution - $expression AS ${expectedAlias.toString}") {
       val Seq(actualAlias) = analyze(relation0 subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
+    }
+  }
+
+  private def testFunctionResolution(unresolved: Expression, expected: => Expression): Unit = {
+    test(s"function resolution - $unresolved to $expected") {
+      val analyzed = new ResolveFunctions(catalog).apply(relation0 select unresolved)
+      val actual = analyzed match { case _ Project Seq(AutoAlias(resolved)) => resolved }
+      assert(actual == expected)
+    }
+  }
+
+  private def interceptFunctionResolution[T <: AnalysisException: Manifest](
+    unresolved: UnresolvedFunction, message: String
+  ): Unit = {
+    test(s"function resolution - $unresolved should fail analyzer") {
+      val cause = intercept[T] { analyze(relation0 select unresolved) }
+      assert(cause.getMessage contains message)
     }
   }
 }

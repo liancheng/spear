@@ -232,25 +232,25 @@ class ResolveAliases(catalog: Catalog) extends Rule[LogicalPlan] {
  */
 class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
-    case UnresolvedFunction(name, (_: Star) :: Nil, false) if name == i"count" =>
+    case UnresolvedFunction(name, Seq(_: Star), isDistinct @ false) if name == i"count" =>
       Count(1)
 
     case Count((_: Star)) =>
       Count(1)
 
-    case UnresolvedFunction(_, (_: Star) :: Nil, true) =>
+    case UnresolvedFunction(_, Seq(_: Star), isDistinct @ true) =>
       throw new AnalysisException("DISTINCT cannot be used together with star")
 
-    case UnresolvedFunction(name, (_: Star) :: Nil, _) =>
-      throw new AnalysisException("Only COUNT function may have star as argument")
+    case UnresolvedFunction(name, Seq(_: Star), _) =>
+      throw new AnalysisException("Only function \"count\" may have star as argument")
 
-    case UnresolvedFunction(name, args, distinct) if args forall (_.isResolved) =>
+    case UnresolvedFunction(name, args, isDistinct) if args forall (_.isResolved) =>
       val fnInfo = catalog.functionRegistry.lookupFunction(name)
       fnInfo.builder(args) match {
-        case f: AggregateFunction if distinct =>
+        case f: AggregateFunction if isDistinct =>
           DistinctAggregateFunction(f)
 
-        case f if distinct =>
+        case f if isDistinct =>
           throw new AnalysisException(
             s"Cannot decorate function $name with DISTINCT since it is not an aggregate function"
           )
@@ -402,11 +402,16 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
     distinctAggs ++ aggs
   }
 
-  private def checkNestedAggregateFunction(agg: AggregateFunction): Unit =
-    agg.children.foreach(_ collectFirst {
-      case nested: AggregateFunction =>
-        throw new IllegalAggregationException(agg, nested)
-    })
+  private def checkNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
+    case DistinctAggregateFunction(child) =>
+      checkNestedAggregateFunction(child)
+
+    case _ =>
+      agg.children.foreach(_ collectFirst {
+        case nested: AggregateFunction =>
+          throw new IllegalAggregationException(agg, nested)
+      })
+  }
 
   private def checkAggregation(
     part: String, keys: Seq[Expression], expressions: Seq[Expression]

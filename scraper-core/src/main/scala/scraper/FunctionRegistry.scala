@@ -28,7 +28,7 @@ trait FunctionRegistry {
 class InMemoryFunctionRegistry extends FunctionRegistry {
   override def registerFunction(fn: FunctionInfo): Unit = map(fn.name) = fn
 
-  override def removeFunction(name: Name): Unit = map.remove(name)
+  override def removeFunction(name: Name): Unit = map remove name
 
   override def lookupFunction(name: Name): FunctionInfo =
     map.getOrElse(name, throw new FunctionNotFoundException(name))
@@ -64,18 +64,25 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
 
   private def function[T <: Expression: ClassTag](name: Name): FunctionInfo = {
     val classTag = implicitly[ClassTag[T]]
-    val builder = (args: Seq[Expression]) => Try {
+
+    def instantiateWithVararg(args: Seq[Expression]): Any = {
       val argClasses = classOf[Seq[Expression]]
       val constructor = classTag.runtimeClass.getDeclaredConstructor(argClasses)
       constructor.newInstance(args)
-    } orElse Try {
+    }
+
+    def instantiate(args: Seq[Expression]): Any = {
       val argClasses = Seq.fill(args.length)(classOf[Expression])
       val constructor = classTag.runtimeClass.getDeclaredConstructor(argClasses: _*)
       constructor.newInstance(args: _*)
-    } match {
-      case Success(fn: Expression) => fn
-      case Failure(cause)          => throw new FunctionInstantiationException(name, cause)
-      case _                       => throw new FunctionInstantiationException(name)
+    }
+
+    val builder = (args: Seq[Expression]) => {
+      Try(instantiateWithVararg(args)) orElse Try(instantiate(args)) match {
+        case Success(fn: Expression) => fn
+        case Failure(cause)          => throw new FunctionInstantiationException(name, cause)
+        case _                       => throw new FunctionInstantiationException(name)
+      }
     }
 
     FunctionInfo(name, builder)
