@@ -9,6 +9,6 @@ matrix:
       scala: 2.11.7
 script:
   - sbt coverage test
-  - sbt scalastyle test:scalastyle doc
+  - sbt doc
 after_script:
   - bash <(curl -s https://codecov.io/bash)
