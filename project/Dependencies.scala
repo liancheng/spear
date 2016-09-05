@@ -11,12 +11,13 @@ object Dependencies {
     val config = "1.2.1"
     val jline = "2.12.1"
     val log4j = "1.2.16"
+    val mockito = "2.1.0-beta.120"
     val protobuf = "2.5.0"
     val scala = "2.11.8"
     val scalaCheck = "1.12.5"
     val scalaParserCombinators = "1.0.4"
-    val scalaXml = "1.0.4"
     val scalaTest = "2.2.5"
+    val scalaXml = "1.0.4"
     val scopt = "3.4.0"
     val slf4j = "1.6.4"
   }
@@ -35,6 +36,10 @@ object Dependencies {
 
   val log4j = Seq(
     "log4j" % "log4j" % Versions.log4j
+  )
+
+  val mockito = Seq(
+    "org.mockito" % "mockito-core" % Versions.mockito % "test"
   )
 
   val protobuf = Seq(
@@ -66,7 +71,7 @@ object Dependencies {
     "org.slf4j" % "jul-to-slf4j" % Versions.slf4j
   )
 
-  val testing = scalaCheck ++ scalaTest
+  val testing = mockito ++ scalaCheck ++ scalaTest
 
   val logging = log4j ++ slf4j
 
