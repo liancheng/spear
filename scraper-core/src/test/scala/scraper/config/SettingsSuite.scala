@@ -19,9 +19,7 @@ class SettingsSuite extends LoggingFunSuite {
        |$intKey = 1
        |$longKey = 2
        |$doubleKey = 3.5
-       |$anyrefKey = {
-       |  some-key = "some-value"
-       |}
+       |$anyrefKey = { some-key = "some-value" }
        |$nanosKey = 1 ns
        |$microsKey = 1 us
        |$millisKey = 1 ms

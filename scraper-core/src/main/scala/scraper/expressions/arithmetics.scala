@@ -74,8 +74,8 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
         case _ =>
           Failure(new TypeMismatchException(
             s"""Operator $operator requires at least one operand to be of numeric type and all other
-               |operands to be of either numeric type or string type. However, the left operand
-               |$left is of ${left.dataType.sql} type and the right operand $right is of
+               |operands to be of either numeric type or string type. However, expression
+               |$debugString has a left operand of ${left.dataType.sql} type and a right operand of
                |${right.dataType.sql} type.
              """.oneLine
           ))
