@@ -17,7 +17,7 @@ import scraper.utils.trySequence
 trait TypeConstraint { self =>
   /**
    * Tries to return a list of strictly-typed expressions that satisfy this [[TypeConstraint]].
-   * Whenever a failure occurs, a [[scala.util.Failure Failure]] is returned to indicate the cause.
+   * Whenever a failure occurs, a `Failure` is returned to indicate the cause.
    */
   def enforced: Try[Seq[Expression]]
 
@@ -61,8 +61,8 @@ case class SameTypeAs(input: Seq[Expression], target: DataType) extends TypeCons
 
 /**
  * A [[TypeConstraint]] that implicitly casts all `input` expressions to the same subtype of a given
- * [[AbstractDataType abstract data type]] `supertype`. Fails when any of the `input` expressions is
- * not a subtype of `supertype`.
+ * [[scraper.types.AbstractDataType abstract data type]] `supertype`. Fails when any of the `input`
+ * expressions is not a subtype of `supertype`.
  */
 case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
   extends TypeConstraint {
