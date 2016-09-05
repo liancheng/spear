@@ -30,6 +30,8 @@ class Settings(val config: Config) {
 object Settings {
   case class Key[T](name: String, get: Config => T, validator: T => Try[T] = Success(_: T)) {
     def validate(validator: T => Try[T]): Key[T] = copy(validator = validator)
+
+    override def toString: String = name
   }
 
   object Key {
