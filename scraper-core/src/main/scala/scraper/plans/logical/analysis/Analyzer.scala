@@ -321,9 +321,9 @@ class MergeSortsOverAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
 }
 
 /**
- * This rule resolves [[UnresolvedAggregate]]s into an [[Aggregate]], an optional [[Filter]] if
- * there exists a having condition, an optional [[Sort]] if there exist any sort ordering
- * expressions, and a top-level [[Project]].
+ * This rule resolves an [[UnresolvedAggregate]] into an [[Aggregate]], an optional [[Filter]] if
+ * there exists a `HAVING` condition, an optional [[Sort]] if there exist any sort ordering
+ * expressions, plus a top-level [[Project]].
  */
 class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
   override def apply(tree: LogicalPlan): LogicalPlan =
@@ -353,9 +353,9 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
 
       // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`
-      aggs foreach checkNestedAggregateFunction
+      aggs foreach rejectNestedAggregateFunction
 
-      // Aliases all found aggregate functions
+      // Aliases all collected aggregate functions
       val aggAliases = aggs map (AggregationAlias(_))
       val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
@@ -365,24 +365,27 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
 
       // Replaces grouping keys and aggregate functions in having condition, sort ordering
       // expressions, and projected named expressions.
-      val newConditions = conditions map rewrite
-      val newOrdering = order map (order => order.copy(child = rewrite(order.child)))
-      val newProjectList = projectList map (e => rewrite(e) -> e) map {
+      val rewrittenConditions = conditions map rewrite
+      val rewrittenOrdering = order map (order => order.copy(child = rewrite(order.child)))
+      val rewrittenProjectList = projectList map (e => rewrite(e) -> e) map {
         // Top level `GeneratedAttribute`s should be aliased to names of the original expressions
         case (g: GeneratedAttribute, e) => g as e.name
         case (e, _)                     => e
       }
 
-      checkAggregation("SELECT field", keys, newProjectList)
-      checkAggregation("HAVING condition", keys, newConditions)
-      checkAggregation("ORDER BY expression", keys, newOrdering)
+      // At this stage, no `AttributeRef`s should appear in the following three expressions since
+      // `AttributeRef`s should only appear in grouping keys and/or aggregate functions, which
+      // have already been rewritten to `GroupingAttribute`s and `AggregationAttribute`s.
+      rejectDanglingAttributes("SELECT field", keys, rewrittenProjectList)
+      rejectDanglingAttributes("HAVING condition", keys, rewrittenConditions)
+      rejectDanglingAttributes("ORDER BY expression", keys, rewrittenOrdering)
 
       child
         .resolvedGroupBy(keyAliases)
         .agg(aggAliases)
-        .filterOption(newConditions)
-        .orderByOption(newOrdering)
-        .select(newProjectList)
+        .filterOption(rewrittenConditions)
+        .orderByOption(rewrittenOrdering)
+        .select(rewrittenProjectList)
   }
 
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
@@ -393,18 +396,21 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
     }).distinct
 
     val aggs = expressions.map(_ transformDown {
-      // Eliminates previously collected `DistinctAggregateFunction`s first
-      case AggregationAlias(a: DistinctAggregateFunction, _) => AggregationAlias(a).toAttribute
+      // Eliminates previously collected `DistinctAggregateFunction`s first...
+      case a @ AggregationAlias(_: DistinctAggregateFunction, _) => a.toAttribute
     }).flatMap(_ collect {
+      // ... and then collects non-distinct aggregate functions.
       case a: AggregateFunction => a
     }).distinct
 
     distinctAggs ++ aggs
   }
 
-  private def checkNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
+  private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>
-      checkNestedAggregateFunction(child)
+      // Special cases `DistinctAggregateFunction` since it always has another aggregate function as
+      // child expression.
+      rejectNestedAggregateFunction(child)
 
     case _ =>
       agg.children.foreach(_ collectFirst {
@@ -413,12 +419,10 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
       })
   }
 
-  private def checkAggregation(
+  private def rejectDanglingAttributes(
     part: String, keys: Seq[Expression], expressions: Seq[Expression]
   ): Unit = expressions foreach { e =>
-    e.references collectFirst {
-      case a: AttributeRef => a
-    } foreach { a =>
+    e.references collectFirst { case a: AttributeRef => a } foreach { a =>
       throw new IllegalAggregationException(part, a, e, keys)
     }
   }
