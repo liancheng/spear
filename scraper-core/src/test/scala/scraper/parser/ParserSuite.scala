@@ -324,15 +324,15 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1) SELECT * FROM c0",
-    let('c0 -> values(1)) {
+    let('c0, values(1)) {
       table('c0) select '*
     }
   )
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1), c1 AS (SELECT 2) SELECT * FROM c0 UNION ALL SELECT * FROM c1",
-    let('c1 -> values(2)) {
-      let('c0 -> values(1)) {
+    let('c1, values(2)) {
+      let('c0, values(1)) {
         table('c0) select '* union (table('c1) select '*)
       }
     }

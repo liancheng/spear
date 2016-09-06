@@ -14,4 +14,8 @@ package object logical {
     val (name, value) = cteRelation
     With(body, name, value)
   }
+
+  def let(name: Name, plan: LogicalPlan)(body: => LogicalPlan): With = {
+    With(body, name, plan)
+  }
 }

@@ -339,7 +339,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("CTE") {
     checkAnalyzedPlan(
-      let('s -> (relation0 subquery 't select 'a)) {
+      let('s, relation0 subquery 't select 'a) {
         table('s) select '*
       },
       relation0 subquery 't select (a of 't) subquery 's select (a of 's)
@@ -355,8 +355,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("multiple CTE") {
     checkAnalyzedPlan(
-      let('s0 -> (relation0 subquery 't)) {
-        let('s1 -> (relation0 subquery 't)) {
+      let('s0, relation0 subquery 't) {
+        let('s1, relation0 subquery 't) {
           table('s0) union table('s1)
         }
       },
@@ -385,8 +385,8 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("nested CTE") {
     checkAnalyzedPlan(
-      let('s -> (relation0 subquery 't0)) {
-        table('s) union let('s -> (relation1 subquery 't1)) {
+      let('s, relation0 subquery 't0) {
+        table('s) union let('s, relation1 subquery 't1) {
           table('s) select ('c as 'a, 'd as 'b)
         }
       },
