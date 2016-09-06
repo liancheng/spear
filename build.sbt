@@ -25,7 +25,7 @@ lazy val scraperLocal =
 lazy val scraperRepl =
   Project(id = "scraper-repl", base = file("scraper-repl"))
     .dependsOn(scraperCore % "compile->compile;test->test")
-    .dependsOn(scraperLocal % "compile->compile;test->test")
+    .dependsOn(scraperLocal % "compile->compile;test->test;compile->test")
     .enablePlugins(sbtPlugins: _*)
     .settings(commonSettings ++ runtimeConfSettings)
     .settings(libraryDependencies ++= ammonite)
