@@ -1,8 +1,11 @@
 import Dependencies._
 
+lazy val repl = taskKey[Unit]("Runs the Scraper REPL.")
+
 lazy val scraper =
   Project(id = "scraper", base = file("."))
     .aggregate(scraperCore, scraperExamples, scraperLocal, scraperRepl)
+    .settings(repl := (run in scraperRepl in Compile toTask "").value)
 
 lazy val scraperCore =
   Project(id = "scraper-core", base = file("scraper-core"))
