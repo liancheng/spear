@@ -2,7 +2,7 @@ import Dependencies._
 
 lazy val scraper =
   Project(id = "scraper", base = file("."))
-    .aggregate(scraperCore, scraperLocal, scraperRepl)
+    .aggregate(scraperCore, scraperExamples, scraperLocal, scraperRepl)
 
 lazy val scraperCore =
   Project(id = "scraper-core", base = file("scraper-core"))
