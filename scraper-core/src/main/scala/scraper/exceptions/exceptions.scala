@@ -15,16 +15,16 @@ class ContractBrokenException(message: String, cause: Throwable)
   def this(message: String) = this(message, null)
 }
 
+class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
+  extends RuntimeException(s"Expression ${expression.debugString} is unevaluable", cause) {
+
+  def this(expression: Expression) = this(expression, null)
+}
+
 class AnalysisException(message: String, cause: Throwable)
   extends RuntimeException(message, cause) {
 
   def this(message: String) = this(message, null)
-}
-
-class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
-  extends AnalysisException(s"Expression ${expression.debugString} is unevaluable", cause) {
-
-  def this(expression: Expression) = this(expression, null)
 }
 
 class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
