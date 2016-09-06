@@ -47,7 +47,7 @@ trait Context {
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
-  def q(query: String): DataFrame = new DataFrame(parse(query), this)
+  def sql(query: String): DataFrame = new DataFrame(parse(query), this)
 
   def table(name: Name): DataFrame =
     new DataFrame(catalog lookupRelation name, this)
@@ -65,11 +65,5 @@ trait Context {
     val rows = begin until end by step map (Row apply _)
     val output = StructType('id -> LongType.!).toAttributes
     new DataFrame(LocalRelation(rows, output), this)
-  }
-}
-
-object Context {
-  implicit class QueryString(query: String)(implicit context: Context) {
-    def q: DataFrame = context q query
   }
 }

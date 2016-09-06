@@ -8,7 +8,10 @@ object BasicExample {
 
   def main(args: Array[String]) {
     val context = new LocalContext(Settings.load())
-    val people = context lift (
+
+    import context._
+
+    val people = lift(
       Person("Alice", "F", 9),
       Person("Bob", "M", 15),
       Person("Charlie", "M", 18),
@@ -27,7 +30,7 @@ object BasicExample {
 
     people.asTable('people)
 
-    val adultsSQL = context.q(
+    val adultsSQL = sql(
       """SELECT name, gender
         |FROM people
         |WHERE age >= 18
@@ -37,7 +40,7 @@ object BasicExample {
     adultsSQL.explain()
     adultsSQL.show()
 
-    val countGenderSQL = context.q(
+    val countGenderSQL = sql(
       """SELECT gender, max(age), count(*)
         |FROM people
         |GROUP BY gender
