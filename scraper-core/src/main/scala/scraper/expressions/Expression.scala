@@ -264,8 +264,8 @@ trait BinaryExpression extends Expression {
 
   override def evaluate(input: Row): Any = {
     val maybeResult = for {
-      lhs <- Option(left.evaluate(input))
-      rhs <- Option(right.evaluate(input))
+      lhs <- Option(left evaluate input)
+      rhs <- Option(right evaluate input)
     } yield nullSafeEvaluate(lhs, rhs)
 
     maybeResult.orNull
