@@ -115,7 +115,7 @@ package object types {
       minFieldNum = if (settings(AllowEmptyStructType)) 0 else 1
 
       fieldNum <- Gen.choose(minFieldNum, maxFieldNum)
-      fieldTypeUpperBound = maxFieldNum / (fieldNum max 1)
+      fieldTypeUpperBound = fieldsUpperBound / (fieldNum max 1)
 
       genFieldType = Gen.resize(
         fieldTypeUpperBound,
