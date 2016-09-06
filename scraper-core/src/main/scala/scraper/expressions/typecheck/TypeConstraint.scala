@@ -43,8 +43,8 @@ trait TypeConstraint { self =>
 }
 
 /**
- * A [[TypeConstraint]] that transforms all `input` expressions to their strictly-typed form. Fails
- * when any of the `input` expressions is not well-formed.
+ * A [[TypeConstraint]] that transforms well-formed `input` expressions into their strictly-typed
+ * form. Fails when any of the `input` expressions is not well-formed.
  */
 case class StrictlyTyped(input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] = trySequence(input map (_.strictlyTyped))
@@ -60,9 +60,10 @@ case class SameTypeAs(input: Seq[Expression], target: DataType) extends TypeCons
 }
 
 /**
- * A [[TypeConstraint]] that implicitly casts all `input` expressions to the same subtype of a given
- * [[scraper.types.AbstractDataType abstract data type]] `supertype`. Fails when any of the `input`
- * expressions is not a subtype of `supertype`.
+ * A [[TypeConstraint]] that casts all `input` expressions to the same subtype `T` of a given
+ * [[scraper.types.AbstractDataType abstract data type]] `supertype`, where `T` is the widest
+ * `input` expression data types. Fails when any of the `input` expressions is not a subtype of
+ * `supertype`.
  */
 case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
   extends TypeConstraint {
