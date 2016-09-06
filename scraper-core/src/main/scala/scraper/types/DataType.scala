@@ -74,14 +74,10 @@ object DataType {
     case t: MapType       => MapTypeNode(t)
   }
 
-  private[scraper] trait HasDataType { this: DataTypeNode =>
-    def dataType: DataType
+  case class PrimitiveTypeNode(dataType: DataType) extends DataTypeNode {
+    override def children: Seq[DataTypeNode] = Nil
 
     override def nodeCaption: String = dataType.simpleName
-  }
-
-  case class PrimitiveTypeNode(dataType: DataType) extends DataTypeNode with HasDataType {
-    override def children: Seq[DataTypeNode] = Nil
   }
 
   case class StructFieldNode(field: StructField) extends DataTypeNode {
@@ -91,8 +87,10 @@ object DataType {
       s"${field.name}: ${fieldSpecString(field.dataType, field.nullable)}"
   }
 
-  case class StructTypeNode(dataType: StructType) extends DataTypeNode with HasDataType {
+  case class StructTypeNode(dataType: StructType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = dataType.fields.map(StructFieldNode)
+
+    override def nodeCaption: String = dataType.simpleName
   }
 
   case class KeyTypeNode(mapType: MapType) extends DataTypeNode {
@@ -108,10 +106,12 @@ object DataType {
       s"value: ${fieldSpecString(mapType.valueType, mapType.valueNullable)}"
   }
 
-  case class MapTypeNode(dataType: MapType) extends DataTypeNode with HasDataType {
+  case class MapTypeNode(dataType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = {
       Seq(KeyTypeNode(dataType), ValueTypeNode(dataType))
     }
+
+    override def nodeCaption: String = dataType.simpleName
   }
 
   case class ElementTypeNode(arrayType: ArrayType) extends DataTypeNode {
@@ -121,8 +121,10 @@ object DataType {
       s"element: ${fieldSpecString(arrayType.elementType, arrayType.elementNullable)}"
   }
 
-  case class ArrayTypeNode(dataType: ArrayType) extends DataTypeNode with HasDataType {
+  case class ArrayTypeNode(dataType: ArrayType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = Seq(ElementTypeNode(dataType))
+
+    override def nodeCaption: String = dataType.simpleName
   }
 }
 
