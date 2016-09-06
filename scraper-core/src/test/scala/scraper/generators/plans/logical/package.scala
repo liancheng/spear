@@ -17,18 +17,21 @@ package object logical {
       size - from.size,
       chanceOption(settings(SelectClauseChance), genSelectClause(from))
     )
+
     withSelect = maybeSelect getOrElse from
 
     maybeWhere <- Gen.resize(
       size - withSelect.size,
       chanceOption(settings(WhereClauseChance), genWhereClause(withSelect))
     )
+
     withWhere = maybeWhere getOrElse withSelect
 
     maybeLimit <- Gen.resize(
       size - withWhere.size,
       chanceOption(settings(LimitClauseChance), genLimitClause(withWhere))
     )
+
     withLimit = maybeLimit getOrElse withWhere
   } yield withLimit
 
@@ -78,10 +81,7 @@ package object logical {
   } yield plan select projectList
 
   def genWhereClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
-    Gen.resize(
-      settings(MaxWherePredicateSize),
-      genPredicate(plan.output)
-    ) map plan.filter
+    Gen.resize(settings(MaxWherePredicateSize), genPredicate(plan.output)) map plan.filter
 
   def genLimitClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =
     Gen.choose(1, settings(MaxLimit)) map plan.limit

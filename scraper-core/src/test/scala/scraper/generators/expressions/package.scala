@@ -23,9 +23,7 @@ package object expressions extends Logging {
     expression <- genExpression(input, outputSpec)
   } yield expression
 
-  def genExpression(
-    input: Seq[Expression], outputSpec: FieldSpec
-  )(
+  def genExpression(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -34,9 +32,7 @@ package object expressions extends Logging {
     case _: PrimitiveType => genLiteral(outputSpec)
   }
 
-  def genArithmetic(
-    input: Seq[Expression], outputSpec: FieldSpec
-  )(
+  def genArithmetic(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -44,9 +40,7 @@ package object expressions extends Logging {
       genTermExpression(input, outputSpec)
   }
 
-  def genTermExpression(
-    input: Seq[Expression], outputSpec: FieldSpec
-  )(
+  def genTermExpression(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -69,9 +63,7 @@ package object expressions extends Logging {
       genPredicate(input, outputSpec)
   }
 
-  def genProductExpression(
-    input: Seq[Expression], outputSpec: FieldSpec
-  )(
+  def genProductExpression(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -86,9 +78,7 @@ package object expressions extends Logging {
       }
   }
 
-  def genBaseExpression(
-    input: Seq[Expression], outputSpec: FieldSpec
-  )(
+  def genBaseExpression(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
   ): Gen[Expression] = {
@@ -108,27 +98,21 @@ package object expressions extends Logging {
     }
   }
 
-  def genPredicate(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genPredicate(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
     case BooleanType => genOrExpression(input, outputSpec)
   }
 
-  def genLogicalPredicate(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genLogicalPredicate(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = genPredicate(input, outputSpec)(settings.withValue(
     Keys.OnlyLogicalOperatorsInPredicate, true
   ))
 
-  def genOrExpression(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genOrExpression(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -137,9 +121,7 @@ package object expressions extends Logging {
       genUnaryOrBinary(genBranch, Or)
   }
 
-  def genAndExpression(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genAndExpression(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -161,9 +143,7 @@ package object expressions extends Logging {
       genUnaryOrBinary(genBranch, And)
   }
 
-  def genNotExpression(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genNotExpression(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -174,9 +154,7 @@ package object expressions extends Logging {
       } yield Not(predicate)
   }
 
-  def genComparison(
-    input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?
-  )(
+  def genComparison(input: Seq[Expression], outputSpec: FieldSpec = BooleanType.?)(
     implicit
     settings: Settings
   ): Gen[Expression] = outputSpec.dataType match {
@@ -222,10 +200,17 @@ package object expressions extends Logging {
     shrink(n.toInt) map (_.toShort)
   }
 
-  implicit lazy val shrinkLong: Shrink[Long] = Shrink { n =>
-    if (n == 0) Empty else {
-      val ns = integralHalves(n / 2) map (n - _)
-      0 #:: interleave(ns, ns map (-1 * _))
+  implicit lazy val shrinkLong: Shrink[Long] = {
+    def integralHalves[T: Integral](n: T): Stream[T] = {
+      val i = implicitly[Integral[T]]
+      if (i.compare(n, i.zero) == 0) Empty else n #:: integralHalves(i.quot(n, i.fromInt(2)))
+    }
+
+    Shrink { n =>
+      if (n == 0) Empty else {
+        val ns = integralHalves(n / 2) map (n - _)
+        0 #:: interleave(ns, ns map (-1 * _))
+      }
     }
   }
 
@@ -233,21 +218,18 @@ package object expressions extends Logging {
 
   implicit lazy val shrinkDouble: Shrink[Double] = shrinkFractional[Double]
 
-  private def shrinkFractional[T: Fractional]: Shrink[T] = Shrink { n =>
-    val f = implicitly[Fractional[T]]
-    val ns = fractionalHalves(f.div(n, f.fromInt(2))) map (f.minus(n, _))
-    f.zero #:: interleave(ns, ns map (f.times(_, f.fromInt(-1))))
-  }
+  private def shrinkFractional[T: Fractional]: Shrink[T] = {
+    def fractionalHalves[U: Fractional](n: U): Stream[U] = {
+      val f = implicitly[Fractional[U]]
+      val epsilon = f.toInt(f.times(f.minus(n, f.zero), f.fromInt(100000000)))
+      if (epsilon == 0) Empty else n #:: fractionalHalves(f.div(n, f.fromInt(2)))
+    }
 
-  private def integralHalves[T: Integral](n: T): Stream[T] = {
-    val i = implicitly[Integral[T]]
-    if (i.compare(n, i.zero) == 0) Empty else n #:: integralHalves(i.quot(n, i.fromInt(2)))
-  }
-
-  private def fractionalHalves[T: Fractional](n: T): Stream[T] = {
-    val f = implicitly[Fractional[T]]
-    val epsilon = f.toInt(f.times(f.minus(n, f.zero), f.fromInt(100000000)))
-    if (epsilon == 0) Empty else n #:: fractionalHalves(f.div(n, f.fromInt(2)))
+    Shrink { n =>
+      val f = implicitly[Fractional[T]]
+      val ns = fractionalHalves(f.div(n, f.fromInt(2))) map (f.minus(n, _))
+      f.zero #:: interleave(ns, ns map (f.times(_, f.fromInt(-1))))
+    }
   }
 
   private def interleave[T](xs: Stream[T], ys: Stream[T]): Stream[T] = (xs, ys) match {
