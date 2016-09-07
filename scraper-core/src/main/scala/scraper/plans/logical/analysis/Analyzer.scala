@@ -199,7 +199,7 @@ class DeduplicateReferences(catalog: Catalog) extends Rule[LogicalPlan] {
 
         right transformDown {
           case plan if plan == oldPlan => newPlan
-        } transformAllExpressions {
+        } transformAllExpressionsDown {
           case a: AttributeRef => rewrite get a.expressionID map a.withID getOrElse a
         }
     } getOrElse right
@@ -214,7 +214,7 @@ class DeduplicateReferences(catalog: Catalog) extends Rule[LogicalPlan] {
  * [[scraper.expressions.Alias Alias]]es, as long as aliased expressions are resolved.
  */
 class ResolveAliases(catalog: Catalog) extends Rule[LogicalPlan] {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case AutoAlias(Resolved(child: Expression)) =>
       // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
       val alias = child.transformDown {
@@ -231,7 +231,7 @@ class ResolveAliases(catalog: Catalog) extends Rule[LogicalPlan] {
  * up function names from the [[Catalog]].
  */
 class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case UnresolvedFunction(name, Seq(_: Star), isDistinct @ false) if name == i"count" =>
       Count(1)
 

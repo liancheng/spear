@@ -25,7 +25,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     case _                         => Nil
   }.toSeq
 
-  def transformAllExpressions(rule: Rule): Plan = transformDown {
+  def transformAllExpressionsDown(rule: Rule): Plan = transformDown {
     case plan: QueryPlan[_] =>
       plan.transformExpressionsDown(rule).asInstanceOf[Plan]
   }
@@ -37,7 +37,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   def collectFromAllExpressions[T](rule: PartialFunction[Expression, T]): Seq[T] = {
     val builder = ArrayBuffer.newBuilder[T]
 
-    transformAllExpressions {
+    transformAllExpressionsDown {
       case e if rule isDefinedAt e =>
         builder += rule(e)
         e
@@ -47,7 +47,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   }
 
   def collectFirstFromAllExpressions[T](rule: PartialFunction[Expression, T]): Option[T] = {
-    transformAllExpressions {
+    transformAllExpressionsDown {
       case e if rule isDefinedAt e =>
         return Some(rule(e))
     }

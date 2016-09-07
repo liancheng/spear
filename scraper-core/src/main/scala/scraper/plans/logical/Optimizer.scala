@@ -53,7 +53,7 @@ object Optimizer {
    * This rule finds all foldable expressions and evaluates them into literals.
    */
   object FoldConstants extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case e if e.isFoldable => Literal(e.evaluated, e.dataType)
     }
   }
@@ -62,7 +62,7 @@ object Optimizer {
    * This rule simplifies logical predicates containing `TRUE` and/or `FALSE`.
    */
   object FoldLogicalPredicates extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case True || _          => True
       case _ || True          => True
 
@@ -84,7 +84,7 @@ object Optimizer {
    * This rule reduces unnecessary `Not` operators.
    */
   object ReduceNegations extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case !(True)               => False
       case !(False)              => True
 
@@ -118,7 +118,7 @@ object Optimizer {
    * produce redundant casts.
    */
   object ReduceCasts extends Rule[LogicalPlan] {
-    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressions {
+    override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case e Cast t if e.dataType == t                  => e
       case e Cast _ Cast t if e.dataType isCastableTo t => e cast t
     }
@@ -302,7 +302,7 @@ object Optimizer {
   object EliminateSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Subquery _ => child
-    } transformAllExpressions {
+    } transformAllExpressionsDown {
       case ref: AttributeRef => ref.copy(qualifier = None)
     }
   }

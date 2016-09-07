@@ -61,7 +61,7 @@ trait TestUtils { this: FunSuite =>
 
     val rewrite = allIdExpressions.zipWithIndex.toMap
 
-    plan.transformAllExpressions {
+    plan.transformAllExpressionsDown {
       case e: Alias              => e withID ExpressionID(rewrite(e))
       case e: AttributeRef       => e withID ExpressionID(rewrite(e))
       case e: GeneratedAlias     => e withID ExpressionID(rewrite(e))
