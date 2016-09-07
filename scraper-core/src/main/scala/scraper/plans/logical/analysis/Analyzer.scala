@@ -7,7 +7,7 @@ import scraper.expressions.AutoAlias.AnonymousColumnName
 import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.Analyzer.containsAggregation
+import scraper.plans.logical.analysis.AnalysisRule.containsAggregation
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.types.StringType
@@ -55,7 +55,11 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   }
 }
 
-object Analyzer {
+trait AnalysisRule extends Rule[LogicalPlan] {
+  val catalog: Catalog
+}
+
+object AnalysisRule {
   private[analysis] def containsAggregation(expressions: Seq[Expression]): Boolean =
     expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
 }
@@ -63,7 +67,7 @@ object Analyzer {
 /**
  * This rule inlines CTE relation definitions as sub-queries.
  */
-class InlineCTERelationsAsSubqueries(catalog: Catalog) extends Rule[LogicalPlan] {
+class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
@@ -77,7 +81,7 @@ class InlineCTERelationsAsSubqueries(catalog: Catalog) extends Rule[LogicalPlan]
 /**
  * This rule resolves unresolved relations by looking up the table name from the `catalog`.
  */
-class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
   }
@@ -86,7 +90,7 @@ class ResolveRelations(catalog: Catalog) extends Rule[LogicalPlan] {
 /**
  * This rule expands "`*`" appearing in `SELECT`.
  */
-class ExpandStars(catalog: Catalog) extends Rule[LogicalPlan] {
+class ExpandStars(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(Resolved(child) Project projectList) =>
       child select (projectList flatMap {
@@ -111,7 +115,7 @@ class ExpandStars(catalog: Catalog) extends Rule[LogicalPlan] {
  * @throws scraper.exceptions.ResolutionFailureException If no candidate or multiple ambiguous
  *         candidate input attributes can be found.
  */
-class ResolveReferences(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
       resolveReferences(plan)
@@ -164,7 +168,7 @@ class ResolveReferences(catalog: Catalog) extends Rule[LogicalPlan] {
  *   val union = df union df
  * }}}
  */
-class DeduplicateReferences(catalog: Catalog) extends Rule[LogicalPlan] {
+class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case plan if plan.children.forall(_.isResolved) && !plan.isDeduplicated =>
       plan match {
@@ -214,7 +218,7 @@ class DeduplicateReferences(catalog: Catalog) extends Rule[LogicalPlan] {
  * This rule converts [[scraper.expressions.AutoAlias AutoAlias]]es into real
  * [[scraper.expressions.Alias Alias]]es, as long as aliased expressions are resolved.
  */
-class ResolveAliases(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case AutoAlias(Resolved(child: Expression)) =>
       // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
@@ -231,7 +235,7 @@ class ResolveAliases(catalog: Catalog) extends Rule[LogicalPlan] {
  * This rule resolves [[scraper.expressions.UnresolvedFunction unresolved functions]] by looking
  * up function names from the [[Catalog]].
  */
-class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case UnresolvedFunction(name, Seq(_: Star), isDistinct @ false) if name == i"count" =>
       Count(1)
@@ -262,14 +266,14 @@ class ResolveFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
   }
 }
 
-class RewriteDistinctsAsAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
+class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Distinct(Resolved(child)) =>
       child groupBy child.output agg child.output
   }
 }
 
-class ResolveSortReferences(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores global aggregates
     case plan @ (Resolved(_ Project projectList) Sort _) if containsAggregation(projectList) =>
@@ -285,7 +289,7 @@ class ResolveSortReferences(catalog: Catalog) extends Rule[LogicalPlan] {
  * This rule converts [[Project]]s containing aggregate functions into unresolved global
  * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
  */
-class GlobalAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
+class GlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if containsAggregation(projectList) =>
       child groupBy Nil agg projectList
@@ -299,7 +303,7 @@ class GlobalAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
  * having conditions into [[UnresolvedAggregate]]s beneath them so that they can be resolved
  * together later.
  */
-class MergeHavingConditions(catalog: Catalog) extends Rule[LogicalPlan] {
+class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Filter condition =>
       // All having conditions should be preserved
@@ -313,7 +317,7 @@ class MergeHavingConditions(catalog: Catalog) extends Rule[LogicalPlan] {
  * with the [[UnresolvedAggregate]] beneath it. This rule merges such [[Sort]]s into
  * [[UnresolvedAggregate]]s beneath them so that they can be resolved together later.
  */
-class MergeSortsOverAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
+class MergeSortsOverAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Sort order =>
       // Only preserves the last sort order
@@ -321,7 +325,7 @@ class MergeSortsOverAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
   }
 }
 
-class RewriteDistinctAggregateFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
+class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case _: DistinctAggregateFunction =>
       throw new NotImplementedError("Distinct aggregate function is not supported yet")
@@ -333,7 +337,7 @@ class RewriteDistinctAggregateFunctions(catalog: Catalog) extends Rule[LogicalPl
  * there exists a `HAVING` condition, an optional [[Sort]] if there exist any sort ordering
  * expressions, plus a top-level [[Project]].
  */
-class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
+class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     tree transformDown (skip orElse resolveUnresolvedAggregate)
 
@@ -443,13 +447,13 @@ class ResolveAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
  * @throws scraper.exceptions.AnalysisException If some resolved logical query plan operator
  *         doesn't type check.
  */
-class TypeCheck(catalog: Catalog) extends Rule[LogicalPlan] {
+class TypeCheck(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(plan) => plan.strictlyTyped.get
   }
 }
 
-class PostAnalysisCheck(catalog: Catalog) extends Rule[LogicalPlan] {
+class PostAnalysisCheck(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     ensureResolved(tree)
     ensureNoGeneratedOutputAttributes(tree)
@@ -471,19 +475,18 @@ class PostAnalysisCheck(catalog: Catalog) extends Rule[LogicalPlan] {
             )
         }
 
-        plan.collectFirst {
-          case Unresolved(p) if p.children.forall(_.isResolved) =>
-            throw new ResolutionFailureException(
-              s"""Logical plan fragment
-                 |
-                 |${p.prettyTree}
-                 |
-                 |in the following logical plan is not fully resolved:
-                 |
-                 |${plan.prettyTree}
-                 |""".stripMargin
-            )
-        }
+        // This unresolved logical plan doesn't contain any unresolved expressions. Just reports
+        // this plan node.
+        throw new ResolutionFailureException(
+          s"""Logical plan fragment
+             |
+             |${plan.prettyTree}
+             |
+             |in the following logical plan is not fully resolved:
+             |
+             |${tree.prettyTree}
+             |""".stripMargin
+        )
     }
   }
 
