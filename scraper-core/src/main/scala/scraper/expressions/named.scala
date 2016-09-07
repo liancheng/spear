@@ -260,7 +260,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override def debugString: String = {
     val nullability = if (isNullable) "?" else "!"
-    s"$name$nullability:${dataType.sql}"
+    s"$name:${dataType.sql}$nullability"
   }
 
   /**
