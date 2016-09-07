@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import scraper._
 import scraper.annotations.Explain
 import scraper.expressions._
-import scraper.expressions.BoundRef.bind
+import scraper.expressions.BoundRef._
 import scraper.expressions.Literal.True
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 import scraper.trees.TreeNode
@@ -25,7 +25,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
 
-  private lazy val boundProjectList = projectList map bind(child.output)
+  private lazy val boundProjectList = projectList map bindTo(child.output)
 
   override def iterator: Iterator[Row] = child.iterator.map { row =>
     Row.fromSeq(boundProjectList map (_ evaluate row))
@@ -35,7 +35,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  private lazy val boundCondition = bind(child.output)(condition)
+  private lazy val boundCondition = bind(condition, child.output)
 
   override def iterator: Iterator[Row] = child.iterator filter {
     boundCondition.evaluate(_).asInstanceOf[Boolean]
@@ -92,7 +92,7 @@ case class CartesianProduct(
 
   def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
 
-  private lazy val boundCondition = condition map bind(output) getOrElse True
+  private lazy val boundCondition = condition map bindTo(output) getOrElse True
 
   private val joinedRow = new JoinedRow()
 }

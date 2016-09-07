@@ -1,7 +1,7 @@
 package scraper
 
 import scraper.expressions._
-import scraper.expressions.BoundRef.bind
+import scraper.expressions.BoundRef.bindTo
 import scraper.types.{DataType, OrderedType}
 
 class NullSafeOrdering(dataType: DataType, nullsLarger: Boolean) extends Ordering[Any] {
@@ -17,7 +17,7 @@ class NullSafeOrdering(dataType: DataType, nullsLarger: Boolean) extends Orderin
 
 class RowOrdering(boundSortOrders: Seq[SortOrder]) extends Ordering[Row] {
   def this(unboundSortOrders: Seq[SortOrder], inputSchema: Seq[Attribute]) =
-    this(unboundSortOrders map bind(inputSchema))
+    this(unboundSortOrders map bindTo(inputSchema))
 
   private val nullSafeOrderings = boundSortOrders.map {
     case order @ SortOrder(_, Ascending, _) =>

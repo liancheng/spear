@@ -4,24 +4,22 @@ import scala.collection.mutable
 
 import scraper._
 import scraper.expressions._
-import scraper.expressions.BoundRef.bind
+import scraper.expressions.BoundRef.bindTo
 import scraper.expressions.aggregates.AggregateFunction
 import scraper.plans.physical.{PhysicalPlan, UnaryPhysicalPlan}
 
 case class HashAggregate(
   child: PhysicalPlan,
-  keys: Seq[GroupingAlias],
-  functions: Seq[AggregationAlias]
+  keyAliases: Seq[GroupingAlias],
+  aggAliases: Seq[AggregationAlias]
 ) extends UnaryPhysicalPlan {
-  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map (_.toAttribute)
 
-  // Bound grouping key expressions
-  private lazy val boundKeys: Seq[Expression] = keys map (_.child) map bind(child.output)
+  private lazy val boundKeys: Seq[Expression] = keyAliases map (_.child) map bindTo(child.output)
 
   private lazy val bufferBuilder: AggregationBufferBuilder = {
-    // Bound aggregate function expressions
-    val boundFunctions = functions map (_.child) map bind(child.output)
-    new AggregationBufferBuilder(boundFunctions)
+    val boundAggs = aggAliases map (_.child) map bindTo(child.output)
+    new AggregationBufferBuilder(boundAggs)
   }
 
   private lazy val hashMap = mutable.HashMap.empty[Row, AggregationBuffer]
@@ -33,7 +31,7 @@ case class HashAggregate(
       hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer()) += input
     }
 
-    val aggResult = new BasicMutableRow(functions.length)
+    val aggResult = new BasicMutableRow(aggAliases.length)
     val joinedRow = new JoinedRow()
 
     hashMap.iterator map {

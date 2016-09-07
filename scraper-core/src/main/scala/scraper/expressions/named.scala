@@ -270,18 +270,18 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 }
 
 object BoundRef {
-  def bind[A <: Expression](input: Seq[Attribute])(expression: A): A = {
-    expression.transformUp {
-      case ref: ResolvedAttribute =>
-        val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
-        if (ordinal == -1) {
-          throw new ResolutionFailureException({
-            val inputAttributes = input.map(_.nodeCaption).mkString(", ")
-            s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
-          })
-        } else {
-          BoundRef(ordinal, ref.dataType, ref.isNullable)
-        }
-    }.asInstanceOf[A]
-  }
+  def bindTo[A <: Expression](input: Seq[Attribute])(expression: A): A = bind(expression, input)
+
+  def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = expression.transformUp {
+    case ref: ResolvedAttribute =>
+      val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
+      if (ordinal == -1) {
+        throw new ResolutionFailureException({
+          val inputAttributes = input.map(_.nodeCaption).mkString(", ")
+          s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
+        })
+      } else {
+        BoundRef(ordinal, ref.dataType, ref.isNullable)
+      }
+  }.asInstanceOf[A]
 }
