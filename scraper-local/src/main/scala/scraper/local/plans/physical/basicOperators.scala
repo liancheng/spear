@@ -80,8 +80,6 @@ case class CartesianProduct(
   right: PhysicalPlan,
   condition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-  private lazy val boundCondition = condition map bind(output) getOrElse True
-
   def evaluateBoundCondition(input: Row): Boolean =
     boundCondition evaluate input match { case result: Boolean => result }
 
@@ -89,11 +87,14 @@ case class CartesianProduct(
 
   override def iterator: Iterator[Row] = for {
     leftRow <- left.iterator
-    rightRow <- right.iterator
-    joinedRow = new JoinedRow(leftRow, rightRow) if evaluateBoundCondition(joinedRow)
-  } yield new JoinedRow(leftRow, rightRow)
+    rightRow <- right.iterator if evaluateBoundCondition(joinedRow(leftRow, rightRow))
+  } yield joinedRow
 
   def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
+
+  private lazy val boundCondition = condition map bind(output) getOrElse True
+
+  private val joinedRow = new JoinedRow()
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
