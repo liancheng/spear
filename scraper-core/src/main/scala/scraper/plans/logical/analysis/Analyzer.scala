@@ -471,14 +471,19 @@ class PostAnalysisCheck(catalog: Catalog) extends Rule[LogicalPlan] {
             )
         }
 
-        // For unresolved logical plan nodes whose expressions are all resolved (e.g.,
-        // `UnresolvedAggregate`), simply report the logical plan.
-        throw new ResolutionFailureException(
-          s"""The following logical plan is not fully resolved:
-             |
-             |${tree.prettyTree}
-             |""".stripMargin
-        )
+        plan.collectFirst {
+          case Unresolved(p) if p.children.forall(_.isResolved) =>
+            throw new ResolutionFailureException(
+              s"""Logical plan fragment
+                 |
+                 |${p.prettyTree}
+                 |
+                 |in the following logical plan is not fully resolved:
+                 |
+                 |${plan.prettyTree}
+                 |""".stripMargin
+            )
+        }
     }
   }
 

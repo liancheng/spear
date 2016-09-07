@@ -10,7 +10,7 @@ import scraper.expressions.aggregates.{Count, Sum}
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
-import scraper.plans.logical.analysis.{Analyzer, ResolveFunctions}
+import scraper.plans.logical.analysis.{Analyzer, PostAnalysisCheck, ResolveFunctions}
 import scraper.types.{DataType, NullType}
 import scraper.utils._
 
@@ -305,7 +305,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("illegal nested aggregate function") {
     intercept[IllegalAggregationException] {
-      analyze(relation0 groupBy 'a agg max(count('b)))
+      analyze(relation0 agg max(count('a)))
     }
   }
 
@@ -394,6 +394,20 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
         relation1 subquery 't1 subquery 's select (c of 's as 'a, d of 's as 'b)
       )
     )
+  }
+
+  test("post-analysis check - ensure resolved") {
+    val rule = new PostAnalysisCheck(catalog)
+
+    // Plan containing unresolved expression
+    intercept[ResolutionFailureException] {
+      rule(relation0 select 'a)
+    }
+
+    // Plan containing unresolved plan node but no unresolved expressions
+    intercept[ResolutionFailureException] {
+      rule(relation0 agg (1 as 'a))
+    }
   }
 
   private def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
