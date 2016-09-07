@@ -164,6 +164,12 @@ class SchemaReflectionSuite extends LoggingFunSuite with TestUtils {
       'f1 -> StringType.?
     )
   }
+
+  test("schema inference - struct type - case class without public primary constructor") {
+    intercept[ScalaReflectionException] {
+      fieldSpecFor[CaseClass8]
+    }
+  }
 }
 
 object SchemaReflectionSuite {
@@ -176,4 +182,6 @@ object SchemaReflectionSuite {
   private case class CaseClass7(f1: String) {
     def this(f1: Int) = this(f1.toString)
   }
+
+  private case class CaseClass8 private (f1: Int)
 }

@@ -71,15 +71,15 @@ package object reflection {
   def constructorParams(tpe: Type): List[Symbol] = {
     val constructorSymbol = tpe.member(termNames.CONSTRUCTOR)
 
-    val constructor = if (constructorSymbol.isMethod) {
-      // The type has only one constructor
+    val constructor = if (constructorSymbol.isMethod && constructorSymbol.asMethod.isPublic) {
+      // The type has only one public constructor
       constructorSymbol.asMethod
     } else {
       // The type has multiple constructors. Let's pick the primary one.
       constructorSymbol.asTerm.alternatives find { symbol =>
-        symbol.isMethod && symbol.asMethod.isPrimaryConstructor
+        symbol.isMethod && symbol.asMethod.isPrimaryConstructor && symbol.asMethod.isPublic
       } map (_.asMethod) getOrElse {
-        throw new ScalaReflectionException(s"Type $tpe doesn't have a primary constructor")
+        throw ScalaReflectionException(s"Type $tpe doesn't have a public primary constructor")
       }
     }
 
