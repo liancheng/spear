@@ -94,11 +94,11 @@ trait TestUtils { this: FunSuite =>
 
     if (actual != expected) {
       val answerDiff = sideBySide(
-        s"""Actual answer:
+        s"""Actual
            |${actual mkString "\n"}
            |""".stripMargin,
 
-        s"""Expected answer:
+        s"""Expected
            |${expected mkString "\n"}
            |""".stripMargin,
 
