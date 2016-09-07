@@ -25,6 +25,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ResolveReferences(catalog),
       new ResolveAliases(catalog),
       new DeduplicateReferences(catalog),
+      new RewriteDistinctAggregateFunctions(catalog),
 
       new ResolveSortReferences(catalog),
       new RewriteDistinctsAsAggregates(catalog),
@@ -317,6 +318,13 @@ class MergeSortsOverAggregates(catalog: Catalog) extends Rule[LogicalPlan] {
     case (agg: UnresolvedAggregate) Sort order =>
       // Only preserves the last sort order
       agg.copy(order = order)
+  }
+}
+
+class RewriteDistinctAggregateFunctions(catalog: Catalog) extends Rule[LogicalPlan] {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
+    case _: DistinctAggregateFunction =>
+      throw new NotImplementedError("Distinct aggregate function is not supported yet")
   }
 }
 
