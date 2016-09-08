@@ -5,7 +5,28 @@ import scala.io.Source
 import ammonite.ops.Path
 import ammonite.repl.{Main => AmmoniteMain, Storage}
 
+import scraper.Context
+
 object Main {
+  object % {
+    def sql(query: String)(implicit context: Context): Unit =
+      context.sql(query).show(rowCount = None, truncate = false, out = System.out)
+  }
+
+  def main(args: Array[String]) {
+    val predef = {
+      val contextClassLoader = Thread.currentThread().getContextClassLoader
+      val stream = contextClassLoader.getResourceAsStream("predef.scala")
+      Source.fromInputStream(stream, "UTF-8").mkString
+    }
+
+    AmmoniteMain(
+      predef = predef,
+      storageBackend = new Storage.Folder(Path.home / ".scraper"),
+      welcomeBanner = Some(banner)
+    ).run()
+  }
+
   private val scalaVersion = scala.util.Properties.versionNumberString
 
   private val javaVersion = System.getProperty("java.version")
@@ -23,18 +44,4 @@ object Main {
        |
        |The default context object is available as `context'.
        |""".stripMargin
-
-  def main(args: Array[String]) {
-    val predef = {
-      val contextClassLoader = Thread.currentThread().getContextClassLoader
-      val stream = contextClassLoader.getResourceAsStream("predef.scala")
-      Source.fromInputStream(stream, "UTF-8").mkString
-    }
-
-    AmmoniteMain(
-      predef = predef,
-      storageBackend = new Storage.Folder(Path.home / ".scraper"),
-      welcomeBanner = Some(banner)
-    ).run()
-  }
 }

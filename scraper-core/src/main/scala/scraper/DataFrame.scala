@@ -114,14 +114,24 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def verboseExplain(out: PrintStream = System.out): Unit = explain(extended = true, out)
 
+  def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
+    show(Some(rowCount), truncate, out)
 
   private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
     new DataFrame(f(queryExecution.logicalPlan), context)
 
-  private def tabulate(rowCount: Int = 20, truncate: Boolean = true): String = {
-    val truncated = limit(rowCount + 1).toSeq
-    val hasMoreData = truncated.length > rowCount
-    val data = truncated take rowCount
+  def show(rowCount: Option[Int], truncate: Boolean, out: PrintStream): Unit =
+    out.println(tabulate(rowCount, truncate))
+
+  private def tabulate(rowCount: Option[Int] = Some(20), truncate: Boolean = true): String = {
+    val (data, hasMoreData) = rowCount map { n =>
+      val truncated = limit(n + 1).toSeq
+      val hasMoreData = truncated.length > n
+      val data = truncated take n
+      (data, hasMoreData)
+    } getOrElse {
+      (toSeq, false)
+    }
 
     val rows = schema.fields.map(_.name.casePreserving) +: data.map { row =>
       row.map { cell =>
@@ -134,7 +144,7 @@ class DataFrame(val queryExecution: QueryExecution) {
       }
     }
 
-    tabulate(rows, rowCount, truncate, hasMoreData)
+    tabulate(rows, data.length, truncate, hasMoreData)
   }
 
   private def tabulate(
