@@ -109,7 +109,7 @@ class DataFrame(val queryExecution: QueryExecution) {
        |""".stripMargin
   }
 
-  def explain(extended: Boolean = true, out: PrintStream = System.out): Unit =
+  def explain(extended: Boolean = false, out: PrintStream = System.out): Unit =
     out.println(explanation(extended))
 
   def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
