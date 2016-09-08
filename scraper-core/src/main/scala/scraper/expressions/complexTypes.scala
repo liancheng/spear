@@ -4,12 +4,10 @@ import scraper.{Name, Row}
 import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
 import scraper.types._
 
-case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) extends Expression {
-  assert(names.length == values.length)
+case class CreateNamedStruct(children: Seq[Expression]) extends Expression {
+  assert(children.length % 2 == 0)
 
   override def isNullable: Boolean = false
-
-  override def children: Seq[Expression] = names ++ values
 
   override def nodeName: Name = "named_struct"
 
@@ -32,8 +30,15 @@ case class CreateNamedStruct(names: Seq[Expression], values: Seq[Expression]) ex
     argStrings mkString (s"$nodeName(", ", ", ")")
   }
 
+  private lazy val (names, values) = children.splitAt(children.length / 2)
+
   private lazy val evaluatedNames: Seq[String] =
     names map (_.evaluated match { case n: String => n })
+}
+
+object CreateNamedStruct {
+  def apply(names: Seq[Expression], values: Seq[Expression]): CreateNamedStruct =
+    CreateNamedStruct(names ++ values)
 }
 
 case class CreateArray(values: Seq[Expression]) extends Expression {
@@ -53,14 +58,12 @@ case class CreateArray(values: Seq[Expression]) extends Expression {
     ArrayType(values.head.dataType, values exists (_.isNullable))
 }
 
-case class CreateMap(keys: Seq[Expression], values: Seq[Expression]) extends Expression {
-  assert(keys.length == values.length)
+case class CreateMap(children: Seq[Expression]) extends Expression {
+  assert(children.length % 2 == 0)
 
   override def nodeName: Name = "map"
 
   override def isNullable: Boolean = false
-
-  override def children: Seq[Expression] = keys ++ values
 
   override def evaluate(input: Row): Any =
     (keys map (_ evaluate input) zip (values map (_ evaluate input))).toMap
@@ -71,4 +74,10 @@ case class CreateMap(keys: Seq[Expression], values: Seq[Expression]) extends Exp
     val valueNullable = values exists (_.isNullable)
     MapType(keys.head.dataType, values.head.dataType, valueNullable)
   }
+
+  private lazy val (keys, values) = children.splitAt(children.length / 2)
+}
+
+object CreateMap {
+  def apply(keys: Seq[Expression], values: Seq[Expression]): CreateMap = CreateMap(keys ++ values)
 }
