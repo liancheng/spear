@@ -112,8 +112,8 @@ class DataFrame(val queryExecution: QueryExecution) {
   def explain(extended: Boolean = false, out: PrintStream = System.out): Unit =
     out.println(explanation(extended))
 
-  def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
-    out.println(tabulate(rowCount, truncate))
+  def verboseExplain(out: PrintStream = System.out): Unit = explain(extended = true, out)
+
 
   private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
     new DataFrame(f(queryExecution.logicalPlan), context)
