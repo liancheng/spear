@@ -9,6 +9,7 @@ object Dependencies {
   object Versions {
     val ammonite = "0.7.6"
     val config = "1.2.1"
+    val fansi = "0.2.0"
     val jline = "2.12.1"
     val log4j = "1.2.16"
     val mockito = "2.1.0-beta.120"
@@ -20,14 +21,15 @@ object Dependencies {
     val scalaXml = "1.0.4"
     val scopt = "3.4.0"
     val slf4j = "1.6.4"
+    val sourcecode = "0.1.2"
   }
 
   val ammonite = Seq(
-    "com.lihaoyi" % "ammonite" % Versions.ammonite cross CrossVersion.full
+    "com.lihaoyi" % "ammonite_2.11.8" % Versions.ammonite
   )
 
-  val typesafeConfig = Seq(
-    "com.typesafe" % "config" % Versions.config
+  val fansi = Seq(
+    "com.lihaoyi" %% "fansi" % Versions.fansi
   )
 
   val jline = Seq(
@@ -71,9 +73,17 @@ object Dependencies {
     "org.slf4j" % "jul-to-slf4j" % Versions.slf4j
   )
 
+  val sourcecode = Seq(
+    "com.lihaoyi" %% "sourcecode" % Versions.sourcecode
+  )
+
   val testing = mockito ++ scalaCheck ++ scalaTest
+
+  val typesafeConfig = Seq(
+    "com.typesafe" % "config" % Versions.config
+  )
 
   val logging = log4j ++ slf4j
 
-  val overrides = (jline ++ protobuf ++ scala).toSet
+  val overrides = (jline ++ protobuf ++ scala ++ sourcecode).toSet
 }
