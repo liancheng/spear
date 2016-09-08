@@ -3,7 +3,7 @@ package scraper.repl
 import scala.io.Source
 
 import ammonite.ops.Path
-import ammonite.repl.{Main => AmmoniteMain, Storage}
+import ammonite.runtime.Storage
 
 import scraper.Context
 
@@ -20,7 +20,7 @@ object Main {
       Source.fromInputStream(stream, "UTF-8").mkString
     }
 
-    AmmoniteMain(
+    ammonite.Main(
       predef = predef,
       storageBackend = new Storage.Folder(Path.home / ".scraper"),
       welcomeBanner = Some(banner)

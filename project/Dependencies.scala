@@ -7,7 +7,7 @@ object Dependencies {
   )
 
   object Versions {
-    val ammonite = "0.6.2"
+    val ammonite = "0.7.6"
     val config = "1.2.1"
     val jline = "2.12.1"
     val log4j = "1.2.16"
@@ -23,7 +23,7 @@ object Dependencies {
   }
 
   val ammonite = Seq(
-    "com.lihaoyi" % "ammonite-repl_2.11.8" % Versions.ammonite
+    "com.lihaoyi" % "ammonite" % Versions.ammonite cross CrossVersion.full
   )
 
   val typesafeConfig = Seq(
