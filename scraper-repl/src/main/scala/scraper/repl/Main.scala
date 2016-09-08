@@ -32,16 +32,16 @@ object Main {
   private val javaVersion = System.getProperty("java.version")
 
   private val banner =
-    s"""Welcome to
-       |     ____
-       |    / __/__________ ____  ___ ____
-       |   _\\ \\/ __/ __/ _ `/ _ \\/ -_) __/
-       |  /___/\\__/_/  \\_,_/ .__/\\__/_/
-       |                  /_/
-       |
-       |Scala version: $scalaVersion
-       |Java version: $javaVersion
-       |
-       |The default context object is available as `context'.
-       |""".stripMargin
+    raw"""Welcome to
+         |     ____
+         |    / __/__________ ____  ___ ____
+         |   _\ \/ __/ __/ _ `/ _ \/ -_) __/
+         |  /___/\__/_/  \_,_/ .__/\__/_/
+         |                  /_/
+         |
+         |Scala version: $scalaVersion
+         |Java version: $javaVersion
+         |
+         |The default context object is available as `context'.
+         |""".stripMargin
 }
