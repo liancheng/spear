@@ -51,6 +51,8 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("'1'", "1")
 
+  testExpressionParsing("'hello' ' ' 'world'", "hello world")
+
   testExpressionParsing("true", true)
 
   testExpressionParsing("false", false)
