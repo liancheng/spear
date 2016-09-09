@@ -11,6 +11,7 @@ import scraper.plans.logical.analysis.AnalysisRule.containsAggregation
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 import scraper.types.StringType
+import scraper.utils._
 
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
@@ -40,7 +41,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )),
 
     RuleBatch("Post-analysis check", Once, Seq(
-      new PostAnalysisCheck(catalog)
+      new RejectUnresolvedExpressions(catalog),
+      new RejectUnresolvedPlans(catalog),
+      new RejectGeneratedAttributes(catalog),
+      new RejectDistinctAggregateFunctions(catalog)
     ))
   )
 
@@ -328,7 +332,7 @@ class MergeSortsOverAggregates(val catalog: Catalog) extends AnalysisRule {
 class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case _: DistinctAggregateFunction =>
-      throw new NotImplementedError("Distinct aggregate function is not supported yet")
+      throw new UnsupportedOperationException("Distinct aggregate function is not supported yet")
   }
 }
 
@@ -385,9 +389,10 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         case (e, _)                     => e
       }
 
-      // At this stage, no `AttributeRef`s should appear in the following three expressions since
-      // `AttributeRef`s should only appear in grouping keys and/or aggregate functions, which
-      // have already been rewritten to `GroupingAttribute`s and `AggregationAttribute`s.
+      // At this stage, no `AttributeRef`s should appear in the following 3 rewritten expressions.
+      // This is because all `AttributeRef`s in the original `UnresolvedAggregate` operator should
+      // only appear in grouping keys and/or aggregate functions, which have already been rewritten
+      // to `GroupingAttribute`s and `AggregationAttribute`s.
       rejectDanglingAttributes("SELECT field", keys, rewrittenProjectList)
       rejectDanglingAttributes("HAVING condition", keys, rewrittenConditions)
       rejectDanglingAttributes("ORDER BY expression", keys, rewrittenOrdering)
@@ -411,7 +416,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Eliminates previously collected `DistinctAggregateFunction`s first...
       case a @ AggregationAlias(_: DistinctAggregateFunction, _) => a.toAttribute
     }).flatMap(_ collect {
-      // ... and then collects non-distinct aggregate functions.
+      // ... and then collects all non-distinct aggregate functions.
       case a: AggregateFunction => a
     }).distinct
 
@@ -453,56 +458,88 @@ class TypeCheck(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class PostAnalysisCheck(val catalog: Catalog) extends AnalysisRule {
+class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
-    ensureResolved(tree)
-    ensureNoGeneratedOutputAttributes(tree)
-    tree
-  }
-
-  private def ensureResolved(tree: LogicalPlan): Unit = if (!tree.isResolved) {
-    // Tries to collect a "minimum" unresolved logical plan node.
-    tree.collectFirst {
-      case Unresolved(plan) if plan.children.forall(_.isResolved) =>
-        // Tries to collect a "minimum" unresolved expression.
-        plan.collectFirstFromAllExpressions {
-          case Unresolved(e) if e.children.forall(_.isResolved) =>
-            throw new ResolutionFailureException(
-              s"""Expression ${e.debugString} in the following logical plan is not fully resolved:
-                 |
-                 |${plan.prettyTree}
-                 |""".stripMargin
-            )
-        }
-
-        // This unresolved logical plan doesn't contain any unresolved expressions. Just reports
-        // this plan node.
+    tree.transformExpressionsDown {
+      // Tries to collect a "minimum" unresolved expression.
+      case Unresolved(e) if e.children forall (_.isResolved) =>
         throw new ResolutionFailureException(
-          s"""Logical plan fragment
-             |
-             |${plan.prettyTree}
-             |
-             |in the following logical plan is not fully resolved:
+          s"""Failed to resolve expression ${e.debugString} in the analyzed logical plan:
              |
              |${tree.prettyTree}
              |""".stripMargin
         )
     }
   }
+}
 
-  private def ensureNoGeneratedOutputAttributes(tree: LogicalPlan): Unit = {
+class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = {
+    tree.transformDown {
+      // Tries to collect a "minimum" unresolved logical plan node.
+      case Unresolved(plan) if plan.children.forall(_.isResolved) =>
+        throw new ResolutionFailureException(
+          s"""Failed to resolve the following logical plan operator
+             |
+             |${plan.prettyTree}
+             |
+             |in the analyzed plan:
+             |
+             |${tree.prettyTree}
+             |""".stripMargin
+        )
+    }
+  }
+}
+
+class RejectGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = {
     val generated = tree.output.collect { case e: GeneratedNamedExpression => e }
 
     if (generated.nonEmpty) {
       val generatedList = generated mkString ("[", ", ", "]")
+      val suggestion =
+        """You probably hit an internal bug since generated attributes are only used internally
+          |by the analyzer and should never appear in a fully analyzed logical plan.
+        """.oneLine
+
       throw new ResolutionFailureException(
-        s"""Found generated output attributes $generatedList in logical plan:
+        s"""Generated attributes $generatedList found in the analyzed logical plan:
            |
            |${tree.prettyTree}
            |
-           |Generated named expressions are reserved for internal use during analysis phase.
-           |""".stripMargin
+           |$suggestion
+         """.stripMargin
       )
     }
+
+    tree
+  }
+}
+
+class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = {
+    val distinctAggs = tree collectFromAllExpressions {
+      case agg: DistinctAggregateFunction => agg
+    }
+
+    if (distinctAggs.nonEmpty) {
+      val distinctAggList = distinctAggs mkString ("[", ", ", "]")
+      val suggestion =
+        """You probably hit an internal bug since all distinct aggregate functions should have
+          |been resolved into normal aggregate functions by the analyzer.
+        """.stripMargin
+
+      throw new ResolutionFailureException(
+        s"""Distinct aggregate functions $distinctAggList found in the analyzed logical plan:
+           |
+           |${tree.prettyTree}
+           |
+           |$suggestion
+         """.stripMargin
+      )
+    }
+
+    tree
   }
 }

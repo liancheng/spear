@@ -10,7 +10,7 @@ import scraper.expressions.aggregates.{Count, Sum}
 import scraper.expressions.functions._
 import scraper.parser.Parser
 import scraper.plans.logical.AnalyzerSuite.NonSQL
-import scraper.plans.logical.analysis.{Analyzer, PostAnalysisCheck, ResolveFunctions}
+import scraper.plans.logical.analysis._
 import scraper.types.{DataType, NullType}
 import scraper.utils._
 
@@ -127,12 +127,6 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("ambiguous reference") {
     intercept[ResolutionFailureException] {
       analyze(LocalRelation.empty(a, a withID newExpressionID()) select 'a)
-    }
-  }
-
-  test("no generated output allowed") {
-    intercept[ResolutionFailureException] {
-      analyze(LocalRelation.empty(GroupingAlias('a.int.!).attr))
     }
   }
 
@@ -396,17 +390,35 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
     )
   }
 
-  test("post-analysis check - ensure resolved") {
-    val rule = new PostAnalysisCheck(catalog)
+  test("post-analysis check - reject unresolved expressions") {
+    val rule = new RejectUnresolvedExpressions(catalog)
 
-    // Plan containing unresolved expression
     intercept[ResolutionFailureException] {
       rule(relation0 select 'a)
     }
+  }
 
-    // Plan containing unresolved plan node but no unresolved expressions
+  test("post-analysis check - reject unresolved plans") {
+    val rule = new RejectUnresolvedPlans(catalog)
+
     intercept[ResolutionFailureException] {
       rule(relation0 agg (1 as 'a))
+    }
+  }
+
+  test("post-analysis check - reject generated attributes") {
+    val rule = new RejectGeneratedAttributes(catalog)
+
+    intercept[ResolutionFailureException] {
+      rule(LocalRelation.empty(GroupingAlias('a.int.!).attr))
+    }
+  }
+
+  test("post-analysis check - reject distinct aggregate function") {
+    val rule = new RejectDistinctAggregateFunctions(catalog)
+
+    intercept[ResolutionFailureException] {
+      rule(relation0 select distinct(count(a)))
     }
   }
 
