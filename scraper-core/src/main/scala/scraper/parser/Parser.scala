@@ -75,7 +75,7 @@ abstract class TokenParser[T] extends StdTokenParsers {
 class Parser extends TokenParser[LogicalPlan] {
   def parseAttribute(input: String): UnresolvedAttribute = synchronized {
     val start = attribute | star ^^ {
-      case Star(qualifier) => UnresolvedAttribute("*", qualifier)
+      case Star(q) => UnresolvedAttribute("*", q)
     }
 
     phrase(start)(new lexical.Scanner(input)) match {
@@ -144,25 +144,24 @@ class Parser extends TokenParser[LogicalPlan] {
   private val WITH = Keyword("WITH")
 
   private def query: Parser[LogicalPlan] =
-    ctes.? ~ queryNoWith ^^ {
-      case cs ~ q =>
-        cs map (_.foldLeft(q) {
-          case (query, (name, cte)) => With(query, name, cte)
-        }) getOrElse q
+    cteDeclaration.? ~ queryNoWith ^^ {
+      case c ~ q => (c fold q) { _ apply q }
     }
 
-  private def ctes: Parser[Seq[(Name, LogicalPlan)]] =
-    WITH ~> rep1sep(namedQuery, ",")
+  private def cteDeclaration: Parser[LogicalPlan => LogicalPlan] =
+    WITH ~> rep1sep(namedQuery, ",") ^^ { _ reduce (_ andThen _) }
 
-  private def namedQuery: Parser[(Name, LogicalPlan)] =
+  private def namedQuery: Parser[LogicalPlan => LogicalPlan] =
     identifier ~ (AS.? ~ "(" ~> queryNoWith <~ ")") ^^ {
-      case name ~ plan => name -> plan
+      case n ~ q => With(_: LogicalPlan, n, q)
     }
 
   def identifier: Parser[Name] = quotedIdent | unquotedIdent
 
   private def queryNoWith: Parser[LogicalPlan] =
-    queryTerm ~ queryOrganization ^^ { case p ~ f => f(p) }
+    queryTerm ~ orderBy.? ~ limit.? ^^ {
+      case q ~ o ~ n => Seq(identity[LogicalPlan] _) ++ o ++ n reduce { _ andThen _ } apply q
+    }
 
   private def queryTerm: Parser[LogicalPlan] =
     queryPrimary * (
@@ -183,12 +182,10 @@ class Parser extends TokenParser[LogicalPlan] {
     ~ (GROUP ~ BY ~> rep1sep(expression, ",")).?
     ~ (HAVING ~> predicate).? ^^ {
       case d ~ ps ~ rs ~ f ~ gs ~ h =>
-        val base = rs getOrElse SingleRowRelation
-        val withFilter = f map base.filter getOrElse base
-        val withProject = gs map (withFilter.groupBy(_).agg(ps)) getOrElse (withFilter select ps)
-        val withDistinct = d.map(_ => withProject.distinct) getOrElse withProject
-        val withHaving = h map withDistinct.filter getOrElse withDistinct
-        withHaving
+        val withWhere = rs getOrElse SingleRowRelation filterOption f.toSeq
+        val withSelect = gs map (withWhere.groupBy(_).agg(ps)) getOrElse (withWhere select ps)
+        val withDistinct = (d fold withSelect) { _ => withSelect.distinct }
+        withDistinct filterOption h.toSeq
     }
   )
 
@@ -266,8 +263,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def function: Parser[Expression] =
     identifier ~ ("(" ~> functionArgs <~ ")") ^^ {
-      case functionName ~ ((distinct, args)) =>
-        UnresolvedFunction(functionName, args, distinct)
+      case n ~ ((d, as)) => UnresolvedFunction(n, as, d)
     }
 
   private def functionArgs: Parser[(Boolean, Seq[Expression])] = (
@@ -277,7 +273,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def attribute: Parser[UnresolvedAttribute] =
     (identifier <~ ".").? ~ identifier ^^ {
-      case qualifier ~ name => UnresolvedAttribute(name, qualifier)
+      case q ~ n => UnresolvedAttribute(n, q)
     }
 
   private def cast: Parser[Cast] =
@@ -298,7 +294,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def condition: Parser[If] =
     IF ~ "(" ~> predicate ~ ("," ~> expression) ~ ("," ~> expression) <~ ")" ^^ {
-      case condition ~ consequence ~ alternative => If(condition, consequence, alternative)
+      case k ~ c ~ a => If(k, c, a)
     }
 
   private def predicate: Parser[Expression] =
@@ -361,7 +357,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def structField: Parser[StructField] =
     identifier ~ (":" ~> dataType) ^^ {
-      case i ~ t => StructField(i, t.?)
+      case i ~ t => i -> t.?
     }
 
   private def star: Parser[Star] =
@@ -374,12 +370,11 @@ class Parser extends TokenParser[LogicalPlan] {
     joinedRelation | relationFactor
 
   private def joinedRelation: Parser[LogicalPlan] =
-    relationFactor ~ ((joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.?).+ ^^ {
-      case r ~ joins =>
-        (joins foldLeft r) {
-          case (lhs, t ~ rhs ~ c) =>
-            Join(lhs, rhs, t getOrElse Inner, c)
-        }
+    relationFactor ~ joinRhs.+ ^^ { case r ~ js => js reduce (_ andThen _) apply r }
+
+  private def joinRhs: Parser[LogicalPlan => Join] =
+    (joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.? ^^ {
+      case t ~ f ~ c => (_: LogicalPlan) join (f, t getOrElse Inner) onOption c.toSeq
     }
 
   private def relationFactor: Parser[LogicalPlan] = (
@@ -403,17 +398,11 @@ class Parser extends TokenParser[LogicalPlan] {
   private def joinCondition: Parser[Expression] =
     ON ~> predicate
 
-  private def queryOrganization: Parser[LogicalPlan => LogicalPlan] = (
-    (ORDER ~ BY ~> sortOrders).?
-    ~ (LIMIT ~> expression).? ^^ {
-      case o ~ n =>
-        (plan: LogicalPlan) => {
-          val ordered = o map plan.orderBy getOrElse plan
-          val limited = n map ordered.limit getOrElse ordered
-          limited
-        }
-    }
-  )
+  private def orderBy: Parser[LogicalPlan => LogicalPlan] =
+    ORDER ~ BY ~> sortOrders ^^ { os => (_: LogicalPlan) orderByOption os }
+
+  private def limit: Parser[LogicalPlan => LogicalPlan] =
+    LIMIT ~> expression ^^ { n => (_: LogicalPlan) limit n }
 
   private def sortOrders: Parser[Seq[SortOrder]] =
     rep1sep(sortOrder, ",")
@@ -422,13 +411,7 @@ class Parser extends TokenParser[LogicalPlan] {
     expression ~ direction.? ~ nullsFirst.? ^^ {
       case e ~ d ~ n =>
         val direction = d getOrElse Ascending
-        val nullsLarger = n map (direction -> _) forall {
-          case (Ascending, nullsFirst @ true)   => false
-          case (Ascending, nullsFirst @ false)  => true
-          case (Descending, nullsFirst @ true)  => true
-          case (Descending, nullsFirst @ false) => false
-        }
-
+        val nullsLarger = n forall ((direction == Ascending) ^ _)
         SortOrder(e, direction, nullsLarger)
     }
 

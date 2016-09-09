@@ -303,9 +303,9 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
  * }}}
  * is translated into a query plan like this:
  * {{{
- *   With name=s0
+ *   With name=s1
  *    | +- Relation x
- *    +- With name=s1
+ *    +- With name=s0
  *        | +- Relation y
  *        +- Join
  *            +- Relation s0
@@ -353,6 +353,8 @@ object LogicalPlan {
     def distinct: Distinct = Distinct(plan)
 
     def subquery(name: Name): Subquery = Subquery(plan, name)
+
+    def join(that: LogicalPlan, joinType: JoinType): Join = Join(plan, that, joinType, None)
 
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
 
