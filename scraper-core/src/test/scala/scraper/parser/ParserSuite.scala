@@ -45,7 +45,13 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("1", 1)
 
+  testExpressionParsing(Int.MaxValue.toString, Int.MaxValue)
+
+  testExpressionParsing(Int.MinValue.toString, Int.MinValue)
+
   testExpressionParsing((Int.MaxValue.toLong + 1).toString, Int.MaxValue.toLong + 1)
+
+  testExpressionParsing((Int.MinValue.toLong - 1).toString, Int.MinValue.toLong - 1)
 
   testExpressionParsing("\"1\"", "1")
 

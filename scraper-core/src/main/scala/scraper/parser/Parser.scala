@@ -202,11 +202,8 @@ class Parser extends TokenParser[LogicalPlan] {
     termExpression ||| predicate
 
   private def termExpression: Parser[Expression] = (
-    "-" ~> productExpression ^^ Negate
-    | productExpression * (
-      "+" ^^^ Plus
-      | "-" ^^^ Minus
-    )
+    productExpression * ("+" ^^^ Plus | "-" ^^^ Minus)
+    | "-" ~> productExpression ^^ Negate
   )
 
   private def productExpression: Parser[Expression] =
