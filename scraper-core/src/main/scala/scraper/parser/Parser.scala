@@ -17,7 +17,11 @@ import scraper.plans.logical._
 import scraper.types._
 
 trait Tokens extends StdTokens {
-  case class FloatLit(chars: String) extends Token {
+  case class IntegralLit(chars: String) extends Token {
+    override def toString: String = chars
+  }
+
+  case class FractionalLit(chars: String) extends Token {
     override def toString: String = chars
   }
 
@@ -33,7 +37,7 @@ trait Tokens extends StdTokens {
 abstract class TokenParser[T] extends StdTokenParsers {
   override type Tokens = Lexical
 
-  import lexical.{FloatLit, QuotedIdentifier, UnquotedIdentifier}
+  import lexical.{IntegralLit, FractionalLit, QuotedIdentifier, UnquotedIdentifier}
 
   override lazy val lexical: Tokens = new Lexical(keywords.toSet)
 
@@ -44,8 +48,11 @@ abstract class TokenParser[T] extends StdTokenParsers {
     }
   }
 
-  def floatLit: Parser[String] =
-    elem("float", _.isInstanceOf[FloatLit]) ^^ (_.chars)
+  def integralLit: Parser[String] =
+    elem("integral", _.isInstanceOf[IntegralLit]) ^^ (_.chars)
+
+  def fractionalLit: Parser[String] =
+    elem("fractional", _.isInstanceOf[FractionalLit]) ^^ (_.chars)
 
   def quotedIdent: Parser[Name] =
     elem("quoted identifier", _.isInstanceOf[QuotedIdentifier]) ^^ {
@@ -238,7 +245,7 @@ class Parser extends TokenParser[LogicalPlan] {
     }
 
   private def integral: Parser[String] =
-    sign.? ~ numericLit ^^ {
+    sign.? ~ integralLit ^^ {
       case s ~ n => s.mkString + n
     }
 
@@ -450,8 +457,8 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
     // Integral and fractional numeric literals
     | digit.+ ~ ('.' ~> digit.*).? ^^ {
-      case i ~ None    => NumericLit(i.mkString)
-      case i ~ Some(f) => FloatLit(s"${i.mkString}.${f.mkString}")
+      case i ~ None    => IntegralLit(i.mkString)
+      case i ~ Some(f) => FractionalLit(s"${i.mkString}.${f.mkString}")
     }
 
     // Single-quoted string literals
