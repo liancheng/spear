@@ -33,9 +33,8 @@ package object expressions {
   implicit def `Name->UnresolvedAttribute`(name: Name): UnresolvedAttribute =
     UnresolvedAttribute(name)
 
-  implicit class StringToUnresolvedAttribute(sc: StringContext) {
-    def $(args: Any*): UnresolvedAttribute =
-      (new Parser).parseAttribute(sc.s(args: _*))
+  implicit class ParsedUnresolvedAttribute(sc: StringContext) {
+    def $(args: Any*): UnresolvedAttribute = (new Parser).parseAttribute(sc.s(args: _*))
   }
 
   private[scraper] implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {
