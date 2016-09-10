@@ -12,6 +12,7 @@ import scraper.expressions.AutoAlias.named
 import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
+import scraper.expressions.typecheck.Foldable
 import scraper.plans.QueryPlan
 import scraper.reflection.fieldSpecFor
 import scraper.trees.TreeNode
@@ -128,17 +129,10 @@ case class Limit(child: LogicalPlan, count: Expression) extends UnaryLogicalPlan
   override lazy val output: Seq[Attribute] = child.output
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    n <- count.strictlyTyped map {
-      case e if e.isFoldable && e.dataType == IntType =>
-        Literal(e.evaluated, IntType)
-
-      case e if e.isFoldable && (e.dataType isCastableTo IntType) =>
-        Literal(e.evaluated, IntType)
-
-      case _ =>
-        throw new TypeCheckException("Limit must be a constant integer")
-    }
-  } yield if (n same count) this else copy(count = n)
+    n :: Nil <- (count sameTypeAs IntType andAlso Foldable).enforced orElse Failure(
+      new TypeCheckException("Limit must be a constant integer")
+    )
+  } yield copy(count = n)
 }
 
 trait SetOperator extends BinaryLogicalPlan {
