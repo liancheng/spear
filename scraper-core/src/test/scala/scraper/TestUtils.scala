@@ -12,7 +12,7 @@ import scraper.types.DataType
 import scraper.utils._
 
 trait TestUtils { this: FunSuite =>
-  private[scraper] def assertSideBySide(actual: String, expected: String): Unit = {
+  def assertSideBySide(actual: String, expected: String): Unit = {
     if (expected != actual) {
       fail(sideBySide(
         s"""Actual
@@ -28,10 +28,7 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  private[scraper] def assertSideBySide[T <: TreeNode[T]](
-    actual: TreeNode[T],
-    expected: TreeNode[T]
-  ): Unit = {
+  def assertSideBySide[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
     if (expected != actual) {
       fail(sideBySide(
         s"""Actual
@@ -45,23 +42,18 @@ trait TestUtils { this: FunSuite =>
         withHeader = true
       ))
     }
-  }
 
-  private[scraper] def checkTree[T <: TreeNode[T]](
-    actual: TreeNode[T],
-    expected: TreeNode[T]
-  ): Unit = {
+  def checkTree[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
     assertSideBySide(actual, expected)
-  }
 
-  private def normalizeExpressionId[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
+  private def normalizeExpressionID[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
     val allIdExpressions = plan.collectFromAllExpressions {
       case e @ (_: Alias | _: AttributeRef | _: GeneratedNamedExpression) => e
     }.distinct
 
     val rewrite = allIdExpressions.zipWithIndex.toMap
 
-    plan.transformAllExpressionsDown {
+    plan transformAllExpressionsDown {
       case e: Alias              => e withID ExpressionID(rewrite(e))
       case e: AttributeRef       => e withID ExpressionID(rewrite(e))
       case e: GeneratedAlias     => e withID ExpressionID(rewrite(e))
@@ -70,7 +62,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
-    checkTree(normalizeExpressionId(expected), normalizeExpressionId(actual))
+    checkTree(normalizeExpressionID(expected), normalizeExpressionID(actual))
 
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)
@@ -155,7 +147,7 @@ trait TestUtils { this: FunSuite =>
     }
   }
 
-  def checkWellTyped(plan: LogicalPlan): Unit = {
+  def checkWellTyped(plan: LogicalPlan): Unit =
     if (!plan.isWellTyped) {
       fail(
         s"""Logical plan not well-typed:
@@ -163,7 +155,6 @@ trait TestUtils { this: FunSuite =>
            |""".stripMargin
       )
     }
-  }
 
   def checkStrictlyTyped(plan: LogicalPlan): Unit = {
     checkWellTyped(plan)
