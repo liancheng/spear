@@ -46,8 +46,6 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
   override lazy val isFoldable: Boolean = false
 
   override def toAttribute: GeneratedAttribute
-
-  def withID(id: ExpressionID): GeneratedAlias
 }
 
 object GeneratedAlias {

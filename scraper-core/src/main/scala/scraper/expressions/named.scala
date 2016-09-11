@@ -21,10 +21,14 @@ trait NamedExpression extends Expression {
   def toAttribute: Attribute
 
   def attr: Attribute = toAttribute
+
+  def withID(id: ExpressionID): NamedExpression
 }
 
 trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
   override def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
+
+  override def withID(id: ExpressionID): UnresolvedNamedExpression = this
 }
 
 object NamedExpression {
@@ -89,7 +93,7 @@ case class Alias(
   override def sql: Try[String] =
     child.sql map (childSQL => s"$childSQL AS ${name.toString}")
 
-  def withID(id: ExpressionID): Alias = copy(expressionID = id)
+  override def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
 
 object Alias {
@@ -159,7 +163,7 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   override protected def template: String =
     (qualifier.map(_.toString).toSeq :+ name.toString) mkString "."
 
-  override def withID(id: ExpressionID): Attribute = this
+  override def withID(id: ExpressionID): UnresolvedAttribute = this
 
   def qualifiedBy(qualifier: Option[Name]): UnresolvedAttribute = copy(qualifier = qualifier)
 
@@ -255,6 +259,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 
   override def expressionID: ExpressionID = throw new UnsupportedOperationException
+
+  override def withID(id: ExpressionID): NamedExpression = this
 
   override def evaluate(input: Row): Any = input(ordinal)
 

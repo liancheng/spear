@@ -46,23 +46,22 @@ trait TestUtils { this: FunSuite =>
   def checkTree[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
     assertSideBySide(actual, expected)
 
-  private def normalizeExpressionID[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    val allIdExpressions = plan.collectFromAllExpressions {
-      case e @ (_: Alias | _: AttributeRef | _: GeneratedNamedExpression) => e
+  private def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
+    val namedExpressions = plan.collectFromAllExpressions {
+      case e: NamedExpression => e
     }.distinct
 
-    val rewrite = allIdExpressions.zipWithIndex.toMap
+    val normalizedIDOf = namedExpressions.zipWithIndex.map {
+      case (e, index) => e -> ExpressionID(index)
+    }.toMap
 
     plan transformAllExpressionsDown {
-      case e: Alias              => e withID ExpressionID(rewrite(e))
-      case e: AttributeRef       => e withID ExpressionID(rewrite(e))
-      case e: GeneratedAlias     => e withID ExpressionID(rewrite(e))
-      case e: GeneratedAttribute => e withID ExpressionID(rewrite(e))
+      case e: NamedExpression => e withID normalizedIDOf(e)
     }
   }
 
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
-    checkTree(normalizeExpressionID(expected), normalizeExpressionID(actual))
+    checkTree(normalizeExpressionIDs(expected), normalizeExpressionIDs(actual))
 
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)
