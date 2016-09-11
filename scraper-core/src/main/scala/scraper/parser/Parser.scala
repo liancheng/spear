@@ -206,7 +206,7 @@ class Parser extends TokenParser[LogicalPlan] {
     }
 
   private def expression: Parser[Expression] =
-    termExpression ||| predicate
+    predicate | termExpression
 
   private def termExpression: Parser[Expression] = (
     productExpression * ("+" ^^^ Plus | "-" ^^^ Minus)
@@ -225,7 +225,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def primaryExpression: Parser[Expression] = (
     literal
-    | function
+    | functionCall
     | attribute
     | cast
     | caseWhen
@@ -260,24 +260,24 @@ class Parser extends TokenParser[LogicalPlan] {
   private def stringLiteral: Parser[Literal] =
     stringLit.+ ^^ (_.mkString: Literal)
 
-  private def booleanLiteral: Parser[Literal] = (
-    TRUE ^^^ True
-    | FALSE ^^^ False
-  )
+  private def booleanLiteral: Parser[Literal] =
+    TRUE ^^^ True | FALSE ^^^ False
 
-  private def function: Parser[Expression] =
-    identifier ~ ("(" ~> functionArgs <~ ")") ^^ {
-      case n ~ ((d, as)) => UnresolvedFunction(n, as, d)
+  private def functionCall: Parser[Expression] =
+    identifier ~ ("(" ~> functionArgs <~ ")") ^^ { case n ~ f => f apply n }
+
+  private def functionArgs: Parser[Name => Expression] = (
+    star ^^ { s => function(_: Name, s) }
+    | DISTINCT.? ~ repsep(expression, ",") ^^ {
+      case Some(_) ~ es => distinctFunction(_: Name, es: _*)
+      case None ~ es    => function(_: Name, es: _*)
     }
-
-  private def functionArgs: Parser[(Boolean, Seq[Expression])] = (
-    star ^^ (s => false -> (s :: Nil))
-    | DISTINCT.? ~ repsep(expression, ",") ^^ { case d ~ es => d.isDefined -> es }
   )
 
   private def attribute: Parser[UnresolvedAttribute] =
     (identifier <~ ".").? ~ identifier ^^ {
-      case q ~ n => UnresolvedAttribute(n, q)
+      case Some(q) ~ n => n of q
+      case None ~ n    => n
     }
 
   private def cast: Parser[Cast] =
@@ -302,7 +302,7 @@ class Parser extends TokenParser[LogicalPlan] {
     }
 
   private def predicate: Parser[Expression] =
-    negation ||| disjunction
+    negation | disjunction
 
   private def negation: Parser[Expression] =
     NOT ~> predicate ^^ Not
@@ -445,9 +445,8 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
   override def token: Parser[Token] = (
     // Identifiers and keywords
-    digit.* ~ identChar ~ (identChar | digit).* ^^ {
-      case ds ~ c ~ cs =>
-        processIdent((ds ::: (c :: cs)).mkString)
+    identBegin ~ identBody.* ^^ {
+      case c ~ cs => processIdent((c :: cs).mkString)
     }
 
     // Back-quoted identifiers
@@ -457,8 +456,8 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
 
     // Integral and fractional numeric literals
     | digit.+ ~ ('.' ~> digit.*).? ^^ {
-      case i ~ None    => IntegralLit(i.mkString)
       case i ~ Some(f) => FractionalLit(s"${i.mkString}.${f.mkString}")
+      case i ~ None    => IntegralLit(i.mkString)
     }
 
     // Single-quoted string literals
@@ -507,4 +506,8 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     val lowerCased = name.toLowerCase
     if (reserved contains lowerCased) Keyword(lowerCased) else UnquotedIdentifier(name)
   }
+
+  private def identBegin: Parser[Char] = letter | '_'
+
+  private def identBody: Parser[Char] = letter | digit | '_'
 }
