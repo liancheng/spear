@@ -3,6 +3,7 @@ package scraper.expressions.dsl
 import scraper.Name
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.windows.{WindowFunction, WindowSpec}
 import scraper.types.DataType
 
 trait ExpressionDSL
@@ -27,4 +28,6 @@ trait ExpressionDSL
   def in(first: Expression, rest: Expression*): In = this in (first +: rest)
 
   def rlike(pattern: Expression): RLike = RLike(this, pattern)
+
+  def over(window: WindowSpec): WindowFunction = WindowFunction(this, window)
 }

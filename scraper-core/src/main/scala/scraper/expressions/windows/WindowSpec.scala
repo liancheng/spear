@@ -82,7 +82,7 @@ case class WindowSpec(
     val (partitions, orders) = childList.splitAt(partitionSpec.length)
     val partitionBy = if (partitions.isEmpty) "" else partitions.mkString("PARTITION BY ", ", ", "")
     val orderBy = if (orders.isEmpty) "" else orders.mkString("ORDER BY ", ", ", "")
-    Seq(partitionBy, orderBy, windowFrame.toString) filter (_.nonEmpty) mkString " "
+    Seq(partitionBy, orderBy, windowFrame.toString) filter (_.nonEmpty) mkString ("(", " ", ")")
   }
 }
 

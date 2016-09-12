@@ -10,12 +10,12 @@ import scraper.utils._
 class WindowSpecSuite extends LoggingFunSuite {
   test("full window spec") {
     val expected = Success(
-      """PARTITION BY a, b
+      """(PARTITION BY a, b
         |ORDER BY c ASC NULLS FIRST
         |ROWS BETWEEN
         |UNBOUNDED PRECEDING
         |AND
-        |UNBOUNDED FOLLOWING
+        |UNBOUNDED FOLLOWING)
         |""".oneLine.trim
     )
 
@@ -30,11 +30,11 @@ class WindowSpecSuite extends LoggingFunSuite {
 
   test("window spec without partition spec") {
     val expected = Success(
-      """ORDER BY c ASC NULLS LAST
+      """(ORDER BY c ASC NULLS LAST
         |ROWS BETWEEN
         |CURRENT ROW
         |AND
-        |10 FOLLOWING
+        |10 FOLLOWING)
         |""".oneLine.trim
     )
 
@@ -48,11 +48,11 @@ class WindowSpecSuite extends LoggingFunSuite {
 
   test("window spec without order spec") {
     val expected = Success(
-      """PARTITION BY a, b
+      """(PARTITION BY a, b
         |ROWS BETWEEN
         |CURRENT ROW
         |AND
-        |10 FOLLOWING
+        |10 FOLLOWING)
       """.oneLine
     )
 
@@ -66,10 +66,10 @@ class WindowSpecSuite extends LoggingFunSuite {
 
   test("window spec without partition spec or order spec") {
     val expected = Success(
-      """ROWS BETWEEN
+      """(ROWS BETWEEN
         |CURRENT ROW
         |AND
-        |10 FOLLOWING
+        |10 FOLLOWING)
         |""".oneLine.trim
     )
 
