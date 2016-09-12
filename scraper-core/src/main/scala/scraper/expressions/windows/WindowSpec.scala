@@ -1,6 +1,7 @@
 package scraper.expressions.windows
 
 import scraper.expressions.{Expression, SortOrder, UnevaluableExpression}
+import scraper.expressions.windows.FrameBoundary.{EndingOffset, StartingOffset}
 
 sealed trait WindowFrameType
 
@@ -12,69 +13,43 @@ case object RangeFrame extends WindowFrameType {
   override def toString: String = "RANGE"
 }
 
-sealed trait FrameBoundary extends Ordered[FrameBoundary]
+sealed trait FrameBoundary
 
-case object CurrentRow extends FrameBoundary {
-  override def compare(that: FrameBoundary): Int = that match {
-    case UnboundedPreceding => 1
-    case UnboundedFollowing => -1
-    case CurrentRow         => 0
-    case Preceding(n)       => 0L compareTo n
-    case Following(n)       => 0L compareTo -n
-  }
+object FrameBoundary {
+  sealed trait StartingOffset
 
+  sealed trait EndingOffset
+}
+
+case object CurrentRow extends FrameBoundary with StartingOffset with EndingOffset {
   override def toString: String = "CURRENT ROW"
 }
 
-case object UnboundedPreceding extends FrameBoundary {
-  override def compare(that: FrameBoundary): Int = that match {
-    case UnboundedPreceding => 0
-    case _                  => -1
-  }
-
+case object UnboundedPreceding extends FrameBoundary with StartingOffset {
   override def toString: String = "UNBOUNDED PRECEDING"
 }
 
-case object UnboundedFollowing extends FrameBoundary {
-  override def compare(that: FrameBoundary): Int = that match {
-    case UnboundedFollowing => 0
-    case _                  => 1
-  }
-
+case object UnboundedFollowing extends FrameBoundary with EndingOffset {
   override def toString: String = "UNBOUNDED FOLLOWING"
 }
 
-case class Preceding(n: Long) extends FrameBoundary {
-  override def compare(o: FrameBoundary): Int = o match {
-    case UnboundedPreceding => 1
-    case UnboundedFollowing => -1
-    case CurrentRow         => -n compare 0L
-    case Preceding(m)       => -n compare -m
-    case Following(m)       => -n compare m
-  }
+case class Preceding(n: Long) extends FrameBoundary with StartingOffset {
+  require(n >= 0, "Frame starting offset must not be negative")
 
   override def toString: String = s"$n PRECEDING"
 }
 
-case class Following(n: Long) extends FrameBoundary {
-  override def compare(o: FrameBoundary): Int = o match {
-    case UnboundedPreceding => 1
-    case UnboundedFollowing => -1
-    case CurrentRow         => n compare 0L
-    case Preceding(m)       => n compare -m
-    case Following(m)       => n compare m
-  }
+case class Following(n: Long) extends FrameBoundary with EndingOffset {
+  require(n >= 0, "Frame ending offset must not be negative")
 
   override def toString: String = s"$n FOLLOWING"
 }
 
 case class WindowFrame(
   frameType: WindowFrameType = RowsFrame,
-  begin: FrameBoundary = UnboundedPreceding,
-  end: FrameBoundary = UnboundedFollowing
+  begin: StartingOffset = UnboundedPreceding,
+  end: EndingOffset = UnboundedFollowing
 ) {
-  require(begin <= end, s"The lower bound of window frame $this is greater than its upper bound.")
-
   override def toString: String = s"$frameType BETWEEN $begin AND $end"
 }
 
@@ -97,10 +72,10 @@ case class WindowSpec(
 
   def orderBy(first: SortOrder, rest: SortOrder*): WindowSpec = orderBy(first +: rest)
 
-  def rowsBetween(begin: FrameBoundary, end: FrameBoundary): WindowSpec =
+  def rowsBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
     copy(windowFrame = WindowFrame(RowsFrame, begin, end))
 
-  def rangeBetween(begin: FrameBoundary, end: FrameBoundary): WindowSpec =
+  def rangeBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
     copy(windowFrame = WindowFrame(RangeFrame, begin, end))
 
   override protected def template(childList: Seq[String]): String = {
@@ -122,9 +97,9 @@ object Window {
 
   def orderBy(first: SortOrder, rest: SortOrder*): WindowSpec = orderBy(first +: rest)
 
-  def rowsBetween(begin: FrameBoundary, end: FrameBoundary): WindowSpec =
+  def rowsBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
     Default.rowsBetween(begin, end)
 
-  def rangeBetween(begin: FrameBoundary, end: FrameBoundary): WindowSpec =
+  def rangeBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
     Default.rangeBetween(begin, end)
 }

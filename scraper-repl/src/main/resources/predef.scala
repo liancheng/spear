@@ -4,6 +4,7 @@ import scraper.config.Settings
 import scraper.expressions._
 import scraper.expressions.dsl._
 import scraper.expressions.functions._
+import scraper.expressions.windows._
 import scraper.local.LocalContext
 import scraper.repl.Main.%
 import scraper.types._
