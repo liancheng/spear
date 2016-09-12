@@ -112,7 +112,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def explain(extended: Boolean = false, out: PrintStream = System.out): Unit =
     out.println(explanation(extended))
 
-  def verboseExplain(out: PrintStream = System.out): Unit = explain(extended = true, out)
+  def explainExtended(out: PrintStream = System.out): Unit = explain(extended = true, out)
 
   def show(rowCount: Int = 20, truncate: Boolean = true, out: PrintStream = System.out): Unit =
     show(Some(rowCount), truncate, out)
