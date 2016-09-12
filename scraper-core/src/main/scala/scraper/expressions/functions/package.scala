@@ -1,11 +1,8 @@
 package scraper.expressions
 
 import scraper.expressions.aggregates._
-import scraper.parser.Parser
 
 package object functions {
-  def col(name: String): UnresolvedAttribute = (new Parser).parseAttribute(name)
-
   def lit(value: Any): Literal = Literal(value)
 
   def not(predicate: Expression): Not = Not(predicate)
@@ -24,7 +21,7 @@ package object functions {
 
   def count(expression: Expression): Count = Count(expression)
 
-  def count(): Count = Count(Star(None))
+  def count(): Count = Count(*)
 
   def first(expression: Expression, ignoresNull: Boolean = true): First =
     First(expression, ignoresNull)

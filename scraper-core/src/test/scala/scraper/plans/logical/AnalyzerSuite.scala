@@ -51,12 +51,12 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   testAutoAliasing(NonSQL, "?column?")
 
   testFunctionResolution(
-    function('count, Star(None)),
+    function('count, *),
     Count(1)
   )
 
   testFunctionResolution(
-    function('COUNT, Star(None)),
+    function('COUNT, *),
     Count(1)
   )
 
@@ -71,17 +71,17 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   )
 
   interceptFunctionResolution[AnalysisException](
-    distinctFunction('count, Star(None)),
+    distinctFunction('count, *),
     "DISTINCT cannot be used together with star"
   )
 
   interceptFunctionResolution[AnalysisException](
-    distinctFunction('foo, Star(None)),
+    distinctFunction('foo, *),
     "DISTINCT cannot be used together with star"
   )
 
   interceptFunctionResolution[AnalysisException](
-    function('foo, Star(None)),
+    function('foo, *),
     "Only function \"count\" may have star as argument"
   )
 
@@ -132,7 +132,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
 
   test("expand stars") {
     checkAnalyzedPlan(
-      relation0 select '*,
+      relation0 select *,
       relation0 select (a, b)
     )
   }
@@ -334,7 +334,7 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   test("CTE") {
     checkAnalyzedPlan(
       let('s, relation0 subquery 't select 'a) {
-        table('s) select '*
+        table('s) select *
       },
       relation0 subquery 't select (a of 't) subquery 's select (a of 's)
     )

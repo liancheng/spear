@@ -161,7 +161,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0",
-    table('t0) select '*
+    table('t0) select *
   )
 
   testQueryParsing(
@@ -176,37 +176,37 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a",
-    table('t0) select '* orderBy 'a.asc
+    table('t0) select * orderBy 'a.asc
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a ASC",
-    table('t0) select '* orderBy 'a.asc
+    table('t0) select * orderBy 'a.asc
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a ASC NULLS FIRST",
-    table('t0) select '* orderBy 'a.asc.nullsFirst
+    table('t0) select * orderBy 'a.asc.nullsFirst
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a ASC NULLS LAST",
-    table('t0) select '* orderBy 'a.asc.nullsLast
+    table('t0) select * orderBy 'a.asc.nullsLast
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a DESC",
-    table('t0) select '* orderBy 'a.desc
+    table('t0) select * orderBy 'a.desc
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a DESC NULLS FIRST",
-    table('t0) select '* orderBy 'a.desc.nullsFirst
+    table('t0) select * orderBy 'a.desc.nullsFirst
   )
 
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a DESC NULLS LAST",
-    table('t0) select '* orderBy 'a.desc.nullsLast
+    table('t0) select * orderBy 'a.desc.nullsLast
   )
 
   testQueryParsing(
@@ -216,57 +216,57 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 LIMIT 1",
-    table('t0) select '* limit 1
+    table('t0) select * limit 1
   )
 
   testQueryParsing(
     "SELECT * FROM t0, t1",
-    table('t0) join table("t1") select '*
+    table('t0) join table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 JOIN t1",
-    table('t0) join table("t1") select '*
+    table('t0) join table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 INNER JOIN t1",
-    table('t0) join table("t1") select '*
+    table('t0) join table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 LEFT SEMI JOIN t1",
-    table('t0) leftSemiJoin table("t1") select '*
+    table('t0) leftSemiJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 LEFT JOIN t1",
-    table('t0) leftJoin table("t1") select '*
+    table('t0) leftJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 LEFT OUTER JOIN t1",
-    table('t0) leftJoin table("t1") select '*
+    table('t0) leftJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 RIGHT OUTER JOIN t1",
-    table('t0) rightJoin table("t1") select '*
+    table('t0) rightJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 FULL JOIN t1",
-    table('t0) outerJoin table("t1") select '*
+    table('t0) outerJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 FULL OUTER JOIN t1",
-    table('t0) outerJoin table("t1") select '*
+    table('t0) outerJoin table("t1") select *
   )
 
   testQueryParsing(
     "SELECT * FROM t0 INNER JOIN t1 ON t0.a = t1.a",
-    table('t0) join table("t1") on $"t0.a" === $"t1.a" select '*
+    table('t0) join table("t1") on $"t0.a" === $"t1.a" select *
   )
 
   testQueryParsing(
@@ -276,12 +276,12 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 INTERSECT SELECT * FROM t1",
-    table('t0) select '* intersect (table('t1) select '*)
+    table('t0) select * intersect (table('t1) select *)
   )
 
   testQueryParsing(
     "SELECT * FROM t0 EXCEPT SELECT * FROM t1",
-    table('t0) select '* except (table('t1) select '*)
+    table('t0) select * except (table('t1) select *)
   )
 
   testQueryParsing(
@@ -317,7 +317,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 a JOIN t1 b",
-    table('t0) subquery 'a join (table("t1") subquery 'b) select '*
+    table('t0) subquery 'a join (table("t1") subquery 'b) select *
   )
 
   testQueryParsing(
@@ -327,13 +327,13 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT t.a FROM (SELECT * FROM t0) t",
-    table('t0) select '* subquery 't select $"t.a"
+    table('t0) select * subquery 't select $"t.a"
   )
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1) SELECT * FROM c0",
     let('c0, values(1)) {
-      table('c0) select '*
+      table('c0) select *
     }
   )
 
@@ -341,7 +341,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     "WITH c0 AS (SELECT 1), c1 AS (SELECT 2) SELECT * FROM c0 UNION ALL SELECT * FROM c1",
     let('c1, values(2)) {
       let('c0, values(1)) {
-        table('c0) select '* union (table('c1) select '*)
+        table('c0) select * union (table('c1) select *)
       }
     }
   )

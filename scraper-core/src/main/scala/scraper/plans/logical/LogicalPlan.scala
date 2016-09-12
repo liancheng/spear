@@ -316,11 +316,7 @@ case class With(
 
 object LogicalPlan {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
-    def select(projectList: Seq[Expression]): Project =
-      Project(plan, projectList map {
-        case UnresolvedAttribute(name, qualifier) if name.casePreserving == "*" => Star(qualifier)
-        case e => named(e)
-      })
+    def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 

@@ -7,6 +7,10 @@ import scraper.parser.Parser
 import scraper.types._
 
 package object expressions {
+  object *
+
+  implicit def `*->Star`(s: *.type): Star = Star(None)
+
   implicit def `Boolean->Literal`(value: Boolean): Literal = Literal(value, BooleanType)
 
   implicit def `Byte->Literal`(value: Byte): Literal = Literal(value, ByteType)
@@ -34,7 +38,7 @@ package object expressions {
     UnresolvedAttribute(name)
 
   implicit class ParsedUnresolvedAttribute(sc: StringContext) {
-    def $(args: Any*): UnresolvedAttribute = (new Parser).parseAttribute(sc.s(args: _*))
+    def $(args: Any*): NamedExpression = new Parser parseAttribute sc.s(args: _*)
   }
 
   private[scraper] implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {
