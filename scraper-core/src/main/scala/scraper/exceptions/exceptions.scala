@@ -167,7 +167,7 @@ class IllegalAggregationException(message: String, cause: Throwable)
   ) = this({
     val ks = keys map (_.debugString) mkString ("[", ", ", "]")
     s"""$part ${expression.debugString} references attribute ${attribute.debugString},
-       |which is neither an aggregate function nor a grouping key among $ks
+       |which is neither referenced by an aggregate function nor a grouping key among $ks
      """.oneLine
   }, cause)
 
