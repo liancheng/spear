@@ -72,7 +72,7 @@ trait AnalysisRule extends Rule[LogicalPlan] {
  * {{{
  *   SELECT * FROM (SELECT * FROM t0) c0
  *   UNION ALL
- *   SELECT * FROM (SELECT * FROM t1)
+ *   SELECT * FROM (SELECT * FROM t1) c1
  * }}}
  */
 class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule {
