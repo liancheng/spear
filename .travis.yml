@@ -8,7 +8,6 @@ matrix:
     - jdk: openjdk7
       scala: 2.11.7
 script:
-  - sbt coverage test
-  - sbt doc
+  - sbt coverage test doc
 after_script:
   - bash <(curl -s https://codecov.io/bash)
