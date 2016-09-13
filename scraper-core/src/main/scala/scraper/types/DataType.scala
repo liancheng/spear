@@ -84,7 +84,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
     override def nodeCaption: String =
-      s"${field.name}: ${fieldSpecString(field.dataType, field.nullable)}"
+      s"${field.name}: ${fieldSpecString(field.dataType, field.isNullable)}"
   }
 
   case class StructTypeNode(dataType: StructType) extends DataTypeNode {

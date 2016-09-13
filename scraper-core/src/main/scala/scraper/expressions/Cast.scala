@@ -206,7 +206,7 @@ object Cast {
     x.fields.length == y.fields.length && (x.fields zip y.fields).forall {
       case (from, to) =>
         (from.name == to.name) &&
-          (!from.nullable || to.nullable) &&
+          (!from.isNullable || to.isNullable) &&
           fn(from.dataType, to.dataType)
     }
   }

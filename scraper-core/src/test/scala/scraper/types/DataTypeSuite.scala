@@ -70,14 +70,14 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("StructType instantiation") {
     checkTree(
-      StructType(StructField('f1, IntType, nullable = false) :: Nil),
+      StructType(StructField('f1, IntType, isNullable = false) :: Nil),
       StructType('f1 -> IntType.!)
     )
 
     checkTree(
       StructType(Seq(
-        StructField('f1, IntType, nullable = true),
-        StructField('f2, DoubleType, nullable = false)
+        StructField('f1, IntType, isNullable = true),
+        StructField('f2, DoubleType, isNullable = false)
       )),
       StructType(
         'f1 -> IntType,

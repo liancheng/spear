@@ -58,7 +58,7 @@ object MapType extends AbstractDataType {
   }
 }
 
-case class StructField(name: Name, dataType: DataType, nullable: Boolean)
+case class StructField(name: Name, dataType: DataType, isNullable: Boolean)
 
 object StructField {
   def apply(name: Name, fieldSpec: FieldSpec): StructField =
@@ -66,12 +66,12 @@ object StructField {
 
   implicit def `(String,DataType)->StructField`(pair: (String, DataType)): StructField =
     pair match {
-      case (name, dataType) => StructField(name, dataType, nullable = true)
+      case (name, dataType) => StructField(name, dataType, isNullable = true)
     }
 
   implicit def `(Symbol,DataType)->StructField`(pair: (Symbol, DataType)): StructField =
     pair match {
-      case (name, dataType) => StructField(name, dataType, nullable = true)
+      case (name, dataType) => StructField(name, dataType, isNullable = true)
     }
 
   implicit def `(Name,DataType)->StructField`(pair: (Name, DataType)): StructField =
@@ -100,7 +100,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
     if (fields.map(_.dataType.genericOrdering).forall(_.isDefined)) {
       val sortOrders = fields.zipWithIndex map {
         case (field, index) =>
-          BoundRef(index, field.dataType, field.nullable).asc
+          BoundRef(index, field.dataType, field.isNullable).asc
       }
       Some(new RowOrdering(sortOrders).asInstanceOf[Ordering[Any]])
     } else {
@@ -116,7 +116,7 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
   def fieldTypes: Seq[DataType] = fields map (_.dataType)
 
   def toAttributes: Seq[AttributeRef] = fields map {
-    field => AttributeRef(field.name, field.dataType, field.nullable, newExpressionID())
+    field => AttributeRef(field.name, field.dataType, field.isNullable, newExpressionID())
   }
 
   def rename(fieldNames: Seq[Name]): StructType = {
