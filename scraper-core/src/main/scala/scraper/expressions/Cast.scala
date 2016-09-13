@@ -204,7 +204,10 @@ object Cast {
 
   private def compareStructType(x: StructType, y: StructType, fn: DataTypeComparator): Boolean = {
     x.fields.length == y.fields.length && (x.fields zip y.fields).forall {
-      case (from, to) => (!from.nullable || to.nullable) && fn(from.dataType, to.dataType)
+      case (from, to) =>
+        (from.name == to.name) &&
+          (!from.nullable || to.nullable) &&
+          fn(from.dataType, to.dataType)
     }
   }
 
