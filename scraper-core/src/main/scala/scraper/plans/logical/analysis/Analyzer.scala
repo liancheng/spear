@@ -37,7 +37,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )),
 
     RuleBatch("Type check", Once, Seq(
-      new TypeCheck(catalog)
+      new EnforceTypeConstraints(catalog)
     )),
 
     RuleBatch("Post-analysis check", Once, Seq(
@@ -498,7 +498,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
  * @throws scraper.exceptions.AnalysisException If some resolved logical query plan operator
  *         doesn't type check.
  */
-class TypeCheck(val catalog: Catalog) extends AnalysisRule {
+class EnforceTypeConstraints(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(plan) => plan.strictlyTyped.get
   }
