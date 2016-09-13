@@ -220,17 +220,17 @@ object Optimizer {
           partitionByReferencedBranches(splitConjunction(toCNF(filterCondition)), left, right)
 
         if (leftPredicates.nonEmpty) {
-          logDebug({
+          logDebug {
             val leftList = leftPredicates mkString ("[", ", ", "]")
             s"Pushing predicates $leftList through left join branch"
-          })
+          }
         }
 
         if (rightPredicates.nonEmpty) {
-          logDebug({
+          logDebug {
             val rightList = rightPredicates mkString ("[", ", ", "]")
             s"Pushing predicates $rightList through right join branch"
-          })
+          }
         }
 
         left

@@ -50,7 +50,7 @@ class RejectGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
       val suggestion =
         """You probably hit an internal bug since generated attributes are only used internally
           |by the analyzer and should never appear in a fully analyzed logical plan.
-        """.oneLine
+          |""".oneLine.trim
 
       throw new ResolutionFailureException(
         s"""Generated attributes $generatedList found in the analyzed logical plan:
@@ -58,7 +58,7 @@ class RejectGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
            |${tree.prettyTree}
            |
            |$suggestion
-         """.stripMargin
+           |""".stripMargin
       )
     }
 
@@ -77,7 +77,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
       val suggestion =
         """You probably hit an internal bug since all distinct aggregate functions should have
           |been resolved into normal aggregate functions by the analyzer.
-        """.stripMargin
+          |""".oneLine.trim
 
       throw new ResolutionFailureException(
         s"""Distinct aggregate functions $distinctAggList found in the analyzed logical plan:
@@ -85,7 +85,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
            |${tree.prettyTree}
            |
            |$suggestion
-         """.stripMargin
+           |""".stripMargin
       )
     }
 
