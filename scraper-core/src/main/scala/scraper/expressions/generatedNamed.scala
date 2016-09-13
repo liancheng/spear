@@ -1,9 +1,10 @@
 package scraper.expressions
 
 import scraper.Name
-import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, Purpose}
+import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, ForWindow, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.AggregateFunction
+import scraper.expressions.windows.WindowFunction
 import scraper.types._
 
 sealed trait GeneratedNamedExpression extends NamedExpression {
@@ -33,11 +34,15 @@ object GeneratedNamedExpression {
   case object ForAggregation extends Purpose {
     override def name: Name = 'A
   }
+
+  case object ForWindow extends Purpose {
+    override def name: Name = 'win
+  }
 }
 
 trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
   override def debugString: String =
-    s"(${child.debugString} AS g:${name.toString}#${expressionID.id})"
+    s"(${child.debugString} AS @${name.toString}#${expressionID.id})"
 
   override def dataType: DataType = child.dataType
 
@@ -78,7 +83,7 @@ abstract class GeneratedAttribute extends GeneratedNamedExpression
   with LeafExpression
   with UnevaluableExpression {
 
-  override def debugString: String = "g:" + super.debugString
+  override def debugString: String = "@" + super.debugString
 }
 
 trait GroupingNamedExpression extends GeneratedNamedExpression {
@@ -125,5 +130,28 @@ case class AggregationAttribute(
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
 ) extends GeneratedAttribute with AggregationNamedExpression {
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+}
+
+trait WindowNamedExpression extends GeneratedNamedExpression {
+  override def purpose: Purpose = ForWindow
+}
+
+case class WindowAlias(
+  child: WindowFunction,
+  override val expressionID: ExpressionID = newExpressionID()
+) extends GeneratedAlias with WindowNamedExpression {
+  override def toAttribute: GeneratedAttribute =
+    WindowAttribute(purpose, dataType, isNullable, expressionID)
+
+  override def withID(id: ExpressionID): WindowAlias = copy(expressionID = id)
+}
+
+case class WindowAttribute(
+  override val purpose: Purpose,
+  override val dataType: DataType,
+  override val isNullable: Boolean,
+  override val expressionID: ExpressionID
+) extends GeneratedAttribute with WindowNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
