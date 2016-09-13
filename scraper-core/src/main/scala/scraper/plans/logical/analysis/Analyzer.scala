@@ -1,8 +1,6 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.expressions._
-import scraper.expressions.aggregates.AggregateFunction
 import scraper.plans.logical._
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
@@ -22,9 +20,9 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ResolveReferences(catalog),
       new ResolveAliases(catalog),
       new DeduplicateReferences(catalog),
-      new RewriteDistinctAggregateFunctions(catalog),
 
       // Rules that help resolving aggregations
+      new RewriteDistinctAggregateFunctions(catalog),
       new ResolveSortReferences(catalog),
       new RewriteDistinctsAsAggregates(catalog),
       new GlobalAggregates(catalog),
@@ -58,11 +56,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
 trait AnalysisRule extends Rule[LogicalPlan] {
   val catalog: Catalog
-}
-
-object AnalysisRule {
-  private[analysis] def containsAggregation(expressions: Seq[Expression]): Boolean =
-    expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
 }
 
 /**

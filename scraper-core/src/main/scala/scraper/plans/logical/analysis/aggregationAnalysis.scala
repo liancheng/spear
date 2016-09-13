@@ -5,7 +5,7 @@ import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.AnalysisRule.containsAggregation
+import scraper.plans.logical.analysis.AggregationAnalysis.containsAggregation
 
 /**
  * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
@@ -211,4 +211,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       throw new IllegalAggregationException(part, a, e, keys)
     }
   }
+}
+
+object AggregationAnalysis {
+  private[analysis] def containsAggregation(expressions: Seq[Expression]): Boolean =
+    expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
 }
