@@ -47,14 +47,20 @@ case class Following(n: Long) extends FrameBoundary with EndingOffset {
 
 case class WindowFrame(
   frameType: WindowFrameType = RowsFrame,
-  begin: StartingOffset = UnboundedPreceding,
+  start: StartingOffset = UnboundedPreceding,
   end: EndingOffset = UnboundedFollowing
 ) {
-  override def toString: String = s"$frameType BETWEEN $begin AND $end"
+  override def toString: String = s"$frameType BETWEEN $start AND $end"
 }
 
 object WindowFrame {
   val Default: WindowFrame = WindowFrame()
+
+  def rowsBetween(start: StartingOffset, end: EndingOffset): WindowFrame =
+    WindowFrame(RowsFrame, start, end)
+
+  def rangeBetween(start: StartingOffset, end: EndingOffset): WindowFrame =
+    WindowFrame(RangeFrame, start, end)
 }
 
 case class WindowSpec(
@@ -72,11 +78,13 @@ case class WindowSpec(
 
   def orderBy(first: SortOrder, rest: SortOrder*): WindowSpec = orderBy(first +: rest)
 
-  def rowsBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
-    copy(windowFrame = WindowFrame(RowsFrame, begin, end))
+  def between(windowFrame: WindowFrame): WindowSpec = copy(windowFrame = windowFrame)
 
-  def rangeBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
-    copy(windowFrame = WindowFrame(RangeFrame, begin, end))
+  def rowsBetween(start: StartingOffset, end: EndingOffset): WindowSpec =
+    between(WindowFrame.rowsBetween(start, end))
+
+  def rangeBetween(start: StartingOffset, end: EndingOffset): WindowSpec =
+    between(WindowFrame.rangeBetween(start, end))
 
   override protected def template(childList: Seq[String]): String = {
     val (partitions, orders) = childList.splitAt(partitionSpec.length)
@@ -97,9 +105,11 @@ object Window {
 
   def orderBy(first: SortOrder, rest: SortOrder*): WindowSpec = orderBy(first +: rest)
 
-  def rowsBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
-    Default.rowsBetween(begin, end)
+  def between(windowFrame: WindowFrame): WindowSpec = Default.between(windowFrame)
 
-  def rangeBetween(begin: StartingOffset, end: EndingOffset): WindowSpec =
-    Default.rangeBetween(begin, end)
+  def rowsBetween(start: StartingOffset, end: EndingOffset): WindowSpec =
+    Default.rowsBetween(start, end)
+
+  def rangeBetween(start: StartingOffset, end: EndingOffset): WindowSpec =
+    Default.rangeBetween(start, end)
 }

@@ -1,82 +1,74 @@
 package scraper.expressions.windows
 
-import scala.util.Success
+import scala.util.Try
 
 import scraper.LoggingFunSuite
 import scraper.expressions._
 import scraper.types.{DoubleType, IntType, StringType}
-import scraper.utils._
 
 class WindowSpecSuite extends LoggingFunSuite {
-  test("full window spec") {
-    val expected = Success(
-      """(PARTITION BY a, b
-        |ORDER BY c ASC NULLS FIRST
-        |ROWS BETWEEN
-        |UNBOUNDED PRECEDING
-        |AND
-        |UNBOUNDED FOLLOWING)
-        |""".oneLine.trim
-    )
+  test("rows window frame") {
+    assertResult("ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING") {
+      WindowFrame(RowsFrame, UnboundedPreceding, UnboundedFollowing).toString
+    }
 
-    assertResult(expected) {
-      Window
-        .partitionBy(a, b)
-        .orderBy(c.asc.nullsFirst)
-        .rowsBetween(UnboundedPreceding, UnboundedFollowing)
-        .sql
+    assertResult("ROWS BETWEEN 10 PRECEDING AND CURRENT ROW") {
+      WindowFrame(RowsFrame, Preceding(10), CurrentRow).toString
+    }
+
+    assertResult("ROWS BETWEEN CURRENT ROW AND 10 FOLLOWING") {
+      WindowFrame(RowsFrame, CurrentRow, Following(10)).toString
     }
   }
 
-  test("window spec without partition spec") {
-    val expected = Success(
-      """(ORDER BY c ASC NULLS LAST
-        |ROWS BETWEEN
-        |CURRENT ROW
-        |AND
-        |10 FOLLOWING)
-        |""".oneLine.trim
-    )
+  test("range window frame") {
+    assertResult("RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING") {
+      WindowFrame(RangeFrame, UnboundedPreceding, UnboundedFollowing).toString
+    }
 
-    assertResult(expected) {
-      Window
-        .orderBy(c.asc)
-        .rowsBetween(CurrentRow, Following(10))
-        .sql
+    assertResult("RANGE BETWEEN 10 PRECEDING AND CURRENT ROW") {
+      WindowFrame(RangeFrame, Preceding(10), CurrentRow).toString
+    }
+
+    assertResult("RANGE BETWEEN CURRENT ROW AND 10 FOLLOWING") {
+      WindowFrame(RangeFrame, CurrentRow, Following(10)).toString
     }
   }
 
-  test("window spec without order spec") {
-    val expected = Success(
-      """(PARTITION BY a, b
-        |ROWS BETWEEN
-        |CURRENT ROW
-        |AND
-        |10 FOLLOWING)
-      """.oneLine
-    )
+  test("window spec") {
+    val rowsFrame = WindowFrame.Default.copy(frameType = RowsFrame)
+    val rangeFrame = WindowFrame.Default.copy(frameType = RangeFrame)
 
-    assertResult(expected) {
-      Window
-        .partitionBy(a, b)
-        .rowsBetween(CurrentRow, Following(10))
-        .sql
+    def checkWindowSpec(sql: String)(spec: => WindowSpec): Unit = assertResult(Try(sql))(spec.sql)
+
+    Seq(rowsFrame, rangeFrame) foreach { frame =>
+      checkWindowSpec(s"(PARTITION BY a, b ORDER BY c ASC NULLS FIRST $frame)") {
+        Window partitionBy (a, b) orderBy c.asc.nullsFirst between frame
+      }
+
+      checkWindowSpec(s"(PARTITION BY a, b ORDER BY c ASC NULLS FIRST $frame)") {
+        Window orderBy c.asc.nullsFirst partitionBy (a, b) between frame
+      }
+
+      checkWindowSpec(s"(ORDER BY c ASC NULLS FIRST $frame)") {
+        Window orderBy c.asc.nullsFirst between frame
+      }
+
+      checkWindowSpec(s"(PARTITION BY a, b $frame)") {
+        Window partitionBy (a, b) between frame
+      }
+
+      checkWindowSpec(s"($frame)") {
+        Window between frame
+      }
     }
-  }
 
-  test("window spec without partition spec or order spec") {
-    val expected = Success(
-      """(ROWS BETWEEN
-        |CURRENT ROW
-        |AND
-        |10 FOLLOWING)
-        |""".oneLine.trim
-    )
+    checkWindowSpec(s"($rowsFrame)") {
+      Window rowsBetween (UnboundedPreceding, UnboundedFollowing)
+    }
 
-    assertResult(expected) {
-      Window
-        .rowsBetween(CurrentRow, Following(10))
-        .sql
+    checkWindowSpec(s"($rangeFrame)") {
+      Window rangeBetween (UnboundedPreceding, UnboundedFollowing)
     }
   }
 
