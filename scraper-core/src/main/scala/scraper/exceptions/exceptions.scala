@@ -149,12 +149,6 @@ class FunctionInstantiationException(name: Name, cause: Throwable)
   def this(name: Name) = this(name, null)
 }
 
-class SchemaIncompatibleException(message: String, cause: Throwable)
-  extends AnalysisException(message, cause) {
-
-  def this(message: String) = this(message, null)
-}
-
 class IllegalAggregationException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
