@@ -69,7 +69,21 @@ object AnalysisRule {
 }
 
 /**
- * This rule inlines CTE relation definitions as sub-queries.
+ * This rule inlines CTE relation definitions as sub-queries. E.g., it transforms
+ * {{{
+ *   WITH
+ *     c0 AS (SELECT * FROM t0),
+ *     c1 AS (SELECT * FROM t1)
+ *   SELECT * FROM c0
+ *   UNION ALL
+ *   SELECT * FROM c1
+ * }}}
+ * into
+ * {{{
+ *   SELECT * FROM (SELECT * FROM t0) c0
+ *   UNION ALL
+ *   SELECT * FROM (SELECT * FROM t1)
+ * }}}
  */
 class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
@@ -146,11 +160,12 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
           attribute
 
         case Nil =>
-          // We don't report resolution failure here since the attribute might be resolved later
-          // with the help of other analysis rules.
+          // No candidates found, but we don't report resolution failure here since the attribute
+          // might be resolved later with the help of other analysis rules.
           unresolved
 
         case _ =>
+          // Multiple candidates found, something terrible must happened...
           reportResolutionFailure {
             val list = candidates map (_.debugString) mkString ", "
             s"Multiple ambiguous input attributes found: $list"
@@ -270,6 +285,16 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
+/**
+ * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
+ * {{{
+ *   SELECT DISTINCT a, b FROM t
+ * }}}
+ * into
+ * {{{
+ *   SELECT a, b FROM t GROUP BY a, b
+ * }}}
+ */
 class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Distinct(Resolved(child)) =>
@@ -277,6 +302,27 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
+/**
+ * This rule allows an `ORDER BY` clause to reference columns that are output of the `FROM` clause
+ * but are absent in the `SELECT` clause. E.g., for the following query:
+ * {{{
+ *   SELECT a + 1 FROM t ORDER BY a
+ * }}}
+ * The parsed logical plan is something like:
+ * {{{
+ *   Sort order=[a]
+ *   +- Project projectList=[a + 1]
+ *      +- Relation name=t, output=[a]
+ * }}}
+ * This plan tree is invalid because attribute `a` referenced by `Sort` isn't an output attribute of
+ * `Project`. This rule rewrites it into:
+ * {{{
+ *   Project projectList=[a]
+ *   +- Sort order=[a]
+ *      +- Project projectList=[a + 1, a]
+ *         +- Relation name=t, output=[a]
+ * }}}
+ */
 class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores global aggregates

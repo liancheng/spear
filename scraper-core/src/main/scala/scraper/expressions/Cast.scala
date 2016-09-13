@@ -222,7 +222,7 @@ object Cast {
   private def castFromStructType(from: StructType, fn: DataTypeComparator): PartialCastBuilder = {
     case to: StructType if compareStructType(from, to, fn) =>
       val castFields = (from.fieldTypes, to.fieldTypes).zipped map (buildCast(_, _).get)
-      asRow.andThen { row =>
+      asRow andThen { row =>
         Row.fromSeq(row zip castFields map { case (value, cast) => cast(value) })
       }
   }

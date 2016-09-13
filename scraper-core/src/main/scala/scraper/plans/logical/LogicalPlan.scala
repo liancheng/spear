@@ -173,24 +173,22 @@ trait SetOperator extends BinaryLogicalPlan {
       yield branches map (align(_, widenedTypes))
   }
 
-  override lazy val strictlyTyped: Try[LogicalPlan] = {
-    for {
-      _ <- Try(checkBranchSchemata()) recover {
-        case NonFatal(cause) =>
-          throw new TypeCheckException(this, cause)
-      }
+  override lazy val strictlyTyped: Try[LogicalPlan] = for {
+    _ <- Try(checkBranchSchemata()) recover {
+      case NonFatal(cause) =>
+        throw new TypeCheckException(this, cause)
+    }
 
-      lhs <- left.strictlyTyped
-      rhs <- right.strictlyTyped
+    lhs <- left.strictlyTyped
+    rhs <- right.strictlyTyped
 
-      alignedBranches <- alignBranches(lhs :: rhs :: Nil)
-    } yield if (sameChildren(alignedBranches)) this else makeCopy(alignedBranches)
-  }
+    alignedBranches <- alignBranches(lhs :: rhs :: Nil)
+  } yield makeCopy(alignedBranches)
 }
 
 case class Union(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
   override lazy val output: Seq[Attribute] =
-    left.output.zip(right.output).map {
+    left.output zip right.output map {
       case (a1, a2) =>
         a1.withNullability(a1.isNullable || a2.isNullable)
     }
@@ -198,7 +196,7 @@ case class Union(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
 
 case class Intersect(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
   override lazy val output: Seq[Attribute] =
-    left.output.zip(right.output).map {
+    left.output zip right.output map {
       case (a1, a2) =>
         a1.withNullability(a1.isNullable && a2.isNullable)
     }
