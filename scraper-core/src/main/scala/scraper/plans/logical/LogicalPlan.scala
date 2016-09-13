@@ -311,6 +311,15 @@ case class With(
   override def output: Seq[Attribute] = child.output
 }
 
+case class Window(
+  child: LogicalPlan,
+  functions: Seq[WindowAlias],
+  partitionSpec: Seq[Expression],
+  orderSpec: Seq[SortOrder]
+) extends UnaryLogicalPlan {
+  override def output: Seq[Attribute] = child.output ++ functions.map(_.toAttribute)
+}
+
 object LogicalPlan {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)
