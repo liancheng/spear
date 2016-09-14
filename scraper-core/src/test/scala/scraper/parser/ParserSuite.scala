@@ -99,7 +99,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing(
     "a RLIKE concat('h.llo', ' worl.')",
-    'a rlike function('concat, "h.llo", " worl.")
+    'a rlike 'concat("h.llo", " worl.")
   )
 
   testExpressionParsing("-a", -'a)
@@ -286,27 +286,27 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT COUNT(a) FROM t0",
-    table('t0) select function('COUNT, 'a)
+    table('t0) select 'COUNT('a)
   )
 
   testQueryParsing(
     "SELECT COUNT(a) FROM t0 GROUP BY b",
-    table('t0) groupBy 'b agg function('COUNT, 'a)
+    table('t0) groupBy 'b agg 'COUNT('a)
   )
 
   testQueryParsing(
     "SELECT COUNT(a) FROM t0 GROUP BY b HAVING COUNT(b) > 0",
-    table('t0) groupBy 'b agg function('COUNT, 'a) having function('COUNT, 'b) > 0
+    table('t0) groupBy 'b agg 'COUNT('a) having 'COUNT('b) > 0
   )
 
   testQueryParsing(
     "SELECT COUNT(a) FROM t0 GROUP BY b ORDER BY COUNT(b) ASC NULLS FIRST",
-    table('t0) groupBy 'b agg function('COUNT, 'a) orderBy function('COUNT, 'b).asc.nullsFirst
+    table('t0) groupBy 'b agg 'COUNT('a) orderBy 'COUNT('b).asc.nullsFirst
   )
 
   testQueryParsing(
     "SELECT COUNT(DISTINCT a) FROM t0",
-    table('t0) select distinctFunction('COUNT, 'a)
+    table('t0) select 'COUNT('a).distinct
   )
 
   test("DISTINCT can't be used with star") {

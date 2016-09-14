@@ -63,6 +63,10 @@ package object expressions {
   def distinctFunction(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, isDistinct = true)
 
+  private[scraper] implicit class UnresolvedFunctionDSL(name: Symbol) {
+    def apply(args: Expression*): UnresolvedFunction = function(name, args: _*)
+  }
+
   private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): TypeConstraint = SameTypeAs(input, dataType)
 

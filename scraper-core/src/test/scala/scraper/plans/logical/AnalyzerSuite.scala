@@ -51,42 +51,42 @@ class AnalyzerSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAl
   testAutoAliasing(NonSQL, "?column?")
 
   testFunctionResolution(
-    function('count, *),
+    'count(*),
     Count(1)
   )
 
   testFunctionResolution(
-    function('COUNT, *),
+    'COUNT(*),
     Count(1)
   )
 
   testFunctionResolution(
-    distinctFunction('sum, 1),
+    'sum(1).distinct,
     Sum(1).distinct
   )
 
   testFunctionResolution(
-    function('concat, "1", "2"),
+    'concat("1", "2"),
     Concat(Seq("1", "2"))
   )
 
   interceptFunctionResolution[AnalysisException](
-    distinctFunction('count, *),
+    'count(*).distinct,
     "DISTINCT cannot be used together with star"
   )
 
   interceptFunctionResolution[AnalysisException](
-    distinctFunction('foo, *),
+    'foo(*).distinct,
     "DISTINCT cannot be used together with star"
   )
 
   interceptFunctionResolution[AnalysisException](
-    function('foo, *),
+    'foo(*),
     "Only function \"count\" may have star as argument"
   )
 
   interceptFunctionResolution[AnalysisException](
-    distinctFunction('coalesce, 'a.int.!),
+    'coalesce('a.int.!).distinct,
     "Cannot decorate function coalesce with DISTINCT since it is not an aggregate function"
   )
 

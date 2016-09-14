@@ -319,4 +319,6 @@ case class UnresolvedFunction(name: Name, args: Seq[Expression], isDistinct: Boo
     val distinctString = if (isDistinct) "DISTINCT " else ""
     s"?$name?($distinctString${args map (_.debugString) mkString ", "})"
   }
+
+  def distinct: UnresolvedFunction = if (isDistinct) this else copy(isDistinct = true)
 }
