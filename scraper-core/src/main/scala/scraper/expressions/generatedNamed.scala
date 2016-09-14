@@ -24,14 +24,14 @@ object GeneratedNamedExpression {
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
-    override def name: Name = 'group
+    override def name: Name = 'G
   }
 
   /**
    * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override def name: Name = 'agg
+    override def name: Name = 'A
   }
 }
 
