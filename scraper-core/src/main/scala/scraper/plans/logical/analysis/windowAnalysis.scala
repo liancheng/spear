@@ -4,44 +4,41 @@ import scraper._
 import scraper.expressions._
 import scraper.expressions.windows.{WindowFunction, WindowSpec}
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.WindowAnalysis.hasWindowFunction
+import scraper.plans.logical.analysis.WindowAnalysis._
 
-class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
+class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
-      extractWindowFunctions(child, projectList)
+      // Collects all window functions and aliases them.
+      val windowAliases = collectWindowFunctions(projectList) map (WindowAlias(_))
 
-    case agg: UnresolvedAggregate if agg.projectList exists (!_.isResolved) =>
-      agg
+      // Replaces all window functions in the original project list with their corresponding
+      // `WindowAttribute`s.
+      val rewrittenProjectList = {
+        val rewrite = windowAliases.map { alias => alias.child -> alias.toAttribute }.toMap
+        projectList map (_ transformDown { case e: WindowFunction => rewrite(e) })
+      }
 
-    case agg: UnresolvedAggregate if hasWindowFunction(agg.projectList) =>
-      throw new UnsupportedOperationException(
-        s"Window functions in aggregation is not supported yet"
-      )
+      // Builds and stacks `Window` operator(s) over the child plan.
+      val windowed = stackWindows(child, windowAliases)
+
+      // Adds an extra projection to ensure that no `GeneratedNamedExpression`s appear in the output
+      // attribute list.
+      windowed select rewrittenProjectList
   }
 
-  private def extractWindowFunctions(
-    child: LogicalPlan, projectList: Seq[NamedExpression]
-  ): LogicalPlan = {
-    // Collects all window functions and aliases them.
-    val windowAliases = collectWindowFunctions(projectList) map (WindowAlias(_))
+  private def hasWindowFunction(expressions: Seq[Expression]): Boolean =
+    expressions exists hasWindowFunction
 
-    // Builds and stacks `Window` operators over the child plan.
-    val windowed = stackWindows(child, windowAliases)
+  private def hasWindowFunction(expression: Expression): Boolean =
+    expression.collectFirst { case _: WindowFunction => () }.nonEmpty
+}
 
-    // Replaces all window functions in the original project list with their corresponding
-    // `WindowAttribute`s.
-    val rewrittenProjectList = {
-      val rewrite = windowAliases.map { alias => alias.child -> alias.toAttribute }.toMap
-      projectList map (_ transformDown { case e: WindowFunction => rewrite(e) })
-    }
+object WindowAnalysis {
+  def collectWindowFunctions(expressions: Seq[Expression]): Seq[WindowFunction] =
+    expressions.flatMap(_.collect { case f: WindowFunction => f }).distinct
 
-    // Stacks a top-level projection so that no `GeneratedNamedExpression`s appear in the final
-    // output attribute list.
-    windowed select rewrittenProjectList
-  }
-
-  private def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan = {
+  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan = {
     // Finds out all distinct window specs.
     val windowSpecs = windowAliases.map(_.child.window).distinct
 
@@ -54,18 +51,10 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
     // Builds one `Window` operator builder function for each group.
     val windowBuilders = windowAliasGroups map {
       case (WindowSpec(partitionSpec, orderSpec, _), aliases) =>
-        (_: LogicalPlan) window aliases partitionBy partitionSpec orderBy orderSpec
+        Window(_: LogicalPlan, aliases, partitionSpec, orderSpec)
     }
 
     // Stacks all windows over the input plan node.
     (windowBuilders foldRight plan) { _ apply _ }
   }
-
-  private def collectWindowFunctions(projectList: Seq[NamedExpression]): Seq[WindowFunction] =
-    projectList.flatMap(_.collect { case f: WindowFunction => f }).distinct
-}
-
-object WindowAnalysis {
-  private[analysis] def hasWindowFunction(projectList: Seq[NamedExpression]): Boolean =
-    projectList exists (_.collectFirst { case _: WindowFunction => () }.nonEmpty)
 }

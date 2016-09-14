@@ -6,8 +6,8 @@ import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
 import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
-import scraper.plans.logical.analysis.WindowAnalysis.hasWindowFunction
+import scraper.plans.logical.analysis.AggregationAnalysis._
+import scraper.plans.logical.analysis.WindowAnalysis._
 
 /**
  * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
@@ -115,8 +115,8 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
       plan
 
-    // Waits until all window functions are extracted into separate `Window` operators
-    case plan: UnresolvedAggregate if hasWindowFunction(plan.projectList) =>
+    // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
+    case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
       plan
   }
 
@@ -136,8 +136,14 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val aggAliases = aggs map (AggregationAlias(_))
       val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
 
+      // Collects and aliases all window functions.
+      val wins = collectWindowFunctions(projectList)
+      val winAliases = wins map (WindowAlias(_))
+      val rewriteWins = (wins: Seq[Expression]).zip(winAliases.map(_.toAttribute)).toMap
+
       def rewrite(expression: Expression) = expression transformDown {
-        case e => rewriteKeys orElse rewriteAggs applyOrElse (e, identity[Expression])
+        case e =>
+          rewriteKeys orElse rewriteAggs orElse rewriteWins applyOrElse (e, identity[Expression])
       }
 
       // Replaces grouping keys and aggregate functions in having condition, sort ordering
@@ -145,8 +151,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrdering = order map (order => order.copy(child = rewrite(order.child)))
       val rewrittenProjectList = projectList map (e => rewrite(e) -> e) map {
-        // Top level `GeneratedAttribute`s should be aliased to names of the original expressions
-        case (g: GeneratedAttribute, e) => g as e.name
+        // Top level `GeneratedAttribute`s should be aliased with names and expression IDs of the
+        // original expressions
+        case (g: GeneratedAttribute, e) => g as e.name withID e.expressionID
         case (e: NamedExpression, _)    => e
       }
 
@@ -164,25 +171,21 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .agg(aggAliases)
         .filterOption(rewrittenConditions)
         .orderByOption(rewrittenOrdering)
+        .windowOption(winAliases)
         .select(rewrittenProjectList)
   }
 
+  // Pre-condition: `expressions` contain no `DistinctAggregateFunction`.
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
-    // `DistinctAggregateFunction`s must be collected first. Otherwise, their child expressions,
-    // which are also `AggregateFunction`s, will be collected unexpectedly.
-    val distinctAggs = expressions.flatMap(_ collect {
-      case a: DistinctAggregateFunction => a
-    }).distinct
+    // Windowed aggregate functions should be eliminated first since they are handled separately by
+    // the `Window` operator.
+    val windowFunctionsEliminated = expressions map (_ transformDown {
+      case e: WindowFunction => WindowAlias(e).toAttribute
+    })
 
-    val aggs = expressions.map(_ transformDown {
-      // Eliminates previously collected `DistinctAggregateFunction`s first...
-      case a: DistinctAggregateFunction => AggregationAlias(a).toAttribute
-    }).flatMap(_ collect {
-      // ... and then collects all non-distinct aggregate functions.
+    windowFunctionsEliminated.flatMap(_ collect {
       case a: AggregateFunction => a
     }).distinct
-
-    distinctAggs ++ aggs
   }
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
@@ -207,6 +210,16 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       throw new IllegalAggregationException(part, a, e, keys)
     }
   }
+
+  private def hasDistinctAggregateFunction(expressions: Seq[Expression]): Boolean =
+    expressions exists hasDistinctAggregateFunction
+
+  private def hasDistinctAggregateFunction(expression: Expression): Boolean =
+    expression.transformDown {
+      case e: WindowFunction => WindowAlias(e).toAttribute
+    }.collectFirst {
+      case e: DistinctAggregateFunction => ()
+    }.nonEmpty
 }
 
 object AggregationAnalysis {

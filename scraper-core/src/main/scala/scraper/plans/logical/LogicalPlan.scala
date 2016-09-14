@@ -14,6 +14,7 @@ import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.plans.QueryPlan
+import scraper.plans.logical.analysis.WindowAnalysis.stackWindows
 import scraper.reflection.fieldSpecFor
 import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
@@ -394,7 +395,7 @@ object LogicalPlan {
     def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
       resolvedAgg(first +: rest)
 
-    def window(functions: Seq[WindowAlias]): Window = Window(plan, functions, Nil, Nil)
+    def windowOption(functions: Seq[WindowAlias]): LogicalPlan = stackWindows(plan, functions)
   }
 
   class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {
