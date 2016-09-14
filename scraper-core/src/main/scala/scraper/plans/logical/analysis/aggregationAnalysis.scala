@@ -4,8 +4,10 @@ import scraper._
 import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
+import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
+import scraper.plans.logical.analysis.WindowAnalysis.hasWindowFunction
 
 /**
  * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
@@ -112,6 +114,10 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     // Waits until project list, having condition, and sort order expressions are all resolved
     case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
       plan
+
+    // Waits until all window functions are extracted into separate `Window` operators
+    case plan: UnresolvedAggregate if hasWindowFunction(plan.projectList) =>
+      plan
   }
 
   private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
@@ -205,5 +211,12 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 
 object AggregationAnalysis {
   private[analysis] def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
-    expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
+    expressions exists hasAggregateFunction
+
+  private[analysis] def hasAggregateFunction(expression: Expression): Boolean =
+    expression.transformDown {
+      case e: WindowFunction => WindowAlias(e).toAttribute
+    }.collectFirst {
+      case e: AggregateFunction => ()
+    }.nonEmpty
 }

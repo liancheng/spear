@@ -36,7 +36,7 @@ object GeneratedNamedExpression {
   }
 
   case object ForWindow extends Purpose {
-    override def name: Name = 'win
+    override def name: Name = 'W
   }
 }
 
