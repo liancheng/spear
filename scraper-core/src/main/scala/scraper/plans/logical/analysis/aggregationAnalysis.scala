@@ -5,7 +5,7 @@ import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.AggregationAnalysis.containsAggregation
+import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFuction
 
 /**
  * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
@@ -48,7 +48,7 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
 class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores global aggregates
-    case plan @ (Resolved(_ Project projectList) Sort _) if containsAggregation(projectList) =>
+    case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFuction(projectList) =>
       plan
 
     case Unresolved(plan @ Resolved(child Project projectList) Sort order) =>
@@ -63,7 +63,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
  */
 class GlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case Resolved(child Project projectList) if containsAggregation(projectList) =>
+    case Resolved(child Project projectList) if hasAggregateFuction(projectList) =>
       child groupBy Nil agg projectList
   }
 }
@@ -214,6 +214,6 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 object AggregationAnalysis {
-  private[analysis] def containsAggregation(expressions: Seq[Expression]): Boolean =
+  private[analysis] def hasAggregateFuction(expressions: Seq[Expression]): Boolean =
     expressions exists (_.collectFirst { case _: AggregateFunction => () }.nonEmpty)
 }
