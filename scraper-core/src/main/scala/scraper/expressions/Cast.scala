@@ -166,7 +166,7 @@ object Cast {
   private val asSeq = (_: Any) match { case v: Seq[_] => v }
 
   private def compareArrayType(x: ArrayType, y: ArrayType, fn: DataTypeComparator): Boolean = {
-    fn(x.elementType, y.elementType) && (!x.elementNullable || y.elementNullable)
+    fn(x.elementType, y.elementType) && (!x.isElementNullable || y.isElementNullable)
   }
 
   private def implicitlyFromArrayType(from: ArrayType): PartialCastBuilder =
@@ -184,7 +184,7 @@ object Cast {
   private val asMap = (_: Any) match { case v: Map[_, _] => v }
 
   private def compareMapType(x: MapType, y: MapType, fn: DataTypeComparator): Boolean = {
-    (!x.valueNullable || y.valueNullable) &&
+    (!x.isValueNullable || y.isValueNullable) &&
       fn(x.keyType, y.keyType) &&
       fn(x.valueType, y.valueType)
   }

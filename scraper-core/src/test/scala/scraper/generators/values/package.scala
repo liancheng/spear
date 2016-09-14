@@ -49,7 +49,7 @@ package object values {
     }
 
   def genValueForArrayType(dataType: ArrayType)(implicit settings: Settings): Gen[Seq[_]] = {
-    val genElement = if (dataType.elementNullable) {
+    val genElement = if (dataType.isElementNullable) {
       Gen.option(genValueForDataType(dataType)(settings)) map (_.orNull)
     } else {
       genValueForDataType(dataType)(settings)
@@ -65,7 +65,7 @@ package object values {
     val genKey = genValueForDataType(dataType.keyType)(settings)
     val genValue = {
       val genNonNullValue = genValueForDataType(dataType)(settings)
-      if (dataType.valueNullable) Gen.option(genNonNullValue) map (_.orNull) else genNonNullValue
+      if (dataType.isValueNullable) Gen.option(genNonNullValue) map (_.orNull) else genNonNullValue
     }
 
     for {

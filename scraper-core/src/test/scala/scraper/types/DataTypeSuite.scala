@@ -46,24 +46,24 @@ class DataTypeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("ArrayType instantiation") {
     checkTree(
-      ArrayType(IntType, elementNullable = true),
+      ArrayType(IntType, isElementNullable = true),
       ArrayType(IntType)
     )
 
     checkTree(
-      ArrayType(IntType, elementNullable = false),
+      ArrayType(IntType, isElementNullable = false),
       ArrayType(IntType.!)
     )
   }
 
   test("MapType instantiation") {
     checkTree(
-      MapType(IntType, StringType, valueNullable = true),
+      MapType(IntType, StringType, isValueNullable = true),
       MapType(IntType, StringType)
     )
 
     checkTree(
-      MapType(IntType, StringType, valueNullable = false),
+      MapType(IntType, StringType, isValueNullable = false),
       MapType(IntType, StringType.!)
     )
   }

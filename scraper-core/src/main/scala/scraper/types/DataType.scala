@@ -103,7 +103,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = mapType.valueType.children
 
     override def nodeCaption: String =
-      s"value: ${fieldSpecString(mapType.valueType, mapType.valueNullable)}"
+      s"value: ${fieldSpecString(mapType.valueType, mapType.isValueNullable)}"
   }
 
   case class MapTypeNode(dataType: MapType) extends DataTypeNode {
@@ -118,7 +118,7 @@ object DataType {
     override def children: Seq[DataTypeNode] = arrayType.elementType.children
 
     override def nodeCaption: String =
-      s"element: ${fieldSpecString(arrayType.elementType, arrayType.elementNullable)}"
+      s"element: ${fieldSpecString(arrayType.elementType, arrayType.isElementNullable)}"
   }
 
   case class ArrayTypeNode(dataType: ArrayType) extends DataTypeNode {

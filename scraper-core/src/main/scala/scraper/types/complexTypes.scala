@@ -19,7 +19,7 @@ object ComplexType extends AbstractDataType {
   override def toString: String = "complex type"
 }
 
-case class ArrayType(elementType: DataType, elementNullable: Boolean) extends ComplexType {
+case class ArrayType(elementType: DataType, isElementNullable: Boolean) extends ComplexType {
   override def genericOrdering: Option[Ordering[Any]] = elementType.genericOrdering map {
     Ordering.Iterable(_).asInstanceOf[Ordering[Any]]
   }
@@ -38,7 +38,7 @@ object ArrayType extends AbstractDataType {
   }
 }
 
-case class MapType(keyType: DataType, valueType: DataType, valueNullable: Boolean)
+case class MapType(keyType: DataType, valueType: DataType, isValueNullable: Boolean)
   extends ComplexType {
 
   override def genericOrdering: Option[Ordering[Any]] = None
