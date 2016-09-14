@@ -37,7 +37,7 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
         case (window: WindowSpec, _) => windowSpecs indexOf window
       } map {
         case (spec, aliases) =>
-          Window(_: LogicalPlan, aliases, spec.partitionSpec, spec.orderSpec)
+          (_: LogicalPlan) window aliases partitionBy spec.partitionSpec orderBy spec.orderSpec
       }
     }
 

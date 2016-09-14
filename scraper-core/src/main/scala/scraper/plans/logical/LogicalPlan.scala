@@ -318,6 +318,10 @@ case class Window(
   orderSpec: Seq[SortOrder]
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output ++ functions.map(_.toAttribute)
+
+  def partitionBy(partitionSpec: Seq[Expression]): Window = copy(partitionSpec = partitionSpec)
+
+  def orderBy(orderSpec: Seq[SortOrder]): Window = copy(orderSpec = orderSpec)
 }
 
 object LogicalPlan {
@@ -389,6 +393,8 @@ object LogicalPlan {
 
     def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
       resolvedAgg(first +: rest)
+
+    def window(functions: Seq[WindowAlias]): Window = Window(plan, functions, Nil, Nil)
   }
 
   class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {
