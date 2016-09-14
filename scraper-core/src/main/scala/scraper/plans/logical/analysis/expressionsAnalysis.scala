@@ -4,7 +4,7 @@ import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
-import scraper.expressions.NamedExpression.{newExpressionID, UnquotedName}
+import scraper.expressions.NamedExpression.UnquotedName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.plans.logical._
 import scraper.types.StringType
@@ -76,67 +76,6 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
           }
       }
   }
-}
-
-/**
- * This rule resolves ambiguous duplicated attributes/aliases introduced by binary logical query
- * plan operators like [[Join]] and [[SetOperator set operators]]. For example:
- * {{{
- *   // Self-join, equivalent to "SELECT * FROM t INNER JOIN t":
- *   val df = context table "t"
- *   val joined = df join df
- *
- *   // Self-union, equivalent to "SELECT 1 AS a UNION ALL SELECT 1 AS a":
- *   val df = context single (1 as 'a)
- *   val union = df union df
- * }}}
- */
-class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case plan if plan.children.forall(_.isResolved) && !plan.isDeduplicated =>
-      plan match {
-        case node: Join      => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Union     => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Intersect => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Except    => node.copy(right = deduplicateRight(node.left, node.right))
-      }
-  }
-
-  def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
-    val conflictingAttributes = left.outputSet intersectByID right.outputSet
-
-    def hasDuplicates(attributes: Set[Attribute]): Boolean =
-      (attributes intersectByID conflictingAttributes).nonEmpty
-
-    right collectFirst {
-      // Handles relations that introduce ambiguous attributes
-      case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
-        plan -> plan.newInstance()
-
-      // Handles projections that introduce ambiguous aliases
-      case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
-        plan -> plan.copy(projectList = projectList map {
-          case a: Alias => a withID newExpressionID()
-          case e        => e
-        })
-    } map {
-      case (oldPlan, newPlan) =>
-        val rewrite = {
-          val oldIDs = oldPlan.output map (_.expressionID)
-          val newIDs = newPlan.output map (_.expressionID)
-          (oldIDs zip newIDs).toMap
-        }
-
-        right transformDown {
-          case plan if plan == oldPlan => newPlan
-        } transformAllExpressionsDown {
-          case a: AttributeRef => rewrite get a.expressionID map a.withID getOrElse a
-        }
-    } getOrElse right
-  }
-
-  private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
-    projectList.collect { case a: Alias => a.toAttribute }.toSet
 }
 
 /**
