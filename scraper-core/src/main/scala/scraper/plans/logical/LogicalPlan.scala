@@ -275,7 +275,6 @@ case class UnresolvedAggregate(
 case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Seq[AggregationAlias])
   extends UnaryLogicalPlan {
 
-  // TODO Should this return false when `functions` contains distinct aggregate function?
   override def isResolved: Boolean = super.isResolved
 
   override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
