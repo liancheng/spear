@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.{Success, Try}
 
 import scraper.{Name, Row}
-import scraper.Name.caseInsensitive
+import scraper.Name.caseSensitive
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
@@ -229,7 +229,7 @@ case class AttributeRef(
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
   extends NamedExpression with LeafExpression with NonSQLExpression {
 
-  override val name: Name = caseInsensitive(s"input[$ordinal]")
+  override val name: Name = caseSensitive(s"input[$ordinal]")
 
   override lazy val isBound: Boolean = true
 

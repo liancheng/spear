@@ -94,7 +94,7 @@ class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
         case Literal(lit: String, StringType) => UnquotedName(lit)
       }.sql getOrElse AnonymousColumnName
 
-      child as Name.caseInsensitive(alias)
+      child as Name.caseSensitive(alias)
   }
 }
 
@@ -128,7 +128,7 @@ object ResolveAliases {
 
   private object UnquotedName {
     def apply(stringLiteral: String): UnquotedName =
-      UnquotedName(lit(stringLiteral) as Name.caseInsensitive(stringLiteral))
+      UnquotedName(lit(stringLiteral) as Name.caseSensitive(stringLiteral))
   }
 }
 

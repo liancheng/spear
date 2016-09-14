@@ -18,7 +18,7 @@ case class CreateNamedStruct(children: Seq[Expression]) extends Expression {
 
   override protected lazy val strictDataType: DataType = {
     val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {
-      (name, dataType, nullable) => StructField(Name.caseInsensitive(name), dataType, nullable)
+      (name, dataType, nullable) => StructField(Name.caseSensitive(name), dataType, nullable)
     }
 
     StructType(fields)
