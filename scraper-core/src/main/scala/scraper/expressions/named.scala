@@ -8,7 +8,6 @@ import scraper.{Name, Row}
 import scraper.Name.caseInsensitive
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.functions._
 import scraper.types._
 
 case class ExpressionID(id: Long)
@@ -37,28 +36,6 @@ object NamedExpression {
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(Name, DataType)] = Some((e.name, e.dataType))
-
-  /**
-   * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
-   * names.  For example, for expression `id + 1`, we'd like to generate column name `(id + 1)`
-   * instead of `(&#96;id&#96; + 1)`.
-   */
-  case class UnquotedName(named: NamedExpression)
-    extends LeafExpression with UnevaluableExpression {
-
-    override lazy val isResolved: Boolean = named.isResolved
-
-    override lazy val dataType: DataType = named.dataType
-
-    override lazy val isNullable: Boolean = named.isNullable
-
-    override def sql: Try[String] = Try(named.name.casePreserving)
-  }
-
-  object UnquotedName {
-    def apply(stringLiteral: String): UnquotedName =
-      UnquotedName(lit(stringLiteral) as Name.caseInsensitive(stringLiteral))
-  }
 }
 
 case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedNamedExpression {

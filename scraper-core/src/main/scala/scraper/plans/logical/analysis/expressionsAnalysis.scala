@@ -1,13 +1,16 @@
 package scraper.plans.logical.analysis
 
+import scala.util.Try
+
 import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
-import scraper.expressions.NamedExpression.UnquotedName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
+import scraper.expressions.functions.lit
 import scraper.plans.logical._
-import scraper.types.StringType
+import scraper.plans.logical.analysis.ResolveAliases.UnquotedName
+import scraper.types.{DataType, StringType}
 
 /**
  * This rule expands "`*`" appearing in `SELECT`.
@@ -92,6 +95,40 @@ class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
       }.sql getOrElse AnonymousColumnName
 
       child as Name.caseInsensitive(alias)
+  }
+}
+
+object ResolveAliases {
+  /**
+   * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
+   * names. For example, for the following SQL query:
+   * {{{
+   *   SELECT concat("hello", "world")
+   * }}}
+   * should produce a column named as
+   * {{{
+   *   concat(hello, world)
+   * }}}
+   * instead of
+   * {{{
+   *   concat('hello', 'world')
+   * }}}
+   */
+  private case class UnquotedName(named: NamedExpression)
+    extends LeafExpression with UnevaluableExpression {
+
+    override lazy val isResolved: Boolean = named.isResolved
+
+    override lazy val dataType: DataType = named.dataType
+
+    override lazy val isNullable: Boolean = named.isNullable
+
+    override def sql: Try[String] = Try(named.name.casePreserving)
+  }
+
+  private object UnquotedName {
+    def apply(stringLiteral: String): UnquotedName =
+      UnquotedName(lit(stringLiteral) as Name.caseInsensitive(stringLiteral))
   }
 }
 
