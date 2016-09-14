@@ -26,34 +26,39 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
     // Collects all window functions and aliases them.
     val windowAliases = collectWindowFunctions(projectList) map (WindowAlias(_))
 
-    val windowBuilders = {
-      // Finds out all distinct window specs.
-      val windowSpecs = windowAliases.map(_.child.window).distinct
-
-      // Groups all window functions by their window specs and then build one `Window` operator
-      // builder function for each group. We are doing a sort here so that it would be easier to
-      // reason about the order of all the generated `Window` operators.
-      windowAliases.groupBy(_.child.window).toSeq sortBy {
-        case (window: WindowSpec, _) => windowSpecs indexOf window
-      } map {
-        case (spec, aliases) =>
-          (_: LogicalPlan) window aliases partitionBy spec.partitionSpec orderBy spec.orderSpec
-      }
-    }
-
-    // Builds and stacks all the `Window` operators.
-    val windowed = (windowBuilders foldRight child) { _ apply _ }
+    // Builds and stacks `Window` operators over the child plan.
+    val windowed = stackWindows(child, windowAliases)
 
     // Replaces all window functions in the original project list with their corresponding
     // `WindowAttribute`s.
     val rewrittenProjectList = {
       val rewrite = windowAliases.map { alias => alias.child -> alias.toAttribute }.toMap
-      projectList.map(_ transformDown { case e: WindowFunction => rewrite(e) })
+      projectList map (_ transformDown { case e: WindowFunction => rewrite(e) })
     }
 
     // Stacks a top-level projection so that no `GeneratedNamedExpression`s appear in the final
     // output attribute list.
     windowed select rewrittenProjectList
+  }
+
+  private def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan = {
+    // Finds out all distinct window specs.
+    val windowSpecs = windowAliases.map(_.child.window).distinct
+
+    // Groups all window functions by their window specs. We are doing a sort here so that it would
+    // be easier to reason about the order of all the generated `Window` operators.
+    val windowAliasGroups = windowAliases.groupBy(_.child.window).toSeq sortBy {
+      case (window: WindowSpec, _) => windowSpecs indexOf window
+    }
+
+    // Builds one `Window` operator builder function for each group.
+    val windowBuilders = windowAliasGroups map {
+      case (WindowSpec(partitionSpec, orderSpec, _), aliases) =>
+        (_: LogicalPlan) window aliases partitionBy partitionSpec orderBy orderSpec
+    }
+
+    // Stacks all windows over the input plan node.
+    (windowBuilders foldRight plan) { _ apply _ }
   }
 
   private def collectWindowFunctions(projectList: Seq[NamedExpression]): Seq[WindowFunction] =
