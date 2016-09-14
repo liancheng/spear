@@ -182,7 +182,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 
     val aggs = expressions.map(_ transformDown {
       // Eliminates previously collected `DistinctAggregateFunction`s first...
-      case a @ AggregationAlias(_: DistinctAggregateFunction, _) => a.toAttribute
+      case a: DistinctAggregateFunction => AggregationAlias(a).toAttribute
     }).flatMap(_ collect {
       // ... and then collects all non-distinct aggregate functions.
       case a: AggregateFunction => a
