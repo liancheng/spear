@@ -142,7 +142,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   test("sort over aggregation") {
     checkDataFrame(
       range(3) groupBy 'id agg 'id orderBy 'id,
-      Row(0, 0), Row(1, 1), Row(2, 2)
+      Row(0), Row(1), Row(2)
     )
   }
 
