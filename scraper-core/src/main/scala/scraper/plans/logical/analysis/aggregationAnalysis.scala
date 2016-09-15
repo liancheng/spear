@@ -25,39 +25,6 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule allows an `ORDER BY` clause to reference columns that are output of the `FROM` clause
- * but are absent in the `SELECT` clause. E.g., for the following query:
- * {{{
- *   SELECT a + 1 FROM t ORDER BY a
- * }}}
- * The parsed logical plan is something like:
- * {{{
- *   Sort order=[a]
- *   +- Project projectList=[a + 1]
- *      +- Relation name=t, output=[a]
- * }}}
- * This plan tree is invalid because attribute `a` referenced by `Sort` isn't an output attribute of
- * `Project`. This rule rewrites it into:
- * {{{
- *   Project projectList=[a]
- *   +- Sort order=[a]
- *      +- Project projectList=[a + 1, a]
- *         +- Relation name=t, output=[a]
- * }}}
- */
-class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    // Ignores global aggregates
-    case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFunction(projectList) =>
-      plan
-
-    case Unresolved(plan @ Resolved(child Project projectList) Sort order) =>
-      val orderReferences = order.flatMap(_.collect { case a: Attribute => a }).distinct
-      child select (projectList ++ orderReferences).distinct orderBy order select plan.output
-  }
-}
-
-/**
  * This rule converts [[Project]]s containing aggregate functions into unresolved global
  * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
  */

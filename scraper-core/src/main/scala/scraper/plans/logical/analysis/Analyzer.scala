@@ -4,6 +4,7 @@ import scraper._
 import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
+import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 
@@ -16,6 +17,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
       new DeduplicateReferences(catalog),
+      new ResolveSortReferences(catalog),
 
       // Rules that help resolving expressions
       new ResolveFunctions(catalog),
@@ -25,7 +27,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunctions(catalog),
-      new ResolveSortReferences(catalog),
       new RewriteDistinctsAsAggregates(catalog),
       new GlobalAggregates(catalog),
       new MergeHavingConditions(catalog),
@@ -156,6 +157,40 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
   private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
     projectList.collect { case a: Alias => a.toAttribute }.toSet
+}
+
+/**
+ * This rule allows an `ORDER BY` clause to reference columns that are output of the `FROM` clause
+ * but absent from the `SELECT` clause. E.g., for the following query:
+ * {{{
+ *   SELECT a + 1 FROM t ORDER BY a
+ * }}}
+ * The parsed logical plan is something like:
+ * {{{
+ *   Sort order=[a]
+ *   +- Project projectList=[a + 1]
+ *      +- Relation name=t, output=[a]
+ * }}}
+ * This plan tree is invalid because attribute `a` referenced by `Sort` isn't an output attribute of
+ * `Project`. This rule rewrites it into:
+ * {{{
+ *   Project projectList=[a + 1]
+ *   +- Sort order=[a]
+ *      +- Project projectList=[a + 1, a]
+ *         +- Relation name=t, output=[a]
+ * }}}
+ */
+class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    // Ignores `Sort` over global aggregations. They are handled separately by other aggregation
+    // analysis rules.
+    case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFunction(projectList) =>
+      plan
+
+    case Unresolved(plan @ Resolved(child Project projectList) Sort order) =>
+      val orderReferences = order.flatMap(_.collect { case a: Attribute => a }).distinct
+      child select (projectList ++ orderReferences).distinct orderBy order select plan.output
+  }
 }
 
 /**
