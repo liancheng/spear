@@ -1,7 +1,5 @@
 package scraper.expressions.aggregates
 
-import scala.util.Try
-
 import scraper.{JoinedRow, MutableRow, Row}
 import scraper.exceptions.ContractBrokenException
 import scraper.execution.MutableProjection
@@ -10,7 +8,6 @@ import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
 import scraper.types._
-import scraper.utils._
 
 /**
  * A trait for aggregate functions, which aggregate grouped values into scalar values. While being
@@ -76,16 +73,8 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit = bugReport()
 
-  override def sql: Try[String] = for {
-    argSQL <- trySequence(child.children.map(_.sql))
-    name = child.nodeName
-  } yield s"$name(DISTINCT ${argSQL mkString ", "})"
-
-  override def debugString: String = {
-    val args = child.children map (_.debugString)
-    val name = child.nodeName
-    s"$name(DISTINCT ${args mkString ", "})"
-  }
+  override protected def template(childList: Seq[String]): String =
+    childList mkString (s"${child.nodeName.casePreserving}(DISTINCT ", ", ", ")")
 
   private def bugReport(): Nothing = throw new ContractBrokenException(
     "This method should never be invoked. You probably hit an internal bug."

@@ -133,12 +133,12 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        val aliases = Alias.collectAliases(innerList)
+        val inlineAliases = Alias.inlineAliases(innerList) _
 
         plan select (outerList map {
-          case a: Alias        => a.copy(child = Alias.inlineAliases(a.child, aliases))
-          case a: AttributeRef => Alias.inlineAliases(a, aliases) as a.name withID a.expressionID
-          case e               => Alias.inlineAliases(e, aliases)
+          case a: Alias        => a.copy(child = inlineAliases(a.child))
+          case a: AttributeRef => inlineAliases(a) as a.name withID a.expressionID
+          case e               => inlineAliases(e)
         })
     }
   }

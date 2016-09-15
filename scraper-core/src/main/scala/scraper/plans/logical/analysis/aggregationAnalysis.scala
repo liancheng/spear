@@ -46,10 +46,10 @@ class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve all unresolved attributes referencing output of the project list.
-      val rewrittenCondition = {
-        val partiallyResolved = condition resolveUsing (agg.projectList map (_.toAttribute))
-        Alias.inlineAliases(partiallyResolved, agg.projectList)
-      }
+      val rewrittenCondition = Alias.inlineAliases(
+        condition resolveUsing agg.projectList,
+        agg.projectList
+      )
 
       // All having conditions should be preserved
       agg.copy(havingConditions = agg.havingConditions :+ rewrittenCondition)
@@ -66,10 +66,11 @@ class MergeSortsOverAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Tries to resolve all unresolved attributes referencing output of the project list.
-      val inputAttributes = agg.projectList map (_.toAttribute)
       val rewrittenOrder = order map { sortOrder =>
-        val partiallyResolved = sortOrder.child resolveUsing inputAttributes
-        sortOrder.copy(child = Alias.inlineAliases(partiallyResolved, agg.projectList))
+        sortOrder.copy(child = Alias.inlineAliases(
+          sortOrder.child resolveUsing agg.projectList,
+          agg.projectList
+        ))
       }
 
       // Only preserves the last sort order
