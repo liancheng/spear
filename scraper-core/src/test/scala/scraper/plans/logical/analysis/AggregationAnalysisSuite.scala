@@ -15,11 +15,36 @@ class AggregationAnalysisSuite extends AnalyzerTest {
   }
 
   test("global aggregate in SQL") {
-    val aggCountA = AggregationAlias(count(a of 't))
+    val `count(t.a)` = AggregationAlias(count(a of 't))
 
     checkAnalyzedPlan(
       "SELECT count(a) FROM t",
-      relation subquery 't resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
+      relation
+        subquery 't
+        resolvedAgg `count(t.a)`
+        select (`count(t.a)`.attr as "count(a)")
+    )
+  }
+
+  test("aggregate with having clause referencing projected attribute") {
+    checkAnalyzedPlan(
+      relation groupBy 'a agg (count('b) as 'c) having 'c > 1L,
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
+        filter aggCountB.attr > 1L
+        select (aggCountB.attr as 'c)
+    )
+  }
+
+  test("aggregate with order by clause referencing projected attribute") {
+    checkAnalyzedPlan(
+      relation groupBy 'a agg (count('b) as 'c) orderBy 'c.desc,
+      relation
+        resolvedGroupBy groupA
+        agg aggCountB
+        orderBy aggCountB.attr.desc
+        select (aggCountB.attr as 'c)
     )
   }
 

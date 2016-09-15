@@ -44,9 +44,15 @@ class GlobalAggregates(val catalog: Catalog) extends AnalysisRule {
  */
 class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Filter condition =>
+    case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
+      // Tries to resolve all unresolved attributes referencing output of the project list.
+      val rewrittenCondition = {
+        val partiallyResolved = condition resolveUsing (agg.projectList map (_.toAttribute))
+        Alias.inlineAliases(partiallyResolved, agg.projectList)
+      }
+
       // All having conditions should be preserved
-      agg.copy(havingConditions = agg.havingConditions :+ condition)
+      agg.copy(havingConditions = agg.havingConditions :+ rewrittenCondition)
   }
 }
 
@@ -58,9 +64,16 @@ class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
  */
 class MergeSortsOverAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Sort order =>
+    case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
+      // Tries to resolve all unresolved attributes referencing output of the project list.
+      val inputAttributes = agg.projectList map (_.toAttribute)
+      val rewrittenOrder = order map { sortOrder =>
+        val partiallyResolved = sortOrder.child resolveUsing inputAttributes
+        sortOrder.copy(child = Alias.inlineAliases(partiallyResolved, agg.projectList))
+      }
+
       // Only preserves the last sort order
-      agg.copy(order = order)
+      agg.copy(order = rewrittenOrder)
   }
 }
 
@@ -78,9 +91,14 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  */
 class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
-    tree transformDown (skip orElse resolveUnresolvedAggregate)
+    if (tree.collectFirst(shouldSkip).nonEmpty) {
+      tree
+    } else {
+      tree transformDown resolveUnresolvedAggregate
+    }
 
-  private val skip: PartialFunction[LogicalPlan, LogicalPlan] = {
+  // We should skip this analysis rule if the plan tree contains any of the following patterns.
+  private val shouldSkip: PartialFunction[LogicalPlan, LogicalPlan] = {
     // Waits until all adjacent having conditions are merged
     case plan @ ((_: UnresolvedAggregate) Filter _) =>
       plan
@@ -121,16 +139,17 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenProjectList = projectList map (e => rewrite(e) -> e) map {
         // Top level `GeneratedAttribute`s should be aliased to names of the original expressions
         case (g: GeneratedAttribute, e) => g as e.name
-        case (e, _)                     => e
+        case (e: NamedExpression, _)    => e
       }
 
       // At this stage, no `AttributeRef`s should appear in the following 3 rewritten expressions.
       // This is because all `AttributeRef`s in the original `UnresolvedAggregate` operator should
       // only appear in grouping keys and/or aggregate functions, which have already been rewritten
       // to `GroupingAttribute`s and `AggregationAttribute`s.
-      rejectDanglingAttributes("SELECT field", keys, rewrittenProjectList)
-      rejectDanglingAttributes("HAVING condition", keys, rewrittenConditions)
-      rejectDanglingAttributes("ORDER BY expression", keys, rewrittenOrdering)
+      val output = rewrittenProjectList map (_.toAttribute)
+      rejectDanglingAttributes("SELECT field", keys, Nil, rewrittenProjectList)
+      rejectDanglingAttributes("HAVING condition", keys, output, rewrittenConditions)
+      rejectDanglingAttributes("ORDER BY expression", keys, output, rewrittenOrdering)
 
       child
         .resolvedGroupBy(keyAliases)
@@ -172,9 +191,11 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   }
 
   private def rejectDanglingAttributes(
-    part: String, keys: Seq[Expression], expressions: Seq[Expression]
+    part: String, keys: Seq[Expression], output: Seq[Attribute], expressions: Seq[Expression]
   ): Unit = expressions foreach { e =>
-    e.references collectFirst { case a: AttributeRef => a } foreach { a =>
+    e.references collectFirst {
+      case a: AttributeRef if !output.contains(a) => a
+    } foreach { a =>
       throw new IllegalAggregationException(part, a, e, keys)
     }
   }

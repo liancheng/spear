@@ -55,7 +55,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def resolveUsing(input: Seq[NamedExpression]): Expression = transformDown {
     case unresolved @ UnresolvedAttribute(name, qualifier) =>
-      val candidates = input collect {
+      val candidates = input.distinct collect {
         case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
         case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
       }
