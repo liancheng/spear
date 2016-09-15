@@ -53,6 +53,32 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   def sql: Try[String] = trySequence(children map (_.sql)) map template
 
+  def resolveUsing(input: Seq[NamedExpression]): Expression = transformDown {
+    case unresolved @ UnresolvedAttribute(name, qualifier) =>
+      val candidates = input collect {
+        case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
+        case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
+      }
+
+      candidates match {
+        case Seq(attribute) =>
+          attribute
+
+        case Nil =>
+          // No candidates found, but we don't report resolution failure here since the attribute
+          // might be resolved later with the help of other analysis rules.
+          unresolved
+
+        case _ =>
+          // Multiple candidates found, something terrible must happened...
+          throw new ResolutionFailureException(
+            s"""Multiple ambiguous input attributes found while resolving $unresolved using
+               |${input mkString ", "}
+               |""".oneLine
+          )
+      }
+  }
+
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
    * time. Foldable expressions can be optimized out when being compiled. For example

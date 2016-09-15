@@ -1,6 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
@@ -43,39 +44,18 @@ class ExpandStars(val catalog: Catalog) extends AnalysisRule {
 class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
-      resolveReferences(plan)
-  }
-
-  private def resolveReferences(plan: LogicalPlan): LogicalPlan = plan transformExpressionsUp {
-    case unresolved @ UnresolvedAttribute(name, qualifier) =>
-      def reportResolutionFailure(message: String): Nothing = {
-        throw new ResolutionFailureException(
-          s"""Failed to resolve attribute ${unresolved.debugString} in logical query plan:
-             |${plan.prettyTree}
-             |$message
-             |""".stripMargin
-        )
-      }
-
-      val candidates = plan.children flatMap (_.output) collect {
-        case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
-        case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
-      }
-
-      candidates match {
-        case Seq(attribute) =>
-          attribute
-
-        case Nil =>
-          // No candidates found, but we don't report resolution failure here since the attribute
-          // might be resolved later with the help of other analysis rules.
-          unresolved
-
-        case _ =>
-          // Multiple candidates found, something terrible must happened...
-          reportResolutionFailure {
-            val list = candidates map (_.debugString) mkString ", "
-            s"Multiple ambiguous input attributes found: $list"
+      val input = plan.children flatMap (_.output)
+      plan transformExpressionsDown {
+        case a: UnresolvedAttribute =>
+          try a resolveUsing input catch {
+            case NonFatal(cause) =>
+              throw new ResolutionFailureException(
+                s"""Failed to resolve attribute $a in logical plan:
+                  |
+                  |${plan.prettyTree}
+                  |""".stripMargin,
+                cause
+              )
           }
       }
   }
