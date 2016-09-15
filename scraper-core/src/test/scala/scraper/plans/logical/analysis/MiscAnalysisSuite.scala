@@ -8,8 +8,8 @@ import scraper.plans.logical._
 class MiscAnalysisSuite extends AnalyzerTest {
   test("self-join") {
     checkAnalyzedPlan(
-      relation0 join relation0,
-      relation0 join relation0.newInstance()
+      relation join relation,
+      relation join relation.newInstance()
     )
   }
 
@@ -19,9 +19,9 @@ class MiscAnalysisSuite extends AnalyzerTest {
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
-      relation0
+      relation
         subquery 't
-        join (relation0.newInstance() subquery 't)
+        join (relation.newInstance() subquery 't)
         select (a of 't, b of 't, a0 of 't, b0 of 't)
     )
   }
@@ -48,15 +48,15 @@ class MiscAnalysisSuite extends AnalyzerTest {
 
   test("order by columns not appearing in project list") {
     checkAnalyzedPlan(
-      relation0 select 'b orderBy (('a + 1).asc, 'b.desc),
-      relation0 select (b, a) orderBy ((a + 1).asc, b.desc) select b
+      relation select 'b orderBy (('a + 1).asc, 'b.desc),
+      relation select (b, a) orderBy ((a + 1).asc, b.desc) select b
     )
   }
 
   test("order by columns not appearing in project list in SQL") {
     checkAnalyzedPlan(
       "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
-      relation0
+      relation
         subquery 't
         select (b of 't, a of 't)
         orderBy (((a of 't) + 1).asc, (b of 't).desc)
@@ -65,10 +65,10 @@ class MiscAnalysisSuite extends AnalyzerTest {
   }
 
   override protected def beforeAll(): Unit = {
-    catalog.registerRelation('t, relation0)
+    catalog.registerRelation('t, relation)
   }
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val relation0 = LocalRelation.empty(a, b)
+  private val relation = LocalRelation.empty(a, b)
 }

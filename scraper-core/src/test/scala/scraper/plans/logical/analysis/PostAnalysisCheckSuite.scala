@@ -11,7 +11,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     val rule = new RejectUnresolvedExpressions(catalog)
 
     intercept[ResolutionFailureException] {
-      rule(relation0 select 'a)
+      rule(relation select 'a)
     }
   }
 
@@ -19,7 +19,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     val rule = new RejectUnresolvedPlans(catalog)
 
     intercept[ResolutionFailureException] {
-      rule(relation0 agg (1 as 'a))
+      rule(relation agg (1 as 'a))
     }
   }
 
@@ -35,11 +35,11 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     val rule = new RejectDistinctAggregateFunctions(catalog)
 
     intercept[ResolutionFailureException] {
-      rule(relation0 select distinct(count(a)))
+      rule(relation select distinct(count(a)))
     }
   }
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val relation0 = LocalRelation.empty(a, b)
+  private val relation = LocalRelation.empty(a, b)
 }
