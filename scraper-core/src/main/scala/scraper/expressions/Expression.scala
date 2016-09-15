@@ -17,6 +17,42 @@ import scraper.utils._
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
+  override def toString: String = debugString
+
+  /**
+   * Whether the result of this [[Expression]] can be null when evaluated. False positive is allowed
+   * ([[isNullable]] is true, while this expression never returns null), while false negative is not
+   * allowed.
+   */
+  def isNullable: Boolean = children exists (_.isNullable)
+
+  def referenceSet: Set[Attribute] = references.toSet
+
+  def references: Seq[Attribute] = children.flatMap(_.references).distinct
+
+  /**
+   * Returns the data type of this [[Expression]] if it's well-typed, or throws
+   * [[scraper.exceptions.AnalysisException AnalysisException]] (or one of its subclasses) if it's
+   * not.
+   *
+   * By default, this method performs type checking and delegates to [[strictDataType]] if this
+   * [[Expression]] is well-typed. In general, concrete expression classes should override
+   * [[Expression.strictlyTyped]] instead of this method with the exception when the concrete
+   * expression always have a fixed data type (e.g. predicates always return boolean values).
+   *
+   * @see [[strictDataType]]
+   * @see [[strictlyTyped]]
+   */
+  def dataType: DataType = whenWellTyped(strictlyTyped.get.strictDataType)
+
+  def evaluate(input: Row): Any
+
+  def evaluated: Any = evaluate(null)
+
+  def debugString: String = template(children map (_.debugString))
+
+  def sql: Try[String] = trySequence(children map (_.sql)) map template
+
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
    * time. Foldable expressions can be optimized out when being compiled. For example
@@ -30,13 +66,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    * is not.
    */
   lazy val isFoldable: Boolean = children forall (_.isFoldable)
-
-  /**
-   * Whether the result of this [[Expression]] can be null when evaluated. False positive is allowed
-   * ([[isNullable]] is true, while this expression never returns null), while false negative is not
-   * allowed.
-   */
-  def isNullable: Boolean = children exists (_.isNullable)
 
   /**
    * Whether this [[Expression]] is pure. A pure [[Expression]] is deterministic, and always returns
@@ -59,10 +88,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   lazy val isResolved: Boolean = children forall (_.isResolved)
 
   lazy val isBound: Boolean = isResolved && children.forall(_.isBound)
-
-  def referenceSet: Set[Attribute] = references.toSet
-
-  def references: Seq[Attribute] = children.flatMap(_.references).distinct
 
   /**
    * Tries to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
@@ -99,16 +124,25 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   lazy val strictlyTyped: Try[Expression] = typeConstraint.enforced map withChildren
 
   /**
-   * Type constraint for all input expressions.
-   */
-  protected def typeConstraint: TypeConstraint = StrictlyTyped(children)
-
-  /**
    * Indicates whether this [[Expression]] is strictly-typed.
    *
    * @see [[strictlyTyped]]
    */
   lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
+
+  /**
+   * Indicates whether this [[Expression]] is well-typed.
+   *
+   * @see [[strictlyTyped]]
+   */
+  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
+
+  lazy val childrenTypes: Seq[DataType] = children map (_.dataType)
+
+  /**
+   * Type constraint for all input expressions.
+   */
+  protected def typeConstraint: TypeConstraint = StrictlyTyped(children)
 
   /**
    * Returns `value` if this [[Expression]] is strictly-typed, otherwise throws a
@@ -119,13 +153,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   @throws[TypeCheckException]("If this expression is not strictly-typed")
   protected def whenStrictlyTyped[T](value: => T): T =
     if (isStrictlyTyped) value else throw new TypeCheckException(this)
-
-  /**
-   * Indicates whether this [[Expression]] is well-typed.
-   *
-   * @see [[strictlyTyped]]
-   */
-  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   /**
    * Returns `value` if this [[Expression]] is weel-typed.
@@ -140,19 +167,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
     if (isBound) value else throw new ExpressionNotBoundException(this)
 
   /**
-   * Returns the data type of this [[Expression]] if it's well-typed, or throws
-   * [[scraper.exceptions.AnalysisException AnalysisException]] (or one of its subclasses) if it's
-   * not.
-   *
-   * By default, this method performs type checking and delegates to [[strictDataType]] if this
-   * [[Expression]] is well-typed. In general, concrete expression classes should override
-   * [[Expression.strictlyTyped]] instead of this method with the exception when the concrete
-   * expression always have a fixed data type (e.g. predicates always return boolean values).
-   *
-   * @see [[strictDataType]]
-   * @see [[strictlyTyped]]
+   * A template method for building `debugString` and `sql`.
    */
-  def dataType: DataType = whenWellTyped(strictlyTyped.get.strictDataType)
+  protected def template(childList: Seq[String]): String =
+    childList mkString (s"${nodeName.casePreserving}(", ", ", ")")
 
   /**
    * Returns the data type of this [[Expression]]. Different from [[Expression.dataType]], this
@@ -163,24 +181,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected lazy val strictDataType: DataType = throw new ContractBrokenException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )
-
-  def evaluate(input: Row): Any
-
-  def evaluated: Any = evaluate(null)
-
-  lazy val childrenTypes: Seq[DataType] = children map (_.dataType)
-
-  /**
-   * A template method for building `debugString` and `sql`.
-   */
-  protected def template(childList: Seq[String]): String =
-    childList mkString (s"${nodeName.casePreserving}(", ", ", ")")
-
-  def debugString: String = template(children map (_.debugString))
-
-  def sql: Try[String] = trySequence(children map (_.sql)) map template
-
-  override def toString: String = debugString
 }
 
 trait StatefulExpression[State] extends Expression {
