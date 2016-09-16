@@ -85,7 +85,7 @@ class ImplicitCastException(message: String, cause: Throwable)
   def this(from: Expression, to: DataType, cause: Throwable) = this({
     s"""Cannot convert expression ${from.debugString}
        |of data type ${from.dataType} to $to implicitly.
-     """.oneLine
+       |""".oneLine
   }, cause)
 
   def this(from: Expression, to: DataType) = this(from, to, null)
@@ -104,7 +104,7 @@ class TypeMismatchException(message: String, cause: Throwable)
     val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
     s"""Expecting expression(s) of type ${expected.sql}, but found the following violators:
        |${violators mkString "\n"}
-     """.stripMargin
+       |""".stripMargin
   }, cause)
 
   def this(
@@ -115,7 +115,7 @@ class TypeMismatchException(message: String, cause: Throwable)
     val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
     s"""Expecting expression(s) of $expected, but found the following violators:
        |${violators mkString "\n"}
-     """.stripMargin
+       |""".stripMargin
   }, cause)
 
   def this(expressions: Seq[Expression], expected: DataType) =
@@ -162,13 +162,13 @@ class IllegalAggregationException(message: String, cause: Throwable)
     val ks = keys map (_.debugString) mkString ("[", ", ", "]")
     s"""$part ${expression.debugString} references attribute ${attribute.debugString},
        |which is neither referenced by an aggregate function nor a grouping key among $ks
-     """.oneLine
+       |""".oneLine
   }, cause)
 
   def this(outer: AggregateFunction, inner: AggregateFunction) = this({
     s"""Aggregate function (${inner.nodeName.toString}) can't be nested within
        |another aggregate function (${outer.nodeName.toString}).
-     """.oneLine
+       |""".oneLine
   }, null)
 
   def this(part: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =

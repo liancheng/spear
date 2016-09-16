@@ -27,7 +27,7 @@ class SettingsSuite extends LoggingFunSuite {
        |$minutesKey = 1 m
        |$hoursKey = 1 h
        |$daysKey = 1 d
-     """.stripMargin
+       |""".stripMargin
   )
 
   private val settings = Settings(config)

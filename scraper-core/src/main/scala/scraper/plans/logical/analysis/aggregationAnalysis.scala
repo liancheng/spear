@@ -88,7 +88,8 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 /**
  * This rule resolves an [[UnresolvedAggregate]] into an [[Aggregate]], an optional [[Filter]] if
  * there exists a `HAVING` condition, an optional [[Sort]] if there exist any sort ordering
- * expressions, plus a top-level [[Project]].
+ * expressions, zero or more [[Window]] if there exists window function(s), plus a top-level
+ * [[Project]].
  */
 class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =

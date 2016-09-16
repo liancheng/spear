@@ -34,7 +34,7 @@ object BasicExample {
       """SELECT name, gender
         |FROM people
         |WHERE age >= 18
-      """.stripMargin
+        |""".stripMargin
     )
 
     adultsSQL.explain()
@@ -45,7 +45,7 @@ object BasicExample {
         |FROM people
         |GROUP BY gender
         |HAVING gender = 'M'
-      """.stripMargin
+        |""".stripMargin
     )
 
     countGenderSQL.explain()

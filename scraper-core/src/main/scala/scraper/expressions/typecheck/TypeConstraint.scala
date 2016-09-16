@@ -93,7 +93,7 @@ case class SameType(input: Seq[Expression]) extends TypeConstraint {
       throw new TypeMismatchException(
         s"""Cannot find a common data type for data types of all the following expressions:
            |${input map { e => s" - Expression $e of type ${e.dataType.sql}" } mkString "\n"}
-         """.stripMargin
+           |""".stripMargin
       )
     }
   } yield strictInput map widenDataTypeTo(widestType)

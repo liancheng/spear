@@ -234,7 +234,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
           |) s
           |WHERE value % 2 = 0
           |ORDER BY value DESC
-        """.stripMargin
+          |""".stripMargin
       ).explanation(extended = true)
     }
   }
