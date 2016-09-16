@@ -36,7 +36,7 @@ case object SingleRowRelation extends LeafPhysicalPlan {
 case class NotImplemented(
   logicalPlanName: String,
   @Explain(hidden = true) input: Seq[PhysicalPlan],
-  @Explain(hidden = true) output: Seq[Attribute]
+  output: Seq[Attribute]
 ) extends PhysicalPlan {
   override def children: Seq[PhysicalPlan] = input
 
