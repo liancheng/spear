@@ -6,11 +6,11 @@ import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.logical.LocalRelation
 
-class AggregationAnalysisSuite extends AnalyzerTest {
+class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
     checkAnalyzedPlan(
       relation select count('a),
-      relation resolvedAgg aggCountA select (aggCountA.attr as "count(a)")
+      relation resolvedAgg agg.`count(a)` select (agg.`count(a)`.attr as "count(a)")
     )
   }
 
@@ -30,10 +30,10 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation groupBy 'a agg (count('b) as 'c) having 'c > 1L,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
-        filter aggCountB.attr > 1L
-        select (aggCountB.attr as 'c)
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
+        filter agg.`count(b)`.attr > 1L
+        select (agg.`count(b)`.attr as 'c)
     )
   }
 
@@ -41,10 +41,10 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation groupBy 'a agg (count('b) as 'c) orderBy 'c.desc,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
-        orderBy aggCountB.attr.desc
-        select (aggCountB.attr as 'c)
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
+        orderBy agg.`count(b)`.attr.desc
+        select (agg.`count(b)`.attr as 'c)
     )
   }
 
@@ -52,11 +52,11 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation groupBy 'a agg 'a having 'a > 1 orderBy count('b).asc,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
-        having groupA.attr > 1
-        orderBy aggCountB.attr.asc
-        select (groupA.attr as 'a)
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
+        having group.a.attr > 1
+        orderBy agg.`count(b)`.attr.asc
+        select (group.a.attr as 'a)
     )
   }
 
@@ -64,11 +64,11 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation groupBy 'a agg count('b) orderBy 'a.asc orderBy count('b).asc,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
         // Only the last sort order should be preserved
-        orderBy aggCountB.attr.asc
-        select (aggCountB.attr as "count(b)")
+        orderBy agg.`count(b)`.attr.asc
+        select (agg.`count(b)`.attr as "count(b)")
     )
   }
 
@@ -76,11 +76,11 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation groupBy 'a agg count('b) having 'a > 1 having count('b) < 3L,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
         // All having conditions should be preserved
-        having groupA.attr > 1 && aggCountB.attr < 3L
-        select (aggCountB.attr as "count(b)")
+        having group.a.attr > 1 && agg.`count(b)`.attr < 3L
+        select (agg.`count(b)`.attr as "count(b)")
     )
   }
 
@@ -94,11 +94,11 @@ class AggregationAnalysisSuite extends AnalyzerTest {
         having count('b) < 10L
         orderBy count('b).asc,
       relation
-        resolvedGroupBy groupA
-        agg aggCountB
-        having groupA.attr > 1 && (aggCountB.attr < 10L)
-        orderBy aggCountB.attr.asc
-        select (groupA.attr as 'a)
+        resolvedGroupBy group.a
+        agg agg.`count(b)`
+        having group.a.attr > 1 && (agg.`count(b)`.attr < 10L)
+        orderBy agg.`count(b)`.attr.asc
+        select (group.a.attr as 'a)
     )
   }
 
@@ -108,9 +108,9 @@ class AggregationAnalysisSuite extends AnalyzerTest {
         groupBy 'a
         agg count(),
       relation
-        resolvedGroupBy groupA
-        agg aggCount1
-        select (aggCount1.attr as i"count(1)")
+        resolvedGroupBy group.a
+        agg agg.`count(1)`
+        select (agg.`count(1)`.attr as i"count(1)")
     )
   }
 
@@ -119,7 +119,7 @@ class AggregationAnalysisSuite extends AnalyzerTest {
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
       relation groupBy 'a agg 'a,
-      relation resolvedGroupBy groupA agg Nil select (groupA.attr as 'a)
+      relation resolvedGroupBy group.a agg Nil select (group.a.attr as 'a)
     )
   }
 
@@ -139,9 +139,9 @@ class AggregationAnalysisSuite extends AnalyzerTest {
     checkAnalyzedPlan(
       relation.distinct,
       relation
-        resolvedGroupBy (groupA, groupB)
+        resolvedGroupBy (group.a, group.b)
         agg Nil
-        select (groupA.attr as 'a, groupB.attr as 'b)
+        select (group.a.attr as 'a, group.b.attr as 'b)
     )
   }
 
@@ -151,13 +151,19 @@ class AggregationAnalysisSuite extends AnalyzerTest {
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
-  private val (groupA, groupB, aggCountA, aggCountB, aggCount1) = (
-    GroupingAlias(a),
-    GroupingAlias(b),
-    AggregationAlias(count(a)),
-    AggregationAlias(count(b)),
-    AggregationAlias(count(1))
-  )
+  private object agg {
+    val `count(a)` = AggregationAlias(count(self.a))
+
+    val `count(b)` = AggregationAlias(count(self.b))
+
+    val `count(1)` = AggregationAlias(count(1))
+  }
+
+  private object group {
+    val a = GroupingAlias(self.a)
+
+    val b = GroupingAlias(self.b)
+  }
 
   private val relation = LocalRelation.empty(a, b)
 }
