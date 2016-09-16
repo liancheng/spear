@@ -16,21 +16,21 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
-      new DeduplicateReferences(catalog),
       new ResolveSortReferences(catalog),
+      new DeduplicateReferences(catalog),
 
       // Rules that help resolving expressions
-      new ResolveFunctions(catalog),
       new ExpandStars(catalog),
       new ResolveReferences(catalog),
+      new ResolveFunctions(catalog),
       new ResolveAliases(catalog),
 
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunctions(catalog),
       new RewriteDistinctsAsAggregates(catalog),
-      new GlobalAggregates(catalog),
-      new MergeHavingConditions(catalog),
-      new MergeSortsOverAggregates(catalog),
+      new RewriteProjectsAsGlobalAggregates(catalog),
+      new AbsorbHavingConditionsIntoAggregates(catalog),
+      new AbsorbSortsIntoAggregates(catalog),
       new ResolveAggregates(catalog)
     )),
 

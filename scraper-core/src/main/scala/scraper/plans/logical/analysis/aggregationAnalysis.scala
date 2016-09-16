@@ -28,7 +28,7 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
  * This rule converts [[Project]]s containing aggregate functions into unresolved global
  * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
  */
-class GlobalAggregates(val catalog: Catalog) extends AnalysisRule {
+class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if hasAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
@@ -42,7 +42,7 @@ class GlobalAggregates(val catalog: Catalog) extends AnalysisRule {
  * having conditions into [[UnresolvedAggregate]]s beneath them so that they can be resolved
  * together later.
  */
-class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
+class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve all unresolved attributes referencing output of the project list.
@@ -62,7 +62,7 @@ class MergeHavingConditions(val catalog: Catalog) extends AnalysisRule {
  * with the [[UnresolvedAggregate]] beneath it. This rule merges such [[Sort]]s into
  * [[UnresolvedAggregate]]s beneath them so that they can be resolved together later.
  */
-class MergeSortsOverAggregates(val catalog: Catalog) extends AnalysisRule {
+class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Tries to resolve all unresolved attributes referencing output of the project list.
