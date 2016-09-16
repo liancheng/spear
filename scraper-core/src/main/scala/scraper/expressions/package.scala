@@ -11,6 +11,8 @@ package object expressions {
 
   implicit def `*->Star`(s: *.type): Star = Star(None)
 
+  implicit def `Expression->SortOrder`(e: Expression): SortOrder = e.asc
+
   implicit def `Boolean->Literal`(value: Boolean): Literal = Literal(value, BooleanType)
 
   implicit def `Byte->Literal`(value: Byte): Literal = Literal(value, ByteType)
