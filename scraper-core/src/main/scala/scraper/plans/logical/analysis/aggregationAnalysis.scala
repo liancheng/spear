@@ -147,7 +147,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val restoreWins = rewriteWins map (_.swap)
 
       // While being used in an aggregation, the only input attributes a window function can
-      // reference are grouping keys. E.g., these queries are invalid:
+      // reference are grouping keys. E.g., these queries are valid:
       //
       //   SELECT max(a) OVER (...) FROM t GROUP BY a
       //   SELECT sum(a % 10) OVER (...) FROM t GROUP BY a % 10
