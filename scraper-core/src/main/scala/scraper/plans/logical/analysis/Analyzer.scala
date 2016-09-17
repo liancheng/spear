@@ -183,7 +183,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
  */
 class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    // Ignores `Sort` over global aggregations. They are handled separately by other aggregation
+    // Ignores `Sort`s over global aggregations. They are handled separately by other aggregation
     // analysis rules.
     case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFunction(projectList) =>
       plan

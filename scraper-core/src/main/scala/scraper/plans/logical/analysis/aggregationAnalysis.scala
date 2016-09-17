@@ -95,23 +95,21 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  */
 class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
-    if (tree.collectFirst(shouldSkip).nonEmpty) {
-      tree
-    } else {
+    tree collectFirst shouldSkip map (_ => tree) getOrElse {
       tree transformDown resolveUnresolvedAggregate
     }
 
   // We should skip this analysis rule if the plan tree contains any of the following patterns.
   private val shouldSkip: PartialFunction[LogicalPlan, LogicalPlan] = {
-    // Waits until all adjacent having conditions are merged
+    // Waits until all adjacent having conditions are absorbed.
     case plan @ ((_: UnresolvedAggregate) Filter _) =>
       plan
 
-    // Waits until all adjacent sorts are merged
+    // Waits until all adjacent sorts are absorbed.
     case plan @ ((_: UnresolvedAggregate) Sort _) =>
       plan
 
-    // Waits until project list, having condition, and sort order expressions are all resolved
+    // Waits until project list, having condition, and sort order expressions are all resolved.
     case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
       plan
 
@@ -122,56 +120,117 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 
   private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
     case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
-      // Aliases all grouping keys
+      // Aliases all grouping keys.
       val keyAliases = keys map (GroupingAlias(_))
-      val rewriteKeys = keys.zip(keyAliases.map(_.toAttribute)).toMap
 
-      // Collects all aggregate functions
+      // Collects and aliases all aggregate functions.
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
-
-      // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`
-      aggs foreach rejectNestedAggregateFunction
-
-      // Aliases all collected aggregate functions
       val aggAliases = aggs map (AggregationAlias(_))
-      val rewriteAggs = (aggs: Seq[Expression]).zip(aggAliases.map(_.toAttribute)).toMap
+
+      // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`.
+      aggs foreach rejectNestedAggregateFunction
 
       // Collects and aliases all window functions.
       val wins = collectWindowFunctions(projectList)
       val winAliases = wins map (WindowAlias(_))
-      val rewriteWins = (wins: Seq[Expression]).zip(winAliases.map(_.toAttribute)).toMap
 
-      def rewrite(expression: Expression) = expression transformDown {
-        case e =>
-          rewriteKeys orElse rewriteAggs orElse rewriteWins applyOrElse (e, identity[Expression])
+      def buildRewriter(aliases: Seq[GeneratedAlias]): Map[Expression, Expression] =
+        aliases.map { a => a.child -> (a.attr: Expression) }.toMap
+
+      val rewriteKeys = buildRewriter(keyAliases)
+      val rewriteAggs = buildRewriter(aggAliases)
+      val rewriteWins = buildRewriter(winAliases)
+
+      // Used to restore the original expressions for error reporting.
+      val restoreKeys = rewriteKeys map (_.swap)
+      val restoreAggs = rewriteAggs map (_.swap)
+      val restoreWins = rewriteWins map (_.swap)
+
+      // While being used in an aggregation, the only input attributes a window function can
+      // reference are grouping keys. E.g., these queries are invalid:
+      //
+      //   SELECT max(a) OVER (...) FROM t GROUP BY a
+      //   SELECT sum(a % 10) OVER (...) FROM t GROUP BY a % 10
+      //
+      // while these are not:
+      //
+      //   SELECT max(b) OVER (...) FROM t GROUP BY a
+      //   SELECT sum(a) OVER (...) FROM t GROUP BY a % 10
+      //
+      // Therefore, after rewriting all grouping keys to their corresponding `GroupingAttribute`s,
+      // no other input attributes should be found in the rewritten window functions anymore.
+      rejectDanglingAttributes(
+        "window function", wins.map(_ transformDown rewriteKeys), keys, Nil, restoreKeys
+      )
+
+      val rewrite = (_: Expression) transformDown {
+        rewriteKeys orElse rewriteAggs orElse rewriteWins
       }
 
-      // Replaces grouping keys and aggregate functions in having condition, sort ordering
-      // expressions, and projected named expressions.
+      // Rewrites grouping keys, aggregate functions, and window functions appearing in having
+      // condition, sort ordering expressions, and projected named expressions to corresponding
+      // `GroupingAttribute`s, `AggregationAttribute`s, and `WindowAttribute`s.
       val rewrittenConditions = conditions map rewrite
-      val rewrittenOrdering = order map (order => order.copy(child = rewrite(order.child)))
-      val rewrittenProjectList = projectList map (e => rewrite(e) -> e) map {
+      val rewrittenOrder = order map (ord => ord.copy(child = rewrite(ord.child)))
+      val rewrittenProjectList = projectList map rewrite zip projectList map {
         // Top level `GeneratedAttribute`s should be aliased with names and expression IDs of the
-        // original expressions
+        // original named expressions so that the transformed plan still has the same output
+        // attributes as the original plan.
         case (g: GeneratedAttribute, e) => g as e.name withID e.expressionID
         case (e: NamedExpression, _)    => e
       }
 
-      // At this stage, no `AttributeRef`s should appear in the following 3 rewritten expressions.
-      // This is because all `AttributeRef`s in the original `UnresolvedAggregate` operator should
-      // only appear in grouping keys and/or aggregate functions, which have already been rewritten
-      // to `GroupingAttribute`s and `AggregationAttribute`s.
+      // Expressions appearing in aggregation must conform to the following constraints:
+      //
+      //  1. The only input attributes a projected named expression can reference are
+      //
+      //     - grouping keys, and
+      //     - attributes referenced by non-window aggregate functions.
+      //
+      //     E.g., these queries are valid:
+      //
+      //       SELECT a + 1 FROM t GROUP BY a + 1
+      //       SELECT a + 1 + 1 FROM t GROUP BY a + 1
+      //       SELECT max(b) FROM t GROUP BY a + 1
+      //
+      //     while these are not:
+      //
+      //       SELECT a + 2 FROM t GROUP BY a + 1
+      //       SELECT max(b) OVER (...) FROM t GROUP BY a + 1
+      //
+      //  2. The only input attributes a having condition or a sort ordering expression can
+      //     reference are
+      //
+      //     - grouping keys,
+      //     - attributes referenced by non-window aggregate functions, and
+      //     - output attribute of the project list.
+      //
+      //     E.g., these queries are valid:
+      //
+      //       SELECT max(b) AS max FROM t GROUP BY a + 1 HAVING sum(a) < 10
+      //       SELECT max(b) AS max FROM t GROUP BY a + 1 ORDER BY a + 1 DESC
+      //       SELECT max(b) AS max FROM t GROUP BY a + 1 HAVING max > 0
+      //
+      //     while these are not:
+      //
+      //       SELECT max(b) AS max FROM t GROUP BY a + 1 HAVING a + 2 < 10
+      //       SELECT max(b) AS max FROM t GROUP BY a + 1 ORDER BY b DESC
+      //
+      // At this stage, we've already rewritten all grouping keys and aggregate functions to
+      // corresponding `GroupingAttribute`s and `AggregationAttribute`s. Therefore, no other input
+      // attributes should be found in these rewritten expressions anymore.
       val output = rewrittenProjectList map (_.toAttribute)
-      rejectDanglingAttributes("SELECT field", keys, Nil, rewrittenProjectList)
-      rejectDanglingAttributes("HAVING condition", keys, output, rewrittenConditions)
-      rejectDanglingAttributes("ORDER BY expression", keys, output, rewrittenOrdering)
+      val restore = restoreKeys orElse restoreAggs orElse restoreWins
+      rejectDanglingAttributes("SELECT field", rewrittenProjectList, keys, Nil, restore)
+      rejectDanglingAttributes("HAVING condition", rewrittenConditions, keys, output, restore)
+      rejectDanglingAttributes("ORDER BY expression", rewrittenOrder, keys, output, restore)
 
       child
         .resolvedGroupBy(keyAliases)
         .agg(aggAliases)
         .filterOption(rewrittenConditions)
-        .orderByOption(rewrittenOrdering)
-        .windowOption(winAliases)
+        .orderByOption(rewrittenOrder)
+        .windowsOption(winAliases)
         .select(rewrittenProjectList)
   }
 
@@ -202,12 +261,15 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   }
 
   private def rejectDanglingAttributes(
-    part: String, keys: Seq[Expression], output: Seq[Attribute], expressions: Seq[Expression]
+    kind: String,
+    expressions: Seq[Expression],
+    groupingKeys: Seq[Expression],
+    outputAttributes: Seq[Attribute],
+    restore: PartialFunction[Expression, Expression]
   ): Unit = expressions foreach { e =>
     e.references collectFirst {
-      case a: AttributeRef if !output.contains(a) => a
-    } foreach { a =>
-      throw new IllegalAggregationException(part, a, e, keys)
+      case a: AttributeRef if !(outputAttributes contains a) =>
+        throw new IllegalAggregationException(kind, a, e transformDown restore, groupingKeys)
     }
   }
 
@@ -216,6 +278,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 
   private def hasDistinctAggregateFunction(expression: Expression): Boolean =
     expression.transformDown {
+      // Excludes aggregate functions in window functions
       case e: WindowFunction => WindowAlias(e).toAttribute
     }.collectFirst {
       case e: DistinctAggregateFunction => ()
@@ -228,6 +291,7 @@ object AggregationAnalysis {
 
   private[analysis] def hasAggregateFunction(expression: Expression): Boolean =
     expression.transformDown {
+      // Excludes aggregate functions in window functions
       case e: WindowFunction => WindowAlias(e).toAttribute
     }.collectFirst {
       case e: AggregateFunction => ()

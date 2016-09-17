@@ -14,7 +14,7 @@ import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.plans.QueryPlan
-import scraper.plans.logical.analysis.WindowAnalysis.stackWindows
+import scraper.plans.logical.analysis.WindowAnalysis._
 import scraper.reflection.fieldSpecFor
 import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
@@ -315,14 +315,18 @@ case class With(
 case class Window(
   child: LogicalPlan,
   functions: Seq[WindowAlias],
-  partitionSpec: Seq[Expression],
-  orderSpec: Seq[SortOrder]
+  partitionSpec: Seq[Expression] = Nil,
+  orderSpec: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output ++ functions.map(_.toAttribute)
 
   def partitionBy(partitionSpec: Seq[Expression]): Window = copy(partitionSpec = partitionSpec)
 
+  def partitionBy(first: Expression, rest: Expression*): Window = partitionBy(first +: rest)
+
   def orderBy(orderSpec: Seq[SortOrder]): Window = copy(orderSpec = orderSpec)
+
+  def orderBy(first: SortOrder, rest: SortOrder*): Window = orderBy(first +: rest)
 }
 
 object LogicalPlan {
@@ -395,7 +399,19 @@ object LogicalPlan {
     def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
       resolvedAgg(first +: rest)
 
-    def windowOption(functions: Seq[WindowAlias]): LogicalPlan = stackWindows(plan, functions)
+    def window(functions: Seq[WindowAlias]): Window = {
+      val Seq(windowSpec) = functions.map(_.child.window).distinct
+      Window(plan, functions, windowSpec.partitionSpec, windowSpec.orderSpec)
+    }
+
+    def window(first: WindowAlias, rest: WindowAlias*): Window = window(first +: rest)
+
+    def windows(functions: Seq[WindowAlias]): Window = stackWindows(plan, functions)
+
+    def windows(first: WindowAlias, rest: WindowAlias*): Window = windows(first +: rest)
+
+    def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
+      stackWindowsOption(plan, functions)
   }
 
   class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {

@@ -159,9 +159,9 @@ class IllegalAggregationException(message: String, cause: Throwable)
     keys: Seq[Expression],
     cause: Throwable
   ) = this({
-    val ks = keys map (_.debugString) mkString ("[", ", ", "]")
-    s"""$part ${expression.debugString} references attribute ${attribute.debugString},
-       |which is neither referenced by an aggregate function nor a grouping key among $ks
+    val keyList = keys mkString ("[", ", ", "]")
+    s"""Attribute ${attribute.debugString} in $part ${expression.debugString} is neither an argument
+       |of a non-window aggregate function nor a grouping key among $keyList.
        |""".oneLine
   }, cause)
 
@@ -171,8 +171,8 @@ class IllegalAggregationException(message: String, cause: Throwable)
        |""".oneLine
   }, null)
 
-  def this(part: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
-    this(part, attribute, expression, keys, null)
+  def this(kind: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
+    this(kind, attribute, expression, keys, null)
 }
 
 class SettingsValidationException(message: String, cause: Throwable)
