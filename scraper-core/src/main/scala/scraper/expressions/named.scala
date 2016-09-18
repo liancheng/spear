@@ -74,13 +74,13 @@ case class Alias(
 }
 
 object Alias {
-  def inlineAliases(expression: Expression, projectList: Seq[NamedExpression]): Expression = {
+  def unalias[E <: Expression](expression: E, projectList: Seq[NamedExpression]): E = {
     val aliases = projectList.collect { case a: Alias => a.attr -> a.child }.toMap
     expression transformUp { case a: AttributeRef => aliases.getOrElse(a, a) }
-  }
+  }.asInstanceOf[E]
 
-  def inlineAliases(projectList: Seq[NamedExpression])(expression: Expression): Expression =
-    inlineAliases(expression, projectList)
+  def unaliasUsing[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E =
+    unalias[E](expression, projectList)
 }
 
 /**

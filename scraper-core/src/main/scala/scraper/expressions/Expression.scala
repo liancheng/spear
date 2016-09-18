@@ -138,21 +138,6 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   /**
-   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
-   * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
-   */
-  def resolveUsing(input: Seq[NamedExpression]): Expression =
-    resolveUsing(input, errorIfNotFound = false)
-
-  /**
-   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. Throws
-   * a [[ResolutionFailureException]] if this [[Exception]] can't be fully resolved.
-   */
-  @throws[ResolutionFailureException]("If fails to resolve any unresolved attributes")
-  def fullyResolveUsing(input: Seq[NamedExpression]): Expression =
-    resolveUsing(input, errorIfNotFound = true)
-
-  /**
    * Type constraint for all input expressions.
    */
   protected def typeConstraint: TypeConstraint = StrictlyTyped(children)
@@ -194,34 +179,53 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   protected lazy val strictDataType: DataType = throw new ContractBrokenException(
     s"${getClass.getName} must override either dataType or strictDataType."
   )
+}
 
-  private def resolveUsing(input: Seq[NamedExpression], errorIfNotFound: Boolean): Expression =
-    transformDown {
-      case unresolved @ UnresolvedAttribute(name, qualifier) =>
-        val candidates = input.map(_.toAttribute).distinct.collect {
-          case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
-          case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
-        }
+object Expression {
+  /**
+   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s.
+   *
+   * @throws scraper.exceptions.ResolutionFailureException if this [[Expression]] can't be fully
+   *         resolved.
+   */
+  def fullyResolve[E <: Expression](expression: E, input: Seq[NamedExpression]): E =
+    resolve(expression, input, errorIfNotFound = true)
 
-        candidates match {
-          case Seq(attribute) =>
-            attribute
+  /**
+   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
+   * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
+   */
+  def resolve[E <: Expression](expression: E, input: Seq[NamedExpression]): E =
+    resolve(expression, input, errorIfNotFound = false)
 
-          case Nil =>
-            Option(unresolved).filterNot(_ => errorIfNotFound).getOrElse {
-              throw new ResolutionFailureException(
-                s"Failed to resolve attribute $unresolved using ${input mkString ("[", ", ", "]")}"
-              )
-            }
+  private def resolve[E <: Expression](
+    expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
+  ): E = expression.transformDown {
+    case unresolved @ UnresolvedAttribute(name, qualifier) =>
+      val candidates = input.map(_.toAttribute).distinct.collect {
+        case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
+        case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
+      }
 
-          case _ =>
+      candidates match {
+        case Seq(attribute) =>
+          attribute
+
+        case Nil =>
+          Option(unresolved).filterNot(_ => errorIfNotFound).getOrElse {
             throw new ResolutionFailureException(
-              s"""Multiple ambiguous input attributes found while resolving $unresolved using
-                 |${input mkString ("[", ", ", "]")}
-                 |""".oneLine
+              s"Failed to resolve attribute $unresolved using ${input mkString ("[", ", ", "]")}"
             )
-        }
-    }
+          }
+
+        case _ =>
+          throw new ResolutionFailureException(
+            s"""Multiple ambiguous input attributes found while resolving $unresolved using
+               |${input mkString ("[", ", ", "]")}
+               |""".oneLine
+          )
+      }
+  }.asInstanceOf[E]
 }
 
 trait StatefulExpression[State] extends Expression {

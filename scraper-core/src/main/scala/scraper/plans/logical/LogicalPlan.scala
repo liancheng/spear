@@ -319,14 +319,6 @@ case class Window(
   orderSpec: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output ++ functions.map(_.toAttribute)
-
-  def partitionBy(partitionSpec: Seq[Expression]): Window = copy(partitionSpec = partitionSpec)
-
-  def partitionBy(first: Expression, rest: Expression*): Window = partitionBy(first +: rest)
-
-  def orderBy(orderSpec: Seq[SortOrder]): Window = copy(orderSpec = orderSpec)
-
-  def orderBy(first: SortOrder, rest: SortOrder*): Window = orderBy(first +: rest)
 }
 
 object LogicalPlan {

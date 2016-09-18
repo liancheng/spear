@@ -24,7 +24,7 @@ class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisR
       //
       //  1. evaluate non-window functions in the original project list, and
       //  2. ensure that no `GeneratedNamedExpression`s appear in the output attribute list.
-      child windowsOption windowAliases select rewrittenProjectList
+      child windows windowAliases select rewrittenProjectList
   }
 
   private def hasWindowFunction(expressions: Seq[Expression]): Boolean =
@@ -42,7 +42,7 @@ object WindowAnalysis {
     expressions.flatMap(_.collect { case f: WindowFunction => f }).distinct
 
   /**
-   * Given a logical `plan` and a list of one or more [[WindowAlias]]es, stacks one or more
+   * Given a logical `plan` and a list of one or more window functions, stacks one or more
    * [[Window]] operators over `plan`.
    */
   def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): Window = {
@@ -51,7 +51,7 @@ object WindowAnalysis {
   }
 
   /**
-   * Given a logical `plan` and a list of zero or more [[WindowAlias]]es, stacks zero or more
+   * Given a logical `plan` and a list of zero or more window functions, stacks zero or more
    * [[Window]] operators over `plan`.
    */
   def stackWindowsOption(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =

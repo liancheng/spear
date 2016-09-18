@@ -47,7 +47,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
       val input = plan.children flatMap (_.output)
       plan transformExpressionsDown {
         case a: UnresolvedAttribute =>
-          try a resolveUsing input catch {
+          try Expression.resolve(a, input) catch {
             case NonFatal(cause) =>
               throw new ResolutionFailureException(
                 s"""Failed to resolve attribute $a in logical plan:

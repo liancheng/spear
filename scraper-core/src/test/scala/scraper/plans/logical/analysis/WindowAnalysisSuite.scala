@@ -1,6 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper.expressions._
+import scraper.expressions.Expression.fullyResolve
 import scraper.expressions.functions._
 import scraper.expressions.windows._
 import scraper.plans.logical.LocalRelation
@@ -203,7 +204,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
   )
 
   private val Seq(resolvedW0, resolvedW1, resolvedW2, resolvedW3) =
-    Seq(w0, w1, w2, w3) map (_.fullyResolveUsing(a :: b :: Nil).asInstanceOf[WindowSpec])
+    Seq(w0, w1, w2, w3) map (fullyResolve(_, a :: b :: Nil))
 
   private val `@W: sum(a) over w0` = WindowAlias(sum(a) over resolvedW0)
 

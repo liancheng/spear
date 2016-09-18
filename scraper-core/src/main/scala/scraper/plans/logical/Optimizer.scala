@@ -133,12 +133,12 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        val inlineAliases = Alias.inlineAliases(innerList) _
+        val unalias = Alias.unaliasUsing[Expression](innerList) _
 
         plan select (outerList map {
-          case a: Alias        => a.copy(child = inlineAliases(a.child))
-          case a: AttributeRef => inlineAliases(a) as a.name withID a.expressionID
-          case e               => inlineAliases(e)
+          case a: Alias        => a.copy(child = unalias(a.child))
+          case a: AttributeRef => unalias(a) as a.name withID a.expressionID
+          case e               => unalias(e)
         })
     }
   }
@@ -155,7 +155,7 @@ object Optimizer {
         child resolvedGroupBy keys agg (functions map eliminateNonTopLevelAliases)
 
       case plan =>
-        plan.transformExpressionsUp { case a: Alias => a.child }
+        plan transformExpressionsUp { case a: Alias => a.child }
     }
 
     private def eliminateNonTopLevelAliases[T <: NamedExpression](expression: T): T =
@@ -205,7 +205,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        val rewrittenCondition = Alias.inlineAliases(condition, projectList)
+        val rewrittenCondition = Alias.unalias(condition, projectList)
         plan filter rewrittenCondition select projectList
     }
   }
@@ -269,7 +269,7 @@ object Optimizer {
           })
         }
 
-        val rewrittenPushDown = pushDown map (GeneratedAlias.inlineAliases(_, keys, ForGrouping))
+        val rewrittenPushDown = pushDown map GeneratedAlias.unaliasUsing(keys, ForGrouping)
 
         child
           .filterOption(rewrittenPushDown)

@@ -62,20 +62,23 @@ object GeneratedAlias {
     purposes: Purpose*
   ): Map[GeneratedAttribute, Expression] = expressions.collect {
     case a: GeneratedAlias if purposes contains a.purpose => a
-  }.map(a => a.toAttribute -> a.child).toMap
+  }.map { a =>
+    a.toAttribute -> a.child
+  }.toMap
 
-  def inlineAliases(
+  private def unalias(
     expression: Expression,
     aliases: Map[GeneratedAttribute, Expression]
   ): Expression = expression.transformUp {
     case a: GeneratedAttribute => aliases.getOrElse(a, a)
   }
 
-  def inlineAliases(
-    expression: Expression,
+  def unaliasUsing(
     targets: Seq[NamedExpression],
     purposes: Purpose*
-  ): Expression = inlineAliases(expression, collectAliases(targets, purposes: _*))
+  )(
+    expression: Expression
+  ): Expression = unalias(expression, collectAliases(targets, purposes: _*))
 }
 
 abstract class GeneratedAttribute extends GeneratedNamedExpression
