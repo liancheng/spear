@@ -1,7 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.exceptions.ResolutionFailureException
+import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.aggregates.DistinctAggregateFunction
 import scraper.plans.logical._
@@ -90,5 +90,33 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
     }
 
     tree
+  }
+}
+
+class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformDown {
+    case plan: LeafLogicalPlan =>
+      plan
+
+    case plan =>
+      val inputSet = plan.children.flatMap(_.outputSet) ++ plan.derivedOutput
+      val orphans = plan.references filterNot inputSet.contains
+
+      if (orphans.nonEmpty) {
+        val message =
+          s"""Orphan attribute references ${orphans mkString ("[", ", ", "]")} found in the
+             |following logical plan operator. They are neither output of child operators nor
+             |derived by the problematic operator itself.
+             |""".oneLine
+
+        throw new AnalysisException(
+          s"""$message
+             |
+             |${plan.prettyTree}
+             |""".stripMargin
+        )
+      }
+
+      plan
   }
 }

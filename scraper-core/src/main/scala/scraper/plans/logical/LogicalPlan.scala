@@ -38,6 +38,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     }
   }
 
+  lazy val derivedOutput: Seq[Attribute] = Nil
+
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
 
   lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
@@ -318,7 +320,9 @@ case class Window(
   partitionSpec: Seq[Expression] = Nil,
   orderSpec: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan {
-  override def output: Seq[Attribute] = child.output ++ functions.map(_.toAttribute)
+  override lazy val output: Seq[Attribute] = child.output ++ derivedOutput
+
+  override lazy val derivedOutput: Seq[Attribute] = functions map (_.toAttribute)
 }
 
 object LogicalPlan {

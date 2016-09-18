@@ -43,7 +43,8 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new RejectUnresolvedExpressions(catalog),
       new RejectUnresolvedPlans(catalog),
       new RejectGeneratedAttributes(catalog),
-      new RejectDistinctAggregateFunctions(catalog)
+      new RejectDistinctAggregateFunctions(catalog),
+      new RejectOrphanAttributeReferences(catalog)
     ))
   )
 
