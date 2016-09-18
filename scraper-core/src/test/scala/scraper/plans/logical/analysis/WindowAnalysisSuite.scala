@@ -9,61 +9,69 @@ import scraper.plans.logical.LocalRelation
 class WindowAnalysisSuite extends AnalyzerTest { self =>
   test("1 projected window function") {
     checkAnalyzedPlan(
-      relation select ('sum('a) over w0 as 'sum),
-      relation window `@W: sum(a) over w0` select (`@W: sum(a) over w0`.attr as 'sum)
+      relation.select('sum('a) over w0 as 'sum),
+
+      relation
+        .window(`@W: sum(a) over w0`)
+        .select(`@W: sum(a) over w0`.attr as 'sum)
     )
   }
 
   test("1 projected window function with non-window expressions") {
     checkAnalyzedPlan(
-      relation select ('a + ('sum('a) over w0) as 'sum),
-      relation window `@W: sum(a) over w0` select (a + `@W: sum(a) over w0`.attr as 'sum)
+      relation.select('a + ('sum('a) over w0) as 'sum),
+
+      relation
+        .window(`@W: sum(a) over w0`)
+        .select(a + `@W: sum(a) over w0`.attr as 'sum)
     )
   }
 
   test("2 projected window functions with the same window spec") {
     checkAnalyzedPlan(
-      relation select (
+      relation.select(
         'sum('a) over w0 as 'sum,
         'max('b) over w0 as 'max
       ),
 
-      relation
-        window (`@W: sum(a) over w0`, `@W: max(b) over w0`)
-        select (
-          `@W: sum(a) over w0`.attr as 'sum,
-          `@W: max(b) over w0`.attr as 'max
-        )
+      relation.window(
+        `@W: sum(a) over w0`,
+        `@W: max(b) over w0`
+      ).select(
+        `@W: sum(a) over w0`.attr as 'sum,
+        `@W: max(b) over w0`.attr as 'max
+      )
     )
   }
 
   test("2 projected window functions with 1 window spec and non-window expressions") {
     checkAnalyzedPlan(
-      relation select (
+      relation.select(
         ('a + ('sum('a) over w0)) as 'x,
         'concat('b, 'max('b) over w0) as 'y
       ),
 
-      relation
-        window (`@W: sum(a) over w0`, `@W: max(b) over w0`)
-        select (
-          (a + `@W: sum(a) over w0`.attr) as 'x,
-          concat(b, `@W: max(b) over w0`.attr) as 'y
-        )
+      relation.window(
+        `@W: sum(a) over w0`,
+        `@W: max(b) over w0`
+      ).select(
+        (a + `@W: sum(a) over w0`.attr) as 'x,
+        concat(b, `@W: max(b) over w0`.attr) as 'y
+      )
     )
   }
 
   test("2 projected window functions with 2 window specs") {
     checkAnalyzedPlan(
-      relation select (
+      relation.select(
         'sum('a) over w0 as 'sum,
         'max('b) over w1 as 'max
       ),
 
       relation
-        window `@W: sum(a) over w0`
-        window `@W: max(b) over w1`
-        select (
+        .window(`@W: sum(a) over w0`)
+        .window(`@W: max(b) over w1`)
+        .select(
           `@W: sum(a) over w0`.attr as 'sum,
           `@W: max(b) over w1`.attr as 'max
         )
@@ -72,15 +80,15 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
 
   test("2 projected window functions with 2 window specs and non-window expressions") {
     checkAnalyzedPlan(
-      relation select (
+      relation.select(
         ('a + ('sum('a) over w0)) as 'x,
         'concat('b, 'max('b) over w1) as 'y
       ),
 
       relation
-        window `@W: sum(a) over w0`
-        window `@W: max(b) over w1`
-        select (
+        .window(`@W: sum(a) over w0`)
+        .window(`@W: max(b) over w1`)
+        .select(
           (a + `@W: sum(a) over w0`.attr) as 'x,
           concat(b, `@W: max(b) over w1`.attr) as 'y
         )
@@ -89,30 +97,32 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
 
   test("1 aggregated window function") {
     checkAnalyzedPlan(
-      relation groupBy ('a % 10, b) agg ('sum('a % 10) over w2 as 'sum),
+      relation
+        .groupBy('a % 10, b)
+        .agg('sum('a % 10) over w2 as 'sum),
 
       relation
-        resolvedGroupBy (`@G: a % 10`, `@G: b`)
-        agg Nil
-        window `@W: sum(a % 10) over w2`
-        select (`@W: sum(a % 10) over w2`.attr as 'sum)
+        .resolvedGroupBy(`@G: a % 10`, `@G: b`)
+        .agg(Nil)
+        .window(`@W: sum(a % 10) over w2`)
+        .select(`@W: sum(a % 10) over w2`.attr as 'sum)
     )
   }
 
   test("1 aggregated window function with non-window aggregate function") {
     checkAnalyzedPlan(
       relation
-        groupBy ('a % 10, 'b)
-        agg (
+        .groupBy('a % 10, 'b)
+        .agg(
           'sum('a % 10) over w2 as 'sum,
           'max('b) as 'max
         ),
 
       relation
-        resolvedGroupBy (`@G: a % 10`, `@G: b`)
-        agg `@A: max(b)`
-        window `@W: sum(a % 10) over w2`
-        select (
+        .resolvedGroupBy(`@G: a % 10`, `@G: b`)
+        .agg(`@A: max(b)`)
+        .window(`@W: sum(a % 10) over w2`)
+        .select(
           `@W: sum(a % 10) over w2`.attr as 'sum,
           `@A: max(b)`.attr as 'max
         )
@@ -121,16 +131,18 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
 
   test("2 aggregated window functions with 1 window spec") {
     checkAnalyzedPlan(
-      relation groupBy ('a % 10, 'b) agg (
-        'sum('a % 10) over w2 as 'sum,
-        'max('b) over w2 as 'max
-      ),
+      relation
+        .groupBy('a % 10, 'b)
+        .agg(
+          'sum('a % 10) over w2 as 'sum,
+          'max('b) over w2 as 'max
+        ),
 
       relation
-        resolvedGroupBy (`@G: a % 10`, `@G: b`)
-        agg Nil
-        window (`@W: sum(a % 10) over w2`, `@W: max(b) over w2`)
-        select (
+        .resolvedGroupBy(`@G: a % 10`, `@G: b`)
+        .agg(Nil)
+        .window(`@W: sum(a % 10) over w2`, `@W: max(b) over w2`)
+        .select(
           `@W: sum(a % 10) over w2`.attr as 'sum,
           `@W: max(b) over w2`.attr as 'max
         )
@@ -139,17 +151,19 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
 
   test("2 aggregated window functions with 2 window spec") {
     checkAnalyzedPlan(
-      relation groupBy ('a % 10, 'b) agg (
-        'sum('a % 10) over w2 as 'sum,
-        'max('b) over w3 as 'max
-      ),
+      relation
+        .groupBy('a % 10, 'b)
+        .agg(
+          'sum('a % 10) over w2 as 'sum,
+          'max('b) over w3 as 'max
+        ),
 
       relation
-        resolvedGroupBy (`@G: a % 10`, `@G: b`)
-        agg Nil
-        window `@W: sum(a % 10) over w2`
-        window `@W: max(b) over w3`
-        select (
+        .resolvedGroupBy(`@G: a % 10`, `@G: b`)
+        .agg(Nil)
+        .window(`@W: sum(a % 10) over w2`)
+        .window(`@W: max(b) over w3`)
+        .select(
           `@W: sum(a % 10) over w2`.attr as 'sum,
           `@W: max(b) over w3`.attr as 'max
         )
