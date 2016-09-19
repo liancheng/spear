@@ -119,11 +119,11 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   // and subtlest piece of code throughout the whole project... Aggregation, what a beast...
   private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
     case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
-      // Aliases and builds a rewriter map for all grouping keys.
+      // Aliases all grouping keys and builds a grouping key rewriter map.
       val keyAliases = keys map (GroupingAlias(_))
       val keyRewriter = buildRewriter(keyAliases)
 
-      // Collects, aliases, and builds a rewriter map for all aggregate functions.
+      // Collects and aliases all aggregate functions and builds an aggregate function rewriter map.
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       val aggAliases = aggs map (AggregationAlias(_))
       val aggRewriter = buildRewriter(aggAliases)
@@ -257,11 +257,16 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       rejectDanglingAttributes("ORDER BY expression", rewrittenOrder, keys, output, restore)
 
       child
+        // The main aggregation.
         .resolvedGroupBy(keyAliases)
         .agg(aggAliases)
+        // `HAVING` clause.
         .filterOption(rewrittenConditions)
+        // `ORDER BY` clause.
         .orderByOption(rewrittenOrder)
+        // Stacks one `Window` operator for each window spec.
         .windowsOption(winAliases)
+        // Evaluates all non-window and non-aggregate expressions and cleans up output attributes.
         .select(rewrittenProjectList)
   }
 

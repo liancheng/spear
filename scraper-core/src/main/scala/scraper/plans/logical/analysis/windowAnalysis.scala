@@ -22,7 +22,7 @@ class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisR
       // Builds and stacks `Window` operator(s) over the child plan, and then adds an extra
       // projection to
       //
-      //  1. evaluate non-window functions in the original project list, and
+      //  1. evaluate non-window expressions in the original project list, and
       //  2. ensure that no `GeneratedNamedExpression`s appear in the output attribute list.
       child windows windowAliases select rewrittenProjectList
   }
