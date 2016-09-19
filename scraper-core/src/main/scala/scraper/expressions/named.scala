@@ -74,13 +74,10 @@ case class Alias(
 }
 
 object Alias {
-  def unalias[E <: Expression](expression: E, projectList: Seq[NamedExpression]): E = {
+  def unaliasUsing[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E = {
     val aliases = projectList.collect { case a: Alias => a.attr -> a.child }.toMap
     expression transformUp { case a: AttributeRef => aliases.getOrElse(a, a) }
   }.asInstanceOf[E]
-
-  def unaliasUsing[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E =
-    unalias[E](expression, projectList)
 }
 
 /**
@@ -247,9 +244,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 }
 
 object BoundRef {
-  def bindTo[A <: Expression](input: Seq[Attribute])(expression: A): A = bind(expression, input)
-
-  def bind[A <: Expression](expression: A, input: Seq[Attribute]): A = expression.transformUp {
+  def bindTo[E <: Expression](input: Seq[Attribute])(expression: E): E = expression.transformUp {
     case ref: ResolvedAttribute =>
       val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
       if (ordinal == -1) {
@@ -260,5 +255,5 @@ object BoundRef {
       } else {
         BoundRef(ordinal, ref.dataType, ref.isNullable)
       }
-  }.asInstanceOf[A]
+  }.asInstanceOf[E]
 }

@@ -205,7 +205,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall (_.isPure) =>
-        val rewrittenCondition = Alias.unalias(condition, projectList)
+        val rewrittenCondition = Alias.unaliasUsing(projectList)(condition)
         plan filter rewrittenCondition select projectList
     }
   }
@@ -269,10 +269,10 @@ object Optimizer {
           })
         }
 
-        val rewrittenPushDown = pushDown map GeneratedAlias.unaliasUsing(keys, ForGrouping)
+        val unaliasedPushDown = pushDown map GeneratedAlias.unaliasUsing(keys, ForGrouping)
 
         child
-          .filterOption(rewrittenPushDown)
+          .filterOption(unaliasedPushDown)
           .resolvedGroupBy(keys)
           .agg(functions)
           .filterOption(stayUp)

@@ -3,8 +3,6 @@ package scraper.plans.logical.analysis
 import scraper._
 import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
-import scraper.expressions.Alias.unalias
-import scraper.expressions.Expression.resolve
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
 import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
@@ -50,7 +48,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenCondition = unalias(resolve(condition, agg.projectList), agg.projectList)
+      val rewrittenCondition = resolveAndUnaliasUsing(agg.projectList)(condition)
 
       // All having conditions should be preserved.
       agg.copy(havingConditions = agg.havingConditions :+ rewrittenCondition)
@@ -68,7 +66,7 @@ class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenOrder = order.map(ord => unalias(resolve(ord, agg.projectList), agg.projectList))
+      val rewrittenOrder = order map resolveAndUnaliasUsing(agg.projectList)
 
       // Only preserves the last sort order.
       agg.copy(order = rewrittenOrder)
@@ -337,14 +335,17 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 object AggregationAnalysis {
-  private[analysis] def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
+  def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
     expressions exists hasAggregateFunction
 
-  private[analysis] def hasAggregateFunction(expression: Expression): Boolean =
+  def hasAggregateFunction(expression: Expression): Boolean =
     expression.transformDown {
       // Excludes aggregate functions in window functions
       case e: WindowFunction => WindowAlias(e).toAttribute
     }.collectFirst {
       case e: AggregateFunction => ()
     }.nonEmpty
+
+  def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =
+    Expression.resolveUsing[E](input) _ andThen Alias.unaliasUsing[E](input)
 }

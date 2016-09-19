@@ -54,31 +54,16 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
 }
 
 object GeneratedAlias {
-  /**
-   * Collects all [[GeneratedAlias]]es with the given `purposes` from `expressions`.
-   */
-  private def collectAliases(
-    expressions: Seq[NamedExpression],
-    purposes: Purpose*
-  ): Map[GeneratedAttribute, Expression] = expressions.collect {
-    case a: GeneratedAlias if purposes contains a.purpose => a
-  }.map { a =>
-    a.toAttribute -> a.child
-  }.toMap
+  def unaliasUsing[E <: Expression](
+    targets: Seq[NamedExpression], purposes: Purpose*
+  )(expression: E): E = {
+    val aliases = targets collect {
+      case a: GeneratedAlias if purposes contains a.purpose =>
+        (a.toAttribute: Expression) -> a.child
+    }
 
-  private def unalias(
-    expression: Expression,
-    aliases: Map[GeneratedAttribute, Expression]
-  ): Expression = expression.transformUp {
-    case a: GeneratedAttribute => aliases.getOrElse(a, a)
+    expression.transformUp(aliases.toMap).asInstanceOf[E]
   }
-
-  def unaliasUsing(
-    targets: Seq[NamedExpression],
-    purposes: Purpose*
-  )(
-    expression: Expression
-  ): Expression = unalias(expression, collectAliases(targets, purposes: _*))
 }
 
 abstract class GeneratedAttribute extends GeneratedNamedExpression

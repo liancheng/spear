@@ -168,7 +168,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
       //
       // Note that here we also rely on the fact that `inputStateAttributes` are only used while
       // merging two aggregation states. They always appear on the right side of `stateAttributes`.
-      BoundRef.bind(ref, stateAttributes ++ inputStateAttributes)
+      BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(ref)
 
     case ref: BoundRef =>
       // Must be a `BoundRef` appearing in the child expressions. Shifts the ordinal since input

@@ -183,22 +183,13 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
 object Expression {
   /**
-   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s.
-   *
-   * @throws scraper.exceptions.ResolutionFailureException if this [[Expression]] can't be fully
-   *         resolved.
-   */
-  def fullyResolve[E <: Expression](expression: E, input: Seq[NamedExpression]): E =
-    resolve(expression, input, errorIfNotFound = true)
-
-  /**
    * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
    * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
    */
-  def resolve[E <: Expression](expression: E, input: Seq[NamedExpression]): E =
-    resolve(expression, input, errorIfNotFound = false)
+  def resolveUsing[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
+    resolveUsing(expression, input, errorIfNotFound = false)
 
-  private def resolve[E <: Expression](
+  private def resolveUsing[E <: Expression](
     expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
   ): E = expression.transformDown {
     case unresolved @ UnresolvedAttribute(name, qualifier) =>

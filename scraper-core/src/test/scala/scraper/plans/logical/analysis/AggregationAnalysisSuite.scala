@@ -19,6 +19,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
     checkAnalyzedPlan(
       "SELECT count(a) FROM t",
+
       relation
         subquery 't
         resolvedAgg `count(t.a)`
@@ -28,7 +29,11 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with having clause referencing projected attribute") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg ('count('b) as 'c) having 'c > 1L,
+      relation
+        groupBy 'a
+        agg ('count('b) as 'c)
+        having 'c > 1L,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -39,7 +44,11 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with order by clause referencing projected attribute") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg ('count('b) as 'c) orderBy 'c.desc,
+      relation
+        groupBy 'a
+        agg ('count('b) as 'c)
+        orderBy 'c.desc,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -51,6 +60,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("aggregate with both having and order by clauses") {
     checkAnalyzedPlan(
       relation groupBy 'a agg 'a having 'a > 1 orderBy 'count('b).asc,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -62,7 +72,12 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with multiple order by clauses") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg 'count('b) orderBy 'a.asc orderBy 'count('b).asc,
+      relation
+        groupBy 'a
+        agg 'count('b)
+        orderBy 'a.asc
+        orderBy 'count('b).asc,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -74,7 +89,12 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with multiple having conditions") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg 'count('b) having 'a > 1 having 'count('b) < 3L,
+      relation
+        groupBy 'a
+        agg 'count('b)
+        having 'a > 1
+        having 'count('b) < 3L,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -93,6 +113,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         orderBy 'a.asc
         having 'count('b) < 10L
         orderBy 'count('b).asc,
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
@@ -104,9 +125,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with count(*)") {
     checkAnalyzedPlan(
-      relation
-        groupBy 'a
-        agg 'count(*),
+      relation groupBy 'a agg 'count(*),
+
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(1)`
@@ -131,7 +151,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("illegal nested aggregate function") {
     intercept[IllegalAggregationException] {
-      analyze(relation agg max('count('a)))
+      analyze(relation agg 'max('count('a)))
     }
   }
 

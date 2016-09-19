@@ -35,7 +35,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  private lazy val boundCondition = bind(condition, child.output)
+  private lazy val boundCondition = bindTo(child.output)(condition)
 
   override def iterator: Iterator[Row] = child.iterator filter {
     boundCondition.evaluate(_).asInstanceOf[Boolean]

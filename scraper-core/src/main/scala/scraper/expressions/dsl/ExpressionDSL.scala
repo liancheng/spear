@@ -30,4 +30,6 @@ trait ExpressionDSL
   def rlike(pattern: Expression): RLike = RLike(this, pattern)
 
   def over(window: WindowSpec): WindowFunction = WindowFunction(this, window)
+
+  def over(): WindowFunction = WindowFunction(this, WindowSpec())
 }

@@ -7,11 +7,12 @@ import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
+import scraper.expressions.Expression.resolveUsing
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.expressions.functions.lit
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.ResolveAliases.UnquotedName
-import scraper.types.{DataType, StringType}
+import scraper.types.StringType
 
 /**
  * This rule expands "`*`" appearing in `SELECT`.
@@ -47,13 +48,13 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
       val input = plan.children flatMap (_.output)
       plan transformExpressionsDown {
         case a: UnresolvedAttribute =>
-          try Expression.resolve(a, input) catch {
+          try resolveUsing(input)(a) catch {
             case NonFatal(cause) =>
               throw new ResolutionFailureException(
                 s"""Failed to resolve attribute $a in logical plan:
-                  |
-                  |${plan.prettyTree}
-                  |""".stripMargin,
+                   |
+                   |${plan.prettyTree}
+                   |""".stripMargin,
                 cause
               )
           }
@@ -99,10 +100,6 @@ object ResolveAliases {
 
     override lazy val isResolved: Boolean = named.isResolved
 
-    override lazy val dataType: DataType = named.dataType
-
-    override lazy val isNullable: Boolean = named.isNullable
-
     override def sql: Try[String] = Try(named.name.casePreserving)
   }
 
@@ -146,4 +143,3 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
       }
   }
 }
-
