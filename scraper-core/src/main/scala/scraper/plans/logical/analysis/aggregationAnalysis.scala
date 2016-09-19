@@ -119,29 +119,44 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   // and subtlest piece of code throughout the whole project... Aggregation, what a beast...
   private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
     case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
-      // Aliases all grouping keys.
+      // Aliases and builds a rewriter map for all grouping keys.
       val keyAliases = keys map (GroupingAlias(_))
+      val keyRewriter = buildRewriter(keyAliases)
 
-      // Collects and aliases all aggregate functions.
+      // Collects, aliases, and builds a rewriter map for all aggregate functions.
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       val aggAliases = aggs map (AggregationAlias(_))
+      val aggRewriter = buildRewriter(aggAliases)
 
       // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`.
       aggs foreach rejectNestedAggregateFunction
 
-      // Collects and aliases all window functions.
+      // Collects all window functions.
       val wins = collectWindowFunctions(projectList)
-      val winAliases = wins map (WindowAlias(_))
 
-      def buildRewriter(aliases: Seq[GeneratedAlias]): Map[Expression, Expression] =
-        aliases.map { a => a.child -> (a.attr: Expression) }.toMap
+      // Aliases all window functions. Note that grouping keys and aggregate functions referenced by
+      // the window functions and their window specs must be rewritten first before aliasing.
+      val winAliases = wins
+        .map { _ transformUp aggRewriter transformUp keyRewriter }
+        .map { case e: WindowFunction => e }
+        .map { WindowAlias(_) }
 
-      val Seq(rewriteKeys, rewriteAggs, rewriteWins) =
-        Seq(keyAliases, aggAliases, winAliases) map buildRewriter
+      // Rewriter map for all window functions.
+      val winRewriter = buildRewriter(winAliases)
 
-      // Used to restore the original expressions for error reporting.
-      val Seq(restoreKeys, restoreAggs, restoreWins) =
-        Seq(rewriteKeys, rewriteAggs, rewriteWins) map (_ map (_.swap))
+      // A function that rewrites aggregate functions, grouping keys, and window functions to
+      // corresponding `GeneratedAttribute`s. The order of transformations is significant.
+      val rewrite = (_: Expression)
+        .transformUp(aggRewriter)
+        .transformUp(keyRewriter)
+        .transformUp(winRewriter)
+
+      // Used to restore `GeneratedAttribute`s to the original expressions for error reporting.
+      // Same as above, the order of transformations is significant.
+      val restore = (_: Expression)
+        .transformUp(winRewriter map (_.swap))
+        .transformUp(keyRewriter map (_.swap))
+        .transformUp(aggRewriter map (_.swap))
 
       // While being used in aggregations, the only input expressions a window function (and its
       // window specs) can reference are the grouping keys. E.g., these queries are valid:
@@ -162,12 +177,8 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Therefore, after rewriting all grouping keys to their corresponding `GroupingAttribute`s,
       // no other input attributes should be found in the rewritten window functions anymore.
       rejectDanglingAttributes(
-        "window function", wins.map(_ transformDown rewriteKeys), keys, Nil, restoreKeys
+        "window function", wins.map(_ transformDown keyRewriter), keys, Nil, restore
       )
-
-      val rewrite = (_: Expression) transformDown {
-        rewriteKeys orElse rewriteAggs orElse rewriteWins
-      }
 
       // Rewrites grouping keys, aggregate functions, and window functions appearing in having
       // condition, sort ordering expressions, and projected named expressions to corresponding
@@ -241,7 +252,6 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // corresponding `GroupingAttribute`s and `AggregationAttribute`s. Therefore, no other input
       // attributes should be found in these rewritten expressions anymore.
       val output = rewrittenProjectList map (_.toAttribute)
-      val restore = restoreKeys orElse restoreAggs orElse restoreWins
       rejectDanglingAttributes("SELECT field", rewrittenProjectList, keys, Nil, restore)
       rejectDanglingAttributes("HAVING condition", rewrittenConditions, keys, output, restore)
       rejectDanglingAttributes("ORDER BY expression", rewrittenOrder, keys, output, restore)
@@ -254,6 +264,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .windowsOption(winAliases)
         .select(rewrittenProjectList)
   }
+
+  private def buildRewriter(aliases: Seq[GeneratedAlias]): Map[Expression, Expression] =
+    aliases.map { a => a.child -> (a.attr: Expression) }.toMap
 
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
     // Collects distinct aggregate functions first to avoid collecting their nested child aggregate
@@ -295,11 +308,11 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     expressions: Seq[Expression],
     groupingKeys: Seq[Expression],
     outputAttributes: Seq[Attribute],
-    restore: PartialFunction[Expression, Expression]
+    restore: Expression => Expression
   ): Unit = expressions foreach { e =>
     e.references collectFirst {
       case a: AttributeRef if !(outputAttributes contains a) =>
-        throw new IllegalAggregationException(kind, a, e transformDown restore, groupingKeys)
+        throw new IllegalAggregationException(kind, a, restore(e), groupingKeys)
     }
   }
 
