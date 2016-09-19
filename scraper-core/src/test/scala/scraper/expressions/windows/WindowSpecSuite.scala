@@ -19,6 +19,14 @@ class WindowSpecSuite extends LoggingFunSuite {
     assertResult("ROWS BETWEEN CURRENT ROW AND 10 FOLLOWING") {
       WindowFrame(RowsFrame, CurrentRow, Following(10)).toString
     }
+
+    assertResult("ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING") {
+      WindowFrame(RowsFrame, Preceding(2), Preceding(1)).toString
+    }
+
+    assertResult("ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING") {
+      WindowFrame(RowsFrame, Following(1), Following(2)).toString
+    }
   }
 
   test("range window frame") {
@@ -33,6 +41,24 @@ class WindowSpecSuite extends LoggingFunSuite {
     assertResult("RANGE BETWEEN CURRENT ROW AND 10 FOLLOWING") {
       WindowFrame(RangeFrame, CurrentRow, Following(10)).toString
     }
+
+    assertResult("RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING") {
+      WindowFrame(RangeFrame, Preceding(2), Preceding(1)).toString
+    }
+
+    assertResult("RANGE BETWEEN 1 FOLLOWING AND 2 FOLLOWING") {
+      WindowFrame(RangeFrame, Following(1), Following(2)).toString
+    }
+  }
+
+  test("invalid frame boundary") {
+    intercept[IllegalArgumentException](Preceding(-1))
+    intercept[IllegalArgumentException](Following(-1))
+  }
+
+  test("invalid window frame") {
+    intercept[IllegalArgumentException](WindowFrame(RowsFrame, Following(1), CurrentRow))
+    intercept[IllegalArgumentException](WindowFrame(RowsFrame, CurrentRow, Preceding(1)))
   }
 
   test("window spec") {
