@@ -94,7 +94,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
 }
 
 class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformDown {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformUp {
     case plan: LeafLogicalPlan =>
       plan
 
