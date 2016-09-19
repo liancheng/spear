@@ -41,7 +41,7 @@ class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
+class RejectTopLevelGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     val generated = tree.output.collect { case e: GeneratedNamedExpression => e }
 

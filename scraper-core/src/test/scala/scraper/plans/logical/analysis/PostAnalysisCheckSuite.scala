@@ -23,8 +23,8 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     }
   }
 
-  test("post-analysis check - reject generated attributes") {
-    val rule = new RejectGeneratedAttributes(catalog)
+  test("post-analysis check - reject top-level generated attributes") {
+    val rule = new RejectTopLevelGeneratedAttributes(catalog)
 
     intercept[ResolutionFailureException] {
       rule(LocalRelation.empty(GroupingAlias('a.int.!).attr))
