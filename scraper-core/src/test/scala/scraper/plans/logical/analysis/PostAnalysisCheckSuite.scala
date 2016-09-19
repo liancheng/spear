@@ -1,7 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.exceptions.ResolutionFailureException
+import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.logical.LocalRelation
@@ -31,11 +31,19 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     }
   }
 
-  test("post-analysis check - reject distinct aggregate function") {
+  test("post-analysis check - reject distinct aggregate functions") {
     val rule = new RejectDistinctAggregateFunctions(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation select distinct(count(a)))
+    }
+  }
+
+  test("post-analysis check - reject orphan attribute references") {
+    val rule = new RejectOrphanAttributeReferences(catalog)
+
+    intercept[AnalysisException] {
+      rule(relation select 'c.int.!)
     }
   }
 
