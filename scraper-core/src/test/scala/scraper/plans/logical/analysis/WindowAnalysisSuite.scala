@@ -113,17 +113,17 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
       relation
         .groupBy('a % 10, 'b)
         .agg(
-          'sum('a % 10) over w2 as 'sum,
-          'max('b) as 'max
+          'max('b) over w2 as 'win_max,
+          'max('b) as 'agg_max
         ),
 
       relation
         .resolvedGroupBy(`@G: a % 10`, `@G: b`)
         .agg(`@A: max(b)`)
-        .window(`@W: sum(a % 10) over w2`)
+        .window(`@W: max(b) over w2`)
         .select(
-          `@W: sum(a % 10) over w2`.attr as 'sum,
-          `@A: max(b)`.attr as 'max
+          `@W: max(b) over w2`.attr as 'win_max,
+          `@A: max(b)`.attr as 'agg_max
         )
     )
   }

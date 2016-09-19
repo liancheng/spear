@@ -134,10 +134,10 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Collects all window functions.
       val wins = collectWindowFunctions(projectList)
 
-      // Aliases all window functions. Note that grouping keys and aggregate functions referenced by
-      // the window functions and their window specs must be rewritten first before aliasing.
+      // Aliases all window functions. Note that grouping keys referenced by the window functions
+      // and their window specs must be rewritten first before aliasing.
       val winAliases = wins
-        .map { _ transformUp aggRewriter transformUp keyRewriter }
+        .map { _ transformUp keyRewriter }
         .map { case e: WindowFunction => e }
         .map { WindowAlias(_) }
 
@@ -147,16 +147,19 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // A function that rewrites aggregate functions, grouping keys, and window functions to
       // corresponding `GeneratedAttribute`s. The order of transformations is significant.
       val rewrite = (_: Expression)
-        .transformUp(aggRewriter)
-        .transformUp(keyRewriter)
-        .transformUp(winRewriter)
+        .transformUp { aggRewriter }
+        // Restores aggregate functions within window functions since they should be handled by
+        // the `Window` operator rather than the `Aggregate` operator.
+        .transformUp { case e: WindowFunction => e transformDown (aggRewriter map (_.swap)) }
+        .transformUp { keyRewriter }
+        .transformUp { winRewriter }
 
       // Used to restore `GeneratedAttribute`s to the original expressions for error reporting.
       // Same as above, the order of transformations is significant.
       val restore = (_: Expression)
-        .transformUp(winRewriter map (_.swap))
-        .transformUp(keyRewriter map (_.swap))
-        .transformUp(aggRewriter map (_.swap))
+        .transformUp { winRewriter map (_.swap) }
+        .transformUp { aggRewriter map (_.swap) }
+        .transformUp { keyRewriter map (_.swap) }
 
       // While being used in aggregations, the only input expressions a window function (and its
       // window specs) can reference are the grouping keys. E.g., these queries are valid:
