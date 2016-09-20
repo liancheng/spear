@@ -152,6 +152,8 @@ class FunctionInstantiationException(name: Name, cause: Throwable)
 class IllegalAggregationException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
+  def this(message: String) = this(message, null)
+
   def this(
     part: String,
     attribute: AttributeRef,

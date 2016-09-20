@@ -50,6 +50,15 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenCondition = resolveAndUnaliasUsing(agg.projectList)(condition)
 
+      // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
+      // predicates must not reference window functions or aliases of window functions.
+      rewrittenCondition transformUp {
+        case _: WindowFunction | _: WindowAttribute =>
+          throw new IllegalAggregationException(
+            "HAVING clauses are not allowed to reference any window functions or their aliases."
+          )
+      }
+
       // All having conditions should be preserved.
       agg.copy(havingConditions = agg.havingConditions :+ rewrittenCondition)
   }
@@ -67,6 +76,13 @@ class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenOrder = order map resolveAndUnaliasUsing(agg.projectList)
+
+      rewrittenOrder map (_ transformUp {
+        case _: WindowFunction | _: WindowAttribute =>
+          throw new IllegalAggregationException(
+            "ORDER BY clauses are not allowed to reference any window functions or their aliases."
+          )
+      })
 
       // Only preserves the last sort order.
       agg.copy(order = rewrittenOrder)
