@@ -173,21 +173,16 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate function within window spec") {
-    val w = Window partitionBy 'avg('a)
-    val resolvedW = Window partitionBy `@A: avg(a)`.attr
-
-    val `@W: max(b) over w` = WindowAlias(max(`@G: b`.attr) over resolvedW)
-
     checkAnalyzedPlan(
       relation
         .groupBy('a % 10, 'b)
-        .agg('max('b) over w as 'win_max),
+        .agg('max('b) over w4 as 'win_max),
 
       relation
         .resolvedGroupBy(`@G: a % 10`, `@G: b`)
         .agg(`@A: avg(a)`)
-        .window(`@W: max(b) over w`)
-        .select(`@W: max(b) over w`.attr as 'win_max)
+        .window(`@W: max(b) over w4`)
+        .select(`@W: max(b) over w4`.attr as 'win_max)
     )
   }
 
@@ -236,11 +231,12 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     WindowFrame(RowsFrame, Preceding(1), Following(1))
   )
 
-  private val (w0, w1, w2, w3) = (
+  private val (w0, w1, w2, w3, w4) = (
     Window partitionBy 'a orderBy 'b.desc between f0,
     Window partitionBy 'b orderBy 'a.asc between f1,
     Window partitionBy 'a % 10 orderBy 'b.desc between f0,
-    Window partitionBy 'b orderBy ('a % 10).asc between f1
+    Window partitionBy 'b orderBy ('a % 10).asc between f1,
+    Window partitionBy 'avg('a)
   )
 
   private val (resolvedW0, resolvedW1) = (
@@ -264,9 +260,10 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
 
   private val `@W: max(b) over w1` = WindowAlias(max(b) over resolvedW1)
 
-  private val (resolvedW2, resolvedW3) = (
+  private val (resolvedW2, resolvedW3, resolvedW4) = (
     Window partitionBy `@G: a % 10`.attr orderBy `@G: b`.attr.desc between f0,
-    Window partitionBy `@G: b`.attr orderBy `@G: a % 10`.attr.asc between f1
+    Window partitionBy `@G: b`.attr orderBy `@G: a % 10`.attr.asc between f1,
+    Window partitionBy `@A: avg(a)`.attr
   )
 
   private val `@W: sum(a % 10) over w2` = WindowAlias(sum(`@G: a % 10`.attr) over resolvedW2)
@@ -274,4 +271,6 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
   private val `@W: max(b) over w2` = WindowAlias(max(`@G: b`.attr) over resolvedW2)
 
   private val `@W: max(b) over w3` = WindowAlias(max(`@G: b`.attr) over resolvedW3)
+
+  private val `@W: max(b) over w4` = WindowAlias(max(`@G: b`.attr) over resolvedW4)
 }
