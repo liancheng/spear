@@ -209,9 +209,9 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
         .resolvedGroupBy(`@G: a % 10`, `@G: b`)
         .agg(`@A: avg(a)`, `@A: count(b)`)
         .filter(`@G: a % 10`.attr > 3)
-        .orderBy(`@A: count(b)`.attr.desc)
         .window(`@W: sum(a % 10) over w2`)
         .window(`@W: max(b) over w3`)
+        .orderBy(`@A: count(b)`.attr.desc)
         .select(
           `@G: a % 10`.attr as 'key1,
           `@G: b`.attr as 'key2,

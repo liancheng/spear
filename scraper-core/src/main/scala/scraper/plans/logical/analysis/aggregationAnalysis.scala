@@ -77,13 +77,6 @@ class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenOrder = order map resolveAndUnaliasUsing(agg.projectList)
 
-      rewrittenOrder map (_ transformUp {
-        case _: WindowFunction | _: WindowAttribute =>
-          throw new IllegalAggregationException(
-            "ORDER BY clauses are not allowed to reference any window functions or their aliases."
-          )
-      })
-
       // Only preserves the last sort order.
       agg.copy(order = rewrittenOrder)
   }
@@ -101,18 +94,18 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  *
  *  - an [[Aggregate]], which performs the aggregation, and
  *  - an optional [[Filter]], which corresponds to the `HAVING` clause, and
- *  - an optional [[Sort]], which corresponds to the `ORDER BY` clause, and
  *  - zero or more [[Window]]s, which are responsible for evaluating window functions, and
+ *  - an optional [[Sort]], which corresponds to the `ORDER BY` clause, and
  *  - a top-level [[Project]], used to assemble the final output attributes.
  *
  * These operators are stacked over each other to form the following structure:
  * {{{
  *   Project projectList=[<output-expressions>]
- *   +- Window functions=[<window-functions-w/-window-spec-n>]
- *      +- ...
- *         +- Window functions=[<window-functions-w/-window-spec-1>]
- *            +- Window functions=[<window-functions-w/-window-spec-0>]
- *               +- Sort order=[<sort-orders>]
+ *   +- Sort order=[<sort-orders>]
+ *      +- Window functions=[<window-functions-w/-window-spec-n>]
+ *         +- ...
+ *            +- Window functions=[<window-functions-w/-window-spec-1>]
+ *               +- Window functions=[<window-functions-w/-window-spec-0>]
  *                  +- Filter condition=<having-condition>
  *                     +- Aggregate keys=[<grouping-keys>] functions=[<agg-functions>]
  *                        +- <child plan>
@@ -177,7 +170,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // functions and their window specs must be rewritten to `GroupingAttribute`s first before
       // aliasing. This is because window functions are evaluated after aggregation, thus grouping
       // keys can only be referenced by window functions in the form of `GroupingAttribute`s.
-      val wins = collectWindowFunctions(projectList map (rewriteKeys andThen rewriteAggs))
+      val wins = collectWindowFunctions(projectList ++ order map (rewriteKeys andThen rewriteAggs))
       val winAliases = wins map (WindowAlias(_))
       val winRewriter = buildRewriter(winAliases)
       val winRestorer = winRewriter map (_.swap)
@@ -297,12 +290,10 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .agg(aggAliases)
         // `HAVING` clause.
         .filterOption(rewrittenConditions)
+        // Stacks one `Window` operator for each window spec.
+        .windowsOption(winAliases)
         // `ORDER BY` clause.
         .orderByOption(rewrittenOrder)
-        // Stacks one `Window` operator for each window spec.
-        // TODO Evaluates `Window`s before `Sort`.
-        // So that `ORDER BY` clauses may reference window functions.
-        .windowsOption(winAliases)
         // Evaluates all non-window and non-aggregate expressions and cleans up output attributes.
         .select(rewrittenProjectList)
   }
