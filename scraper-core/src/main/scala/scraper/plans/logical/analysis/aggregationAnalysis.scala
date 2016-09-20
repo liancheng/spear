@@ -136,44 +136,48 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Aliases all grouping keys and builds a grouping key rewriter map.
       val keyAliases = keys map (GroupingAlias(_))
       val keyRewriter = buildRewriter(keyAliases)
+      val keyRestorer = keyRewriter map (_.swap)
+
+      val rewriteKeys = (_: Expression) transformUp keyRewriter transformUp {
+        case e: AggregateFunction => e transformUp keyRestorer
+        case e: WindowFunction    => e.copy(function = e.function transformUp keyRewriter)
+      }
 
       // Collects and aliases all aggregate functions and builds an aggregate function rewriter map.
-      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
+      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order map rewriteKeys)
       val aggAliases = aggs map (AggregationAlias(_))
       val aggRewriter = buildRewriter(aggAliases)
+      val aggRestorer = aggRewriter map (_.swap)
 
       // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`.
       aggs foreach rejectNestedAggregateFunction
 
-      // Collects all window functions.
-      val wins = collectWindowFunctions(projectList)
+      val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
+        case e: WindowFunction =>
+          e.copy(function = e.function transformUp aggRestorer)
+      }
 
-      // Aliases all window functions. Note that grouping keys referenced by the window functions
-      // and their window specs must be rewritten first before aliasing.
-      val winAliases = wins
-        .map { _ transformUp keyRewriter }
-        .map { case e: WindowFunction => e }
-        .map { WindowAlias(_) }
-
-      // Rewriter map for all window functions.
+      // Collects and aliases all window functions. Note that grouping keys referenced by the window
+      // functions and their window specs must be rewritten to `GroupingAttribute`s first before
+      // aliasing. This is because window functions are evaluated after aggregation, thus grouping
+      // keys can only be referenced by window functions in the form of `GroupingAttribute`s.
+      val wins = collectWindowFunctions(projectList map (rewriteKeys andThen rewriteAggs))
+      val winAliases = wins map (WindowAlias(_))
       val winRewriter = buildRewriter(winAliases)
+      val winRestorer = winRewriter map (_.swap)
+
+      val rewriteWins = (_: Expression) transformUp winRewriter
 
       // A function that rewrites aggregate functions, grouping keys, and window functions to
       // corresponding `GeneratedAttribute`s. The order of transformations is significant.
-      val rewrite = (_: Expression)
-        .transformUp { aggRewriter }
-        // Restores aggregate functions within window functions since they should be handled by
-        // the `Window` operator rather than the `Aggregate` operator.
-        .transformUp { case e: WindowFunction => e transformDown (aggRewriter map (_.swap)) }
-        .transformUp { keyRewriter }
-        .transformUp { winRewriter }
+      val rewrite = rewriteKeys andThen rewriteAggs andThen rewriteWins
 
-      // Used to restore `GeneratedAttribute`s to the original expressions for error reporting.
-      // Same as above, the order of transformations is significant.
+      // A function used to restore `GeneratedAttribute`s to the original expressions for error
+      // reporting purposes. Same as above, the order of transformations is significant.
       val restore = (_: Expression)
-        .transformUp { winRewriter map (_.swap) }
-        .transformUp { aggRewriter map (_.swap) }
-        .transformUp { keyRewriter map (_.swap) }
+        .transformUp(winRestorer)
+        .transformUp(aggRestorer)
+        .transformUp(keyRestorer)
 
       // While being used in aggregations, the only input expressions a window function (and its
       // window specs) can reference are the grouping keys. E.g., these queries are valid:
@@ -193,9 +197,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       //
       // Therefore, after rewriting all grouping keys to their corresponding `GroupingAttribute`s,
       // no other input attributes should be found in the rewritten window functions anymore.
-      rejectDanglingAttributes(
-        "window function", wins.map(_ transformDown keyRewriter), keys, Nil, restore
-      )
+      rejectDanglingAttributes("window function", wins map (_.function), keys, Nil, restore)
 
       // Rewrites grouping keys, aggregate functions, and window functions appearing in having
       // condition, sort ordering expressions, and projected named expressions to corresponding
@@ -298,10 +300,12 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     }
 
     val aggCollector = (_: Expression) transformDown {
-      // Eliminates all collected distinct aggregate functions to avoid duplication.
-      case e: DistinctAggregateFunction => AggregationAlias(e).toAttribute
-      // Eliminates window functions since they should be handled separately by `Window` operators.
-      case e: WindowFunction            => WindowAlias(e).toAttribute
+      case e: DistinctAggregateFunction =>
+        // Eliminates all collected distinct aggregate functions to avoid duplication.
+        AggregationAlias(e).toAttribute
+      case e @ WindowFunction(f: AggregateFunction, _) =>
+        // Eliminates window aggregate functions since they are handled by `Window` operators.
+        e.copy(function = AggregationAlias(f).toAttribute)
     } collect {
       case e: AggregateFunction => e
     }

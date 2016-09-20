@@ -140,7 +140,10 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
       relation
         .resolvedGroupBy(`@G: a % 10`, `@G: b`)
         .agg(Nil)
-        .window(`@W: sum(a % 10) over w2`, `@W: max(b) over w2`)
+        .window(
+          `@W: sum(a % 10) over w2`,
+          `@W: max(b) over w2`
+        )
         .select(
           `@W: sum(a % 10) over w2`.attr as 'sum,
           `@W: max(b) over w2`.attr as 'max
@@ -169,6 +172,25 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
+  test("aggregate function within window spec") {
+    val w = Window partitionBy 'avg('a)
+    val resolvedW = Window partitionBy `@A: avg(a)`.attr
+
+    val `@W: max(b) over w` = WindowAlias(max(`@G: b`.attr) over resolvedW)
+
+    checkAnalyzedPlan(
+      relation
+        .groupBy('a % 10, 'b)
+        .agg('max('b) over w as 'win_max),
+
+      relation
+        .resolvedGroupBy(`@G: a % 10`, `@G: b`)
+        .agg(`@A: avg(a)`)
+        .window(`@W: max(b) over w`)
+        .select(`@W: max(b) over w`.attr as 'win_max)
+    )
+  }
+
   test("complex all-star query") {
     checkAnalyzedPlan(
       relation
@@ -178,10 +200,10 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
           'a % 10 as 'key1,
           'b as 'key2,
           // Window functions with different window specs
-          'sum('a % 10) over w2 as 'sum,
-          'max('b) over w3 as 'max,
+          'sum('a % 10) over w2 as 'win_sum,
+          'max('b) over w3 as 'win_max,
           // Non-window aggregate function
-          'avg('a) as 'avg
+          'avg('a) as 'agg_avg
         )
         // Grouping key in HAVING clause
         .filter('a % 10 > 3)
@@ -198,9 +220,9 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
         .select(
           `@G: a % 10`.attr as 'key1,
           `@G: b`.attr as 'key2,
-          `@W: sum(a % 10) over w2`.attr as 'sum,
-          `@W: max(b) over w3`.attr as 'max,
-          `@A: avg(a)`.attr as 'avg
+          `@W: sum(a % 10) over w2`.attr as 'win_sum,
+          `@W: max(b) over w3`.attr as 'win_max,
+          `@A: avg(a)`.attr as 'agg_avg
         )
     )
   }
