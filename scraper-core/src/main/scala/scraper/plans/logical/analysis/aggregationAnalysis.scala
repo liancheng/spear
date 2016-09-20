@@ -104,6 +104,19 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  *  - an optional [[Sort]], which corresponds to the `ORDER BY` clause, and
  *  - zero or more [[Window]]s, which are responsible for evaluating window functions, and
  *  - a top-level [[Project]], used to assemble the final output attributes.
+ *
+ * These operators are stacked over each other to form the following structure:
+ * {{{
+ *   Project projectList=[<output-expressions>]
+ *   +- Window functions=[<window-functions-w/-window-spec-n>]
+ *      +- ...
+ *         +- Window functions=[<window-functions-w/-window-spec-1>]
+ *            +- Window functions=[<window-functions-w/-window-spec-0>]
+ *               +- Sort order=[<sort-orders>]
+ *                  +- Filter condition=<having-condition>
+ *                     +- Aggregate keys=[<grouping-keys>] functions=[<agg-functions>]
+ *                        +- <child plan>
+ * }}}
  */
 class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
@@ -138,6 +151,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val keyRewriter = buildRewriter(keyAliases)
       val keyRestorer = keyRewriter map (_.swap)
 
+      // A function that rewrites all grouping keys in a given expression to their corresponding
+      // `GroupingAttribute`s except for grouping keys appearing as (part of) arguments of non-
+      // window aggregate functions.
       val rewriteKeys = (_: Expression) transformUp keyRewriter transformUp {
         case e: AggregateFunction => e transformUp keyRestorer
         case e: WindowFunction    => e.copy(function = e.function transformUp keyRewriter)
@@ -284,6 +300,8 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         // `ORDER BY` clause.
         .orderByOption(rewrittenOrder)
         // Stacks one `Window` operator for each window spec.
+        // TODO Evaluates `Window`s before `Sort`.
+        // So that `ORDER BY` clauses may reference window functions.
         .windowsOption(winAliases)
         // Evaluates all non-window and non-aggregate expressions and cleans up output attributes.
         .select(rewrittenProjectList)
