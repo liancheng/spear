@@ -196,7 +196,9 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
           'b as 'key2,
           // Window functions with different window specs
           'sum('a % 10) over w2 as 'win_sum,
-          'max('b) over w3 as 'win_max,
+          'max('b) over w3 as 'win_max1,
+          // Non-window aggregate in window spec (w4)
+          'max('b) over w4 as 'win_max2,
           // Non-window aggregate function
           'avg('a) as 'agg_avg
         )
@@ -211,16 +213,24 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
         .filter(`@G: a % 10`.attr > 3)
         .window(`@W: sum(a % 10) over w2`)
         .window(`@W: max(b) over w3`)
+        .window(`@W: max(b) over w4`)
         .orderBy(`@A: count(b)`.attr.desc)
         .select(
           `@G: a % 10`.attr as 'key1,
           `@G: b`.attr as 'key2,
           `@W: sum(a % 10) over w2`.attr as 'win_sum,
-          `@W: max(b) over w3`.attr as 'win_max,
+          `@W: max(b) over w3`.attr as 'win_max1,
+          `@W: max(b) over w4`.attr as 'win_max2,
           `@A: avg(a)`.attr as 'agg_avg
         )
     )
   }
+
+  // TODO Adds more test cases
+  //
+  //  - Error reporting
+  //  - Window functions in `ORDER BY` clause
+  //  - Aliases of window functions in `ORDER BY` clause
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
