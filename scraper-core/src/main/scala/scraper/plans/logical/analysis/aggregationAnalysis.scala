@@ -178,10 +178,10 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteWins = (_: Expression) transformUp winRewriter
 
       // A function that rewrites aggregate functions, grouping keys, and window functions to
-      // corresponding `GeneratedAttribute`s. The order of transformations is significant.
+      // corresponding `InternalAttribute`s. The order of transformations is significant.
       val rewrite = rewriteKeys andThen rewriteAggs andThen rewriteWins
 
-      // A function used to restore `GeneratedAttribute`s to the original expressions for error
+      // A function used to restore `InternalAttribute`s to the original expressions for error
       // reporting purposes. Same as above, the order of transformations is significant.
       val restore = (_: Expression)
         .transformUp(winRestorer)
@@ -214,11 +214,11 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map (ord => ord.copy(child = rewrite(ord.child)))
       val rewrittenProjectList = projectList map rewrite zip projectList map {
-        // Top level `GeneratedAttribute`s must be aliased back to names and expression IDs of the
+        // Top level `InternalAttribute`s must be aliased back to names and expression IDs of the
         // original named expressions so that the transformed plan still has the same output
         // attributes as the original plan.
-        case (g: GeneratedAttribute, e) => g as e.name withID e.expressionID
-        case (e: NamedExpression, _)    => e
+        case (g: InternalAttribute, e) => g as e.name withID e.expressionID
+        case (e: NamedExpression, _)   => e
       }
 
       // Expressions appearing in an aggregation must conform to the following constraints:
@@ -298,7 +298,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .select(rewrittenProjectList)
   }
 
-  private def buildRewriter(aliases: Seq[GeneratedAlias]): Map[Expression, Expression] =
+  private def buildRewriter(aliases: Seq[InternalAlias]): Map[Expression, Expression] =
     aliases.map { a => a.child -> (a.attr: Expression) }.toMap
 
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {

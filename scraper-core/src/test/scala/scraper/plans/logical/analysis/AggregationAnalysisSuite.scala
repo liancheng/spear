@@ -134,7 +134,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("analyzed aggregate should not expose `GeneratedAttribute`s") {
+  test("analyzed aggregate should not expose `InternalAttribute`s") {
     checkAnalyzedPlan(
       // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
       // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.

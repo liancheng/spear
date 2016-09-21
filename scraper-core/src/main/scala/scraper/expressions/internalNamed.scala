@@ -1,35 +1,35 @@
 package scraper.expressions
 
 import scraper.Name
-import scraper.expressions.GeneratedNamedExpression.{ForAggregation, ForGrouping, ForWindow, Purpose}
+import scraper.expressions.InternalNamedExpression.{ForAggregation, ForGrouping, ForWindow, Purpose}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.AggregateFunction
 import scraper.expressions.windows.WindowFunction
 import scraper.types._
 
-sealed trait GeneratedNamedExpression extends NamedExpression {
+sealed trait InternalNamedExpression extends NamedExpression {
   def purpose: Purpose
 
   override def name: Name = purpose.name
 }
 
-object GeneratedNamedExpression {
+object InternalNamedExpression {
   /**
-   * Indicates the purpose of a [[GeneratedNamedExpression]].
+   * Indicates the purpose of a [[InternalNamedExpression]].
    */
   sealed trait Purpose {
     def name: Name
   }
 
   /**
-   * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference grouping expressions.
+   * Marks [[InternalNamedExpression]]s that are used to wrap/reference grouping expressions.
    */
   case object ForGrouping extends Purpose {
     override def name: Name = 'G
   }
 
   /**
-   * Marks [[GeneratedNamedExpression]]s that are used to wrap/reference aggregate functions.
+   * Marks [[InternalNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
     override def name: Name = 'A
@@ -40,7 +40,7 @@ object GeneratedNamedExpression {
   }
 }
 
-trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
+trait InternalAlias extends InternalNamedExpression with UnaryExpression {
   override def debugString: String =
     s"(${child.debugString} AS @${name.toString}#${expressionID.id})"
 
@@ -50,15 +50,15 @@ trait GeneratedAlias extends GeneratedNamedExpression with UnaryExpression {
 
   override lazy val isFoldable: Boolean = false
 
-  override def toAttribute: GeneratedAttribute
+  override def toAttribute: InternalAttribute
 }
 
-object GeneratedAlias {
+object InternalAlias {
   def unaliasUsing[E <: Expression](
     targets: Seq[NamedExpression], purposes: Purpose*
   )(expression: E): E = {
     val aliases = targets collect {
-      case a: GeneratedAlias if purposes contains a.purpose =>
+      case a: InternalAlias if purposes contains a.purpose =>
         (a.toAttribute: Expression) -> a.child
     }
 
@@ -66,7 +66,7 @@ object GeneratedAlias {
   }
 }
 
-abstract class GeneratedAttribute extends GeneratedNamedExpression
+abstract class InternalAttribute extends InternalNamedExpression
   with ResolvedAttribute
   with LeafExpression
   with UnevaluableExpression {
@@ -74,14 +74,14 @@ abstract class GeneratedAttribute extends GeneratedNamedExpression
   override def debugString: String = "@" + super.debugString
 }
 
-trait GroupingNamedExpression extends GeneratedNamedExpression {
+trait GroupingNamedExpression extends InternalNamedExpression {
   override def purpose: Purpose = ForGrouping
 }
 
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GeneratedAlias with GroupingNamedExpression {
+) extends InternalAlias with GroupingNamedExpression {
   override def toAttribute: GroupingAttribute = GroupingAttribute(
     purpose, dataType, isNullable, expressionID
   )
@@ -94,18 +94,18 @@ case class GroupingAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends GeneratedAttribute with GroupingNamedExpression {
+) extends InternalAttribute with GroupingNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
-trait AggregationNamedExpression extends GeneratedNamedExpression {
+trait AggregationNamedExpression extends InternalNamedExpression {
   override def purpose: Purpose = ForAggregation
 }
 
 case class AggregationAlias(
   child: AggregateFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GeneratedAlias with AggregationNamedExpression {
+) extends InternalAlias with AggregationNamedExpression {
   override def toAttribute: AggregationAttribute =
     AggregationAttribute(purpose, dataType, isNullable, expressionID)
 
@@ -117,19 +117,19 @@ case class AggregationAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends GeneratedAttribute with AggregationNamedExpression {
+) extends InternalAttribute with AggregationNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
-trait WindowNamedExpression extends GeneratedNamedExpression {
+trait WindowNamedExpression extends InternalNamedExpression {
   override def purpose: Purpose = ForWindow
 }
 
 case class WindowAlias(
   child: WindowFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GeneratedAlias with WindowNamedExpression {
-  override def toAttribute: GeneratedAttribute =
+) extends InternalAlias with WindowNamedExpression {
+  override def toAttribute: InternalAttribute =
     WindowAttribute(purpose, dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): WindowAlias = copy(expressionID = id)
@@ -140,6 +140,6 @@ case class WindowAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends GeneratedAttribute with WindowNamedExpression {
+) extends InternalAttribute with WindowNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }

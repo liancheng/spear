@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.exceptions.LogicalPlanUnresolvedException
 import scraper.expressions._
-import scraper.expressions.GeneratedNamedExpression.ForGrouping
+import scraper.expressions.InternalNamedExpression.ForGrouping
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.plans.logical.Optimizer._
@@ -160,8 +160,8 @@ object Optimizer {
 
     private def eliminateNonTopLevelAliases[T <: NamedExpression](expression: T): T =
       expression.transformChildrenUp {
-        case a: Alias          => a.child
-        case a: GeneratedAlias => a.child
+        case a: Alias         => a.child
+        case a: InternalAlias => a.child
       }.asInstanceOf[T]
   }
 
@@ -269,7 +269,7 @@ object Optimizer {
           })
         }
 
-        val unaliasedPushDown = pushDown map GeneratedAlias.unaliasUsing(keys, ForGrouping)
+        val unaliasedPushDown = pushDown map InternalAlias.unaliasUsing(keys, ForGrouping)
 
         child
           .filterOption(unaliasedPushDown)

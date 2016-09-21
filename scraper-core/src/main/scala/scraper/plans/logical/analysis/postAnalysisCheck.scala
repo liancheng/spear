@@ -41,19 +41,19 @@ class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectTopLevelGeneratedAttributes(val catalog: Catalog) extends AnalysisRule {
+class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
-    val generated = tree.output.collect { case e: GeneratedNamedExpression => e }
+    val internal = tree.output.collect { case e: InternalNamedExpression => e }
 
-    if (generated.nonEmpty) {
-      val generatedList = generated mkString ("[", ", ", "]")
+    if (internal.nonEmpty) {
+      val internalList = internal mkString ("[", ", ", "]")
       val suggestion =
-        """You probably hit an internal bug since generated attributes are only used internally
-          |by the analyzer and should never appear in a fully analyzed logical plan.
+        """You probably hit an internal bug since internal attributes are only used internally by
+          |the analyzer and should never appear in a fully analyzed logical plan.
           |""".oneLine
 
       throw new ResolutionFailureException(
-        s"""Generated attributes $generatedList found in the analyzed logical plan:
+        s"""Internal attributes $internalList found in the analyzed logical plan:
            |
            |${tree.prettyTree}
            |

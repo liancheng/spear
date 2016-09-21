@@ -69,7 +69,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
 class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case AutoAlias(Resolved(child: Expression)) =>
-      // Uses `UnquotedName` to eliminate back-ticks and double-quotes in generated alias names.
+      // Uses `UnquotedName` to eliminate back-ticks and double-quotes in internal alias names.
       val alias = child.transformDown {
         case a: AttributeRef                  => UnquotedName(a)
         case Literal(lit: String, StringType) => UnquotedName(lit)

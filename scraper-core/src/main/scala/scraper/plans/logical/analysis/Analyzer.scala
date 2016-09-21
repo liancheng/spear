@@ -42,7 +42,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     RuleBatch("Post-analysis check", Once, Seq(
       new RejectUnresolvedExpressions(catalog),
       new RejectUnresolvedPlans(catalog),
-      new RejectTopLevelGeneratedAttributes(catalog),
+      new RejectTopLevelInternalAttributes(catalog),
       new RejectDistinctAggregateFunctions(catalog),
       new RejectOrphanAttributeReferences(catalog)
     ))
