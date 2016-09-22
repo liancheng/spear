@@ -64,6 +64,12 @@ object InternalAlias {
 
     expression.transformUp(aliases.toMap).asInstanceOf[E]
   }
+
+  def buildRewriter(aliases: Seq[InternalAlias]): Map[Expression, Expression] =
+    aliases.map { a => a.child -> (a.attr: Expression) }.toMap
+
+  def buildRestorer(aliases: Seq[InternalAlias]): Map[Expression, Expression] =
+    aliases.map { a => (a.attr: Expression) -> a.child }.toMap
 }
 
 abstract class InternalAttribute extends InternalNamedExpression

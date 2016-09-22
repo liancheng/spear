@@ -4,6 +4,7 @@ import scraper._
 import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
+import scraper.expressions.InternalAlias.{buildRestorer, buildRewriter}
 import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis._
@@ -142,7 +143,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Aliases all grouping keys and builds a grouping key rewriter map.
       val keyAliases = keys map (GroupingAlias(_))
       val keyRewriter = buildRewriter(keyAliases)
-      val keyRestorer = keyRewriter map (_.swap)
+      val keyRestorer = buildRestorer(keyAliases)
 
       // A function that rewrites all grouping keys in a given expression to their corresponding
       // `GroupingAttribute`s except for grouping keys appearing as (part of) arguments of non-
@@ -156,7 +157,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order map rewriteKeys)
       val aggAliases = aggs map (AggregationAlias(_))
       val aggRewriter = buildRewriter(aggAliases)
-      val aggRestorer = aggRewriter map (_.swap)
+      val aggRestorer = buildRestorer(aggAliases)
 
       // Checks for invalid nested aggregate functions like `MAX(COUNT(*))`.
       aggs foreach rejectNestedAggregateFunction
@@ -173,7 +174,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val wins = collectWindowFunctions(projectList ++ order map (rewriteKeys andThen rewriteAggs))
       val winAliases = wins map (WindowAlias(_))
       val winRewriter = buildRewriter(winAliases)
-      val winRestorer = winRewriter map (_.swap)
+      val winRestorer = buildRestorer(winAliases)
 
       val rewriteWins = (_: Expression) transformUp winRewriter
 
@@ -298,9 +299,6 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .select(rewrittenProjectList)
   }
 
-  private def buildRewriter(aliases: Seq[InternalAlias]): Map[Expression, Expression] =
-    aliases.map { a => a.child -> (a.attr: Expression) }.toMap
-
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
     val removeWindowAggs = (_: Expression) transformDown {
       case e @ WindowFunction(f: AggregateFunction, _) =>
@@ -311,13 +309,13 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       case e: DistinctAggregateFunction => AggregationAlias(e).toAttribute
     }
 
-    val collectDistinctAggs = removeWindowAggs andThen (_ collect {
-      case e: DistinctAggregateFunction => e
-    })
+    val collectDistinctAggs = removeWindowAggs andThen {
+      _ collect { case e: DistinctAggregateFunction => e }
+    }
 
-    val collectAggs = removeWindowAggs andThen removeDistinctAggs andThen (_ collect {
-      case e: AggregateFunction => e
-    })
+    val collectAggs = removeWindowAggs andThen removeDistinctAggs andThen {
+      _ collect { case e: AggregateFunction => e }
+    }
 
     (expressions.flatMap(collectDistinctAggs) ++ expressions.flatMap(collectAggs)).distinct
   }
