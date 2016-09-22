@@ -344,11 +344,14 @@ object LogicalPlan {
 
     def limit(n: Int): Limit = this limit lit(n)
 
-    def orderBy(order: Seq[SortOrder]): Sort = Sort(plan, order)
+    def orderBy(order: Seq[Expression]): Sort = Sort(plan, order map {
+      case e: SortOrder => e
+      case e            => e.asc
+    })
 
-    def orderBy(first: SortOrder, rest: SortOrder*): Sort = this orderBy (first +: rest)
+    def orderBy(first: Expression, rest: Expression*): Sort = this orderBy (first +: rest)
 
-    def orderByOption(order: Seq[SortOrder]): LogicalPlan =
+    def orderByOption(order: Seq[Expression]): LogicalPlan =
       if (order.nonEmpty) orderBy(order) else plan
 
     def distinct: Distinct = Distinct(plan)

@@ -176,7 +176,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       rejectDanglingAttributes("window function", wins map (_.function), keys, Nil, restore)
 
       val rewrittenConditions = conditions map rewrite
-      val rewrittenOrder = order map (ord => ord.copy(child = rewrite(ord.child)))
+      val rewrittenOrder = order map rewrite
       val rewrittenProjectList = projectList map rewrite zip projectList map {
         case (g: InternalAttribute, e) => g as e.name withID e.expressionID
         case (e: NamedExpression, _)   => e
