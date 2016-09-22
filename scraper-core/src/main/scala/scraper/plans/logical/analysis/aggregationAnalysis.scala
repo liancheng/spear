@@ -142,47 +142,48 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val keyRewriter = buildRewriter(keyAliases)
       val keyRestorer = buildRestorer(keyAliases)
 
+      val restoreKeys = (_: Expression) transformUp keyRestorer
       val rewriteKeys = (_: Expression) transformUp keyRewriter transformUp {
         case e: AggregateFunction => e transformUp keyRestorer
         case e: WindowFunction    => e.copy(function = e.function transformUp keyRewriter)
       }
 
-      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order map rewriteKeys)
+      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       val aggAliases = aggs map (AggregationAlias(_))
       val aggRewriter = buildRewriter(aggAliases)
       val aggRestorer = buildRestorer(aggAliases)
 
       aggs foreach rejectNestedAggregateFunction
 
+      val restoreAggs = (_: Expression) transformUp aggRestorer
       val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
         case e: WindowFunction =>
           e.copy(function = e.function transformUp aggRestorer)
       }
 
       val wins = collectWindowFunctions(projectList ++ order map (rewriteKeys andThen rewriteAggs))
+      val winAggs = wins map (_.function)
       val winAliases = wins map (WindowAlias(_))
       val winRewriter = buildRewriter(winAliases)
       val winRestorer = buildRestorer(winAliases)
 
       val rewriteWins = (_: Expression) transformUp winRewriter
+      val restoreWins = (_: Expression) transformUp winRestorer
 
       val rewrite = rewriteKeys andThen rewriteAggs andThen rewriteWins
+      val restore = restoreWins andThen restoreAggs andThen restoreKeys
 
-      val restore = (_: Expression)
-        .transformUp(winRestorer)
-        .transformUp(aggRestorer)
-        .transformUp(keyRestorer)
-
-      rejectDanglingAttributes("window function", wins map (_.function), keys, Nil, restore)
-
-      val rewrittenConditions = conditions map rewrite
-      val rewrittenOrder = order map rewrite
-      val rewrittenProjectList = projectList map rewrite zip projectList map {
-        case (g: InternalAttribute, e) => g as e.name withID e.expressionID
-        case (e: NamedExpression, _)   => e
+      def rewriteNamedExpression(named: NamedExpression): NamedExpression = rewrite(named) match {
+        case e: InternalAttribute => e as named.name withID named.expressionID
+        case e: NamedExpression   => e
       }
 
+      val rewrittenProjectList = projectList map rewriteNamedExpression
+      val rewrittenConditions = conditions map rewrite
+      val rewrittenOrder = order map rewrite
+
       val output = rewrittenProjectList map (_.toAttribute)
+      rejectDanglingAttributes("window function", winAggs, keys, Nil, restore)
       rejectDanglingAttributes("SELECT field", rewrittenProjectList, keys, Nil, restore)
       rejectDanglingAttributes("HAVING condition", rewrittenConditions, keys, output, restore)
       rejectDanglingAttributes("ORDER BY expression", rewrittenOrder, keys, output, restore)
