@@ -18,7 +18,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ResolveRelations(catalog),
       new ResolveSortReferences(catalog),
       new DeduplicateReferences(catalog),
+
+      // Rules that help resolving window functions
       new ExtractWindowFunctionsFromProjects(catalog),
+      new ExtractWindowFunctionsFromSorts(catalog),
 
       // Rules that help resolving expressions
       new ExpandStars(catalog),

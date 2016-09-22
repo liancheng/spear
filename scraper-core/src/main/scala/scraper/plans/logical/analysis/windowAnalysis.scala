@@ -2,6 +2,7 @@ package scraper.plans.logical.analysis
 
 import scraper._
 import scraper.expressions._
+import scraper.expressions.InternalAlias.buildRewriter
 import scraper.expressions.windows.{WindowFunction, WindowSpec}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.WindowAnalysis._
@@ -9,32 +10,35 @@ import scraper.plans.logical.analysis.WindowAnalysis._
 class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
-      // Collects all window functions and aliases them.
-      val windowAliases = collectWindowFunctions(projectList) map (WindowAlias(_))
-
-      // Replaces all window functions in the original project list with their corresponding
-      // `WindowAttribute`s.
-      val rewrittenProjectList = {
-        val rewrite = windowAliases.map { alias => alias.child -> alias.toAttribute }.toMap
-        projectList map (_ transformDown { case e: WindowFunction => rewrite(e) })
-      }
-
-      // Builds and stacks `Window` operator(s) over the child plan, and then adds an extra
-      // projection to
-      //
-      //  1. evaluate non-window expressions in the original project list, and
-      //  2. ensure that no `InternalNamedExpression`s appear in the output attribute list.
-      child windows windowAliases select rewrittenProjectList
+      val winAliases = collectWindowFunctions(projectList) map (WindowAlias(_))
+      val rewrittenProjectList = projectList map (_ transformDown buildRewriter(winAliases))
+      child windows winAliases select rewrittenProjectList
   }
+}
 
-  private def hasWindowFunction(expressions: Seq[Expression]): Boolean =
-    expressions exists hasWindowFunction
+class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan =
+    tree collectFirst preConditionViolation map (_ => tree) getOrElse {
+      tree transformDown {
+        case Resolved(child Sort order) if hasWindowFunction(order) =>
+          val winAliases = collectWindowFunctions(order) map (WindowAlias(_))
+          val rewrittenOrder = order map (_ transformDown buildRewriter(winAliases))
+          child windows winAliases orderBy rewrittenOrder select child.output
+      }
+    }
 
-  private def hasWindowFunction(expression: Expression): Boolean =
-    expression.collectFirst { case _: WindowFunction => () }.nonEmpty
+  private val preConditionViolation: PartialFunction[LogicalPlan, Unit] = {
+    case _: UnresolvedAggregate =>
+  }
 }
 
 object WindowAnalysis {
+  def hasWindowFunction(expressions: Seq[Expression]): Boolean =
+    expressions exists hasWindowFunction
+
+  def hasWindowFunction(expression: Expression): Boolean =
+    expression.collectFirst { case _: WindowFunction => () }.nonEmpty
+
   /**
    * Collects all distinct window functions from `expressions`.
    */

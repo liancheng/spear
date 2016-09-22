@@ -124,16 +124,16 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   // contains any of the following patterns.
   private val preConditionViolations: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all adjacent having conditions are absorbed.
-    case ((_: UnresolvedAggregate) Filter _) => ()
+    case ((_: UnresolvedAggregate) Filter _) =>
 
     // Waits until all adjacent sorts are absorbed.
-    case ((_: UnresolvedAggregate) Sort _) => ()
+    case ((_: UnresolvedAggregate) Sort _) =>
 
     // Waits until project list, having condition, and sort order expressions are all resolved.
-    case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) => ()
+    case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
 
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
-    case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) => ()
+    case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
   }
 
   private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
