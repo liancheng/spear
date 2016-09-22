@@ -302,27 +302,24 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     aliases.map { a => a.child -> (a.attr: Expression) }.toMap
 
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
-    // Collects distinct aggregate functions first to avoid collecting their nested child aggregate
-    // functions unexpectedly.
-    val distinctAggCollector = (_: Expression) collect {
-      case e: DistinctAggregateFunction => e
-    }
-
-    val aggCollector = (_: Expression) transformDown {
-      case e: DistinctAggregateFunction =>
-        // Eliminates all collected distinct aggregate functions to avoid duplication.
-        AggregationAlias(e).toAttribute
+    val removeWindowAggs = (_: Expression) transformDown {
       case e @ WindowFunction(f: AggregateFunction, _) =>
-        // Eliminates window aggregate functions since they are handled by `Window` operators.
         e.copy(function = AggregationAlias(f).toAttribute)
-    } collect {
-      case e: AggregateFunction => e
     }
 
-    val distinctAggs = expressions flatMap distinctAggCollector
-    val aggs = expressions flatMap aggCollector
+    val removeDistinctAggs = (_: Expression) transformDown {
+      case e: DistinctAggregateFunction => AggregationAlias(e).toAttribute
+    }
 
-    (distinctAggs ++ aggs).distinct
+    val collectDistinctAggs = removeWindowAggs andThen (_ collect {
+      case e: DistinctAggregateFunction => e
+    })
+
+    val collectAggs = removeWindowAggs andThen removeDistinctAggs andThen (_ collect {
+      case e: AggregateFunction => e
+    })
+
+    (expressions.flatMap(collectDistinctAggs) ++ expressions.flatMap(collectAggs)).distinct
   }
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
