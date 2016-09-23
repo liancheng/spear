@@ -9,6 +9,7 @@ import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis._
 import scraper.plans.logical.analysis.WindowAnalysis._
+import scraper.utils._
 
 /**
  * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
@@ -143,17 +144,20 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)
 
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
-      val aggAliases = aggs map (AggregationAlias(_))
-      val aggRewriter = buildRewriter(aggAliases)
-      val aggRestorer = buildRestorer(aggAliases)
-
       aggs foreach rejectNestedAggregateFunction
 
-      val restoreAggs = (_: Expression) transformUp aggRestorer
-      val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
-        case e: WindowFunction => e.copy(function = aggRestorer.getOrElse(e.function, e.function))
+      val aggAliases = aggs map (AggregationAlias(_))
+      val restoreAggs = (_: Expression) transformUp buildRestorer(aggAliases)
+      val rewriteAggs = (_: Expression) transformUp buildRewriter(aggAliases) transformUp {
+        // Window aggregate functions should not be rewritten. Recovers them here. E.g.:
+        //
+        //   SELECT max(a) OVER (PARTITION BY max(a)) FROM t GROUP BY a
+        //
+        // The 2nd `max(a)` should be rewritten while the 1st one must be preserved.
+        case e @ WindowFunction(f, _) => e.copy(function = restoreAggs(f))
       }
 
+      // Note: window functions may appear in both SELECT and ORDER BY clauses.
       val wins = collectWindowFunctions(projectList ++ order map (rewriteAggs andThen rewriteKeys))
       val winAliases = wins map (WindowAlias(_))
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
@@ -162,6 +166,8 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
       val restore = restoreWins andThen restoreKeys andThen restoreAggs
 
+      // `InternalAttribute`s should not be exposed outside. Aliases them using names and expression
+      // IDs of the original named expressions.
       def rewriteNamedExpression(named: NamedExpression): NamedExpression = rewrite(named) match {
         case e: InternalAttribute => e as named.name withID named.expressionID
         case e: NamedExpression   => e
@@ -171,11 +177,22 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
 
+      def rejectDanglingAttributes(kind: String, whitelist: Seq[Attribute])(e: Expression) =
+        e.references collectFirst {
+          case a: AttributeRef if !(whitelist contains a) =>
+            throw new IllegalAggregationException(
+              s"""Attribute ${a.sqlLike} in $kind ${restore(e).sqlLike} is neither referenced by any
+                 |non-window aggregate functions nor a grouping key among
+                 |${keys map (_.sqlLike) mkString ("[", ", ", "]")}.
+                 |""".oneLine
+            )
+        }
+
       val output = rewrittenProjectList map (_.attr)
-      rejectDanglingAttributes("window function", wins map (_.function), keys, Nil, restore)
-      rejectDanglingAttributes("SELECT field", rewrittenProjectList, keys, Nil, restore)
-      rejectDanglingAttributes("HAVING condition", rewrittenConditions, keys, output, restore)
-      rejectDanglingAttributes("ORDER BY expression", rewrittenOrder, keys, output, restore)
+      wins map (_.function) foreach rejectDanglingAttributes("window function", Nil)
+      rewrittenProjectList foreach rejectDanglingAttributes("SELECT field", Nil)
+      rewrittenConditions foreach rejectDanglingAttributes("HAVING condition", output)
+      rewrittenOrder foreach rejectDanglingAttributes("ORDER BY expression", output)
 
       child
         .resolvedGroupBy(keyAliases)
@@ -192,24 +209,15 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // child expression.
       rejectNestedAggregateFunction(child)
 
-    case _ =>
-      agg.children.foreach(_ collectFirst {
-        case nested: AggregateFunction =>
-          throw new IllegalAggregationException(agg, nested)
+    case e =>
+      e.children foreach (_ collectFirst {
+        case _: AggregateFunction =>
+          throw new IllegalAggregationException(
+            s"""Aggregate function can't be nested within another aggregate function:
+               |${e.sqlLike}
+               |""".oneLine
+          )
       })
-  }
-
-  private def rejectDanglingAttributes(
-    kind: String,
-    expressions: Seq[Expression],
-    groupingKeys: Seq[Expression],
-    outputAttributes: Seq[Attribute],
-    restore: Expression => Expression
-  ): Unit = expressions foreach { e =>
-    e.references collectFirst {
-      case a: AttributeRef if !(outputAttributes contains a) =>
-        throw new IllegalAggregationException(kind, a, restore(e), groupingKeys)
-    }
   }
 
   private def hasDistinctAggregateFunction(expressions: Seq[Expression]): Boolean =
@@ -223,12 +231,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
 
 object AggregationAnalysis {
   def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
-    expressions exists hasAggregateFunction
-
-  def hasAggregateFunction(expression: Expression): Boolean =
-    eliminateWindowFunctions(expression).collectFirst {
-      case e: AggregateFunction =>
-    }.nonEmpty
+    collectAggregateFunctions(expressions).nonEmpty
 
   def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =
     Expression.resolveUsing[E](input) _ andThen Alias.unaliasUsing[E](input)

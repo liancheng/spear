@@ -153,28 +153,6 @@ class IllegalAggregationException(message: String, cause: Throwable)
   extends AnalysisException(message, cause) {
 
   def this(message: String) = this(message, null)
-
-  def this(
-    part: String,
-    attribute: AttributeRef,
-    expression: Expression,
-    keys: Seq[Expression],
-    cause: Throwable
-  ) = this({
-    val keyList = keys mkString ("[", ", ", "]")
-    s"""Attribute ${attribute.debugString} in $part ${expression.debugString} is neither used by
-       |a non-window aggregate function nor a grouping key among $keyList.
-       |""".oneLine
-  }, cause)
-
-  def this(outer: AggregateFunction, inner: AggregateFunction) = this({
-    s"""Aggregate function (${inner.nodeName.toString}) can't be nested within another aggregate
-       |function (${outer.nodeName.toString}).
-       |""".oneLine
-  }, null)
-
-  def this(kind: String, attribute: AttributeRef, expression: Expression, keys: Seq[Expression]) =
-    this(kind, attribute, expression, keys, null)
 }
 
 class SettingsValidationException(message: String, cause: Throwable)
