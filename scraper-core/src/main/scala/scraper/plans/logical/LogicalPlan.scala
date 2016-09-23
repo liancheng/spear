@@ -121,7 +121,7 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
 
   override def expressions: Seq[Expression] = projectList
 
-  override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = projectList map (_.attr)
 }
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
@@ -280,7 +280,7 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
 
   override def isResolved: Boolean = super.isResolved
 
-  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.attr)
 }
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
@@ -322,7 +322,7 @@ case class Window(
 ) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output ++ derivedOutput
 
-  override lazy val derivedOutput: Seq[Attribute] = functions map (_.toAttribute)
+  override lazy val derivedOutput: Seq[Attribute] = functions map (_.attr)
 }
 
 object LogicalPlan {

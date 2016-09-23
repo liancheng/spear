@@ -171,7 +171,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
 
-      val output = rewrittenProjectList map (_.toAttribute)
+      val output = rewrittenProjectList map (_.attr)
       rejectDanglingAttributes("window function", wins map (_.function), keys, Nil, restore)
       rejectDanglingAttributes("SELECT field", rewrittenProjectList, keys, Nil, restore)
       rejectDanglingAttributes("HAVING condition", rewrittenConditions, keys, output, restore)
@@ -189,11 +189,11 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
     val removeWindowAggs = (_: Expression) transformDown {
       case e @ WindowFunction(f: AggregateFunction, _) =>
-        e.copy(function = AggregationAlias(f).toAttribute)
+        e.copy(function = AggregationAlias(f).attr)
     }
 
     val removeDistinctAggs = (_: Expression) transformDown {
-      case e: DistinctAggregateFunction => AggregationAlias(e).toAttribute
+      case e: DistinctAggregateFunction => AggregationAlias(e).attr
     }
 
     val collectDistinctAggs = removeWindowAggs andThen {
@@ -239,7 +239,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   private def hasDistinctAggregateFunction(expression: Expression): Boolean =
     expression.transformDown {
       // Excludes aggregate functions in window functions
-      case e: WindowFunction => WindowAlias(e).toAttribute
+      case e: WindowFunction => WindowAlias(e).attr
     }.collectFirst {
       case e: DistinctAggregateFunction =>
     }.nonEmpty
@@ -252,7 +252,7 @@ object AggregationAnalysis {
   def hasAggregateFunction(expression: Expression): Boolean =
     expression.transformDown {
       // Excludes aggregate functions in window functions
-      case e: WindowFunction => WindowAlias(e).toAttribute
+      case e: WindowFunction => WindowAlias(e).attr
     }.collectFirst {
       case e: AggregateFunction =>
     }.nonEmpty

@@ -193,7 +193,7 @@ object Expression {
     expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
   ): E = expression.transformDown {
     case unresolved @ UnresolvedAttribute(name, qualifier) =>
-      val candidates = input.map(_.toAttribute).distinct.collect {
+      val candidates = input.map(_.attr).distinct.collect {
         case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
         case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
       }

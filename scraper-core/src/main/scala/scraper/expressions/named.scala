@@ -17,9 +17,7 @@ trait NamedExpression extends Expression {
 
   def expressionID: ExpressionID
 
-  def toAttribute: Attribute
-
-  def attr: Attribute = toAttribute
+  def attr: Attribute
 
   def withID(id: ExpressionID): NamedExpression
 }
@@ -41,7 +39,7 @@ object NamedExpression {
 case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedNamedExpression {
   override def name: Name = throw new ExpressionUnresolvedException(this)
 
-  override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
+  override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
   override protected def template: String =
     (qualifier map (_.toString)).toSeq :+ "*" mkString "."
@@ -58,7 +56,7 @@ case class Alias(
 
   override def evaluate(input: Row): Any = child.evaluate(input)
 
-  override lazy val toAttribute: Attribute = if (child.isResolved) {
+  override lazy val attr: Attribute = if (child.isResolved) {
     AttributeRef(name, child.dataType, child.isNullable, expressionID)
   } else {
     UnresolvedAttribute(name)
@@ -95,7 +93,7 @@ case class AutoAlias private (child: Expression)
 
   override def name: Name = throw new ExpressionUnresolvedException(this)
 
-  override def toAttribute: Attribute = throw new ExpressionUnresolvedException(this)
+  override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
   override def debugString: String = s"${child.debugString} AS ?alias?"
 }
@@ -114,7 +112,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   override lazy val references: Seq[Attribute] = Seq(this)
 
-  override def toAttribute: Attribute = this
+  override def attr: Attribute = this
 
   def withID(id: ExpressionID): Attribute
 
@@ -224,7 +222,7 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   override lazy val isBound: Boolean = true
 
-  override def toAttribute: Attribute = throw new UnsupportedOperationException
+  override def attr: Attribute = throw new UnsupportedOperationException
 
   override def expressionID: ExpressionID = throw new UnsupportedOperationException
 

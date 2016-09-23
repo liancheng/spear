@@ -161,7 +161,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
   }
 
   private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
-    projectList.collect { case a: Alias => a.toAttribute }.toSet
+    projectList.collect { case a: Alias => a.attr }.toSet
 }
 
 /**

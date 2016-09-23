@@ -23,7 +23,7 @@ case class LocalRelation(
 case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
   extends UnaryPhysicalPlan {
 
-  override lazy val output: Seq[Attribute] = projectList map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = projectList map (_.attr)
 
   private lazy val boundProjectList = projectList map bindTo(child.output)
 

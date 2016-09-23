@@ -13,7 +13,7 @@ case class HashAggregate(
   keyAliases: Seq[GroupingAlias],
   aggAliases: Seq[AggregationAlias]
 ) extends UnaryPhysicalPlan {
-  override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map (_.toAttribute)
+  override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map (_.attr)
 
   private lazy val boundKeys: Seq[Expression] = keyAliases map (_.child) map bindTo(child.output)
 
