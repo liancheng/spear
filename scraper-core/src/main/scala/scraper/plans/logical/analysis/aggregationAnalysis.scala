@@ -252,7 +252,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       // Excludes aggregate functions in window functions
       case e: WindowFunction => WindowAlias(e).toAttribute
     }.collectFirst {
-      case e: DistinctAggregateFunction => ()
+      case e: DistinctAggregateFunction =>
     }.nonEmpty
 }
 
@@ -265,7 +265,7 @@ object AggregationAnalysis {
       // Excludes aggregate functions in window functions
       case e: WindowFunction => WindowAlias(e).toAttribute
     }.collectFirst {
-      case e: AggregateFunction => ()
+      case e: AggregateFunction =>
     }.nonEmpty
 
   def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =

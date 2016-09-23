@@ -37,7 +37,7 @@ object WindowAnalysis {
     expressions exists hasWindowFunction
 
   def hasWindowFunction(expression: Expression): Boolean =
-    expression.collectFirst { case _: WindowFunction => () }.nonEmpty
+    expression.collectFirst { case _: WindowFunction => }.nonEmpty
 
   /**
    * Collects all distinct window functions from `expressions`.

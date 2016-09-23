@@ -279,7 +279,7 @@ object Optimizer {
     }
 
     private def containsAggregation(expression: Expression): Boolean =
-      expression.collectFirst { case _: AggregationNamedExpression => () }.nonEmpty
+      expression.collectFirst { case _: AggregationNamedExpression => }.nonEmpty
   }
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
