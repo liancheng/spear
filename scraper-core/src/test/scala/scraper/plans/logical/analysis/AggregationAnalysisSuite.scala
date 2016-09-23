@@ -3,8 +3,12 @@ package scraper.plans.logical.analysis
 import scraper._
 import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
+import scraper.expressions.aggregates.AggregateFunction
 import scraper.expressions.functions._
+import scraper.expressions.windows.Window
 import scraper.plans.logical.LocalRelation
+import scraper.plans.logical.analysis.AggregationAnalysis.collectAggregateFunctions
+import scraper.types.IntType
 
 class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
@@ -163,6 +167,58 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         agg Nil
         select (`@G: a`.attr as 'a, `@G: b`.attr as 'b)
     )
+  }
+
+  test("collect aggregate functions") {
+    def check(expected: AggregateFunction*)(actual: => Seq[AggregateFunction]): Unit = {
+      assertResult(expected.toSet) {
+        actual.toSet
+      }
+    }
+
+    val a = 'a of IntType
+
+    check(max(a)) {
+      collectAggregateFunctions(max(a))
+    }
+
+    check() {
+      collectAggregateFunctions(max(a) over ())
+    }
+
+    check(avg(a)) {
+      collectAggregateFunctions(max(avg(a)) over ())
+    }
+
+    check(sum(a)) {
+      collectAggregateFunctions(max(a) over (Window partitionBy sum(a)))
+    }
+
+    check(min(a)) {
+      collectAggregateFunctions(max(a) over (Window orderBy min(a)))
+    }
+
+    check(sum(a), min(a)) {
+      collectAggregateFunctions(max(a) over (Window partitionBy sum(a) orderBy min(a)))
+    }
+
+    check(avg(a), sum(a)) {
+      collectAggregateFunctions(max(avg(a)) over (Window partitionBy sum(a)))
+    }
+
+    check(avg(a), min(a)) {
+      collectAggregateFunctions(max(avg(a)) over (Window orderBy min(a)))
+    }
+
+    check(avg(a), sum(a), min(a)) {
+      collectAggregateFunctions(max(avg(a)) over (Window partitionBy sum(a) orderBy min(a)))
+    }
+
+    check(avg(a), count(a), sum(a), min(a)) {
+      collectAggregateFunctions(
+        max(avg(a) + count(a)) over (Window partitionBy sum(a) orderBy min(a))
+      )
+    }
   }
 
   override protected def beforeAll(): Unit = {

@@ -39,6 +39,10 @@ object WindowAnalysis {
   def hasWindowFunction(expression: Expression): Boolean =
     expression.collectFirst { case _: WindowFunction => }.nonEmpty
 
+  def eliminateWindowFunctions(expression: Expression): Expression = expression transformDown {
+    case e: WindowFunction => WindowAlias(e).attr
+  }
+
   /**
    * Collects all distinct window functions from `expressions`.
    */

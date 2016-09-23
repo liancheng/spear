@@ -186,27 +186,6 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .select(rewrittenProjectList)
   }
 
-  private def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] = {
-    val removeWindowAggs = (_: Expression) transformDown {
-      case e @ WindowFunction(f: AggregateFunction, _) =>
-        e.copy(function = AggregationAlias(f).attr)
-    }
-
-    val removeDistinctAggs = (_: Expression) transformDown {
-      case e: DistinctAggregateFunction => AggregationAlias(e).attr
-    }
-
-    val collectDistinctAggs = removeWindowAggs andThen {
-      _ collect { case e: DistinctAggregateFunction => e }
-    }
-
-    val collectAggs = removeWindowAggs andThen removeDistinctAggs andThen {
-      _ collect { case e: AggregateFunction => e }
-    }
-
-    (expressions.flatMap(collectDistinctAggs) ++ expressions.flatMap(collectAggs)).distinct
-  }
-
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>
       // Special cases `DistinctAggregateFunction` since it always has another aggregate function as
@@ -237,10 +216,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     expressions exists hasDistinctAggregateFunction
 
   private def hasDistinctAggregateFunction(expression: Expression): Boolean =
-    expression.transformDown {
-      // Excludes aggregate functions in window functions
-      case e: WindowFunction => WindowAlias(e).attr
-    }.collectFirst {
+    eliminateWindowFunctions(expression).collectFirst {
       case e: DistinctAggregateFunction =>
     }.nonEmpty
 }
@@ -250,13 +226,41 @@ object AggregationAnalysis {
     expressions exists hasAggregateFunction
 
   def hasAggregateFunction(expression: Expression): Boolean =
-    expression.transformDown {
-      // Excludes aggregate functions in window functions
-      case e: WindowFunction => WindowAlias(e).attr
-    }.collectFirst {
+    eliminateWindowFunctions(expression).collectFirst {
       case e: AggregateFunction =>
     }.nonEmpty
 
   def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =
     Expression.resolveUsing[E](input) _ andThen Alias.unaliasUsing[E](input)
+
+  def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] =
+    expressions.flatMap(collectAggregateFunctions).distinct
+
+  def collectAggregateFunctions(expression: Expression): Seq[AggregateFunction] = {
+    val collectDistinctAggs = (_: Expression) collect {
+      case e: DistinctAggregateFunction => e: AggregateFunction
+    }
+
+    val collectAggs = (_: Expression) collect {
+      case e: AggregateFunction => e
+    }
+
+    val eliminateDistinctAggs = (_: Expression) transformDown {
+      case e: DistinctAggregateFunction => AggregationAlias(e).attr
+    }
+
+    val aggsInsideWindowFunctions = for {
+      nested <- expression.collect { case WindowFunction(f, spec) => f.children :+ spec }
+      agg <- collectAggregateFunctions(nested)
+    } yield agg
+
+    val windowFunctionsEliminated = eliminateWindowFunctions(expression)
+
+    val aggsOutsideWindowFunctions = for {
+      collect <- Seq(collectDistinctAggs, eliminateDistinctAggs andThen collectAggs)
+      agg <- collect(windowFunctionsEliminated)
+    } yield agg
+
+    (aggsInsideWindowFunctions ++ aggsOutsideWindowFunctions).distinct
+  }
 }
