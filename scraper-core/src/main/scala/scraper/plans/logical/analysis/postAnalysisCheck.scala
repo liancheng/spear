@@ -13,7 +13,7 @@ class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
       // Tries to collect a "minimum" unresolved expression.
       case Unresolved(e) if e.children forall (_.isResolved) =>
         throw new ResolutionFailureException(
-          s"""Failed to resolve expression ${e.debugString} in the analyzed logical plan:
+          s"""Failed to resolve expression ${e.sqlLike} in the analyzed logical plan:
              |
              |${tree.prettyTree}
              |""".stripMargin
@@ -46,7 +46,7 @@ class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRul
     val internal = tree.output.collect { case e: InternalNamedExpression => e }
 
     if (internal.nonEmpty) {
-      val internalList = internal mkString ("[", ", ", "]")
+      val internalList = internal map (_.sqlLike) mkString ("[", ", ", "]")
       val suggestion =
         """You probably hit an internal bug since internal attributes are only used internally by
           |the analyzer and should never appear in a fully analyzed logical plan.
@@ -73,7 +73,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
     }
 
     if (distinctAggs.nonEmpty) {
-      val distinctAggList = distinctAggs mkString ("[", ", ", "]")
+      val distinctAggList = distinctAggs map (_.sqlLike) mkString ("[", ", ", "]")
       val suggestion =
         """You probably hit an internal bug since all distinct aggregate functions should have
           |been resolved into normal aggregate functions by the analyzer.
@@ -104,8 +104,8 @@ class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule
 
       if (orphans.nonEmpty) {
         val message =
-          s"""Orphan attribute references ${orphans mkString ("[", ", ", "]")} found in the
-             |following logical plan operator. They are neither output of child operators nor
+          s"""Orphan attribute references ${orphans map (_.sqlLike) mkString ("[", ", ", "]")} found
+             |in the following logical plan operator. They are neither output of child operators nor
              |derived by the problematic operator itself.
              |""".oneLine
 

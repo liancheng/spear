@@ -41,7 +41,7 @@ case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedN
 
   override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
-  override protected def template: String =
+  override protected def template(childList: Seq[String]): String =
     (qualifier map (_.toString)).toSeq :+ "*" mkString "."
 }
 
@@ -63,10 +63,12 @@ case class Alias(
   }
 
   override def debugString: String =
-    s"(${child.debugString} AS ${name.toString}#${expressionID.id})"
+    s"(${template(child.debugString :: Nil)}#${expressionID.id})"
 
-  override def sql: Try[String] =
-    child.sql map (childSQL => s"$childSQL AS ${name.toString}")
+  override def template(childList: Seq[String]): String = {
+    val Seq(childString) = childList
+    s"$childString AS ${name.toString}"
+  }
 
   override def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
@@ -126,7 +128,7 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   extends Attribute with UnresolvedNamedExpression {
 
-  override protected def template: String =
+  override protected def template(childList: Seq[String]): String =
     (qualifier.map(_.toString).toSeq :+ name.toString) mkString "."
 
   override def withID(id: ExpressionID): UnresolvedAttribute = this
@@ -203,6 +205,10 @@ case class AttributeRef(
 
   override def debugString: String =
     (qualifier.map(_.toString).toSeq :+ super.debugString) mkString "."
+
+  override def sql: Try[String] = super.sql map { sql =>
+    (qualifier.map(_.toString).toSeq :+ sql) mkString "."
+  }
 
   /**
    * Returns a copy of this [[AttributeRef]] with given qualifier.

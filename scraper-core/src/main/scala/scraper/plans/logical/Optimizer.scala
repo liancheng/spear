@@ -221,14 +221,14 @@ object Optimizer {
 
         if (leftPredicates.nonEmpty) {
           logDebug {
-            val leftList = leftPredicates mkString ("[", ", ", "]")
+            val leftList = leftPredicates map (_.sqlLike) mkString ("[", ", ", "]")
             s"Pushing predicates $leftList through left join branch"
           }
         }
 
         if (rightPredicates.nonEmpty) {
           logDebug {
-            val rightList = rightPredicates mkString ("[", ", ", "]")
+            val rightList = rightPredicates map (_.sqlLike) mkString ("[", ", ", "]")
             s"Pushing predicates $rightList through right join branch"
           }
         }
@@ -264,7 +264,7 @@ object Optimizer {
 
         if (pushDown.nonEmpty) {
           logDebug({
-            val pushDownList = pushDown mkString ("[", ", ", "]")
+            val pushDownList = pushDown map (_.sqlLike) mkString ("[", ", ", "]")
             s"Pushing down predicates $pushDownList through aggregate"
           })
         }

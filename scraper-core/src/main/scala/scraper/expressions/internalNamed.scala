@@ -7,7 +7,7 @@ import scraper.expressions.aggregates.AggregateFunction
 import scraper.expressions.windows.WindowFunction
 import scraper.types._
 
-sealed trait InternalNamedExpression extends NamedExpression {
+sealed trait InternalNamedExpression extends NamedExpression with NonSQLExpression {
   def purpose: Purpose
 
   override def name: Name = purpose.name

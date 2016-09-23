@@ -141,14 +141,14 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
   private val relation = LocalRelation.empty(a, b)
 
   private def testAutoAliasing(expression: Expression, expectedAlias: Name): Unit = {
-    test(s"auto-alias resolution - $expression AS ${expectedAlias.toString}") {
+    test(s"auto-alias resolution - ${expression.sqlLike} AS ${expectedAlias.toString}") {
       val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
       assert(actualAlias == expectedAlias)
     }
   }
 
   private def testFunctionResolution(unresolved: Expression, expected: => Expression): Unit = {
-    test(s"function resolution - $unresolved to $expected") {
+    test(s"function resolution - ${unresolved.sqlLike} to ${expected.sqlLike}") {
       val analyzed = new ResolveFunctions(catalog).apply(relation select unresolved)
       val actual = analyzed match { case _ Project Seq(AutoAlias(resolved)) => resolved }
       assert(actual == expected)
@@ -158,7 +158,7 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
   private def interceptFunctionResolution[T <: AnalysisException: Manifest](
     unresolved: UnresolvedFunction, message: String
   ): Unit = {
-    test(s"function resolution - $unresolved should fail analyzer") {
+    test(s"function resolution - ${unresolved.sqlLike} should fail analyzer") {
       val cause = intercept[T] { analyze(relation select unresolved) }
       assert(cause.getMessage contains message)
     }

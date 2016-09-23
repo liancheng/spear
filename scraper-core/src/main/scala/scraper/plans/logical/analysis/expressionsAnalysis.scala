@@ -51,7 +51,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
           try resolveUsing(input)(a) catch {
             case NonFatal(cause) =>
               throw new ResolutionFailureException(
-                s"""Failed to resolve attribute $a in logical plan:
+                s"""Failed to resolve attribute ${a.sqlLike} in logical plan:
                    |
                    |${plan.prettyTree}
                    |""".stripMargin,

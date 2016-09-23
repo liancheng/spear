@@ -1,8 +1,7 @@
 package scraper.exceptions
 
 import scraper.Name
-import scraper.expressions.{AttributeRef, Expression}
-import scraper.expressions.aggregates.AggregateFunction
+import scraper.expressions.Expression
 import scraper.plans.logical.LogicalPlan
 import scraper.types.{AbstractDataType, DataType}
 import scraper.utils._
@@ -16,7 +15,7 @@ class ContractBrokenException(message: String, cause: Throwable)
 }
 
 class ExpressionUnevaluableException(expression: Expression, cause: Throwable)
-  extends RuntimeException(s"Expression ${expression.debugString} is unevaluable", cause) {
+  extends RuntimeException(s"Expression ${expression.sqlLike} is unevaluable", cause) {
 
   def this(expression: Expression) = this(expression, null)
 }
@@ -51,7 +50,7 @@ class TypeCheckException(message: String, cause: Throwable)
   def this(expression: Expression, cause: Throwable) =
     this({
       val causeMessage = Option(cause) map (". " + _.getMessage) getOrElse ""
-      s"""Expression ${expression.debugString} doesn't pass type check$causeMessage:
+      s"""Expression ${expression.sqlLike} doesn't pass type check$causeMessage:
          |${expression.prettyTree}
          |""".stripMargin
     }, cause)
@@ -59,11 +58,12 @@ class TypeCheckException(message: String, cause: Throwable)
   def this(expression: Expression) = this(expression, null)
 
   def this(plan: LogicalPlan, cause: Throwable) =
-    this({
+    this(
       s"""Logical query plan doesn't pass type check:
          |${plan.prettyTree}
-         |""".stripMargin
-    }, cause)
+         |""".stripMargin,
+      cause
+    )
 
   def this(plan: LogicalPlan) = this(plan, null)
 }
@@ -74,7 +74,7 @@ class TypeCastException(message: String, cause: Throwable)
   def this(message: String) = this(message, null)
 
   def this(from: DataType, to: DataType, cause: Throwable) =
-    this(s"Cannot convert data type $from to $to", cause)
+    this(s"Cannot convert data type ${from.sql} to ${from.sql}", cause)
 
   def this(from: DataType, to: DataType) = this(from, to, null)
 }
@@ -83,8 +83,8 @@ class ImplicitCastException(message: String, cause: Throwable)
   extends TypeCastException(message, cause) {
 
   def this(from: Expression, to: DataType, cause: Throwable) = this({
-    s"""Cannot convert expression ${from.debugString}
-       |of data type ${from.dataType} to $to implicitly.
+    s"""Cannot convert expression ${from.sqlLike} of data type ${from.dataType.sql} to ${to.sql}
+       |implicitly.
        |""".oneLine
   }, cause)
 
@@ -101,7 +101,10 @@ class TypeMismatchException(message: String, cause: Throwable)
     expected: DataType,
     cause: Throwable
   ) = this({
-    val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
+    val violators = expressions map { e =>
+      s" - Expression ${e.sqlLike} is of type ${e.dataType.sql}"
+    }
+
     s"""Expecting expression(s) of type ${expected.sql}, but found the following violators:
        |${violators mkString "\n"}
        |""".stripMargin
@@ -112,7 +115,10 @@ class TypeMismatchException(message: String, cause: Throwable)
     expected: AbstractDataType,
     cause: Throwable
   ) = this({
-    val violators = expressions map { e => s" - Expression $e is of type ${e.dataType.sql}" }
+    val violators = expressions map { e =>
+      s" - Expression ${e.sqlLike} is of type ${e.dataType.sql}"
+    }
+
     s"""Expecting expression(s) of $expected, but found the following violators:
        |${violators mkString "\n"}
        |""".stripMargin

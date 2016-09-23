@@ -106,6 +106,7 @@ case class Foldable(input: Seq[Expression]) extends TypeConstraint {
   override def enforced: Try[Seq[Expression]] =
     StrictlyTyped(input).enforced map (_ map {
       case e if e.isFoldable => e
-      case e                 => throw new TypeMismatchException(s"Expression $e is not foldable.")
+      case e =>
+        throw new TypeMismatchException(s"Expression ${e.sqlLike} is not foldable.")
     })
 }

@@ -17,7 +17,9 @@ import scraper.utils._
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
-  override def toString: String = debugString
+  override def toString: String = throw new NotImplementedError(
+    "Use either Expression.debugString or Expression.sqlLike instead."
+  )
 
   /**
    * Whether the result of this [[Expression]] can be null when evaluated. False positive is allowed
@@ -52,6 +54,8 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   def debugString: String = template(children map (_.debugString))
 
   def sql: Try[String] = trySequence(children map (_.sql)) map template
+
+  def sqlLike: String = template(children map (e => e.sql getOrElse e.debugString))
 
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
@@ -262,9 +266,7 @@ trait LeafExpression extends Expression {
 
   override def nodeCaption: String = debugString
 
-  override protected def template(childList: Seq[String]): String = template
-
-  protected def template: String = super.template(Nil)
+  override def sqlLike: String = sql getOrElse debugString
 }
 
 trait UnaryExpression extends Expression {
@@ -340,10 +342,6 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
     Failure(new ExpressionUnresolvedException(this))
 
   override lazy val isResolved: Boolean = false
-
-  override def sql: Try[String] = Failure(new UnsupportedOperationException(
-    s"Unresolved expression $debugString doesn't have a SQL representation"
-  ))
 }
 
 case class UnresolvedFunction(name: Name, args: Seq[Expression], isDistinct: Boolean)
@@ -351,9 +349,9 @@ case class UnresolvedFunction(name: Name, args: Seq[Expression], isDistinct: Boo
 
   override def children: Seq[Expression] = args
 
-  override def debugString: String = {
+  override def template(childList: Seq[String]): String = {
     val distinctString = if (isDistinct) "DISTINCT " else ""
-    s"?$name?($distinctString${args map (_.debugString) mkString ", "})"
+    s"?$name?($distinctString${childList mkString ", "})"
   }
 
   def distinct: UnresolvedFunction = if (isDistinct) this else copy(isDistinct = true)
