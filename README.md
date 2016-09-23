@@ -89,7 +89,7 @@ Equivalent sample query using SQL:
 ```scala
 @ context range 10 asTable 't // Registers a temporary table first
 
-@ context.q(
+@ context.sql(
     """SELECT * FROM (
 	  |  SELECT id AS key, CAST(RAND(42) * 100 AS INT) AS value FROM t
 	  |) s
@@ -122,7 +122,7 @@ We can also check the query plan using `explain()`:
     select('id as 'key, (rand(42) * 100) cast IntType as 'value).
     where('value % 2 === 0).
     orderBy('value.desc).
-    explain()
+    explain(true)
 ```
 
 ```
