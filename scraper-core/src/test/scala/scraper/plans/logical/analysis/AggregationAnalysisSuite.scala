@@ -147,14 +147,49 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("illegal aggregation") {
-    intercept[IllegalAggregationException] {
-      analyze(relation groupBy 'a agg 'b)
+  test("illegal SELECT field") {
+    val patterns = Seq(
+      "Attribute a",
+      "SELECT field (((a + 1) + a) + 1)",
+      "[(a + 1)]"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(relation groupBy 'a + 1 agg a + 1 + a + 1)
+    }
+  }
+
+  test("illegal HAVING condition") {
+    val patterns = Seq(
+      "Attribute b",
+      "HAVING condition (b > 0)",
+      "[a]"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(relation groupBy 'a agg 'count('a) filter 'b > 0)
+    }
+  }
+
+  test("illegal ORDER BY expression") {
+    val patterns = Seq(
+      "Attribute b",
+      "ORDER BY expression b ASC NULLS LAST",
+      "[a]"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(relation groupBy 'a agg 'count('a) orderBy 'b)
     }
   }
 
   test("illegal nested aggregate function") {
-    intercept[IllegalAggregationException] {
+    val patterns = Seq(
+      "Aggregate function can't be nested within another aggregate function",
+      "max(count(a))"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(relation agg 'max('count('a)))
     }
   }
@@ -221,9 +256,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     }
   }
 
-  override protected def beforeAll(): Unit = {
-    catalog.registerRelation('t, relation)
-  }
+  override protected def beforeAll(): Unit = catalog.registerRelation('t, relation)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 

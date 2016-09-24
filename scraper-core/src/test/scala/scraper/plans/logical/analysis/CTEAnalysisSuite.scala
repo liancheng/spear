@@ -66,9 +66,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
     )
   }
 
-  override protected def beforeAll(): Unit = {
-    catalog.registerRelation('t, relation0)
-  }
+  override protected def beforeAll(): Unit = catalog.registerRelation('t, relation0)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 

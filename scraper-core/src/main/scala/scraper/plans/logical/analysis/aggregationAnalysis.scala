@@ -55,9 +55,14 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
       // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
       // predicates must not reference window functions or aliases of window functions.
       rewrittenCondition transformUp {
-        case _: WindowFunction | _: WindowAttribute =>
+        case _: WindowFunction =>
           throw new IllegalAggregationException(
-            "HAVING clauses are not allowed to reference any window functions or their aliases."
+            "Window functions are not allowed in HAVING clauses."
+          )
+
+        case _: WindowAttribute =>
+          throw new IllegalAggregationException(
+            "Window function aliases are not allowed to be referenced in HAVING clauses."
           )
       }
 

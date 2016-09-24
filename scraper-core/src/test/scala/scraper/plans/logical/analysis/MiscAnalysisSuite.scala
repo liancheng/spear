@@ -64,9 +64,7 @@ class MiscAnalysisSuite extends AnalyzerTest {
     )
   }
 
-  override protected def beforeAll(): Unit = {
-    catalog.registerRelation('t, relation)
-  }
+  override protected def beforeAll(): Unit = catalog.registerRelation('t, relation)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
 
