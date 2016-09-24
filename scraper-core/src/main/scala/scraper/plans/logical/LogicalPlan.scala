@@ -407,8 +407,6 @@ object LogicalPlan {
 
     def windows(functions: Seq[WindowAlias]): Window = stackWindows(plan, functions)
 
-    def windows(first: WindowAlias, rest: WindowAlias*): Window = windows(first +: rest)
-
     def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
       stackWindowsOption(plan, functions)
   }

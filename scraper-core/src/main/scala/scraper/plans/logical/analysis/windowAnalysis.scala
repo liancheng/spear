@@ -36,13 +36,6 @@ object WindowAnalysis {
   def hasWindowFunction(expressions: Seq[Expression]): Boolean =
     expressions exists hasWindowFunction
 
-  def hasWindowFunction(expression: Expression): Boolean =
-    expression.collectFirst { case _: WindowFunction => }.nonEmpty
-
-  def eliminateWindowFunctions(expression: Expression): Expression = expression transformDown {
-    case e: WindowFunction => WindowAlias(e).attr
-  }
-
   /**
    * Collects all distinct window functions from `expressions`.
    */
@@ -64,6 +57,9 @@ object WindowAnalysis {
    */
   def stackWindowsOption(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
     (windowBuilders(windowAliases) foldLeft plan) { (p, f) => f apply p }
+
+  private def hasWindowFunction(expression: Expression): Boolean =
+    expression.collectFirst { case _: WindowFunction => }.nonEmpty
 
   private def windowBuilders(windowAliases: Seq[WindowAlias]): Seq[LogicalPlan => Window] = {
     // Finds out all distinct window specs.

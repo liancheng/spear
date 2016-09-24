@@ -177,7 +177,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
 
-      def rejectDanglingAttributes(kind: String, whitelist: Seq[Attribute])(e: Expression) =
+      def rejectDanglingAttributes(kind: String, whitelist: Seq[Attribute] = Nil)(e: Expression) =
         e.references collectFirst {
           case a: AttributeRef if !(whitelist contains a) =>
             throw new IllegalAggregationException(
@@ -189,8 +189,8 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         }
 
       val output = rewrittenProjectList map (_.attr)
-      wins map (_.function) foreach rejectDanglingAttributes("window function", Nil)
-      rewrittenProjectList foreach rejectDanglingAttributes("SELECT field", Nil)
+      wins map (_.function) foreach rejectDanglingAttributes("window function")
+      rewrittenProjectList foreach rejectDanglingAttributes("SELECT field")
       rewrittenConditions foreach rejectDanglingAttributes("HAVING condition", output)
       rewrittenOrder foreach rejectDanglingAttributes("ORDER BY expression", output)
 
@@ -265,5 +265,9 @@ object AggregationAnalysis {
     } yield agg
 
     (aggsInsideWindowFunctions ++ aggsOutsideWindowFunctions).distinct
+  }
+
+  def eliminateWindowFunctions(expression: Expression): Expression = expression transformDown {
+    case e: WindowFunction => WindowAlias(e).attr
   }
 }
