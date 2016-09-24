@@ -112,6 +112,33 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     )
   }
 
+  test("window function in ORDER BY clause") {
+    checkAnalyzedPlan(
+      relation
+        .orderBy('max('a) over `?w0?`),
+
+      relation
+        .window(`@W: max(a) over w0`)
+        .orderBy(`@W: max(a) over w0`.attr)
+        .select(a, b)
+    )
+  }
+
+  test("reference window function alias in ORDER BY clause") {
+    val win_max = `@W: max(a) over w0`.attr as 'win_max
+
+    checkAnalyzedPlan(
+      relation
+        .select('max('a) over `?w0?` as 'win_max)
+        .orderBy('win_max),
+
+      relation
+        .window(`@W: max(a) over w0`)
+        .select(win_max)
+        .orderBy(win_max.attr)
+    )
+  }
+
   // -----------------------
   // Unresolved window specs
   // -----------------------

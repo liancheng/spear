@@ -14,9 +14,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   lazy val schema: StructType = StructType fromAttributes output
 
-  lazy val references: Set[Attribute] = expressions.toSet flatMap ((_: Expression).referenceSet)
+  lazy val references: Seq[Attribute] = expressions.flatMap((_: Expression).references).distinct
 
-  lazy val referenceIDs: Set[ExpressionID] = references map (_.expressionID)
+  lazy val referenceSet: Set[Attribute] = references.toSet
+
+  lazy val referenceIDs: Set[ExpressionID] = referenceSet map (_.expressionID)
 
   def expressions: Seq[Expression] = productIterator.flatMap {
     case element: Expression       => element :: Nil

@@ -1,7 +1,8 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression}
+import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression, SortOrder, UnresolvedAttribute}
+import scraper.expressions.Expression.resolveUsing
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
@@ -19,15 +20,15 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ResolveSortReferences(catalog),
       new DeduplicateReferences(catalog),
 
-      // Rules that help resolving window functions
-      new ExtractWindowFunctionsFromProjects(catalog),
-      new ExtractWindowFunctionsFromSorts(catalog),
-
       // Rules that help resolving expressions
       new ExpandStars(catalog),
       new ResolveReferences(catalog),
       new ResolveFunctions(catalog),
       new ResolveAliases(catalog),
+
+      // Rules that help resolving window functions
+      new ExtractWindowFunctionsFromProjects(catalog),
+      new ExtractWindowFunctionsFromSorts(catalog),
 
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunctions(catalog),
@@ -192,9 +193,19 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
     case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFunction(projectList) =>
       plan
 
-    case Unresolved(plan @ Resolved(child Project projectList) Sort order) =>
-      val orderReferences = order.flatMap(_.collect { case a: Attribute => a }).distinct
-      child select (projectList ++ orderReferences).distinct orderBy order select plan.output
+    case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
+      val output = projectList map (_.attr)
+      val maybeResolvedOrder = order map resolveUsing(output)
+      val unresolvedRefs = maybeResolvedOrder flatMap (_.references) filterNot (_.isResolved)
+
+      if (unresolvedRefs.isEmpty) {
+        sort.copy(order = maybeResolvedOrder)
+      } else {
+        child
+          .select((projectList ++ unresolvedRefs).distinct)
+          .orderBy(maybeResolvedOrder)
+          .select(output)
+      }
   }
 }
 
