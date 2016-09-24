@@ -5,8 +5,62 @@ import scraper.expressions.functions._
 import scraper.expressions.windows._
 import scraper.plans.logical.LocalRelation
 
-class WindowAnalysisSuite extends AnalyzerTest { self =>
-  test("1 projected window function") {
+abstract class WindowAnalysisTest extends AnalyzerTest { self =>
+  protected val (a, b) = ('a.int.!, 'b.string.?)
+
+  protected val relation = LocalRelation.empty(a, b)
+
+  protected val (f0, f1) = (
+    WindowFrame(RowsFrame, UnboundedPreceding, CurrentRow),
+    WindowFrame(RowsFrame, Preceding(1), Following(1))
+  )
+
+  protected val (w0, w1, w2, w3, w4) = (
+    Window partitionBy 'a orderBy 'b.desc between f0,
+    Window partitionBy 'b orderBy 'a.asc between f1,
+    Window partitionBy 'a % 10 orderBy 'b.desc between f0,
+    Window partitionBy 'b orderBy ('a % 10).asc between f1,
+    Window partitionBy 'avg('a)
+  )
+
+  protected val (resolvedW0, resolvedW1) = (
+    Window partitionBy a orderBy b.desc between f0,
+    Window partitionBy b orderBy a.asc between f1
+  )
+
+  protected val `@G: a % 10` = GroupingAlias(a % 10)
+
+  protected val `@G: b` = GroupingAlias(b)
+
+  protected val `@A: avg(a)` = AggregationAlias(avg(a))
+
+  protected val `@A: max(b)` = AggregationAlias(max(b))
+
+  protected val `@A: count(b)` = AggregationAlias(count(b))
+
+  protected val `@W: sum(a) over w0` = WindowAlias(sum(a) over resolvedW0)
+
+  protected val `@W: max(b) over w0` = WindowAlias(max(b) over resolvedW0)
+
+  protected val `@W: max(b) over w1` = WindowAlias(max(b) over resolvedW1)
+
+  protected val (resolvedW2, resolvedW3, resolvedW4) = (
+    Window partitionBy `@G: a % 10`.attr orderBy `@G: b`.attr.desc between f0,
+    Window partitionBy `@G: b`.attr orderBy `@G: a % 10`.attr.asc between f1,
+    Window partitionBy `@A: avg(a)`.attr
+  )
+
+  protected val `@W: sum(a % 10) over w2` = WindowAlias(sum(`@G: a % 10`.attr) over resolvedW2)
+
+  protected val `@W: max(b) over w2` = WindowAlias(max(`@G: b`.attr) over resolvedW2)
+
+  protected val `@W: max(b) over w3` = WindowAlias(max(`@G: b`.attr) over resolvedW3)
+
+  protected val `@W: max(b) over w4` = WindowAlias(max(`@G: b`.attr) over resolvedW4)
+}
+
+class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
+  test("1 window function") {
     checkAnalyzedPlan(
       relation.select('sum('a) over w0 as 'sum),
 
@@ -16,7 +70,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("1 projected window function with non-window expressions") {
+  test("1 window function with non-window expressions") {
     checkAnalyzedPlan(
       relation.select('a + ('sum('a) over w0) as 'sum),
 
@@ -26,7 +80,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 projected window functions with the same window spec") {
+  test("2 window functions with the same window spec") {
     checkAnalyzedPlan(
       relation.select(
         'sum('a) over w0 as 'sum,
@@ -43,7 +97,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 projected window functions with 1 window spec and non-window expressions") {
+  test("2 window functions with 1 window spec and non-window expressions") {
     checkAnalyzedPlan(
       relation.select(
         ('a + ('sum('a) over w0)) as 'x,
@@ -60,7 +114,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 projected window functions with 2 window specs") {
+  test("2 window functions with 2 window specs") {
     checkAnalyzedPlan(
       relation.select(
         'sum('a) over w0 as 'sum,
@@ -77,7 +131,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 projected window functions with 2 window specs and non-window expressions") {
+  test("2 window functions with 2 window specs and non-window expressions") {
     checkAnalyzedPlan(
       relation.select(
         ('a + ('sum('a) over w0)) as 'x,
@@ -93,8 +147,10 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
         )
     )
   }
+}
 
-  test("1 aggregated window function") {
+class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
+  test("1 window function") {
     checkAnalyzedPlan(
       relation
         .groupBy('a % 10, b)
@@ -108,7 +164,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("1 aggregated window function with non-window aggregate function") {
+  test("1 window function with non-window aggregate function") {
     checkAnalyzedPlan(
       relation
         .groupBy('a % 10, 'b)
@@ -128,7 +184,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 aggregated window functions with 1 window spec") {
+  test("2 window functions with 1 window spec") {
     checkAnalyzedPlan(
       relation
         .groupBy('a % 10, 'b)
@@ -151,7 +207,7 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("2 aggregated window functions with 2 window spec") {
+  test("2 window functions with 2 window spec") {
     checkAnalyzedPlan(
       relation
         .groupBy('a % 10, 'b)
@@ -225,62 +281,4 @@ class WindowAnalysisSuite extends AnalyzerTest { self =>
         )
     )
   }
-
-  // TODO Adds more test cases
-  //
-  //  - Error reporting
-  //  - Window functions in `ORDER BY` clause
-  //  - Aliases of window functions in `ORDER BY` clause
-
-  private val (a, b) = ('a.int.!, 'b.string.?)
-
-  private val relation = LocalRelation.empty(a, b)
-
-  private val (f0, f1) = (
-    WindowFrame(RowsFrame, UnboundedPreceding, CurrentRow),
-    WindowFrame(RowsFrame, Preceding(1), Following(1))
-  )
-
-  private val (w0, w1, w2, w3, w4) = (
-    Window partitionBy 'a orderBy 'b.desc between f0,
-    Window partitionBy 'b orderBy 'a.asc between f1,
-    Window partitionBy 'a % 10 orderBy 'b.desc between f0,
-    Window partitionBy 'b orderBy ('a % 10).asc between f1,
-    Window partitionBy 'avg('a)
-  )
-
-  private val (resolvedW0, resolvedW1) = (
-    Window partitionBy a orderBy b.desc between f0,
-    Window partitionBy b orderBy a.asc between f1
-  )
-
-  private val `@G: a % 10` = GroupingAlias(a % 10)
-
-  private val `@G: b` = GroupingAlias(b)
-
-  private val `@A: avg(a)` = AggregationAlias(avg(a))
-
-  private val `@A: max(b)` = AggregationAlias(max(b))
-
-  private val `@A: count(b)` = AggregationAlias(count(b))
-
-  private val `@W: sum(a) over w0` = WindowAlias(sum(a) over resolvedW0)
-
-  private val `@W: max(b) over w0` = WindowAlias(max(b) over resolvedW0)
-
-  private val `@W: max(b) over w1` = WindowAlias(max(b) over resolvedW1)
-
-  private val (resolvedW2, resolvedW3, resolvedW4) = (
-    Window partitionBy `@G: a % 10`.attr orderBy `@G: b`.attr.desc between f0,
-    Window partitionBy `@G: b`.attr orderBy `@G: a % 10`.attr.asc between f1,
-    Window partitionBy `@A: avg(a)`.attr
-  )
-
-  private val `@W: sum(a % 10) over w2` = WindowAlias(sum(`@G: a % 10`.attr) over resolvedW2)
-
-  private val `@W: max(b) over w2` = WindowAlias(max(`@G: b`.attr) over resolvedW2)
-
-  private val `@W: max(b) over w3` = WindowAlias(max(`@G: b`.attr) over resolvedW3)
-
-  private val `@W: max(b) over w4` = WindowAlias(max(`@G: b`.attr) over resolvedW4)
 }
