@@ -1,7 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression, SortOrder, UnresolvedAttribute}
+import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression}
 import scraper.expressions.Expression.resolveUsing
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._

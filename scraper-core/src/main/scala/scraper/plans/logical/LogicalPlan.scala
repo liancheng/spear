@@ -13,8 +13,9 @@ import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
+import scraper.expressions.windows.WindowSpec
 import scraper.plans.QueryPlan
-import scraper.plans.logical.analysis.WindowAnalysis._
+import scraper.plans.logical.Window._
 import scraper.reflection.fieldSpecFor
 import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
@@ -323,6 +324,43 @@ case class Window(
   override lazy val output: Seq[Attribute] = child.output ++ derivedOutput
 
   override lazy val derivedOutput: Seq[Attribute] = functions map (_.attr)
+}
+
+object Window {
+  /**
+   * Given a logical `plan` and a list of zero or more window functions, stacks zero or more
+   * [[Window]] operators over `plan`.
+   */
+  def stackWindowsOption(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
+    (windowBuilders(windowAliases) foldLeft plan) { (p, f) => f apply p }
+
+  /**
+   * Given a logical `plan` and a list of one or more window functions, stacks one or more
+   * [[Window]] operators over `plan`.
+   */
+  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): Window = {
+    assert(windowAliases.nonEmpty)
+    windowBuilders(windowAliases) reduce { _ andThen _ } apply plan
+  }
+
+  private def windowBuilders(windowAliases: Seq[WindowAlias]): Seq[LogicalPlan => Window] = {
+    // Finds out all distinct window specs.
+    val windowSpecs = windowAliases.map(_.child.window).distinct
+
+    // Groups all window functions by their window specs. We are doing sorts here so that it would
+    // be easier to reason about the order of all the generated `Window` operators.
+    val windowAliasGroups = windowAliases
+      .groupBy(_.child.window)
+      .mapValues(_ sortBy windowAliases.indexOf)
+      .toSeq
+      .sortBy { case (spec: WindowSpec, _) => windowSpecs indexOf spec }
+
+    // Builds one `Window` operator builder function for each group.
+    windowAliasGroups map {
+      case (WindowSpec(partitionSpec, orderSpec, _), aliases) =>
+        Window(_: LogicalPlan, aliases, partitionSpec, orderSpec)
+    }
+  }
 }
 
 object LogicalPlan {

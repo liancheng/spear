@@ -17,9 +17,7 @@ import scraper.utils._
 trait Expression extends TreeNode[Expression] with ExpressionDSL {
   override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
-  override def toString: String = throw new NotImplementedError(
-    "Use either Expression.debugString or Expression.sqlLike instead."
-  )
+  override def toString: String = sqlLike
 
   /**
    * Whether the result of this [[Expression]] can be null when evaluated. False positive is allowed
@@ -259,6 +257,8 @@ trait NonSQLExpression extends Expression {
   override def sql: Try[String] = Failure(new UnsupportedOperationException(
     s"Expression $debugString doesn't have a SQL representation"
   ))
+
+  override def sqlLike: String = debugString
 }
 
 trait LeafExpression extends Expression {

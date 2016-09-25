@@ -40,7 +40,7 @@ object InternalNamedExpression {
   }
 }
 
-trait InternalAlias extends InternalNamedExpression with UnaryExpression {
+trait InternalAlias extends UnaryExpression with InternalNamedExpression {
   override def debugString: String =
     s"(${child.debugString} AS @${name.toString}#${expressionID.id})"
 
@@ -72,10 +72,10 @@ object InternalAlias {
     aliases.map { a => (a.attr: Expression) -> a.child }.toMap
 }
 
-abstract class InternalAttribute extends InternalNamedExpression
+trait InternalAttribute extends LeafExpression
   with ResolvedAttribute
-  with LeafExpression
-  with UnevaluableExpression {
+  with UnevaluableExpression
+  with InternalNamedExpression {
 
   override def debugString: String = "@" + super.debugString
 }
@@ -87,7 +87,7 @@ trait GroupingNamedExpression extends InternalNamedExpression {
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
-) extends InternalAlias with GroupingNamedExpression {
+) extends GroupingNamedExpression with InternalAlias {
   override def attr: GroupingAttribute = GroupingAttribute(
     purpose, dataType, isNullable, expressionID
   )
@@ -100,7 +100,7 @@ case class GroupingAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with GroupingNamedExpression {
+) extends GroupingNamedExpression with InternalAttribute {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
@@ -111,7 +111,7 @@ trait AggregationNamedExpression extends InternalNamedExpression {
 case class AggregationAlias(
   child: AggregateFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends InternalAlias with AggregationNamedExpression {
+) extends AggregationNamedExpression with InternalAlias {
   override def attr: AggregationAttribute =
     AggregationAttribute(purpose, dataType, isNullable, expressionID)
 
@@ -123,7 +123,7 @@ case class AggregationAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with AggregationNamedExpression {
+) extends AggregationNamedExpression with InternalAttribute {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
@@ -134,7 +134,7 @@ trait WindowNamedExpression extends InternalNamedExpression {
 case class WindowAlias(
   child: WindowFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends InternalAlias with WindowNamedExpression {
+) extends WindowNamedExpression with InternalAlias {
   override def attr: InternalAttribute =
     WindowAttribute(purpose, dataType, isNullable, expressionID)
 
@@ -146,6 +146,6 @@ case class WindowAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with WindowNamedExpression {
+) extends WindowNamedExpression with InternalAttribute {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
