@@ -143,18 +143,38 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)
 
+      logDebug(
+        s"""Collected grouping keys:
+           |
+           |${mkList(keys)}
+           |""".stripMargin
+      )
+
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       aggs foreach rejectNestedAggregateFunction
 
+      logDebug(
+        s"""Collected aggregate functions:
+           |
+           |${mkList(aggs)}
+           |""".stripMargin
+      )
+
       val aggAliases = aggs map (AggregationAlias(_))
+      val aggRewriter = buildRewriter(aggAliases)
       val restoreAggs = (_: Expression) transformUp buildRestorer(aggAliases)
-      val rewriteAggs = (_: Expression) transformUp buildRewriter(aggAliases) transformUp {
+      val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
         // Window aggregate functions should not be rewritten. Recovers them here. E.g.:
         //
-        //   SELECT max(a) OVER (PARTITION BY max(a)) FROM t GROUP BY a
+        //  - SELECT max(a) OVER (PARTITION BY max(a)) FROM t GROUP BY a
         //
-        // The 2nd `max(a)` should be rewritten while the 1st one must be preserved.
-        case e @ WindowFunction(f, _) => e.copy(function = restoreAggs(f))
+        //    The 2nd `max(a)` should be rewritten while the 1st one must be preserved.
+        //
+        //  - SELECT max(avg(b)) OVER () FROM t GROUP BY a
+        //
+        //    The nested `avg(b)` should be rewritten while the outer `max` should be preserved.
+        case e @ WindowFunction(f, _) =>
+          e.copy(function = restoreAggs(f) transformChildrenUp aggRewriter)
       }
 
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
@@ -162,6 +182,13 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val winAliases = wins map (WindowAlias(_))
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
       val restoreWins = (_: Expression) transformUp buildRestorer(winAliases)
+
+      logDebug(
+        s"""Collected window functions:
+           |
+           |${mkList(wins)}
+           |""".stripMargin
+      )
 
       val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
       val restore = restoreWins andThen restoreKeys andThen restoreAggs
@@ -189,7 +216,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         }
 
       val output = rewrittenProjectList map (_.attr)
-      wins map (_.function) foreach rejectDanglingAttributes("window function")
+      wins foreach rejectDanglingAttributes("window function")
       rewrittenProjectList foreach rejectDanglingAttributes("SELECT field")
       rewrittenConditions foreach rejectDanglingAttributes("HAVING condition", output)
       rewrittenOrder foreach rejectDanglingAttributes("ORDER BY expression", output)
@@ -202,6 +229,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .orderByOption(rewrittenOrder)
         .select(rewrittenProjectList)
   }
+
+  private def mkList(expressions: Seq[Expression]): String =
+    expressions.map(_.sqlLike).map("  - " + _).mkString("\n")
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>

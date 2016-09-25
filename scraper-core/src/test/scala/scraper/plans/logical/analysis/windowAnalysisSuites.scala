@@ -260,6 +260,27 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     )
   }
 
+  test("non-window aggregate function inside window aggregate function") {
+    val alias = GroupingAlias(a)
+    val attr = alias.attr
+    attr.sqlLike
+
+    val `@A: avg(a)` = AggregationAlias(avg(a))
+    val `@W: max(avg(a)) over w0` = WindowAlias(max(`@A: avg(a)`.attr) over w0)
+
+    checkAnalyzedPlan(
+      relation
+        .groupBy('a + 1, 'b)
+        .agg('max('avg('a)) over `?w0?` as 'win_max_of_avg),
+
+      relation
+        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
+        .agg(`@A: avg(a)`)
+        .window(`@W: max(avg(a)) over w0`)
+        .select(`@W: max(avg(a)) over w0`.attr as 'win_max_of_avg)
+    )
+  }
+
   test("window function in ORDER BY clause") {
     checkAnalyzedPlan(
       relation
