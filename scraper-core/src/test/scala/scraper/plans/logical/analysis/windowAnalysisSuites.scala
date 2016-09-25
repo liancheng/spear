@@ -1,5 +1,6 @@
 package scraper.plans.logical.analysis
 
+import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.expressions.windows._
@@ -171,13 +172,13 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkAnalyzedPlan(
       relation
         .groupBy('a + 1, 'b)
-        .agg('count('a + 1) over `?w2?` as 'count),
+        .agg('count('a + 1) over `?w0?` as 'count),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(Nil)
-        .window(`@W: count(a + 1) over w2`)
-        .select(`@W: count(a + 1) over w2`.attr as 'count)
+        .window(`@W: count(a + 1) over w0`)
+        .select(`@W: count(a + 1) over w0`.attr as 'count)
     )
   }
 
@@ -186,16 +187,16 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         .groupBy('a + 1, 'b)
         .agg(
-          'count('b) over `?w2?` as 'win_count,
+          'count('b) over `?w0?` as 'win_count,
           'count('b) as 'agg_count
         ),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(`@A: count(b)`)
-        .window(`@W: count(b) over w2`)
+        .window(`@W: count(b) over w1`)
         .select(
-          `@W: count(b) over w2`.attr as 'win_count,
+          `@W: count(b) over w1`.attr as 'win_count,
           `@A: count(b)`.attr as 'agg_count
         )
     )
@@ -206,20 +207,20 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         .groupBy('a + 1, 'b)
         .agg(
-          'count('a + 1) over `?w2?` as 'count,
-          'count('b) over `?w2?` as 'count
+          'count('a + 1) over `?w0?` as 'count,
+          'count('b) over `?w0?` as 'count
         ),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(Nil)
         .window(
-          `@W: count(a + 1) over w2`,
-          `@W: count(b) over w2`
+          `@W: count(a + 1) over w0`,
+          `@W: count(b) over w1`
         )
         .select(
-          `@W: count(a + 1) over w2`.attr as 'count,
-          `@W: count(b) over w2`.attr as 'count
+          `@W: count(a + 1) over w0`.attr as 'count,
+          `@W: count(b) over w1`.attr as 'count
         )
     )
   }
@@ -229,18 +230,18 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         .groupBy('a + 1, 'b)
         .agg(
-          'count('a + 1) over `?w2?` as 'count,
-          'count('b) over `?w3?` as 'count
+          'count('a + 1) over `?w0?` as 'count,
+          'count('b) over `?w1?` as 'count
         ),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(Nil)
-        .window(`@W: count(a + 1) over w2`)
-        .window(`@W: count(b) over w3`)
+        .window(`@W: count(a + 1) over w0`)
+        .window(`@W: count(b) over w2`)
         .select(
-          `@W: count(a + 1) over w2`.attr as 'count,
-          `@W: count(b) over w3`.attr as 'count
+          `@W: count(a + 1) over w0`.attr as 'count,
+          `@W: count(b) over w2`.attr as 'count
         )
     )
   }
@@ -249,63 +250,72 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkAnalyzedPlan(
       relation
         .groupBy('a + 1, 'b)
-        .agg('count('b) over `?w4?` as 'win_count),
+        .agg('count('b) over `?w2?` as 'win_count),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(`@A: max(a)`)
-        .window(`@W: count(b) over w4`)
-        .select(`@W: count(b) over w4`.attr as 'win_count)
+        .window(`@W: count(b) over w3`)
+        .select(`@W: count(b) over w3`.attr as 'win_count)
     )
   }
 
-  test("complex all-star query") {
+  test("window function in ORDER BY clause") {
     checkAnalyzedPlan(
       relation
-        .groupBy(
-          'a + 1,
-          'b
-        )
-        .agg(
-          // Grouping keys
-          'a + 1 as 'key1,
-          'b as 'key2,
-          // Non-window aggregate function
-          'max('a) as 'agg_max,
-          // Window functions with different window specs
-          'count('a + 1) over `?w2?` as 'win_count,
-          'count('b) over `?w3?` as 'win_count1,
-          // Non-window aggregate in window spec (w4)
-          'count('b) over `?w4?` as 'win_count2
-        )
-        // Grouping key in HAVING clause
-        .filter('a + 1 > 3)
-        // Aggregate function in ORDER BY clause
-        .orderBy('count('b).desc),
+        .groupBy('a + 1, 'b)
+        .agg('a + 1 as 'key)
+        .orderBy('count('a + 1) over `?w0?`),
 
       relation
-        .resolvedGroupBy(
-          `@G: a + 1`,
-          `@G: b`
-        )
-        .agg(
-          `@A: max(a)`,
-          `@A: count(b)`
-        )
-        .filter(`@G: a + 1`.attr > 3)
-        .window(`@W: count(a + 1) over w2`)
-        .window(`@W: count(b) over w3`)
-        .window(`@W: count(b) over w4`)
-        .orderBy(`@A: count(b)`.attr.desc)
-        .select(
-          `@G: a + 1`.attr as 'key1,
-          `@G: b`.attr as 'key2,
-          `@A: max(a)`.attr as 'agg_max,
-          `@W: count(a + 1) over w2`.attr as 'win_count,
-          `@W: count(b) over w3`.attr as 'win_count1,
-          `@W: count(b) over w4`.attr as 'win_count2
-        )
+        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
+        .agg(Nil)
+        .window(`@W: count(a + 1) over w0`)
+        .orderBy(`@W: count(a + 1) over w0`.attr)
+        .select(`@G: a + 1`.attr as 'key)
     )
+  }
+
+  test("reference window function alias in ORDER BY clause") {
+    checkAnalyzedPlan(
+      relation
+        .groupBy('a + 1, 'b)
+        .agg('count('a + 1) over `?w0?` as 'win_count)
+        .orderBy('win_count),
+
+      relation
+        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
+        .agg(Nil)
+        .window(`@W: count(a + 1) over w0`)
+        .orderBy(`@W: count(a + 1) over w0`.attr)
+        .select(`@W: count(a + 1) over w0`.attr as 'win_count)
+    )
+  }
+
+  test("illegal window function in HAVING clause") {
+    val patterns = Seq("Window functions are not allowed in HAVING clauses.")
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(
+        relation
+          .groupBy('a + 1)
+          .agg('a + 1)
+          .filter('count('a + 1) over `?w0?`)
+      )
+    }
+  }
+
+  test("illegal window function alias referenced in HAVING clause") {
+    val patterns = Seq("Window functions are not allowed in HAVING clauses.")
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(
+        relation
+          .groupBy('a + 1)
+          .agg('count('a + 1) over `?w0?` as 'win_count)
+          .filter('win_count > 1)
+      )
+    }
   }
 
   // ----------------
@@ -320,31 +330,31 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   // Unresolved window specs
   // -----------------------
 
-  private val `?w2?` = Window partitionBy 'a + 1 orderBy 'b between f0
+  private val `?w0?` = Window partitionBy 'a + 1 orderBy 'b between f0
 
-  private val `?w3?` = Window partitionBy 'b orderBy 'a + 1 between f1
+  private val `?w1?` = Window partitionBy 'b orderBy 'a + 1 between f1
 
-  private val `?w4?` = Window partitionBy 'max('a)
+  private val `?w2?` = Window partitionBy 'max('a)
 
   // ---------------------
   // Resolved window specs
   // ---------------------
 
-  private val w2 = Window partitionBy `@G: a + 1`.attr orderBy `@G: b`.attr between f0
+  private val w0 = Window partitionBy `@G: a + 1`.attr orderBy `@G: b`.attr between f0
 
-  private val w3 = Window partitionBy `@G: b`.attr orderBy `@G: a + 1`.attr between f1
+  private val w1 = Window partitionBy `@G: b`.attr orderBy `@G: a + 1`.attr between f1
 
-  private val w4 = Window partitionBy `@A: max(a)`.attr
+  private val w2 = Window partitionBy `@A: max(a)`.attr
 
   // --------------
   // Window aliases
   // --------------
 
-  private val `@W: count(a + 1) over w2` = WindowAlias(count(`@G: a + 1`.attr) over w2)
+  private val `@W: count(a + 1) over w0` = WindowAlias(count(`@G: a + 1`.attr) over w0)
 
-  private val `@W: count(b) over w2` = WindowAlias(count(`@G: b`.attr) over w2)
+  private val `@W: count(b) over w1` = WindowAlias(count(`@G: b`.attr) over w0)
 
-  private val `@W: count(b) over w3` = WindowAlias(count(`@G: b`.attr) over w3)
+  private val `@W: count(b) over w2` = WindowAlias(count(`@G: b`.attr) over w1)
 
-  private val `@W: count(b) over w4` = WindowAlias(count(`@G: b`.attr) over w4)
+  private val `@W: count(b) over w3` = WindowAlias(count(`@G: b`.attr) over w2)
 }
