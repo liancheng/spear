@@ -38,6 +38,8 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
   Seq(
     function[Coalesce](i"coalesce"),
     function[Rand](i"rand"),
+    function[Length](i"length"),
+
     function[CollectList](i"collect_list"),
     function[CollectSet](i"collect_set"),
 
