@@ -59,6 +59,16 @@ class TypeConstraintSuite extends LoggingFunSuite {
     }
   }
 
+  test("orElse") {
+    expectExpressions(1 cast StringType) {
+      lit(1) sameTypeAs StringType orElse (lit(1) subtypeOf ArrayType)
+    }
+
+    expectExpressions(1 cast StringType) {
+      lit(1) subtypeOf ArrayType orElse (lit(1) sameTypeAs StringType)
+    }
+  }
+
   private def testTypeConstraint(constraintsClass: Class[_ <: TypeConstraint])(f: => Unit): Unit = {
     test(constraintsClass.getSimpleName)(f)
   }

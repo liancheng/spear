@@ -40,6 +40,14 @@ trait TypeConstraint { self =>
   def andAlso(next: Seq[Expression] => TypeConstraint): TypeConstraint = new TypeConstraint {
     override def enforced: Try[Seq[Expression]] = self.enforced flatMap (next(_).enforced)
   }
+
+  /**
+   * Returns a new [[TypeConstraint]] that succeeds when either this [[TypeConstraint]] or `that`
+   * [[TypeConstraint]] can be [[TypeConstraint.enforced enforced]].
+   */
+  def orElse(that: TypeConstraint): TypeConstraint = new TypeConstraint {
+    override def enforced: Try[Seq[Expression]] = self.enforced orElse that.enforced
+  }
 }
 
 /**
