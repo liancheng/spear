@@ -368,6 +368,39 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     }
   }
 
+  test("illegal attribute reference in window spec in SELECT clause") {
+    val patterns = Seq(
+      "Attribute b",
+      s"window function ${count(a + 1).over(Window partitionBy b).sqlLike}",
+      "[(a + 1)]"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(
+        relation
+          .groupBy('a + 1)
+          .agg('count('a + 1) over (Window partitionBy 'b) as 'win_count)
+      )
+    }
+  }
+
+  test("illegal attribute reference in window spec in ORDER BY clause") {
+    val patterns = Seq(
+      "Attribute a",
+      s"window function ${count(a + 1).over(Window partitionBy a).sqlLike}",
+      "[(a + 1)]"
+    )
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(
+        relation
+          .groupBy('a + 1)
+          .agg(Nil)
+          .orderBy('count('a + 1) over (Window partitionBy 'a))
+      )
+    }
+  }
+
   // ----------------
   // Grouping aliases
   // ----------------
