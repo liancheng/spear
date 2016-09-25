@@ -261,10 +261,6 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("non-window aggregate function inside window aggregate function") {
-    val alias = GroupingAlias(a)
-    val attr = alias.attr
-    attr.sqlLike
-
     val `@A: avg(a)` = AggregationAlias(avg(a))
     val `@W: max(avg(a)) over w0` = WindowAlias(max(`@A: avg(a)`.attr) over w0)
 
