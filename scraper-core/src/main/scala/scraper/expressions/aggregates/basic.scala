@@ -21,20 +21,20 @@ case class Count(child: Expression) extends FoldLeft {
   override protected lazy val value = 'value of dataType.!
 }
 
-case class Max(child: Expression) extends NullableReduceLeft {
+case class Max(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {
   override val updateFunction: UpdateFunction = Greatest(_, _)
 
   override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
-case class Min(child: Expression) extends NullableReduceLeft {
+case class Min(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {
   override val updateFunction: UpdateFunction = Least(_, _)
 
   override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
 abstract class FirstLike(child: Expression, ignoresNull: Expression)
-  extends DeclarativeAggregateFunction {
+  extends DeclarativeAggregateFunction with DuplicateInsensitive {
 
   override lazy val isPure: Boolean = false
 

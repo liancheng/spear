@@ -6,7 +6,7 @@ import scraper.expressions.aggregates.FoldLeft.UpdateFunction
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.BooleanType
 
-abstract class LogicalNullableReduceLeft extends NullableReduceLeft {
+abstract class LogicalNullableReduceLeft extends NullableReduceLeft with DuplicateInsensitive {
   override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 }
 

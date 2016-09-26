@@ -51,6 +51,8 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   def distinct: DistinctAggregateFunction = DistinctAggregateFunction(this)
 }
 
+trait DuplicateInsensitive { this: AggregateFunction => }
+
 /**
  * A helper class that represents distinct aggregate functions. This class should not appear in
  * analyzed logical plans since the analyzer is responsible for resolving it into normal aggregate
