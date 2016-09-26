@@ -53,7 +53,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
       val rewrittenCondition = resolveAndUnaliasUsing(agg.projectList)(condition)
 
       // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
-      // predicates must not reference window functions or aliases of window functions.
+      // predicates must not reference any (aliases of) window functions.
       rewrittenCondition transformUp {
         case _: WindowFunction | _: WindowAttribute =>
           throw new IllegalAggregationException(
@@ -94,11 +94,14 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 /**
  * This rule resolves an [[UnresolvedAggregate]] into a combination of the following operators:
  *
- *  - an [[Aggregate]], which performs the aggregation, and
+ *  - an [[Aggregate]], which evaluates non-window aggregate function found in `SELECT`, `HAVING`,
+ *    and/or `ORDER BY` clauses, and
  *  - an optional [[Filter]], which corresponds to the `HAVING` clause, and
- *  - zero or more [[Window]]s, which are responsible for evaluating window functions, and
+ *  - zero or more [[Window]]s, which are responsible for evaluating window functions found in
+ *    `SELECT` and/or `ORDER BY` clauses, and
  *  - an optional [[Sort]], which corresponds to the `ORDER BY` clause, and
- *  - a top-level [[Project]], used to assemble the final output attributes.
+ *  - a top-level [[Project]], used to evaluate non-aggregate and non-window expressions and
+ *    assemble the final output attributes.
  *
  * These operators are stacked over each other to form the following structure:
  * {{{
@@ -143,28 +146,32 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)
 
-      logDebug(
-        s"""Collected grouping keys:
-           |
-           |${mkList(keys)}
-           |""".stripMargin
-      )
+      if (keys.nonEmpty) {
+        logDebug(
+          s"""Collected grouping keys:
+             |
+             |${mkAliasList(keyAliases)}
+             |""".stripMargin
+        )
+      }
 
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       aggs foreach rejectNestedAggregateFunction
-
-      logDebug(
-        s"""Collected aggregate functions:
-           |
-           |${mkList(aggs)}
-           |""".stripMargin
-      )
-
       val aggAliases = aggs map (AggregationAlias(_))
+
+      if (aggAliases.nonEmpty) {
+        logDebug(
+          s"""Collected aggregate functions:
+             |
+             |${mkAliasList(aggAliases)}
+             |""".stripMargin
+        )
+      }
+
       val aggRewriter = buildRewriter(aggAliases)
       val restoreAggs = (_: Expression) transformUp buildRestorer(aggAliases)
       val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
-        // Window aggregate functions should not be rewritten. Recovers them here. E.g.:
+        // Window aggregate functions should not be rewritten. Restores them here. E.g.:
         //
         //  - SELECT max(a) OVER (PARTITION BY max(a)) FROM t GROUP BY a
         //
@@ -183,18 +190,21 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
       val restoreWins = (_: Expression) transformUp buildRestorer(winAliases)
 
-      logDebug(
-        s"""Collected window functions:
-           |
-           |${mkList(wins)}
-           |""".stripMargin
-      )
+      if (winAliases.nonEmpty) {
+        logDebug(
+          s"""Collected window functions:
+             |
+             |${mkAliasList(winAliases)}
+             |""".stripMargin
+        )
+      }
 
       val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
       val restore = restoreWins andThen restoreKeys andThen restoreAggs
 
-      // `InternalAttribute`s should not be exposed outside. Aliases them using names and expression
-      // IDs of the original named expressions.
+      // When rewriting the outermost project list, no `InternalAttribute`s should not be exposed
+      // outside. This method aliases them using names and expression IDs of the original named
+      // expressions.
       def rewriteNamedExpression(named: NamedExpression): NamedExpression = rewrite(named) match {
         case e: InternalAttribute => e as named.name withID named.expressionID
         case e: NamedExpression   => e
@@ -230,8 +240,9 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
         .select(rewrittenProjectList)
   }
 
-  private def mkList(expressions: Seq[Expression]): String =
-    expressions.map(_.sqlLike).map("  - " + _).mkString("\n")
+  private def mkAliasList(aliases: Seq[InternalAlias]): String = aliases map { a =>
+    s"  - ${a.child.sqlLike} -> ${a.attr.debugString}"
+  } mkString "\n"
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>
@@ -266,9 +277,15 @@ object AggregationAnalysis {
   def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =
     Expression.resolveUsing[E](input) _ andThen Alias.unaliasUsing[E](input)
 
+  /**
+   * Collects all non-window aggregate functions from the given `expressions`.
+   */
   def collectAggregateFunctions(expressions: Seq[Expression]): Seq[AggregateFunction] =
     expressions.flatMap(collectAggregateFunctions).distinct
 
+  /**
+   * Collects all non-window aggregate functions from the given `expression`.
+   */
   def collectAggregateFunctions(expression: Expression): Seq[AggregateFunction] = {
     val collectDistinctAggs = (_: Expression) collect {
       case e: DistinctAggregateFunction => e: AggregateFunction
@@ -282,17 +299,27 @@ object AggregationAnalysis {
       case e: DistinctAggregateFunction => AggregationAlias(e).attr
     }
 
+    // Finds out all window functions within the given expression and collects all *non-window*
+    // aggregate functions inside these window functions recursively. Take the following window
+    // expression as an example:
+    //
+    //   max(count(a)) OVER (PARTITION BY avg(b) ORDER BY sum(c))
+    //
+    // We should collect non-window aggregate functions `count(a)`, `avg(b)`, and `sum(c)` but not
+    // the window aggregate function `max(count(a))`.
     val aggsInsideWindowFunctions = for {
-      nested <- expression.collect { case WindowFunction(f, spec) => f.children :+ spec }
-      agg <- collectAggregateFunctions(nested)
+      WindowFunction(f, spec) <- collectWindowFunctions(expression)
+      child <- f.children :+ spec
+      agg <- collectAggregateFunctions(child)
     } yield agg
 
-    val windowFunctionsEliminated = eliminateWindowFunctions(expression)
-
-    val aggsOutsideWindowFunctions = for {
-      collect <- Seq(collectDistinctAggs, eliminateDistinctAggs andThen collectAggs)
-      agg <- collect(windowFunctionsEliminated)
-    } yield agg
+    // Collects all distinct and non-distinct aggregate functions outside any window functions.
+    val aggsOutsideWindowFunctions = {
+      val windowFunctionsEliminated = eliminateWindowFunctions(expression)
+      val distinctAggs = collectDistinctAggs(windowFunctionsEliminated)
+      val regularAggs = collectAggs(eliminateDistinctAggs(windowFunctionsEliminated))
+      distinctAggs ++ regularAggs
+    }
 
     (aggsInsideWindowFunctions ++ aggsOutsideWindowFunctions).distinct
   }

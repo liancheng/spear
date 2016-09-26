@@ -31,7 +31,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with having clause referencing projected attribute") {
+  test("aggregate with HAVING clause referencing projected attribute") {
     checkAnalyzedPlan(
       relation
         groupBy 'a
@@ -46,7 +46,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with order by clause referencing projected attribute") {
+  test("aggregate with ORDER BY clause referencing projected attribute") {
     checkAnalyzedPlan(
       relation
         groupBy 'a
@@ -61,7 +61,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with both having and order by clauses") {
+  test("aggregate with both HAVING and ORDER BY clauses") {
     checkAnalyzedPlan(
       relation groupBy 'a agg 'a filter 'a > 1 orderBy 'count('b).asc,
 
@@ -74,7 +74,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with multiple order by clauses") {
+  test("aggregate with multiple ORDER BY clauses") {
     checkAnalyzedPlan(
       relation
         groupBy 'a
@@ -91,7 +91,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with multiple having conditions") {
+  test("aggregate with multiple HAVING conditions") {
     checkAnalyzedPlan(
       relation
         groupBy 'a
@@ -102,13 +102,13 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
-        // All having conditions should be preserved
+        // All `HAVING` conditions should be preserved
         filter `@G: a`.attr > 1 && `@A: count(b)`.attr < 3L
         select (`@A: count(b)`.attr as "count(b)")
     )
   }
 
-  test("aggregate with multiple alternating having and order by clauses") {
+  test("aggregate with multiple alternating HAVING and ORDER BY clauses") {
     checkAnalyzedPlan(
       relation
         groupBy 'a
@@ -135,15 +135,6 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         resolvedGroupBy `@G: a`
         agg `@A: count(1)`
         select (`@A: count(1)`.attr as i"count(1)")
-    )
-  }
-
-  test("analyzed aggregate should not expose `InternalAttribute`s") {
-    checkAnalyzedPlan(
-      // The "a" in agg list will be replaced by a `GroupingAttribute` during resolution.  This
-      // `GroupingAttribute` must be aliased to the original name in the final analyzed plan.
-      relation groupBy 'a agg 'a,
-      relation resolvedGroupBy `@G: a` agg Nil select (`@G: a`.attr as 'a)
     )
   }
 

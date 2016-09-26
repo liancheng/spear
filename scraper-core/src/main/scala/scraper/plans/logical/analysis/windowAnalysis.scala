@@ -40,7 +40,13 @@ object WindowAnalysis {
    * Collects all distinct window functions from `expressions`.
    */
   def collectWindowFunctions(expressions: Seq[Expression]): Seq[WindowFunction] =
-    expressions.flatMap(_.collect { case f: WindowFunction => f }).distinct
+    (expressions flatMap collectWindowFunctions).distinct
+
+  /**
+   * Collects all distinct window functions from `expression`.
+   */
+  def collectWindowFunctions(expression: Expression): Seq[WindowFunction] =
+    expression.collect { case e: WindowFunction => e }.distinct
 
   private def hasWindowFunction(expression: Expression): Boolean =
     expression.collectFirst { case _: WindowFunction => }.nonEmpty
