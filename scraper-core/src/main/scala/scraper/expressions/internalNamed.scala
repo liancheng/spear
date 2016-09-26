@@ -100,7 +100,7 @@ case class GroupingAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends GroupingNamedExpression with InternalAttribute {
+) extends InternalAttribute with GroupingNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
@@ -123,7 +123,7 @@ case class AggregationAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends AggregationNamedExpression with InternalAttribute {
+) extends InternalAttribute with AggregationNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
@@ -146,6 +146,6 @@ case class WindowAttribute(
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends WindowNamedExpression with InternalAttribute {
+) extends InternalAttribute with WindowNamedExpression {
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
