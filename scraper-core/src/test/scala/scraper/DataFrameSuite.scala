@@ -71,7 +71,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("filter") {
     checkLogicalPlan(
-      table('t) where 'a > 3 filter 'b.notNull,
+      table('t) filter 'a > 3 filter 'b.notNull,
       r1 subquery 't filter 'a > 3 filter 'b.notNull
     )
   }
@@ -155,8 +155,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("group by with having condition") {
     checkLogicalPlan(
-      table('t) groupBy 'a agg count('b) having 'a > 3,
-      r1 subquery 't groupBy 'a agg count('b) having 'a > 3
+      table('t) groupBy 'a agg count('b) filter 'a > 3,
+      r1 subquery 't groupBy 'a agg count('b) filter 'a > 3
     )
   }
 

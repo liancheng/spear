@@ -36,7 +36,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         groupBy 'a
         agg ('count('b) as 'c)
-        having 'c > 1L,
+        filter 'c > 1L,
 
       relation
         resolvedGroupBy `@G: a`
@@ -63,12 +63,12 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   test("aggregate with both having and order by clauses") {
     checkAnalyzedPlan(
-      relation groupBy 'a agg 'a having 'a > 1 orderBy 'count('b).asc,
+      relation groupBy 'a agg 'a filter 'a > 1 orderBy 'count('b).asc,
 
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
-        having `@G: a`.attr > 1
+        filter `@G: a`.attr > 1
         orderBy `@A: count(b)`.attr.asc
         select (`@G: a`.attr as 'a)
     )
@@ -96,14 +96,14 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         groupBy 'a
         agg 'count('b)
-        having 'a > 1
-        having 'count('b) < 3L,
+        filter 'a > 1
+        filter 'count('b) < 3L,
 
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
         // All having conditions should be preserved
-        having `@G: a`.attr > 1 && `@A: count(b)`.attr < 3L
+        filter `@G: a`.attr > 1 && `@A: count(b)`.attr < 3L
         select (`@A: count(b)`.attr as "count(b)")
     )
   }
@@ -113,15 +113,15 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         groupBy 'a
         agg 'a
-        having 'a > 1
+        filter 'a > 1
         orderBy 'a.asc
-        having 'count('b) < 10L
+        filter 'count('b) < 10L
         orderBy 'count('b).asc,
 
       relation
         resolvedGroupBy `@G: a`
         agg `@A: count(b)`
-        having `@G: a`.attr > 1 && (`@A: count(b)`.attr < 10L)
+        filter `@G: a`.attr > 1 && (`@A: count(b)`.attr < 10L)
         orderBy `@A: count(b)`.attr.asc
         select (`@G: a`.attr as 'a)
     )

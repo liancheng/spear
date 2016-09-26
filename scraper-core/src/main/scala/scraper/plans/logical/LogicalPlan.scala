@@ -376,8 +376,6 @@ object LogicalPlan {
 
     def where(condition: Expression): Filter = filter(condition)
 
-    def having(condition: Expression): Filter = filter(condition)
-
     def limit(n: Expression): Limit = Limit(plan, n)
 
     def limit(n: Int): Limit = this limit lit(n)

@@ -35,10 +35,6 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def filter(condition: Expression): DataFrame = withPlan(_ filter condition)
 
-  def where(condition: Expression): DataFrame = this filter condition
-
-  def having(condition: Expression): DataFrame = this filter condition
-
   def limit(n: Expression): DataFrame = withPlan(_ limit n)
 
   def limit(n: Int): DataFrame = this limit lit(n)

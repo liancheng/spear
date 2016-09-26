@@ -171,7 +171,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT a FROM t0 WHERE a > 10",
-    table('t0) where 'a > 10 select 'a
+    table('t0) filter 'a > 10 select 'a
   )
 
   testQueryParsing(
@@ -211,7 +211,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT DISTINCT a FROM t0 WHERE a > 10",
-    (table('t0) where 'a > 10 select 'a).distinct
+    (table('t0) filter 'a > 10 select 'a).distinct
   )
 
   testQueryParsing(
@@ -296,7 +296,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT COUNT(a) FROM t0 GROUP BY b HAVING COUNT(b) > 0",
-    table('t0) groupBy 'b agg 'COUNT('a) having 'COUNT('b) > 0
+    table('t0) groupBy 'b agg 'COUNT('a) filter 'COUNT('b) > 0
   )
 
   testQueryParsing(

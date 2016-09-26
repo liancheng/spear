@@ -104,7 +104,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         relation
           resolvedGroupBy groupA
           agg aggCountB
-          having groupA > 3
+          filter groupA > 3
       ),
       relation
         filter groupA > 3
@@ -117,12 +117,12 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         relation
           resolvedGroupBy groupA
           agg aggCountB
-          having aggCountB > 0
+          filter aggCountB > 0
       ),
       relation
         resolvedGroupBy groupA
         agg aggCountB
-        having aggCountB > 0
+        filter aggCountB > 0
     )
 
     checkPlan(
@@ -130,13 +130,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         relation
           resolvedGroupBy groupA
           agg aggCountB
-          having groupA > 3 && aggCountB > 0
+          filter groupA > 3 && aggCountB > 0
       ),
       relation
         filter groupA > 3
         resolvedGroupBy groupA
         agg aggCountB
-        having aggCountB > 0
+        filter aggCountB > 0
     )
   }
 

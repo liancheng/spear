@@ -15,7 +15,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   test("local data") {
     val data = Seq(1 -> "a", 2 -> "b")
     checkDataFrame(
-      lift(data) rename ("i", "s") where 'i =/= lit(1: Byte) + 1 select ('s, 'i),
+      lift(data) rename ("i", "s") filter 'i =/= lit(1: Byte) + 1 select ('s, 'i),
       Row("a", 1)
     )
   }
@@ -83,7 +83,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 
   test("resolution") {
-    val df = range(10) select ('id + 1 as 'x) where 'x > 5
+    val df = range(10) select ('id + 1 as 'x) filter 'x > 5
     checkStrictlyTyped(df.queryExecution.analyzedPlan)
   }
 
@@ -134,7 +134,7 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
     val df = range(3)
 
     checkDataFrame(
-      df subquery 'a join (df subquery 'b) on $"a.id" === $"b.id" where $"b.id" > 0,
+      df subquery 'a join (df subquery 'b) on $"a.id" === $"b.id" filter $"b.id" > 0,
       Row(1, 1), Row(2, 2)
     )
   }

@@ -20,7 +20,7 @@ object BasicExample {
       Person("Frank", "M", 19)
     )
 
-    val adults = people where 'age >= 18 select ('name, 'gender)
+    val adults = people filter 'age >= 18 select ('name, 'gender)
     adults.explain()
     adults.show()
 
