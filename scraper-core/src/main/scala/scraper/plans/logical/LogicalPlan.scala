@@ -337,9 +337,7 @@ case class Window(
   partitionSpec: Seq[Expression] = Nil,
   orderSpec: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan {
-  override lazy val output: Seq[Attribute] = child.output ++ derivedOutput
-
-  override lazy val derivedOutput: Seq[Attribute] = functions map (_.attr)
+  override lazy val output: Seq[Attribute] = child.output ++ functions map (_.attr)
 }
 
 object Window {
