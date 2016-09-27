@@ -29,8 +29,8 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule converts [[Project]]s containing aggregate functions into unresolved global
- * aggregates, i.e., an [[UnresolvedAggregate]] without grouping keys.
+ * This rule converts [[Project]]s containing aggregate functions into unresolved global aggregates,
+ * i.e., a [[GenericAggregate]] without grouping keys.
  */
 class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -40,15 +40,15 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a `HAVING` clause. Its
- * predicate must be resolved together with the [[UnresolvedAggregate]] operator. This rule absorbs
- * such [[Filter]] operators into the [[UnresolvedAggregate]] operators beneath them.
+ * A [[Filter]] directly over a [[GenericAggregate]] corresponds to a `HAVING` clause. Its predicate
+ * must be resolved together with the [[GenericAggregate]] operator. This rule absorbs such
+ * [[Filter]] operators into the [[GenericAggregate]] operators beneath them.
  *
  * @see [[ResolveAggregates]]
  */
 class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
+    case (agg: GenericAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenCondition = resolveAndUnaliasUsing(agg.projectList)(condition)
 
@@ -67,15 +67,15 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
 }
 
 /**
- * A [[Sort]] directly over an [[UnresolvedAggregate]] is special, its sort ordering expressions
- * must be resolved together with the [[UnresolvedAggregate]] operator. This rule absorbs such
- * [[Sort]] operators into the [[UnresolvedAggregate]] operators beneath them.
+ * A [[Sort]] directly over a [[GenericAggregate]] is special, its sort ordering expressions must be
+ * resolved together with the [[GenericAggregate]] operator. This rule absorbs such [[Sort]]
+ * operators into the [[GenericAggregate]] operators beneath them.
  *
  * @see [[ResolveAggregates]]
  */
 class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
+    case (agg: GenericAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenOrder = order map resolveAndUnaliasUsing(agg.projectList)
 
@@ -92,7 +92,7 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * This rule resolves an [[UnresolvedAggregate]] into a combination of the following operators:
+ * This rule resolves a [[GenericAggregate]] into a combination of the following operators:
  *
  *  - an [[Aggregate]], which evaluates non-window aggregate function found in `SELECT`, `HAVING`,
  *    and/or `ORDER BY` clauses, and
@@ -120,7 +120,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
     tree collectFirst preConditionViolations map (_ => tree) getOrElse {
-      tree transformDown resolveUnresolvedAggregate
+      tree transformDown resolveGenericAggregate
     }
 
   // This partial function performs as a guard, who ensures all the pre-conditions of this analysis
@@ -128,20 +128,20 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
   // contains any of the following patterns.
   private val preConditionViolations: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all adjacent having conditions are absorbed.
-    case ((_: UnresolvedAggregate) Filter _) =>
+    case ((_: GenericAggregate) Filter _) =>
 
     // Waits until all adjacent sorts are absorbed.
-    case ((_: UnresolvedAggregate) Sort _) =>
+    case ((_: GenericAggregate) Sort _) =>
 
     // Waits until project list, having condition, and sort order expressions are all resolved.
-    case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
+    case plan: GenericAggregate if plan.expressions exists (!_.isResolved) =>
 
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
-    case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
+    case plan: GenericAggregate if hasDistinctAggregateFunction(plan.projectList) =>
   }
 
-  private val resolveUnresolvedAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
-    case agg @ UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
+  private val resolveGenericAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
+    case agg @ GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
       val keyAliases = keys map (GroupingAlias(_))
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)

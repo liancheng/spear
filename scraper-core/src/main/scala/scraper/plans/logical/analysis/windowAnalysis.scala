@@ -28,7 +28,9 @@ class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule
     }
 
   private val preConditionViolation: PartialFunction[LogicalPlan, Unit] = {
-    case _: UnresolvedAggregate =>
+    // Ensures that all `GenericAggregate` are resolved so that `Sort` operators associated with
+    // `GenericAggregate` are already properly handled.
+    case _: GenericAggregate =>
   }
 }
 
