@@ -162,7 +162,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def queryNoWith: Parser[LogicalPlan] =
     queryTerm ~ orderBy.? ~ limit.? ^^ {
-      case q ~ o ~ n => Seq(identity[LogicalPlan] _) ++ o ++ n reduce { _ andThen _ } apply q
+      case q ~ o ~ n => (o ++ n reduceOption { _ andThen _ } fold q) { _ apply q }
     }
 
   private def queryTerm: Parser[LogicalPlan] =
@@ -184,10 +184,9 @@ class Parser extends TokenParser[LogicalPlan] {
     ~ (GROUP ~ BY ~> rep1sep(expression, ",")).?
     ~ (HAVING ~> predicate).? ^^ {
       case d ~ ps ~ rs ~ f ~ gs ~ h =>
-        val withWhere = rs getOrElse SingleRowRelation filterOption f.toSeq
-        val withSelect = gs map (withWhere.groupBy(_).agg(ps)) getOrElse (withWhere select ps)
-        val withDistinct = (d fold withSelect) { _ => withSelect.distinct }
-        withDistinct filterOption h.toSeq
+        val filtered = rs getOrElse SingleRowRelation filterOption f.toSeq
+        val projected = gs map (filtered groupBy _ agg ps) getOrElse (filtered select ps)
+        (d fold projected) { _ => projected.distinct } filterOption h.toSeq
     }
   )
 
@@ -373,13 +372,13 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def joinRhs: Parser[LogicalPlan => Join] =
     (joinType.? <~ JOIN) ~ relationFactor ~ joinCondition.? ^^ {
-      case t ~ f ~ c => (_: LogicalPlan) join (f, t getOrElse Inner) onOption c.toSeq
+      case t ~ f ~ c => _ join (f, t getOrElse Inner) onOption c.toSeq
     }
 
   private def relationFactor: Parser[LogicalPlan] = (
     identifier ~ (AS.? ~> identifier.?) ^^ {
-      case t ~ Some(a) => UnresolvedRelation(t) subquery a
-      case t ~ None    => UnresolvedRelation(t)
+      case t ~ Some(a) => table(t) subquery a
+      case t ~ None    => table(t)
     }
     | ("(" ~> queryNoWith <~ ")") ~ (AS.? ~> identifier) ^^ {
       case s ~ a => s subquery a
@@ -398,10 +397,10 @@ class Parser extends TokenParser[LogicalPlan] {
     ON ~> predicate
 
   private def orderBy: Parser[LogicalPlan => LogicalPlan] =
-    ORDER ~ BY ~> sortOrders ^^ { os => (_: LogicalPlan) orderByOption os }
+    ORDER ~ BY ~> sortOrders ^^ { os => _ orderByOption os }
 
   private def limit: Parser[LogicalPlan => LogicalPlan] =
-    LIMIT ~> expression ^^ { n => (_: LogicalPlan) limit n }
+    LIMIT ~> expression ^^ { n => _ limit n }
 
   private def sortOrders: Parser[Seq[SortOrder]] =
     rep1sep(sortOrder, ",")

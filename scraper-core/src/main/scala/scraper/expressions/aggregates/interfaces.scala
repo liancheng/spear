@@ -87,7 +87,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   val stateAttributes: Seq[AttributeRef]
 
   /**
-   * Initial literal values aggregation state fields.
+   * Initial literal values of aggregation state fields.
    */
   val zeroValues: Seq[Expression]
 
