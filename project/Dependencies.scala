@@ -9,7 +9,6 @@ object Dependencies {
   object Versions {
     val ammonite = "0.7.6"
     val config = "1.2.1"
-    val fansi = "0.2.0"
     val jline = "2.12.1"
     val log4j = "1.2.16"
     val mockito = "2.1.0-beta.120"
@@ -26,10 +25,6 @@ object Dependencies {
 
   val ammonite = Seq(
     "com.lihaoyi" % "ammonite_2.11.8" % Versions.ammonite
-  )
-
-  val fansi = Seq(
-    "com.lihaoyi" %% "fansi" % Versions.fansi
   )
 
   val jline = Seq(

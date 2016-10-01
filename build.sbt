@@ -12,7 +12,7 @@ lazy val scraperCore =
     .enablePlugins(sbtPlugins: _*)
     .settings(commonSettings)
     .settings(
-      libraryDependencies ++= fansi ++ typesafeConfig ++ logging ++ scala ++ scopt,
+      libraryDependencies ++= typesafeConfig ++ logging ++ scala ++ scopt,
       libraryDependencies ++= Dependencies.testing
     )
 
