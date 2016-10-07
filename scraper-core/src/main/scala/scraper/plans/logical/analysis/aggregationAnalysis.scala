@@ -45,7 +45,7 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
  * aggregate functions. This rule extracts the predicate expression of such a [[Filter]] and merges
  * the predicate into the [[GenericAggregate]] underneath.
  *
- * @see [[ResolveAggregates]]
+ * @see [[ResolveGenericAggregates]]
  */
 class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -73,7 +73,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
  * functions. This rule extracts sort ordering expressions of such a [[Sort]] and merges them into
  * the [[GenericAggregate]] underneath.
  *
- * @see [[ResolveAggregates]]
+ * @see [[ResolveGenericAggregates]]
  */
 class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -115,11 +115,11 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  *                        +- <child plan>
  * }}}
  */
-class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
+class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
     tree collectFirst preConditionViolations map (_ => tree) getOrElse {
-      tree transformDown resolveGenericAggregate
+      tree transformDown resolveGenericAggregates
     }
 
   // This partial function performs as a guard, who ensures all the pre-conditions of this analysis
@@ -139,7 +139,7 @@ class ResolveAggregates(val catalog: Catalog) extends AnalysisRule {
     case plan: GenericAggregate if hasDistinctAggregateFunction(plan.projectList) =>
   }
 
-  private val resolveGenericAggregate: PartialFunction[LogicalPlan, LogicalPlan] = {
+  private val resolveGenericAggregates: PartialFunction[LogicalPlan, LogicalPlan] = {
     case agg @ GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
       val keyAliases = keys map (GroupingAlias(_))
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
