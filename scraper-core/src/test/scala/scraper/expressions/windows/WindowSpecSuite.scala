@@ -9,56 +9,56 @@ import scraper.types.{DoubleType, IntType, StringType}
 class WindowSpecSuite extends LoggingFunSuite {
   test("rows window frame") {
     assertResult("ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING") {
-      WindowFrame(RowsFrame, UnboundedPreceding, UnboundedFollowing).toString
+      WindowFrame(RowsFrame, UnboundedPreceding, UnboundedFollowing).sql.get
     }
 
     assertResult("ROWS BETWEEN 10 PRECEDING AND CURRENT ROW") {
-      WindowFrame(RowsFrame, Preceding(10), CurrentRow).toString
+      WindowFrame(RowsFrame, Preceding(10), CurrentRow).sql.get
     }
 
     assertResult("ROWS BETWEEN CURRENT ROW AND 10 FOLLOWING") {
-      WindowFrame(RowsFrame, CurrentRow, Following(10)).toString
+      WindowFrame(RowsFrame, CurrentRow, Following(10)).sql.get
     }
 
     assertResult("ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING") {
-      WindowFrame(RowsFrame, Preceding(2), Preceding(1)).toString
+      WindowFrame(RowsFrame, Preceding(2), Preceding(1)).sql.get
     }
 
     assertResult("ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING") {
-      WindowFrame(RowsFrame, Following(1), Following(2)).toString
+      WindowFrame(RowsFrame, Following(1), Following(2)).sql.get
     }
   }
 
   test("range window frame") {
     assertResult("RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING") {
-      WindowFrame(RangeFrame, UnboundedPreceding, UnboundedFollowing).toString
+      WindowFrame(RangeFrame, UnboundedPreceding, UnboundedFollowing).sql.get
     }
 
     assertResult("RANGE BETWEEN 10 PRECEDING AND CURRENT ROW") {
-      WindowFrame(RangeFrame, Preceding(10), CurrentRow).toString
+      WindowFrame(RangeFrame, Preceding(10), CurrentRow).sql.get
     }
 
     assertResult("RANGE BETWEEN CURRENT ROW AND 10 FOLLOWING") {
-      WindowFrame(RangeFrame, CurrentRow, Following(10)).toString
+      WindowFrame(RangeFrame, CurrentRow, Following(10)).sql.get
     }
 
     assertResult("RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING") {
-      WindowFrame(RangeFrame, Preceding(2), Preceding(1)).toString
+      WindowFrame(RangeFrame, Preceding(2), Preceding(1)).sql.get
     }
 
     assertResult("RANGE BETWEEN 1 FOLLOWING AND 2 FOLLOWING") {
-      WindowFrame(RangeFrame, Following(1), Following(2)).toString
+      WindowFrame(RangeFrame, Following(1), Following(2)).sql.get
     }
   }
 
-  test("invalid frame boundary") {
-    intercept[IllegalArgumentException](Preceding(-1))
-    intercept[IllegalArgumentException](Following(-1))
+  test("arbitrary expressions in window frame boundary") {
+    assert(Following('id.long + 1).strictlyTyped.isSuccess)
+    assert(Preceding('id.long + "1").strictlyTyped.isSuccess)
   }
 
-  test("invalid window frame") {
-    intercept[IllegalArgumentException](WindowFrame(RowsFrame, Following(1), CurrentRow))
-    intercept[IllegalArgumentException](WindowFrame(RowsFrame, CurrentRow, Preceding(1)))
+  test("illegal window frame boundary") {
+    assert(Preceding(true).strictlyTyped.isFailure)
+    assert(Following(true).strictlyTyped.isFailure)
   }
 
   test("window spec") {

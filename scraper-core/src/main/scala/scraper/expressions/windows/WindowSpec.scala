@@ -1,6 +1,8 @@
 package scraper.expressions.windows
 
-import scraper.expressions.{Expression, SortOrder, UnevaluableExpression}
+import scraper.expressions.{Expression, LeafExpression, SortOrder, UnaryExpression, UnevaluableExpression}
+import scraper.expressions.typecheck.TypeConstraint
+import scraper.types.IntegralType
 
 sealed trait WindowFrameType
 
@@ -12,54 +14,47 @@ case object RangeFrame extends WindowFrameType {
   override def toString: String = "RANGE"
 }
 
-sealed trait FrameBoundary extends Ordered[FrameBoundary] {
-  val offset: Long
+sealed trait FrameBoundary extends UnevaluableExpression
 
-  override def compare(that: FrameBoundary): Int = this.offset compare that.offset
+case object CurrentRow extends FrameBoundary with LeafExpression {
+  override protected def template(childList: Seq[String]): String = "CURRENT ROW"
 }
 
-case object CurrentRow extends FrameBoundary {
-  override def toString: String = "CURRENT ROW"
-
-  override val offset: Long = 0
+case object UnboundedPreceding extends FrameBoundary with LeafExpression {
+  override protected def template(childList: Seq[String]): String = "UNBOUNDED PRECEDING"
 }
 
-case object UnboundedPreceding extends FrameBoundary {
-  override def toString: String = "UNBOUNDED PRECEDING"
-
-  override val offset: Long = Long.MinValue
+case object UnboundedFollowing extends FrameBoundary with LeafExpression {
+  override protected def template(childList: Seq[String]): String = "UNBOUNDED FOLLOWING"
 }
 
-case object UnboundedFollowing extends FrameBoundary {
-  override def toString: String = "UNBOUNDED FOLLOWING"
+case class Preceding(offset: Expression) extends FrameBoundary with UnaryExpression {
+  override def child: Expression = offset
 
-  override val offset: Long = Long.MaxValue
+  override protected def typeConstraint: TypeConstraint = offset subtypeOf IntegralType
+
+  override protected def template(childString: String): String = s"$childString PRECEDING"
 }
 
-case class Preceding(n: Long) extends FrameBoundary {
-  require(n >= 0, "Frame starting offset must not be negative")
+case class Following(offset: Expression) extends FrameBoundary with UnaryExpression {
+  override def child: Expression = offset
 
-  override def toString: String = s"$n PRECEDING"
+  override protected def typeConstraint: TypeConstraint = offset subtypeOf IntegralType
 
-  override val offset: Long = -n
-}
-
-case class Following(n: Long) extends FrameBoundary {
-  require(n >= 0, "Frame ending offset must not be negative")
-
-  override def toString: String = s"$n FOLLOWING"
-
-  override val offset: Long = n
+  override protected def template(childString: String): String = s"$childString FOLLOWING"
 }
 
 case class WindowFrame(
   frameType: WindowFrameType = RowsFrame,
   start: FrameBoundary = UnboundedPreceding,
   end: FrameBoundary = UnboundedFollowing
-) {
-  require(start <= end, s"Frame starting offset $start is greater than ending offset $end.")
+) extends UnevaluableExpression {
+  override def children: Seq[Expression] = start :: end :: Nil
 
-  override def toString: String = s"$frameType BETWEEN $start AND $end"
+  override protected def template(childList: Seq[String]): String = {
+    val Seq(startString, endString) = childList
+    s"$frameType BETWEEN $startString AND $endString"
+  }
 }
 
 object WindowFrame {
