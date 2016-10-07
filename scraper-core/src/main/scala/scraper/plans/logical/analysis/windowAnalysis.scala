@@ -7,6 +7,9 @@ import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.WindowAnalysis._
 
+/**
+ * This rule extracts window functions inside projections into separate `Window` operators.
+ */
 class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
@@ -16,6 +19,9 @@ class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisR
   }
 }
 
+/**
+ * This rule extracts window functions inside `ORDER BY` clauses into separate `Window` operators.
+ */
 class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     tree collectFirst preConditionViolation map (_ => tree) getOrElse {
@@ -28,8 +34,8 @@ class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule
     }
 
   private val preConditionViolation: PartialFunction[LogicalPlan, Unit] = {
-    // Ensures that all `GenericAggregate` are resolved so that `Sort` operators associated with
-    // `GenericAggregate` are already properly handled.
+    // Ensures that all `GenericAggregate`s are resolved so that `Sort` operators associated with
+    // `GenericAggregate`s are already properly handled.
     case _: GenericAggregate =>
   }
 }

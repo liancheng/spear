@@ -12,7 +12,7 @@ import scraper.plans.logical.analysis.WindowAnalysis._
 import scraper.utils._
 
 /**
- * This rule rewrites `SELECT DISTINCT` into aggregation. E.g., it transforms
+ * This rule rewrites a distinct projection into aggregations. E.g., it transforms SQL query
  * {{{
  *   SELECT DISTINCT a, b FROM t
  * }}}
@@ -29,8 +29,8 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule converts [[Project]]s containing aggregate functions into unresolved global aggregates,
- * i.e., a [[GenericAggregate]] without grouping keys.
+ * This rule converts a [[Project]] containing aggregate functions into a global aggregate, i.e. a
+ * [[GenericAggregate]] without any grouping keys.
  */
 class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -41,8 +41,9 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
 
 /**
  * A [[Filter]] directly over a [[GenericAggregate]] corresponds to a `HAVING` clause. Its predicate
- * must be resolved together with the [[GenericAggregate]] operator. This rule absorbs such
- * [[Filter]] operators into the [[GenericAggregate]] operators beneath them.
+ * must be resolved together with the [[GenericAggregate]] because it may refer to grouping keys and
+ * aggregate functions. This rule extracts the predicate expression of such a [[Filter]] and merges
+ * the predicate into the [[GenericAggregate]] underneath.
  *
  * @see [[ResolveAggregates]]
  */
@@ -68,19 +69,17 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
 
 /**
  * A [[Sort]] directly over a [[GenericAggregate]] is special, its sort ordering expressions must be
- * resolved together with the [[GenericAggregate]] operator. This rule absorbs such [[Sort]]
- * operators into the [[GenericAggregate]] operators beneath them.
+ * resolved together with the [[GenericAggregate]] since it may refer to grouping keys and aggregate
+ * functions. This rule extracts sort ordering expressions of such a [[Sort]] and merges them into
+ * the [[GenericAggregate]] underneath.
  *
  * @see [[ResolveAggregates]]
  */
 class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: GenericAggregate) Sort order if agg.projectList forall (_.isResolved) =>
-      // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenOrder = order map resolveAndUnaliasUsing(agg.projectList)
-
       // Only preserves the last sort order.
-      agg.copy(order = rewrittenOrder)
+      agg.copy(order = order map resolveAndUnaliasUsing(agg.projectList))
   }
 }
 
@@ -94,13 +93,13 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 /**
  * This rule resolves a [[GenericAggregate]] into a combination of the following operators:
  *
- *  - an [[Aggregate]], which evaluates non-window aggregate function found in `SELECT`, `HAVING`,
+ *  - an [[Aggregate]] that evaluates non-window aggregate function found in `SELECT`, `HAVING`,
  *    and/or `ORDER BY` clauses, and
- *  - an optional [[Filter]], which corresponds to the `HAVING` clause, and
- *  - zero or more [[Window]]s, which are responsible for evaluating window functions found in
+ *  - an optional [[Filter]] that corresponds to the `HAVING` clause, and
+ *  - zero or more [[Window]]s that are responsible for evaluating window functions found in
  *    `SELECT` and/or `ORDER BY` clauses, and
- *  - an optional [[Sort]], which corresponds to the `ORDER BY` clause, and
- *  - a top-level [[Project]], used to evaluate non-aggregate and non-window expressions and
+ *  - an optional [[Sort]] that corresponds to the `ORDER BY` clause, and
+ *  - a top-level [[Project]] that is used to evaluate non-aggregate and non-window expressions and
  *    assemble the final output attributes.
  *
  * These operators are stacked over each other to form the following structure:
