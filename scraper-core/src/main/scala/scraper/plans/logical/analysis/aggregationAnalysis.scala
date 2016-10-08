@@ -141,31 +141,31 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
 
   private val resolveGenericAggregates: PartialFunction[LogicalPlan, LogicalPlan] = {
     case agg @ GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
+      def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
+        if (aliases.nonEmpty) {
+          val aliasList = aliases map { alias =>
+            s"  - ${alias.child.sqlLike} -> ${alias.attr.debugString}"
+          } mkString "\n"
+
+          logDebug(
+            s"""Collected $collectionName:
+               |
+               |$aliasList
+               |""".stripMargin
+          )
+        }
+
       val keyAliases = keys map (GroupingAlias(_))
+      logInternalAliases(keyAliases, "grouping keys")
+
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)
 
-      if (keys.nonEmpty) {
-        logDebug(
-          s"""Collected grouping keys:
-             |
-             |${mkAliasList(keyAliases)}
-             |""".stripMargin
-        )
-      }
-
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       aggs foreach rejectNestedAggregateFunction
-      val aggAliases = aggs map (AggregationAlias(_))
 
-      if (aggAliases.nonEmpty) {
-        logDebug(
-          s"""Collected aggregate functions:
-             |
-             |${mkAliasList(aggAliases)}
-             |""".stripMargin
-        )
-      }
+      val aggAliases = aggs map (AggregationAlias(_))
+      logInternalAliases(aggAliases, "aggregate functions")
 
       val aggRewriter = buildRewriter(aggAliases)
       val restoreAggs = (_: Expression) transformUp buildRestorer(aggAliases)
@@ -186,22 +186,15 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
       val wins = collectWindowFunctions(projectList ++ order map (rewriteAggs andThen rewriteKeys))
       val winAliases = wins map (WindowAlias(_))
+      logInternalAliases(winAliases, "window functions")
+
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
       val restoreWins = (_: Expression) transformUp buildRestorer(winAliases)
-
-      if (winAliases.nonEmpty) {
-        logDebug(
-          s"""Collected window functions:
-             |
-             |${mkAliasList(winAliases)}
-             |""".stripMargin
-        )
-      }
 
       val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
       val restore = restoreWins andThen restoreKeys andThen restoreAggs
 
-      // When rewriting the outermost project list, no `InternalAttribute`s should not be exposed
+      // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
       // outside. This method aliases them using names and expression IDs of the original named
       // expressions.
       def rewriteNamedExpression(named: NamedExpression): NamedExpression = rewrite(named) match {
@@ -213,22 +206,26 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
 
-      def rejectDanglingAttributes(kind: String, whitelist: Seq[Attribute] = Nil)(e: Expression) =
-        e.references collectFirst {
-          case a: AttributeRef if !(whitelist contains a) =>
-            throw new IllegalAggregationException(
-              s"""Attribute ${a.sqlLike} in $kind ${restore(e).sqlLike} is neither referenced by any
-                 |non-window aggregate functions nor a grouping key among
-                 |${keys map (_.sqlLike) mkString ("[", ", ", "]")}.
-                 |""".oneLine
-            )
-        }
+      def rejectOrphanReferences(
+        component: String, whitelist: Seq[Attribute] = Nil
+      )(e: Expression) = e.references collectFirst {
+        case a: AttributeRef if !(whitelist contains a) =>
+          val keyList = keys map (_.sqlLike) mkString ("[", ", ", "]")
+          throw new IllegalAggregationException(
+            s"""Attribute ${a.sqlLike} in $component ${restore(e).sqlLike} is neither referenced
+               |by a non-window aggregate function nor a grouping key among $keyList
+               |""".oneLine
+          )
+      }
 
       val output = rewrittenProjectList map (_.attr)
-      wins foreach rejectDanglingAttributes("window function")
-      rewrittenProjectList foreach rejectDanglingAttributes("SELECT field")
-      rewrittenConditions foreach rejectDanglingAttributes("HAVING condition", output)
-      rewrittenOrder foreach rejectDanglingAttributes("ORDER BY expression", output)
+      wins foreach rejectOrphanReferences("window function")
+      rewrittenProjectList foreach rejectOrphanReferences("SELECT field")
+
+      // The `HAVING` clause and the `ORDER BY` clause are allowed to reference output attributes
+      // produced by the `SELECT` clause.
+      rewrittenConditions foreach rejectOrphanReferences("HAVING condition", output)
+      rewrittenOrder foreach rejectOrphanReferences("ORDER BY expression", output)
 
       child
         .resolvedGroupBy(keyAliases)
@@ -238,10 +235,6 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
         .orderByOption(rewrittenOrder)
         .select(rewrittenProjectList)
   }
-
-  private def mkAliasList(aliases: Seq[InternalAlias]): String = aliases map { a =>
-    s"  - ${a.child.sqlLike} -> ${a.attr.debugString}"
-  } mkString "\n"
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>
@@ -253,9 +246,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
       e.children foreach (_ collectFirst {
         case _: AggregateFunction =>
           throw new IllegalAggregationException(
-            s"""Aggregate function can't be nested within another aggregate function:
-               |${e.sqlLike}
-               |""".oneLine
+            "Aggregate function can't be nested within another aggregate function: " + e.sqlLike
           )
       })
   }
