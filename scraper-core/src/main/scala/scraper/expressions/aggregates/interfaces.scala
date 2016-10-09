@@ -43,10 +43,9 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   def merge(state: MutableRow, inputState: Row): Unit
 
   /**
-   * Evaluates the final result value using values in `state`, then writes it into the `ordinal`-th
-   * field of `resultBuffer`.
+   * Returns the final result value using values in `state`.
    */
-  def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit
+  def result(state: Row): Any
 
   def distinct: DistinctAggregateFunction = DistinctAggregateFunction(this)
 }
@@ -73,7 +72,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def merge(state: MutableRow, inputState: Row): Unit = bugReport()
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit = bugReport()
+  override def result(state: Row): Any = bugReport()
 
   override protected def template(childList: Seq[String]): String =
     childList mkString (s"${child.nodeName.casePreserving}(DISTINCT ", ", ", ")")
@@ -111,16 +110,15 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
 
   override final lazy val stateSchema: StructType = StructType fromAttributes stateAttributes
 
-  override def zero(state: MutableRow): Unit = (zeroProjection target state)()
+  override def zero(state: MutableRow): Unit = zeroProjection target state apply ()
 
   override def update(state: MutableRow, input: Row): Unit =
-    (updateProjection target state)(joinedRow(state, input))
+    updateProjection target state apply joinedRow(state, input)
 
   override def merge(state: MutableRow, inputState: Row): Unit =
-    (mergeProjection target state)(joinedRow(state, inputState))
+    mergeProjection target state apply joinedRow(state, inputState)
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit =
-    resultBuffer(ordinal) = boundResultExpression evaluate state
+  override def result(state: Row): Any = bind(resultExpression) evaluate state
 
   protected implicit class StateAttribute(val left: AttributeRef) {
     def right: AttributeRef = inputStateAttributes(stateAttributes indexOf left)
@@ -129,10 +127,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   private lazy val inputStateAttributes = stateAttributes map (_ withID newExpressionID())
 
   private lazy val joinedRow: JoinedRow = new JoinedRow()
-
-  private lazy val boundResultExpression: Expression = whenBound {
-    bind(resultExpression)
-  }
 
   private lazy val zeroProjection: MutableProjection = whenBound {
     MutableProjection(zeroValues)

@@ -30,8 +30,7 @@ case class CollectList(child: Expression) extends Collect(child) {
     into ++= from
   }
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit =
-    resultBuffer(ordinal) = state.head.asInstanceOf[ArrayBuffer[Any]]
+  override def result(state: Row): Any = state.head.asInstanceOf[ArrayBuffer[Any]]
 }
 
 case class CollectSet(child: Expression) extends Collect(child) {
@@ -49,6 +48,5 @@ case class CollectSet(child: Expression) extends Collect(child) {
     into ++= from
   }
 
-  override def result(resultBuffer: MutableRow, ordinal: Int, state: Row): Unit =
-    resultBuffer(ordinal) = state.head.asInstanceOf[mutable.Set[Any]].toSeq
+  override def result(state: Row): Any = state.head.asInstanceOf[mutable.Set[Any]].toSeq
 }

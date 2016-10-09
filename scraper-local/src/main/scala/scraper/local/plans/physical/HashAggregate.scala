@@ -31,13 +31,13 @@ case class HashAggregate(
       hashMap.getOrElseUpdate(groupingRow, bufferBuilder.newBuffer()) += input
     }
 
-    val aggResult = new BasicMutableRow(aggAliases.length)
+    val resultRow = new BasicMutableRow(aggAliases.length)
     val joinedRow = new JoinedRow()
 
     hashMap.iterator map {
       case (groupingRow, aggBuffer) =>
-        aggBuffer.result(aggResult)
-        joinedRow(groupingRow, aggResult)
+        aggBuffer fillResults resultRow
+        joinedRow(groupingRow, resultRow)
     }
   }
 }
@@ -49,8 +49,9 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], states: Seq
 
   def +=(input: Row): Unit = (boundFunctions, states).zipped foreach (_.update(_, input))
 
-  def result(mutableResult: MutableRow): Unit = mutableResult.indices foreach { i =>
-    boundFunctions(i).result(mutableResult, i, states(i))
+  def fillResults(resultRow: MutableRow): Unit = {
+    val resultValues = (boundFunctions, states).zipped map (_ result _)
+    (resultValues.indices, resultValues).zipped foreach resultRow.update
   }
 }
 
