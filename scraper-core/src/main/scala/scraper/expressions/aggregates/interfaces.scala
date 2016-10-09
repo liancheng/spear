@@ -18,9 +18,9 @@ import scraper.types._
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
-   * Schema of the aggregation state.
+   * Number of fields occupied by the aggregation state in the aggregation buffer.
    */
-  def stateSchema: StructType
+  def stateWidth: Int
 
   /**
    * Whether this [[AggregateFunction]] supports partial aggregation.
@@ -62,7 +62,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def dataType: DataType = child.dataType
 
-  override def stateSchema: StructType = child.stateSchema
+  override def stateWidth: Int = child.stateWidth
 
   override def supportPartialAggregation: Boolean = child.supportPartialAggregation
 
@@ -108,7 +108,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
    */
   val resultExpression: Expression
 
-  override final lazy val stateSchema: StructType = StructType fromAttributes stateAttributes
+  override final lazy val stateWidth: Int = stateAttributes.length
 
   override def zero(state: MutableRow): Unit = zeroProjection target state apply ()
 

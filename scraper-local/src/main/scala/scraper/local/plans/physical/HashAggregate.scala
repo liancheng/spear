@@ -57,14 +57,14 @@ case class AggregationBuffer(boundFunctions: Seq[AggregateFunction], states: Seq
 
 class AggregationBufferBuilder(boundFunctions: Seq[AggregateFunction]) {
   private val (bufferLength, slicesBuilder) = {
-    val lengths = boundFunctions map (_.stateSchema.length)
-    val beginIndices = lengths.scan(0)(_ + _).init
+    val stateWidths = boundFunctions map (_.stateWidth)
+    val beginIndices = stateWidths.scan(0)(_ + _).init
 
-    def slicesBuilder(row: MutableRow) = (beginIndices, lengths).zipped.map {
+    def slicesBuilder(row: MutableRow) = (beginIndices, stateWidths).zipped.map {
       new MutableRowSlice(row, _, _)
     }
 
-    (lengths.sum, slicesBuilder _)
+    (stateWidths.sum, slicesBuilder _)
   }
 
   def newBuffer(): AggregationBuffer = {

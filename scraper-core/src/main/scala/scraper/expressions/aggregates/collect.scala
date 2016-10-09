@@ -5,12 +5,12 @@ import scala.collection.mutable.ArrayBuffer
 
 import scraper.{MutableRow, Name, Row}
 import scraper.expressions.{Expression, UnaryExpression}
-import scraper.types.{ArrayType, DataType, StructType}
+import scraper.types.{ArrayType, DataType}
 
 abstract class Collect(child: Expression) extends AggregateFunction with UnaryExpression {
   override def isNullable: Boolean = false
 
-  override def stateSchema: StructType = StructType('collection -> dataType.!)
+  override def stateWidth: Int = 1
 
   override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
 }
