@@ -82,4 +82,28 @@ package object expressions {
 
     def subtypeOf(supertype: AbstractDataType): TypeConstraint = Seq(input) sameSubtypeOf supertype
   }
+
+  private[scraper] implicit class Invoker(expression: Expression) {
+    def invoke(methodName: String, returnType: DataType): InvokeBuilder =
+      new InvokeBuilder(methodName, returnType)
+
+    class InvokeBuilder(methodName: String, returnType: DataType) {
+      def withArgs(args: Expression*): Invoke = Invoke(expression, methodName, returnType, args)
+
+      def noArgs: Invoke = Invoke(expression, methodName, returnType, Nil)
+    }
+  }
+
+  private[scraper] implicit class StaticInvoker(targetClass: Class[_]) {
+    def invoke(methodName: String, returnType: DataType): StaticInvokeBuilder =
+      new StaticInvokeBuilder(methodName, returnType)
+
+    class StaticInvokeBuilder(methodName: String, returnType: DataType) {
+      def withArgs(args: Expression*): StaticInvoke =
+        StaticInvoke(targetClass.getName, methodName, returnType, args)
+
+      def noArgs: StaticInvoke =
+        StaticInvoke(targetClass.getName, methodName, returnType, Nil)
+    }
+  }
 }
