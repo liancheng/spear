@@ -245,6 +245,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
    * Returns a copy of this [[BoundRef]] bound at given ordinal.
    */
   def at(ordinal: Int): BoundRef = copy(ordinal = ordinal)
+
+  def shift(offset: Int): BoundRef = at(ordinal + offset)
 }
 
 object BoundRef {

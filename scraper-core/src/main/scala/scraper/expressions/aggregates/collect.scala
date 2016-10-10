@@ -3,50 +3,44 @@ package scraper.expressions.aggregates
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-import scraper.{MutableRow, Name, Row}
+import scraper.{Name, Row}
 import scraper.expressions.{Expression, UnaryExpression}
 import scraper.types.{ArrayType, DataType}
 
-abstract class Collect(child: Expression) extends AggregateFunction with UnaryExpression {
+case class CollectList(child: Expression)
+  extends ImperativeAggregateFunction[ArrayBuffer[Any]]
+  with UnaryExpression {
+
   override def isNullable: Boolean = false
 
-  override def stateWidth: Int = 1
-
   override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
-}
 
-case class CollectList(child: Expression) extends Collect(child) {
   override def nodeName: Name = "collect_list"
 
-  override def zero(state: MutableRow): Unit = state(0) = ArrayBuffer.empty[Any]
+  override protected val evaluator: Evaluator = new Evaluator {
+    override def initialState: State = ArrayBuffer.empty[Any]
 
-  override def update(state: MutableRow, input: Row): Unit = {
-    state.head.asInstanceOf[ArrayBuffer[Any]] += child.evaluate(input)
+    override def update(state: State, input: Row): State = state += child.evaluate(input)
+
+    override def merge(state: State, inputState: State): State = state ++= inputState
+
+    override def result(state: State): Any = state
   }
-
-  override def merge(state: MutableRow, inputState: Row): Unit = {
-    val from = inputState.head.asInstanceOf[ArrayBuffer[Any]]
-    val into = state.head.asInstanceOf[ArrayBuffer[Any]]
-    into ++= from
-  }
-
-  override def result(state: Row): Any = state.head.asInstanceOf[ArrayBuffer[Any]]
 }
 
-case class CollectSet(child: Expression) extends Collect(child) {
+case class CollectSet(child: Expression)
+  extends ImperativeAggregateFunction[mutable.Set[Any]]
+  with UnaryExpression {
+
   override def nodeName: Name = "collect_set"
 
-  override def zero(state: MutableRow): Unit = state(0) = mutable.Set.empty[Any]
+  override protected val evaluator: Evaluator = new Evaluator {
+    override def initialState: State = mutable.Set.empty[Any]
 
-  override def update(state: MutableRow, input: Row): Unit = {
-    state.head.asInstanceOf[mutable.Set[Any]] += child.evaluate(input)
+    override def update(state: State, input: Row): State = state += child.evaluate(input)
+
+    override def merge(state: State, inputState: State): State = state ++= inputState
+
+    override def result(state: State): Any = state.toSeq
   }
-
-  override def merge(state: MutableRow, inputState: Row): Unit = {
-    val from = inputState.head.asInstanceOf[mutable.Set[Any]]
-    val into = state.head.asInstanceOf[mutable.Set[Any]]
-    into ++= from
-  }
-
-  override def result(state: Row): Any = state.head.asInstanceOf[mutable.Set[Any]].toSeq
 }

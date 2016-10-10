@@ -1,6 +1,8 @@
 package scraper.expressions.aggregates
 
-import scraper.{JoinedRow, MutableRow, Row}
+import scala.reflect.runtime.universe.WeakTypeTag
+
+import scraper._
 import scraper.exceptions.ContractBrokenException
 import scraper.execution.MutableProjection
 import scraper.expressions._
@@ -124,7 +126,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     def right: AttributeRef = inputStateAttributes(stateAttributes indexOf left)
   }
 
-  private lazy val inputStateAttributes = stateAttributes map (_ withID newExpressionID())
+  protected final lazy val inputStateAttributes = stateAttributes map (_ withID newExpressionID())
 
   private lazy val joinedRow: JoinedRow = new JoinedRow()
 
@@ -156,7 +158,7 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   //
   // Thus, all `AttributeRef`s found in the target expression must be aggregation state attributes,
   // while all `BoundRef`s found in the target expression only appear in child expressions.
-  private def bind(expression: Expression): Expression = expression transformDown {
+  protected def bind(expression: Expression): Expression = expression transformDown {
     case ref: AttributeRef =>
       // Must be an aggregation state attribute of either the current aggregation state, which
       // appears in `stateAttributes`, or the input aggregation state to be merged, which appears in
@@ -169,11 +171,57 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
     case ref: BoundRef =>
       // Must be a `BoundRef` appearing in the child expressions. Shifts the ordinal since input
       // rows are always appended to the right side of aggregation states.
-      ref at (ref.ordinal + stateAttributes.length)
+      ref shift stateAttributes.length
   }
 }
 
-abstract class FoldLeft extends UnaryExpression with DeclarativeAggregateFunction {
+abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends DeclarativeAggregateFunction {
+  override final lazy val stateAttributes: Seq[AttributeRef] = Seq(state)
+
+  override final lazy val zeroValues: Seq[Expression] = Seq(
+    Literal(evaluator.initialState, stateType)
+  )
+
+  override final lazy val updateExpressions: Seq[Expression] = Seq(
+    // TODO Eliminates the `struct` call
+    // This scheme can be inefficient and hard to optimize in the future.
+    evaluatorLit.invoke("update", stateType).withArgs(state, struct(children))
+  )
+
+  override final lazy val mergeExpressions: Seq[Expression] = Seq(
+    evaluatorLit.invoke("merge", stateType).withArgs(state.left, state.right)
+  )
+
+  override final lazy val resultExpression: Expression = whenBound {
+    evaluatorLit.invoke("result", dataType).withArgs(state)
+  }
+
+  protected type State = T
+
+  protected trait Evaluator {
+    def initialState: State
+
+    def update(state: State, input: Row): State
+
+    def merge(state: State, inputState: State): State
+
+    def result(state: State): Any
+  }
+
+  protected val evaluator: Evaluator
+
+  private def evaluatorLit: Literal = Literal(evaluator, ObjectType(classOf[Evaluator].getName))
+
+  private val stateType: ObjectType = {
+    val tag = implicitly[WeakTypeTag[T]]
+    val runtimeClass = tag.mirror.runtimeClass(tag.tpe.typeSymbol.asClass)
+    ObjectType(runtimeClass.getName)
+  }
+
+  private val state = 'state of stateType.!
+}
+
+trait FoldLeft extends UnaryExpression with DeclarativeAggregateFunction {
   def zeroValue: Expression
 
   def updateFunction: UpdateFunction
@@ -207,7 +255,7 @@ object FoldLeft {
   type MergeFunction = (Expression, Expression) => Expression
 }
 
-abstract class NullableReduceLeft extends FoldLeft {
+trait NullableReduceLeft extends FoldLeft {
   override lazy val zeroValue: Expression = Literal(null, child.dataType)
 
   override def mergeFunction: MergeFunction = updateFunction
