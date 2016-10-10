@@ -22,6 +22,8 @@ class Name(private val impl: Name.CaseSensitivityAware) {
     case _ =>
       false
   }
+
+  def append(string: String): Name = new Name(impl append string)
 }
 
 object Name {
@@ -29,14 +31,20 @@ object Name {
     def isCaseSensitive: Boolean
 
     def casePreserving: String
+
+    def append(string: String): CaseSensitivityAware
   }
 
   private case class CaseSensitive(casePreserving: String) extends CaseSensitivityAware {
     override def isCaseSensitive: Boolean = true
+
+    override def append(string: String): CaseSensitive = copy(casePreserving + string)
   }
 
   private case class CaseInsensitive(casePreserving: String) extends CaseSensitivityAware {
     override def isCaseSensitive: Boolean = false
+
+    override def append(string: String): CaseInsensitive = copy(casePreserving + string)
   }
 
   def apply(name: String, isCaseSensitive: Boolean): Name =

@@ -87,6 +87,9 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 trait DeclarativeAggregateFunction extends AggregateFunction {
   val stateAttributes: Seq[AttributeRef]
 
+  final lazy val inputStateAttributes: Seq[AttributeRef] =
+    stateAttributes map (_ withID newExpressionID())
+
   /**
    * Initial literal values of aggregation state fields.
    */
@@ -125,8 +128,6 @@ trait DeclarativeAggregateFunction extends AggregateFunction {
   protected implicit class StateAttribute(val left: AttributeRef) {
     def right: AttributeRef = inputStateAttributes(stateAttributes indexOf left)
   }
-
-  protected final lazy val inputStateAttributes = stateAttributes map (_ withID newExpressionID())
 
   private lazy val joinedRow: JoinedRow = new JoinedRow()
 
