@@ -7,7 +7,7 @@ import scraper.expressions.functions._
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{DataType, DoubleType, NumericType}
 
-case class Average(child: Expression) extends UnaryExpression with DeclarativeAggregateFunction {
+case class Average(child: Expression) extends UnaryExpression with AggregateFunction {
   override def nodeName: Name = "avg"
 
   override def dataType: DataType = DoubleType

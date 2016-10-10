@@ -8,8 +8,7 @@ import scraper.expressions.{Expression, UnaryExpression}
 import scraper.types.{ArrayType, DataType}
 
 case class CollectList(child: Expression)
-  extends ImperativeAggregateFunction[ArrayBuffer[Any]]
-  with UnaryExpression {
+  extends ImperativeAggregateFunction[ArrayBuffer[Any]] with UnaryExpression {
 
   override def isNullable: Boolean = false
 
@@ -29,8 +28,11 @@ case class CollectList(child: Expression)
 }
 
 case class CollectSet(child: Expression)
-  extends ImperativeAggregateFunction[mutable.Set[Any]]
-  with UnaryExpression {
+  extends ImperativeAggregateFunction[mutable.Set[Any]] with UnaryExpression {
+
+  override def isNullable: Boolean = false
+
+  override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
 
   override def nodeName: Name = "collect_set"
 

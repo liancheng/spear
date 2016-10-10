@@ -34,7 +34,7 @@ case class Min(child: Expression) extends NullableReduceLeft with DuplicateInsen
 }
 
 abstract class FirstLike(child: Expression, ignoresNull: Expression)
-  extends DeclarativeAggregateFunction with DuplicateInsensitive {
+  extends AggregateFunction with DuplicateInsensitive {
 
   override lazy val isPure: Boolean = false
 
