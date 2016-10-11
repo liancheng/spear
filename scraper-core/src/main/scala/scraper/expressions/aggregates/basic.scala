@@ -1,11 +1,13 @@
 package scraper.expressions.aggregates
 
-import scraper.Name
+import scala.collection.mutable.ArrayBuffer
+
+import scraper.{Name, Row}
 import scraper.expressions._
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
-import scraper.types.{BooleanType, DataType, OrderedType}
+import scraper.types.{ArrayType, BooleanType, DataType, OrderedType}
 
 case class Count(child: Expression) extends FoldLeft {
   override lazy val zeroValue: Expression = 0L
@@ -104,4 +106,24 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
   override lazy val resultExpression: Expression = last
 
   private lazy val last = 'last of dataType withNullability isNullable
+}
+
+case class ArrayAgg(child: Expression)
+  extends ImperativeAggregateFunction[ArrayBuffer[Any]] with UnaryExpression {
+
+  override def isNullable: Boolean = false
+
+  override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
+
+  override def nodeName: Name = "array_agg"
+
+  override protected val evaluator: Evaluator = new Evaluator {
+    override def initialState: State = ArrayBuffer.empty[Any]
+
+    override def update(state: State, input: Row): State = state += child.evaluate(input)
+
+    override def merge(state: State, inputState: State): State = state ++= inputState
+
+    override def result(state: State): Any = state
+  }
 }
