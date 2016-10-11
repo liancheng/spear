@@ -26,7 +26,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   /**
    * Initial literal values of aggregation state fields.
    */
-  val zeroValues: Seq[Expression]
+  val initialValues: Seq[Expression]
 
   /**
    * Resolved expressions used to update aggregation state fields, must not contain any
@@ -67,7 +67,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override lazy val stateAttributes: Seq[AttributeRef] = bugReport()
 
-  override lazy val zeroValues: Seq[Expression] = bugReport()
+  override lazy val initialValues: Seq[Expression] = bugReport()
 
   override lazy val updateExpressions: Seq[Expression] = bugReport()
 
@@ -86,7 +86,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunction {
   override final lazy val stateAttributes: Seq[AttributeRef] = Seq(state)
 
-  override final lazy val zeroValues: Seq[Expression] = Seq(
+  override final lazy val initialValues: Seq[Expression] = Seq(
     Literal(evaluator.initialState, stateType)
   )
 
@@ -140,7 +140,7 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 
   override lazy val dataType: DataType = zeroValue.dataType
 
-  override lazy val zeroValues: Seq[Expression] = Seq(zeroValue)
+  override lazy val initialValues: Seq[Expression] = Seq(zeroValue)
 
   override lazy val stateAttributes: Seq[AttributeRef] = Seq(value)
 

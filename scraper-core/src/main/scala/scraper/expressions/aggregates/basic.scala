@@ -57,7 +57,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 
   override lazy val stateAttributes: Seq[AttributeRef] = Seq(first, valueSet)
 
-  override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
+  override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
 
   override lazy val updateExpressions: Seq[Expression] =
     if (child.isNullable && ignoresNullBool) {
@@ -91,7 +91,7 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
 
   override lazy val stateAttributes: Seq[AttributeRef] = Seq(last)
 
-  override lazy val zeroValues: Seq[Expression] = Seq(Literal(null, child.dataType))
+  override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType))
 
   override lazy val updateExpressions: Seq[Expression] = Seq(
     if (child.isNullable && ignoresNullBool) coalesce(child, last) else child

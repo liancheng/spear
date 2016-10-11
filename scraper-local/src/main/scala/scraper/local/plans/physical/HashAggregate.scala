@@ -49,7 +49,7 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
 
   def newAggregationBuffer(): MutableRow = {
     val buffer = new BasicMutableRow(aggs.map(_.stateAttributes.length).sum)
-    zeroProjection.target(buffer).apply()
+    initializationProjection target buffer apply ()
     buffer
   }
 
@@ -62,18 +62,13 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
     resultProjection target resultBuffer apply aggBuffer
 
   private val bind: Expression => Expression = {
-    def makeUnique(ref: AttributeRef): AttributeRef = {
-      val id = ref.expressionID.id
-      ref.copy(name = ref.name append s"_$id")
-    }
+    val stateAttributes = aggs flatMap (_.stateAttributes)
 
-    val stateAttributes = aggs flatMap (_.stateAttributes) map makeUnique
-
-    val inputStateAttributes = aggs flatMap (_.inputStateAttributes) map makeUnique
+    val inputStateAttributes = aggs flatMap (_.inputStateAttributes)
 
     (_: Expression).transformDown {
       case ref: AttributeRef =>
-        BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(makeUnique(ref))
+        BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(ref)
 
       case ref: BoundRef =>
         ref shift stateAttributes.length
@@ -82,8 +77,8 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
 
   private val join: JoinedRow = new JoinedRow()
 
-  private val zeroProjection: MutableProjection = MutableProjection(
-    aggs flatMap (_.zeroValues)
+  private val initializationProjection: MutableProjection = MutableProjection(
+    aggs flatMap (_.initialValues)
   )
 
   private val updateProjection: MutableProjection = MutableProjection(

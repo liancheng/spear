@@ -40,8 +40,7 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
     function[Rand](i"rand"),
     function[Length](i"length"),
 
-    function[CollectList](i"collect_list"),
-    function[CollectSet](i"collect_set"),
+    function[ArrayAgg](i"array_agg"),
 
     function[Count](i"count"),
     function[First](i"first"),
