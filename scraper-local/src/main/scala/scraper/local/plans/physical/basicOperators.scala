@@ -4,6 +4,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import scraper._
 import scraper.annotations.Explain
+import scraper.execution.MutableProjection
 import scraper.expressions._
 import scraper.expressions.BoundRef._
 import scraper.expressions.Literal.True
@@ -25,11 +26,9 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projectList map (_.attr)
 
-  private lazy val boundProjectList = projectList map bindTo(child.output)
+  private lazy val projection = MutableProjection(projectList map bindTo(child.output))
 
-  override def iterator: Iterator[Row] = child.iterator.map { row =>
-    Row.fromSeq(boundProjectList map (_ evaluate row))
-  }
+  override def iterator: Iterator[Row] = child.iterator map projection
 }
 
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
