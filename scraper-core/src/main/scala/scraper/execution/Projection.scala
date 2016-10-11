@@ -1,6 +1,6 @@
 package scraper.execution
 
-import scraper.{MutableRow, Row}
+import scraper.{BasicMutableRow, MutableRow, Row}
 import scraper.expressions.Expression
 
 trait Projection extends (Row => Row) with (() => Row)
@@ -19,7 +19,7 @@ trait MutableProjection extends Projection {
 
 object MutableProjection {
   def apply(expressions: Seq[Expression]): MutableProjection = new MutableProjection {
-    private[this] var mutableRow: MutableRow = _
+    private[this] var mutableRow: MutableRow = new BasicMutableRow(expressions.length)
 
     override def target(mutableRow: MutableRow): this.type = {
       this.mutableRow = mutableRow
