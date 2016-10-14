@@ -5,17 +5,12 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.Settings
 import scraper.expressions._
+import scraper.plans.QueryExecution
 import scraper.plans.logical.{LocalRelation, LogicalPlan, SingleRowRelation}
 import scraper.plans.physical.PhysicalPlan
 import scraper.types.{LongType, StructType}
 
-trait Context {
-  type QueryExecution <: plans.QueryExecution
-
-  type Catalog <: scraper.Catalog
-
-  def settings: Settings
-
+trait QueryExecutor {
   def catalog: Catalog
 
   /**
@@ -41,16 +36,24 @@ trait Context {
    */
   def plan(plan: LogicalPlan): PhysicalPlan
 
-  def execute(logicalPlan: LogicalPlan): QueryExecution
+  def execute(context: Context, plan: LogicalPlan): QueryExecution
+}
+
+class Context(val queryExecutor: QueryExecutor) {
+  def this(settings: Settings) = this(
+    Class.forName(settings(config.QueryExecutor)).newInstance() match {
+      case q: QueryExecutor => q
+    }
+  )
 
   private lazy val values: DataFrame = new DataFrame(SingleRowRelation, this)
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
-  def sql(query: String): DataFrame = new DataFrame(parse(query), this)
+  def sql(query: String): DataFrame = new DataFrame(queryExecutor.parse(query), this)
 
   def table(name: Name): DataFrame =
-    new DataFrame(catalog lookupRelation name, this)
+    new DataFrame(queryExecutor.catalog lookupRelation name, this)
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(LocalRelation(data), this)

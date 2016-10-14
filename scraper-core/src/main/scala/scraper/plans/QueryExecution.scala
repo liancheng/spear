@@ -4,14 +4,10 @@ import scraper.Context
 import scraper.plans.logical.LogicalPlan
 import scraper.plans.physical.PhysicalPlan
 
-trait QueryExecution {
-  def context: Context
+class QueryExecution(val context: Context, val logicalPlan: LogicalPlan) {
+  lazy val analyzedPlan: LogicalPlan = context.queryExecutor analyze logicalPlan
 
-  def logicalPlan: LogicalPlan
+  lazy val optimizedPlan: LogicalPlan = context.queryExecutor optimize analyzedPlan
 
-  lazy val analyzedPlan: LogicalPlan = context analyze logicalPlan
-
-  lazy val optimizedPlan: LogicalPlan = context optimize analyzedPlan
-
-  lazy val physicalPlan: PhysicalPlan = context plan optimizedPlan
+  lazy val physicalPlan: PhysicalPlan = context.queryExecutor plan optimizedPlan
 }

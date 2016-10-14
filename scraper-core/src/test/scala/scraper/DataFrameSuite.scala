@@ -11,7 +11,7 @@ import scraper.plans.logical.{LocalRelation, LogicalPlan}
 import scraper.types.{IntType, StringType, StructType}
 
 class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
-  private implicit val context = new TestContext
+  private implicit val context = new Context(new TestQueryExecutor)
 
   import context._
 
@@ -20,8 +20,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   private val r2 = LocalRelation(Nil, 'a.int.! :: 'b.string.? :: Nil)
 
   override protected def beforeAll(): Unit = {
-    context.catalog.registerRelation('t, r1)
-    context.catalog.registerRelation('s, r2)
+    context.queryExecutor.catalog.registerRelation('t, r1)
+    context.queryExecutor.catalog.registerRelation('s, r2)
   }
 
   test("column") {

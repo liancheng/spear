@@ -11,7 +11,8 @@ import scraper.plans.logical._
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
-  def this(logicalPlan: LogicalPlan, context: Context) = this(context execute logicalPlan)
+  def this(logicalPlan: LogicalPlan, context: Context) =
+    this(context.queryExecutor.execute(context, logicalPlan))
 
   def context: Context = queryExecution.context
 
@@ -80,7 +81,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
 
   def asTable(tableName: Name): Unit =
-    context.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
+    context.queryExecutor.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
   def toSeq: Seq[Row] = iterator.toSeq
 

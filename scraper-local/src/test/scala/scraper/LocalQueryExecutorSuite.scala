@@ -1,14 +1,14 @@
 package scraper
 
-import scraper.LocalContextSuite.Person
+import scraper.LocalQueryExecutorSuite.Person
 import scraper.exceptions.TableNotFoundException
 import scraper.expressions._
 import scraper.expressions.functions._
-import scraper.local.LocalContext
+import scraper.local.LocalQueryExecutor
 import scraper.types.StringType
 
-class LocalContextSuite extends LoggingFunSuite with TestUtils {
-  private implicit val context = new LocalContext(Test.defaultSettings)
+class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
+  private implicit val context = new Context(new LocalQueryExecutor)
 
   import context._
 
@@ -240,6 +240,6 @@ class LocalContextSuite extends LoggingFunSuite with TestUtils {
   }
 }
 
-object LocalContextSuite {
+object LocalQueryExecutorSuite {
   case class Person(name: String, age: Int)
 }

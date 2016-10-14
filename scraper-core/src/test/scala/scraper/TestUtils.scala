@@ -173,7 +173,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def withTable(context: Context, name: Name)(f: => Unit): Unit = try f finally {
-    context.catalog.removeRelation(name)
+    context.queryExecutor.catalog.removeRelation(name)
   }
 
   def withTable(name: Name)(f: => Unit)(implicit context: Context): Unit =

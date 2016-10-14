@@ -1,7 +1,6 @@
 package scraper.local
 
 import scraper._
-import scraper.config.Settings
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
@@ -11,32 +10,26 @@ import scraper.plans.logical._
 import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
 
-class LocalContext(val settings: Settings) extends Context {
-  type QueryExecution = LocalQueryExecution
-
-  override type Catalog = InMemoryCatalog
-
-  override val catalog: Catalog = new Catalog
+class LocalQueryExecutor extends QueryExecutor {
+  override val catalog: Catalog = new InMemoryCatalog
 
   override def parse(query: String): LogicalPlan = new Parser parse query
 
-  private val analyzer = new Analyzer(catalog)
+  override def analyze(plan: LogicalPlan): LogicalPlan = analyzer apply plan
 
-  override def analyze(plan: LogicalPlan): LogicalPlan = analyzer(plan)
+  override def optimize(plan: LogicalPlan): LogicalPlan = optimizer apply plan
+
+  override def plan(plan: LogicalPlan): PhysicalPlan = planner apply plan
+
+  override def execute(context: Context, plan: LogicalPlan): QueryExecution =
+    new QueryExecution(context, plan)
+
+  private val analyzer = new Analyzer(catalog)
 
   private val optimizer = new Optimizer
 
-  override def optimize(plan: LogicalPlan): LogicalPlan = optimizer(plan)
-
   private val planner = new LocalQueryPlanner
-
-  override def plan(plan: LogicalPlan): PhysicalPlan = planner(plan)
-
-  def execute(logicalPlan: LogicalPlan): QueryExecution = new QueryExecution(logicalPlan, this)
 }
-
-class LocalQueryExecution(val logicalPlan: LogicalPlan, val context: Context)
-  extends QueryExecution
 
 class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
   override def strategies: Seq[Strategy] = Seq(
