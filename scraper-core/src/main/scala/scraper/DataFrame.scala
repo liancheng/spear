@@ -83,7 +83,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def asTable(tableName: Name): Unit =
     context.queryExecutor.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
-  def toSeq: Seq[Row] = if (queryExecution.physicalPlan.needCopy) {
+  def toSeq: Seq[Row] = if (queryExecution.physicalPlan.requireMaterialization) {
     iterator.map(_.copy()).toSeq
   } else {
     iterator.toSeq

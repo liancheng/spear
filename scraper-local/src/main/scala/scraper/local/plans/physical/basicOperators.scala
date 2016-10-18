@@ -26,7 +26,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projectList map (_.attr)
 
-  override def needCopy: Boolean = true
+  override def requireMaterialization: Boolean = true
 
   private lazy val projection = MutableProjection(projectList map bindTo(child.output))
 
@@ -91,7 +91,7 @@ case class CartesianProduct(
     rightRow <- right.iterator if evaluateBoundCondition(join(leftRow, rightRow))
   } yield join
 
-  override def needCopy: Boolean = true
+  override def requireMaterialization: Boolean = true
 
   def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
 

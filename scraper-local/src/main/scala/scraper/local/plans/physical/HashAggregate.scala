@@ -16,7 +16,7 @@ case class HashAggregate(
 ) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map (_.attr)
 
-  override def needCopy: Boolean = true
+  override def requireMaterialization: Boolean = true
 
   private lazy val boundKeys: Seq[Expression] = keyAliases map (_.child) map bindTo(child.output)
 
