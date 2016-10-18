@@ -316,6 +316,6 @@ object Cast {
     println()
     println("*: Implicitly castable")
     println("o: Explicitly castable")
-    println(".: Not castable")
+    println("_: Not castable")
   }
 }
