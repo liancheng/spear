@@ -117,13 +117,11 @@ case class ArrayAgg(child: Expression)
 
   override def nodeName: Name = "array_agg"
 
-  override protected val evaluator: Evaluator = new Evaluator {
-    override def initialState: State = ArrayBuffer.empty[Any]
+  override def initialState: State = ArrayBuffer.empty[Any]
 
-    override def update(state: State, input: Row): State = state += child.evaluate(input)
+  override def update(state: State, input: Row): State = state += child.evaluate(input)
 
-    override def merge(state: State, inputState: State): State = state ++= inputState
+  override def merge(state: State, inputState: State): State = state ++= inputState
 
-    override def result(state: State): Any = state
-  }
+  override def result(state: State): Any = state
 }

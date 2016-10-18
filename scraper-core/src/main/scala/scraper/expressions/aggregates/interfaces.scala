@@ -87,38 +87,34 @@ abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunc
   override final lazy val stateAttributes: Seq[AttributeRef] = Seq(state)
 
   override final lazy val initialValues: Seq[Expression] = Seq(
-    Literal(evaluator.initialState, stateType)
+    Literal(initialState, stateType)
   )
 
   override final lazy val updateExpressions: Seq[Expression] = Seq(
     // TODO Eliminates the `struct` call
     // This scheme can be inefficient and hard to optimize in the future.
-    evaluatorLit.invoke("update", stateType).withArgs(state, struct(children))
+    self.invoke("update", stateType).withArgs(state, struct(children))
   )
 
   override final lazy val mergeExpressions: Seq[Expression] = Seq(
-    evaluatorLit.invoke("merge", stateType).withArgs(state.left, state.right)
+    self.invoke("merge", stateType).withArgs(state.left, state.right)
   )
 
   override final lazy val resultExpression: Expression = whenBound {
-    evaluatorLit.invoke("result", dataType).withArgs(state)
+    self.invoke("result", dataType).withArgs(state)
   }
 
   protected type State = T
 
-  protected trait Evaluator {
-    def initialState: State
+  def initialState: State
 
-    def update(state: State, input: Row): State
+  def update(state: State, input: Row): State
 
-    def merge(state: State, inputState: State): State
+  def merge(state: State, inputState: State): State
 
-    def result(state: State): Any
-  }
+  def result(state: State): Any
 
-  protected val evaluator: Evaluator
-
-  private def evaluatorLit: Literal = Literal(evaluator, ObjectType(classOf[Evaluator].getName))
+  private def self: Literal = Literal(this, ObjectType(getClass.getName))
 
   private val stateType: ObjectType = {
     val tag = implicitly[WeakTypeTag[T]]
