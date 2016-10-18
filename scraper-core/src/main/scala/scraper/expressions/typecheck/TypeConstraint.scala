@@ -36,6 +36,8 @@ trait TypeConstraint { self =>
    * Returns a new [[TypeConstraint]] that first tries to [[TypeConstraint.enforced enforce]] this
    * [[TypeConstraint]], and then pipes the result to the `next` function to build and enforce
    * another [[TypeConstraint]].
+   *
+   * Essentially, [[TypeConstraint]] is a monad with [[andAlso]] being the `flatMap` method.
    */
   def andAlso(next: Seq[Expression] => TypeConstraint): TypeConstraint = new TypeConstraint {
     override def enforced: Try[Seq[Expression]] = self.enforced flatMap (next(_).enforced)
