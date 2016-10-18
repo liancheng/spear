@@ -36,16 +36,16 @@ case class Average(child: Expression) extends UnaryExpression with AggregateFunc
   private lazy val count = 'count.long.!
 }
 
-abstract class NumericNullableReduceLeft extends NullableReduceLeft {
+case class Sum(child: Expression) extends NullableReduceLeft {
+  override val updateFunction: UpdateFunction = Plus
+
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 }
 
-case class Sum(child: Expression) extends NumericNullableReduceLeft {
-  override val updateFunction: UpdateFunction = Plus
-}
-
-case class Product_(child: Expression) extends NumericNullableReduceLeft {
+case class Product_(child: Expression) extends NullableReduceLeft {
   override def nodeName: Name = "product"
 
   override val updateFunction: UpdateFunction = Multiply
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 }

@@ -6,18 +6,18 @@ import scraper.expressions.aggregates.FoldLeft.UpdateFunction
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.BooleanType
 
-abstract class LogicalNullableReduceLeft extends NullableReduceLeft with DuplicateInsensitive {
-  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
-}
-
-case class BoolAnd(child: Expression) extends LogicalNullableReduceLeft {
+case class BoolAnd(child: Expression) extends NullableReduceLeft {
   override def nodeName: Name = "bool_and"
 
   override val updateFunction: UpdateFunction = And
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 }
 
-case class BoolOr(child: Expression) extends LogicalNullableReduceLeft {
+case class BoolOr(child: Expression) extends NullableReduceLeft {
   override def nodeName: Name = "bool_or"
 
   override val updateFunction: UpdateFunction = Or
+
+  override protected lazy val typeConstraint: TypeConstraint = children sameTypeAs BooleanType
 }
