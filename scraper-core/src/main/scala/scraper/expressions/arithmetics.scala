@@ -5,7 +5,7 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.{NullSafeOrdering, Row}
 import scraper.exceptions.TypeMismatchException
-import scraper.expressions.Cast.widenDataType
+import scraper.expressions.Cast.widenDataTypeTo
 import scraper.expressions.functions.lit
 import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
 import scraper.types._
@@ -82,7 +82,7 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
       }
     } yield strictInput map {
       case e if e.dataType == StringType => e cast resultType
-      case e                             => widenDataType(e, resultType)
+      case e                             => widenDataTypeTo(resultType)(e)
     }
   }
 

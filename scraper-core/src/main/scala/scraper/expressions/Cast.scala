@@ -279,13 +279,11 @@ object Cast {
    * `e` is [[compatible]] to `dataType`.  If `e` is already of the target type, it is returned
    * untouched.
    */
-  def widenDataType(e: Expression, dataType: DataType): Expression = e match {
+  def widenDataTypeTo(dataType: DataType)(e: Expression): Expression = e match {
     case _ if e.dataType == dataType               => e
     case _ if e.dataType isCompatibleWith dataType => e cast dataType
     case _                                         => throw new ImplicitCastException(e, dataType)
   }
-
-  def widenDataTypeTo(dataType: DataType)(e: Expression): Expression = widenDataType(e, dataType)
 
   /**
    * Tries to figure out the widest type of all input data types.  For two types `x` and `y`, `x` is
