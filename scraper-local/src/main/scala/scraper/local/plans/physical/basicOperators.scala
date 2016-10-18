@@ -26,6 +26,8 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override lazy val output: Seq[Attribute] = projectList map (_.attr)
 
+  override def needCopy: Boolean = true
+
   private lazy val projection = MutableProjection(projectList map bindTo(child.output))
 
   override def iterator: Iterator[Row] = child.iterator map projection
@@ -86,14 +88,16 @@ case class CartesianProduct(
 
   override def iterator: Iterator[Row] = for {
     leftRow <- left.iterator
-    rightRow <- right.iterator if evaluateBoundCondition(joinedRow(leftRow, rightRow))
-  } yield joinedRow
+    rightRow <- right.iterator if evaluateBoundCondition(join(leftRow, rightRow))
+  } yield join
+
+  override def needCopy: Boolean = true
 
   def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
 
   private lazy val boundCondition = condition map bindTo(output) getOrElse True
 
-  private val joinedRow = new JoinedRow()
+  private val join = new JoinedRow()
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
@@ -103,13 +107,7 @@ case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysica
 
   override def iterator: Iterator[Row] = {
     val buffer = ArrayBuffer.empty[Row]
-
-    child.iterator.foreach { row =>
-      val copy = Array.fill[Any](output.length)(null)
-      row.copyToArray(copy)
-      buffer += Row.fromSeq(copy)
-    }
-
+    child.iterator.foreach(buffer += _.copy())
     buffer.sorted(rowOrdering).iterator
   }
 }

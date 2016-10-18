@@ -48,6 +48,12 @@ trait Row extends Seq[Any] with SpecializedGetter {
   override def getShort(ordinal: Int): Short = apply(ordinal).asInstanceOf[Short]
 
   override def getInt(ordinal: Int): Int = apply(ordinal).asInstanceOf[Int]
+
+  def copy(): Row = {
+    val copy = Array.fill[Any](length)(null)
+    copyToArray(copy)
+    Row.fromSeq(copy)
+  }
 }
 
 object Row {
@@ -113,21 +119,4 @@ class JoinedRow(private var left: Row, private var right: Row) extends Row {
     right = rhs
     this
   }
-}
-
-class RowSlice(row: Row, begin: Int, override val length: Int) extends Row {
-  require(begin >= 0 && length >= 0 && begin + length <= row.length)
-
-  override def apply(ordinal: Int): Any = {
-    require(ordinal < length)
-    row(begin + ordinal)
-  }
-
-  override def iterator: Iterator[Any] = row.iterator.slice(begin, begin + length)
-}
-
-class MutableRowSlice(row: MutableRow, begin: Int, length: Int)
-  extends RowSlice(row, begin, length) with MutableRow {
-
-  def update(ordinal: Int, value: Any): Unit = row(begin + ordinal) = value
 }

@@ -83,7 +83,11 @@ class DataFrame(val queryExecution: QueryExecution) {
   def asTable(tableName: Name): Unit =
     context.queryExecutor.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
-  def toSeq: Seq[Row] = iterator.toSeq
+  def toSeq: Seq[Row] = if (queryExecution.physicalPlan.needCopy) {
+    iterator.map(_.copy()).toSeq
+  } else {
+    iterator.toSeq
+  }
 
   def showSchema(out: PrintStream = System.out): Unit = out.println(schema.prettyTree)
 

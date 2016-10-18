@@ -7,6 +7,8 @@ import scraper.plans.QueryPlan
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]
+
+  def needCopy: Boolean = children.exists(_.needCopy)
 }
 
 trait LeafPhysicalPlan extends PhysicalPlan {
