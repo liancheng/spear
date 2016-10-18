@@ -73,7 +73,7 @@ trait DataType extends AbstractDataType { self =>
 
   override val defaultType: Option[DataType] = None
 
-  override def isSupertypeOf(dataType: DataType): Boolean = false
+  override def isSupertypeOf(dataType: DataType): Boolean = this == dataType
 
   override def toString: String = sql
 }
