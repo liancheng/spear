@@ -7,7 +7,32 @@ import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{castable, compatible}
 import scraper.trees.TreeNode
 
-trait DataType { self =>
+trait AbstractDataType {
+  val defaultType: Option[DataType]
+
+  def isSupertypeOf(dataType: DataType): Boolean
+}
+
+case class OneOf(supertypes: Seq[AbstractDataType]) extends AbstractDataType {
+  require(supertypes.length > 1)
+
+  override val defaultType: Option[DataType] = None
+
+  override def isSupertypeOf(dataType: DataType): Boolean =
+    supertypes exists (_ isSupertypeOf dataType)
+
+  override def toString: String = if (supertypes.length == 2) {
+    supertypes mkString " or "
+  } else {
+    supertypes.init.mkString("", ", ", s", or ${supertypes.last}")
+  }
+}
+
+object OneOf {
+  def apply(first: AbstractDataType, rest: AbstractDataType*): OneOf = OneOf(first +: rest)
+}
+
+trait DataType extends AbstractDataType { self =>
   def genericOrdering: Option[Ordering[Any]]
 
   /** Returns a nullable [[FieldSpec]] of this [[DataType]]. */
@@ -45,6 +70,12 @@ trait DataType { self =>
   def simpleName: String = (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
 
   def sql: String
+
+  override val defaultType: Option[DataType] = None
+
+  override def isSupertypeOf(dataType: DataType): Boolean = false
+
+  override def toString: String = sql
 }
 
 object DataType {
@@ -126,12 +157,6 @@ object DataType {
 
     override def nodeCaption: String = dataType.simpleName
   }
-}
-
-trait AbstractDataType {
-  val defaultType: Option[DataType]
-
-  def isSupertypeOf(dataType: DataType): Boolean
 }
 
 case class FieldSpec(dataType: DataType, nullable: Boolean)

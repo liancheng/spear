@@ -105,7 +105,7 @@ class TypeMismatchException(message: String, cause: Throwable)
       s" - Expression ${e.sqlLike} is of type ${e.dataType.sql}"
     }
 
-    s"""Expecting expression(s) of type ${expected.sql}, but found the following violators:
+    s"""Expecting expression(s) of type ${expected.sql}, but found the following violator(s):
        |${violators mkString "\n"}
        |""".stripMargin
   }, cause)
@@ -119,7 +119,7 @@ class TypeMismatchException(message: String, cause: Throwable)
       s" - Expression ${e.sqlLike} is of type ${e.dataType.sql}"
     }
 
-    s"""Expecting expression(s) of $expected, but found the following violators:
+    s"""Expecting expression(s) of ${expected.toString}, but found the following violator(s):
        |${violators mkString "\n"}
        |""".stripMargin
   }, cause)

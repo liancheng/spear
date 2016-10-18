@@ -36,6 +36,8 @@ object ArrayType extends AbstractDataType {
     case _: ArrayType => true
     case _            => false
   }
+
+  override def toString: String = "ARRAY"
 }
 
 case class MapType(keyType: DataType, valueType: DataType, isValueNullable: Boolean)
@@ -56,6 +58,8 @@ object MapType extends AbstractDataType {
     case _: MapType => true
     case _          => false
   }
+
+  override def toString: String = "MAP"
 }
 
 case class StructField(name: Name, dataType: DataType, isNullable: Boolean)
@@ -151,4 +155,6 @@ object StructType extends AbstractDataType {
     case _: StructType => true
     case _             => false
   }
+
+  override def toString: String = "STRUCT"
 }
