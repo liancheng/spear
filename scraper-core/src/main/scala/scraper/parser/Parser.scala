@@ -7,6 +7,7 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
+import scraper._
 import scraper.Name
 import scraper.Name.{caseInsensitive, caseSensitive}
 import scraper.exceptions.ParsingException
@@ -258,7 +259,10 @@ class Parser extends TokenParser[LogicalPlan] {
     TRUE ^^^ True | FALSE ^^^ False
 
   private def functionCall: Parser[Expression] =
-    identifier ~ ("(" ~> functionArgs <~ ")") ^^ { case n ~ f => f apply n }
+    (identifier | specialFunction) ~ ("(" ~> functionArgs <~ ")") ^^ { case n ~ f => f apply n }
+
+  private def specialFunction: Parser[Name] =
+    (ARRAY | STRUCT | MAP) ^^ Name.caseInsensitive
 
   private def functionArgs: Parser[Name => Expression] = (
     star ^^ { s => function(_: Name, s) }
