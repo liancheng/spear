@@ -31,16 +31,16 @@ case class HashAggregate(
     // Builds the hash map by consuming all input rows
     child.iterator foreach { input =>
       val groupingRow = Row.fromSeq(boundKeys map (_ evaluate input))
-      val aggBuffer = hashMap.getOrElseUpdate(groupingRow, aggregator.newAggregationBuffer())
-      aggregator.update(aggBuffer, input)
+      val stateBuffer = hashMap.getOrElseUpdate(groupingRow, aggregator.newStateBuffer())
+      aggregator.update(stateBuffer, input)
     }
 
     val resultBuffer = aggregator.newResultBuffer()
     val join = new JoinedRow()
 
     hashMap.iterator map {
-      case (groupingRow, aggBuffer) =>
-        aggregator.result(resultBuffer, aggBuffer)
+      case (groupingRow, stateBuffer) =>
+        aggregator.result(resultBuffer, stateBuffer)
         join(groupingRow, resultBuffer)
     }
   }
@@ -49,7 +49,7 @@ case class HashAggregate(
 class Aggregator(aggs: Seq[AggregateFunction]) {
   require(aggs.forall(_.isBound))
 
-  def newAggregationBuffer(): MutableRow = {
+  def newStateBuffer(): MutableRow = {
     val buffer = new BasicMutableRow(aggs.map(_.stateAttributes.length).sum)
     initializationProjection target buffer apply ()
     buffer
@@ -57,22 +57,62 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
 
   def newResultBuffer(): MutableRow = new BasicMutableRow(aggs.length)
 
-  def update(aggBuffer: MutableRow, input: Row): Unit =
-    updateProjection target aggBuffer apply join(aggBuffer, input)
+  def update(stateBuffer: MutableRow, input: Row): Unit =
+    updateProjection target stateBuffer apply join(stateBuffer, input)
 
   def result(resultBuffer: MutableRow, aggBuffer: Row): Unit =
     resultProjection target resultBuffer apply aggBuffer
 
+  // Binds `updateExpressions`, `mergeExpressions`, and `resultExpression` of all involved aggregate
+  // functions.
   private val bind: Expression => Expression = {
+    // Concatenates all state attributes and all input state attributes of all aggregate functions
+    // respectively.
+    //
+    // While merging an input state buffer into a target state buffer, we do a mutable projection
+    // over a `JoinedRow`, which joins the target state buffer on the left side and the input state
+    // buffer on the right side:
+    //
+    //           MutableRow                  Row
+    //   |<- - - - - - - - - - - >|<- - - - - - - - - - - >|
+    //   +------------------------+------------------------+
+    //   |   target state buffer  |   input state buffer   |
+    //   |    (stateAttributes)   | (inputStateAttributes) |
+    //   +------------------------+------------------------+
+    //   |<- - - - - - - - - - - - - - - - - - - - - - - ->|
+    //                        JoinedRow
+    //
+    // Here, `stateAttributes` and `inputStateAttributes` represent columns of the target and input
+    // state buffer respectively.
     val stateAttributes = aggs flatMap (_.stateAttributes)
-
     val inputStateAttributes = aggs flatMap (_.inputStateAttributes)
 
-    (_: Expression).transformDown {
+    (_: Expression) transformDown {
       case ref: AggStateAttribute =>
+        // Binds all `AggStateAttribute`s to corresponding fields of the target and input state
+        // buffers.
         BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(ref)
 
       case ref: BoundRef =>
+        // While updating a target state buffer using an input row, we do a mutable projection over
+        // a `JoinedRow`, which joins the target state buffer on the left side and the input row on
+        // the right side:
+        //
+        //         MutableRow             Row
+        //   |<- - - - - - - - - - - ->|<- - - - - - - >|
+        //   +-------------------------+----------------+
+        //   |   target state buffer   |   input row    |
+        //   |     (stateAttributes)   | (child.output) |
+        //   +-------------------------+----------------+
+        //   |<- - - - - - - - - - - - - - - - - - - - >|
+        //                    JoinedRow
+        //
+        // Note that when `bind` is being invoked, child expressions of all aggregate functions
+        // involved here must have been bound, while their `updateExpressions`, `mergeExpressions`,
+        // and `resultExpression` must have NOT been bound. Therefore, all `BoundRef`s found here
+        // must belong to child expressions of involved aggregate functions, and we only need to
+        // shift their ordinals to the right side so that they are bound to the corresponding input
+        // row fields.
         ref shift stateAttributes.length
     }
   }
