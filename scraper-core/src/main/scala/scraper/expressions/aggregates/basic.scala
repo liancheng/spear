@@ -18,7 +18,7 @@ case class Count(child: Expression) extends FoldLeft {
     (count: Expression, _) => count + 1L
   }
 
-  override def mergeFunction: MergeFunction = _ + _
+  override def mergeFunction: MergeFunction = Plus
 
   override protected lazy val value = 'value of dataType.!
 }

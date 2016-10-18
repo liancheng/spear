@@ -65,25 +65,31 @@ package object expressions {
   def distinctFunction(name: Name, args: Expression*): UnresolvedFunction =
     UnresolvedFunction(name, args, isDistinct = true)
 
-  private[scraper] implicit class UnresolvedFunctionDSL(name: Symbol) {
+  implicit class UnresolvedFunctionDSL(name: Symbol) {
     def apply(args: Expression*): UnresolvedFunction = function(name, args: _*)
   }
 
-  private[scraper] implicit class TypeConstraintDSL(input: Seq[Expression]) {
+  implicit class TypeConstraintDSL(input: Seq[Expression]) {
     def sameTypeAs(dataType: DataType): TypeConstraint = SameTypeAs(input, dataType)
 
     def sameSubtypeOf(supertype: AbstractDataType): TypeConstraint = SameSubtypeOf(input, supertype)
 
+    def sameSubtypeOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
+      SameSubtypeOf(input, OneOf(first +: rest))
+
     def sameType: TypeConstraint = SameType(input)
   }
 
-  private[scraper] implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
+  implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
     def sameTypeAs(dataType: DataType): TypeConstraint = Seq(input) sameTypeAs dataType
 
     def subtypeOf(supertype: AbstractDataType): TypeConstraint = Seq(input) sameSubtypeOf supertype
+
+    def subtypeOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
+      Seq(input) sameSubtypeOf (first, rest: _*)
   }
 
-  private[scraper] implicit class Invoker(expression: Expression) {
+  implicit class Invoker(expression: Expression) {
     def invoke(methodName: String, returnType: DataType): InvokeBuilder =
       new InvokeBuilder(methodName, returnType)
 
@@ -94,7 +100,7 @@ package object expressions {
     }
   }
 
-  private[scraper] implicit class StaticInvoker(targetClass: Class[_]) {
+  implicit class StaticInvoker(targetClass: Class[_]) {
     def invoke(methodName: String, returnType: DataType): StaticInvokeBuilder =
       new StaticInvokeBuilder(methodName, returnType)
 
