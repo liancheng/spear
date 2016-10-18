@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.Name
-import scraper.expressions.InternalNamedExpression.{ForAggregation, ForGrouping, ForWindow, Purpose}
+import scraper.expressions.InternalNamedExpression._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.AggregateFunction
 import scraper.expressions.windows.WindowFunction
@@ -37,6 +37,10 @@ object InternalNamedExpression {
 
   case object ForWindow extends Purpose {
     override def name: Name = 'W
+  }
+
+  case object ForAggState extends Purpose {
+    override def name: Name = 'S
   }
 }
 
@@ -80,72 +84,85 @@ trait InternalAttribute extends LeafExpression
   override def debugString: String = "@" + super.debugString
 }
 
-trait GroupingNamedExpression extends InternalNamedExpression {
-  override def purpose: Purpose = ForGrouping
-}
-
 case class GroupingAlias(
   child: Expression,
   override val expressionID: ExpressionID = newExpressionID()
-) extends GroupingNamedExpression with InternalAlias {
-  override def attr: GroupingAttribute = GroupingAttribute(
-    purpose, dataType, isNullable, expressionID
-  )
+) extends InternalAlias {
+  override val purpose: Purpose = ForGrouping
+
+  override def attr: GroupingAttribute = GroupingAttribute(dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): GroupingAlias = copy(expressionID = id)
 }
 
 case class GroupingAttribute(
-  override val purpose: Purpose,
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with GroupingNamedExpression {
-  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
-}
+) extends InternalAttribute {
+  override val purpose: Purpose = ForGrouping
 
-trait AggregationNamedExpression extends InternalNamedExpression {
-  override def purpose: Purpose = ForAggregation
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
 case class AggregationAlias(
   child: AggregateFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends AggregationNamedExpression with InternalAlias {
-  override def attr: AggregationAttribute =
-    AggregationAttribute(purpose, dataType, isNullable, expressionID)
+) extends InternalAlias {
+  override val purpose: Purpose = ForAggregation
+
+  override def attr: AggregationAttribute = AggregationAttribute(dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): AggregationAlias = copy(expressionID = id)
 }
 
 case class AggregationAttribute(
-  override val purpose: Purpose,
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with AggregationNamedExpression {
-  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
-}
+) extends InternalAttribute {
+  override val purpose: Purpose = ForAggregation
 
-trait WindowNamedExpression extends InternalNamedExpression {
-  override def purpose: Purpose = ForWindow
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }
 
 case class WindowAlias(
   child: WindowFunction,
   override val expressionID: ExpressionID = newExpressionID()
-) extends WindowNamedExpression with InternalAlias {
-  override def attr: InternalAttribute =
-    WindowAttribute(purpose, dataType, isNullable, expressionID)
+) extends InternalAlias {
+  override def purpose: Purpose = ForWindow
+
+  override def attr: InternalAttribute = WindowAttribute(dataType, isNullable, expressionID)
 
   override def withID(id: ExpressionID): WindowAlias = copy(expressionID = id)
 }
 
 case class WindowAttribute(
-  override val purpose: Purpose,
   override val dataType: DataType,
   override val isNullable: Boolean,
   override val expressionID: ExpressionID
-) extends InternalAttribute with WindowNamedExpression {
+) extends InternalAttribute {
+  override val purpose: Purpose = ForWindow
+
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+}
+
+case class AggStateAttribute private (
+  override val name: Name,
+  override val dataType: DataType,
+  override val isNullable: Boolean,
+  override val expressionID: ExpressionID
+) extends InternalAttribute {
+  override val purpose: Purpose = ForAggState
+
+  override def withID(id: ExpressionID): AggStateAttribute = copy(expressionID = id)
+}
+
+case object AggStateAttribute {
+  def apply(ref: AttributeRef): AggStateAttribute = AggStateAttribute(
+    ForAggState.name append "[" append ref.name.casePreserving append "]",
+    ref.dataType,
+    ref.isNullable,
+    ref.expressionID
+  )
 }

@@ -2,7 +2,7 @@ package scraper.plans.logical
 
 import scraper.exceptions.LogicalPlanUnresolvedException
 import scraper.expressions._
-import scraper.expressions.InternalNamedExpression.ForGrouping
+import scraper.expressions.InternalNamedExpression.{ForAggregation, ForGrouping}
 import scraper.expressions.Literal.{False, True}
 import scraper.expressions.Predicate.{splitConjunction, toCNF}
 import scraper.plans.logical.Optimizer._
@@ -278,8 +278,9 @@ object Optimizer {
           .filterOption(stayUp)
     }
 
-    private def containsAggregation(expression: Expression): Boolean =
-      expression.collectFirst { case _: AggregationNamedExpression => }.nonEmpty
+    private def containsAggregation(expression: Expression): Boolean = expression.collectFirst {
+      case e: InternalNamedExpression if e.purpose == ForAggregation =>
+    }.nonEmpty
   }
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
