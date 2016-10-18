@@ -8,15 +8,11 @@ import scraper.expressions.Cast.{castable, compatible}
 import scraper.trees.TreeNode
 
 trait AbstractDataType {
-  val defaultType: Option[DataType]
-
   def isSupertypeOf(dataType: DataType): Boolean
 }
 
 case class OneOf(supertypes: Seq[AbstractDataType]) extends AbstractDataType {
   require(supertypes.length > 1)
-
-  override val defaultType: Option[DataType] = None
 
   override def isSupertypeOf(dataType: DataType): Boolean =
     supertypes exists (_ isSupertypeOf dataType)
@@ -70,8 +66,6 @@ trait DataType extends AbstractDataType { self =>
   def simpleName: String = (getClass.getSimpleName stripSuffix "$" stripSuffix "Type").toLowerCase
 
   def sql: String
-
-  override val defaultType: Option[DataType] = None
 
   override def isSupertypeOf(dataType: DataType): Boolean = this == dataType
 
@@ -162,8 +156,6 @@ object DataType {
 case class FieldSpec(dataType: DataType, nullable: Boolean)
 
 object OrderedType extends AbstractDataType {
-  override val defaultType: Option[DataType] = None
-
   override def isSupertypeOf(dataType: DataType): Boolean = dataType.genericOrdering.isDefined
 
   def orderingOf(dataType: DataType): Ordering[Any] = dataType.genericOrdering getOrElse {
@@ -185,8 +177,6 @@ trait PrimitiveType extends DataType {
 }
 
 object PrimitiveType extends AbstractDataType {
-  override val defaultType: Option[DataType] = None
-
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: PrimitiveType => true
     case _                => false
@@ -228,8 +218,6 @@ case class ObjectType(className: String) extends PrimitiveType {
 }
 
 object ObjectType extends AbstractDataType {
-  override val defaultType: Option[DataType] = None
-
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: ObjectType => true
     case _             => false

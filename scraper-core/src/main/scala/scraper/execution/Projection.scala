@@ -27,7 +27,7 @@ object MutableProjection {
     }
 
     override def apply(input: Row): Row = {
-      expressions.map(_ evaluate input).zipWithIndex.foreach {
+      expressions.map(_ evaluate input).zipWithIndex foreach {
         case (value, ordinal) => mutableRow(ordinal) = value
       }
 

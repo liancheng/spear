@@ -9,8 +9,6 @@ import scraper.expressions.NamedExpression.newExpressionID
 trait ComplexType extends DataType
 
 object ComplexType extends AbstractDataType {
-  override val defaultType: Option[DataType] = None
-
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: ComplexType => true
     case _              => false
@@ -29,8 +27,6 @@ case class ArrayType(elementType: DataType, isElementNullable: Boolean) extends 
 
 object ArrayType extends AbstractDataType {
   def apply(fieldSpec: FieldSpec): ArrayType = ArrayType(fieldSpec.dataType, fieldSpec.nullable)
-
-  override val defaultType: Option[DataType] = None
 
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: ArrayType => true
@@ -51,8 +47,6 @@ case class MapType(keyType: DataType, valueType: DataType, isValueNullable: Bool
 object MapType extends AbstractDataType {
   def apply(keyType: DataType, valueFieldSpec: FieldSpec): MapType =
     MapType(keyType, valueFieldSpec.dataType, valueFieldSpec.nullable)
-
-  override val defaultType: Option[DataType] = None
 
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: MapType => true
@@ -148,8 +142,6 @@ object StructType extends AbstractDataType {
 
   def fromAttributes(attributes: Seq[Attribute]): StructType =
     StructType(attributes.map(a => StructField(a.name, a.dataType, a.isNullable)))
-
-  override val defaultType: Option[DataType] = None
 
   override def isSupertypeOf(dataType: DataType): Boolean = dataType match {
     case _: StructType => true
