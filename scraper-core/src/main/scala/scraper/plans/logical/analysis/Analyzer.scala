@@ -1,7 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
-import scraper.expressions.{Alias, Attribute, AttributeRef, NamedExpression}
+import scraper.expressions.{Alias, Attribute, Expression, NamedExpression}
 import scraper.expressions.Expression.resolveUsing
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
@@ -134,6 +134,18 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
     def hasDuplicates(attributes: Set[Attribute]): Boolean =
       (attributes intersectByID conflictingAttributes).nonEmpty
 
+    def rewriteExpressionIDs(oldPlan: LogicalPlan, newPlan: LogicalPlan): LogicalPlan = {
+      val rewrite = {
+        val oldOutput = oldPlan.output map (a => a: Expression)
+        val newOutput = newPlan.output map (a => a: Expression)
+        (oldOutput zip newOutput).toMap
+      }
+
+      right transformDown {
+        case plan if plan == oldPlan => newPlan
+      } transformAllExpressionsDown rewrite
+    }
+
     right collectFirst {
       // Handles relations that introduce ambiguous attributes
       case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
@@ -146,18 +158,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
           case e        => e
         })
     } map {
-      case (oldPlan, newPlan) =>
-        val rewrite = {
-          val oldIDs = oldPlan.output map (_.expressionID)
-          val newIDs = newPlan.output map (_.expressionID)
-          (oldIDs zip newIDs).toMap
-        }
-
-        right transformDown {
-          case plan if plan == oldPlan => newPlan
-        } transformAllExpressionsDown {
-          case a: AttributeRef => rewrite get a.expressionID map a.withID getOrElse a
-        }
+      case (oldPlan, newPlan) => rewriteExpressionIDs(oldPlan, newPlan)
     } getOrElse right
   }
 
