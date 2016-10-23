@@ -294,6 +294,7 @@ object AggregationAnalysis {
     // expression as an example:
     //
     //   max(count(a)) OVER (PARTITION BY avg(b) ORDER BY sum(c))
+    //       ~~~~~~~~                     ~~~~~~          ~~~~~~
     //
     // We should collect non-window aggregate functions `count(a)`, `avg(b)`, and `sum(c)` but not
     // the window aggregate function `max(count(a))`.
