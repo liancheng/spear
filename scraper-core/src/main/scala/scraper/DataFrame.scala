@@ -134,8 +134,8 @@ class DataFrame(val queryExecution: QueryExecution) {
       (toSeq, false)
     }
 
-    val rows = schema.fields.map(_.name.casePreserving) +: data.map { row =>
-      row.map { cell =>
+    val rows = schema.fields.map(_.name.casePreserving) +: data.map {
+      _ map { cell =>
         val content = cell match {
           case null => "NULL"
           case _    => cell.toString
@@ -154,7 +154,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     val builder = StringBuilder.newBuilder
 
     // TODO This is slow for large datasets
-    val columnWidths = rows.transpose map (_.map(_.length).max)
+    val columnWidths = rows.transpose map (_.map(_.length).max + 2)
 
     val bar = "\u2500"
     val thickBar = "\u2550"
@@ -176,8 +176,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     val lower = columnWidths map (thickBar * _) mkString (lowerLeft, lowerTee, lowerRight + "\n")
 
     def displayRow(row: Seq[String]): String = row zip columnWidths map {
-      case (name, width) if truncate => " " * (width - name.length) + name
-      case (name, width)             => name padTo (width, ' ')
+      case (name, width) if truncate => " " * (width - name.length - 1) + name + " "
+      case (name, width)             => name.padTo(width - 1, ' ') + " "
     } mkString (pipe, pipe, pipe + "\n")
 
     val body = rows map displayRow
