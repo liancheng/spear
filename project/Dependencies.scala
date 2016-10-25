@@ -7,7 +7,7 @@ object Dependencies {
   )
 
   object Versions {
-    val ammonite = "0.7.6"
+    val ammonite = "0.7.8"
     val config = "1.2.1"
     val jline = "2.12.1"
     val log4j = "1.2.16"
