@@ -176,8 +176,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     val lower = columnWidths map (thickBar * _) mkString (lowerLeft, lowerTee, lowerRight + "\n")
 
     def displayRow(row: Seq[String]): String = row zip columnWidths map {
-      case (name, width) if truncate => " " * (width - name.length - 1) + name + " "
-      case (name, width)             => name.padTo(width - 1, ' ') + " "
+      case (content, width) if truncate => " " * (width - content.length - 1) + content + " "
+      case (content, width)             => " " + content.padTo(width - 2, ' ') + " "
     } mkString (pipe, pipe, pipe + "\n")
 
     val body = rows map displayRow
