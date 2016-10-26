@@ -7,7 +7,6 @@ import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.combinator.token.StdTokens
 import scala.util.parsing.input.CharArrayReader.EofCh
 
-import scraper._
 import scraper.Name
 import scraper.Name.{caseInsensitive, caseSensitive}
 import scraper.exceptions.ParsingException
