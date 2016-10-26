@@ -45,7 +45,7 @@ trait DataType extends AbstractDataType { self =>
   /** Shortcut method for [[scraper.expressions.Cast.castable]] */
   def isCastableTo(that: DataType): Boolean = castable(this, that)
 
-  def isSubtypeOf(superType: AbstractDataType): Boolean = superType isSupertypeOf this
+  def isSubtypeOf(supertype: AbstractDataType): Boolean = supertype isSupertypeOf this
 
   /**
    * Tries to figure out the widest type of between `this` and `that` [[DataType]].  For two types
