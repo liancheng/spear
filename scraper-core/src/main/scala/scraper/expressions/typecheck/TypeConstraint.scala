@@ -1,6 +1,7 @@
 package scraper.expressions.typecheck
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast._
@@ -83,9 +84,16 @@ case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
   override def enforced: Try[Seq[Expression]] = for {
     strictInput <- StrictlyTyped(input).enforced
     strictTypes = strictInput map (_.dataType)
-    widestType <- widestTypeOf(strictTypes) filter (_ isSubtypeOf supertype) orElse {
-      val violators = input filterNot (_.dataType isSubtypeOf supertype)
-      throw new TypeMismatchException(violators, supertype)
+    widestType <- widestTypeOf(strictTypes).filter(_ isSubtypeOf supertype).recover {
+      case NonFatal(cause) =>
+        val violators = input filterNot (_.dataType isSubtypeOf supertype)
+
+        if (violators.nonEmpty) {
+          // Reports all expressions whose data type is not a subtype of `supertype`, if any.
+          throw new TypeMismatchException(violators, supertype)
+        } else {
+          throw new TypeMismatchException(cause.getMessage, cause)
+        }
     }
   } yield strictInput map widenDataTypeTo(widestType)
 }
