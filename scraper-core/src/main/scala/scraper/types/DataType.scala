@@ -55,7 +55,7 @@ trait DataType extends AbstractDataType { self =>
     case _ if this isCompatibleWith that => Success(that)
     case _ if that isCompatibleWith this => Success(this)
     case _ => Failure(new TypeMismatchException(
-      s"Could not find common type for ${this.sql} and ${that.sql}"
+      s"Could not find common type for ${this.sql} and ${that.sql}."
     ))
   }
 
