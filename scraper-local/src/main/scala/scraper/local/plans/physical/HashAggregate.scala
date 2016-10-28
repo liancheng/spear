@@ -88,9 +88,9 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
     val inputStateAttributes = aggs flatMap (_.inputStateAttributes)
 
     (_: Expression) transformDown {
-      case ref: AggStateAttribute =>
-        // Binds all `AggStateAttribute`s to corresponding fields of the target and input state
-        // buffers.
+      case ref: AttributeRef =>
+        // Binds all aggregation state attributes to corresponding fields of the target and input
+        // state buffers.
         BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(ref)
 
       case ref: BoundRef =>

@@ -12,7 +12,7 @@ case class Average(child: Expression) extends UnaryExpression with AggregateFunc
 
   override def dataType: DataType = DoubleType
 
-  override lazy val stateAttributes: Seq[AggStateAttribute] = Seq(sum, count)
+  override lazy val stateAttributes: Seq[Attribute] = Seq(sum, count)
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType), 0L)
 
@@ -31,9 +31,9 @@ case class Average(child: Expression) extends UnaryExpression with AggregateFunc
 
   override protected lazy val typeConstraint: TypeConstraint = child subtypeOf NumericType
 
-  private lazy val sum = AggStateAttribute('sum of dataType withNullability child.isNullable)
+  private lazy val sum = 'sum of dataType nullable child.isNullable
 
-  private lazy val count = AggStateAttribute('count.long.!)
+  private lazy val count = 'count.long.!
 }
 
 case class Sum(child: Expression) extends NullableReduceLeft {

@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.{Success, Try}
 
 import scraper.{Name, Row}
-import scraper.Name.caseSensitive
 import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
@@ -118,11 +117,11 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   def withID(id: ExpressionID): Attribute
 
-  def withNullability(nullability: Boolean): Attribute = this
+  def nullable(nullability: Boolean): Attribute = this
 
-  def ? : Attribute = withNullability(true)
+  def ? : Attribute = nullable(true)
 
-  def ! : Attribute = withNullability(false)
+  def ! : Attribute = nullable(false)
 }
 
 case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
@@ -191,17 +190,17 @@ case class AttributeRef(
   /**
    * Returns a nullable copy of this [[AttributeRef]].
    */
-  override def ? : AttributeRef = withNullability(true)
+  override def ? : AttributeRef = nullable(true)
 
   /**
    * Returns a non-nullable copy of this [[AttributeRef]].
    */
-  override def ! : AttributeRef = withNullability(false)
+  override def ! : AttributeRef = nullable(false)
 
   /**
    * Returns a copy of this [[AttributeRef]] with given nullability.
    */
-  override def withNullability(nullable: Boolean): AttributeRef = copy(isNullable = nullable)
+  override def nullable(isNullable: Boolean): AttributeRef = copy(isNullable = isNullable)
 
   override def debugString: String =
     (qualifier.map(_.toString).toSeq :+ super.debugString) mkString "."
@@ -224,7 +223,7 @@ case class AttributeRef(
 case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
   extends NamedExpression with LeafExpression with NonSQLExpression {
 
-  override val name: Name = caseSensitive(s"input[$ordinal]")
+  override val name: Name = s"input[$ordinal]"
 
   override lazy val isBound: Boolean = true
 
@@ -237,8 +236,8 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
   override def evaluate(input: Row): Any = input(ordinal)
 
   override def debugString: String = {
-    val nullability = if (isNullable) "?" else "!"
-    s"$name:${dataType.sql}$nullability"
+    val nullable = if (isNullable) "?" else "!"
+    s"$name:${dataType.sql}$nullable"
   }
 
   /**

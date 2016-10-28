@@ -53,7 +53,7 @@ case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysical
   override lazy val output: Seq[Attribute] =
     left.output zip right.output map {
       case (a1, a2) =>
-        a1.withNullability(a1.isNullable || a2.isNullable)
+        a1.nullable(a1.isNullable || a2.isNullable)
     }
 
   override def iterator: Iterator[Row] = left.iterator ++ right.iterator
@@ -63,7 +63,7 @@ case class Intersect(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhys
   override lazy val output: Seq[Attribute] =
     left.output zip right.output map {
       case (a1, a2) =>
-        a1.withNullability(a1.isNullable && a2.isNullable)
+        a1.nullable(a1.isNullable && a2.isNullable)
     }
 
   override def iterator: Iterator[Row] =

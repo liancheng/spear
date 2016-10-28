@@ -20,7 +20,7 @@ case class Count(child: Expression) extends FoldLeft {
 
   override def mergeFunction: MergeFunction = Plus
 
-  override protected lazy val value = AggStateAttribute('value of dataType.!)
+  override protected lazy val value = 'value of dataType.!
 }
 
 case class Max(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {
@@ -57,7 +57,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 
   override def nodeName: Name = "first_value"
 
-  override lazy val stateAttributes: Seq[AggStateAttribute] = Seq(first, valueSet)
+  override lazy val stateAttributes: Seq[Attribute] = Seq(first, valueSet)
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
 
@@ -81,9 +81,9 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 
   override lazy val resultExpression: Expression = first
 
-  private lazy val first = AggStateAttribute('first of dataType withNullability isNullable)
+  private lazy val first = 'first of dataType nullable isNullable
 
-  private lazy val valueSet = AggStateAttribute('valueSet of BooleanType.!)
+  private lazy val valueSet = 'valueSet of BooleanType.!
 }
 
 case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(child, ignoresNull) {
@@ -91,7 +91,7 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
 
   override def nodeName: Name = "last_value"
 
-  override lazy val stateAttributes: Seq[AggStateAttribute] = Seq(last)
+  override lazy val stateAttributes: Seq[Attribute] = Seq(last)
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType))
 
@@ -105,7 +105,7 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
 
   override lazy val resultExpression: Expression = last
 
-  private lazy val last = AggStateAttribute('last of dataType withNullability isNullable)
+  private lazy val last = 'last of dataType nullable isNullable
 }
 
 case class ArrayAgg(child: Expression)

@@ -194,7 +194,7 @@ case class Union(left: LogicalPlan, right: LogicalPlan) extends SetOperator {
   override lazy val output: Seq[Attribute] =
     left.output zip right.output map {
       case (a1, a2) =>
-        a1.withNullability(a1.isNullable || a2.isNullable)
+        a1.nullable(a1.isNullable || a2.isNullable)
     }
 }
 
@@ -202,7 +202,7 @@ case class Intersect(left: LogicalPlan, right: LogicalPlan) extends SetOperator 
   override lazy val output: Seq[Attribute] =
     left.output zip right.output map {
       case (a1, a2) =>
-        a1.withNullability(a1.isNullable && a2.isNullable)
+        a1.nullable(a1.isNullable && a2.isNullable)
     }
 }
 

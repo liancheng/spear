@@ -35,12 +35,11 @@ object InternalNamedExpression {
     override def name: Name = 'A
   }
 
+  /**
+   * Marks [[InternalNamedExpression]]s that are used to wrap/reference window functions.
+   */
   case object ForWindow extends Purpose {
     override def name: Name = 'W
-  }
-
-  case object ForAggState extends Purpose {
-    override def name: Name = 'S
   }
 }
 
@@ -145,24 +144,4 @@ case class WindowAttribute(
   override val purpose: Purpose = ForWindow
 
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
-}
-
-case class AggStateAttribute private (
-  override val name: Name,
-  override val dataType: DataType,
-  override val isNullable: Boolean,
-  override val expressionID: ExpressionID
-) extends InternalAttribute {
-  override val purpose: Purpose = ForAggState
-
-  override def withID(id: ExpressionID): AggStateAttribute = copy(expressionID = id)
-}
-
-case object AggStateAttribute {
-  def apply(ref: AttributeRef): AggStateAttribute = AggStateAttribute(
-    ForAggState.name append "[" append ref.name.casePreserving append "]",
-    ref.dataType,
-    ref.isNullable,
-    ref.expressionID
-  )
 }

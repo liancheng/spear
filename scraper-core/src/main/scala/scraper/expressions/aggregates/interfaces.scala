@@ -18,9 +18,9 @@ import scraper.types._
  * input values seen so far.
  */
 trait AggregateFunction extends Expression with UnevaluableExpression {
-  val stateAttributes: Seq[AggStateAttribute]
+  val stateAttributes: Seq[Attribute]
 
-  final lazy val inputStateAttributes: Seq[AggStateAttribute] =
+  final lazy val inputStateAttributes: Seq[Attribute] =
     stateAttributes map (_ withID newExpressionID())
 
   /**
@@ -48,8 +48,8 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
 
   def distinct: DistinctAggregateFunction = DistinctAggregateFunction(this)
 
-  protected implicit class StateAttribute(val left: AggStateAttribute) {
-    def right: AggStateAttribute = inputStateAttributes(stateAttributes indexOf left)
+  protected implicit class StateAttribute(val left: Attribute) {
+    def right: Attribute = inputStateAttributes(stateAttributes indexOf left)
   }
 }
 
@@ -65,7 +65,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override def dataType: DataType = child.dataType
 
-  override lazy val stateAttributes: Seq[AggStateAttribute] = bugReport()
+  override lazy val stateAttributes: Seq[Attribute] = bugReport()
 
   override lazy val initialValues: Seq[Expression] = bugReport()
 
@@ -84,7 +84,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 }
 
 abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunction {
-  override final lazy val stateAttributes: Seq[AggStateAttribute] = Seq(state)
+  override final lazy val stateAttributes: Seq[Attribute] = Seq(state)
 
   override final lazy val initialValues: Seq[Expression] = Seq(
     Literal(initialState, stateType)
@@ -122,7 +122,7 @@ abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunc
     ObjectType(runtimeClass.getName)
   }
 
-  private val state = AggStateAttribute('state of stateType.!)
+  private val state = 'state of stateType.!
 }
 
 trait FoldLeft extends UnaryExpression with AggregateFunction {
@@ -136,7 +136,7 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 
   override lazy val dataType: DataType = zeroValue.dataType
 
-  override lazy val stateAttributes: Seq[AggStateAttribute] = Seq(value)
+  override lazy val stateAttributes: Seq[Attribute] = Seq(value)
 
   override lazy val initialValues: Seq[Expression] = Seq(zeroValue)
 
@@ -150,7 +150,7 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 
   override lazy val resultExpression: Expression = value
 
-  protected lazy val value = AggStateAttribute('value of dataType withNullability isNullable)
+  protected lazy val value = 'value of dataType nullable isNullable
 }
 
 object FoldLeft {
