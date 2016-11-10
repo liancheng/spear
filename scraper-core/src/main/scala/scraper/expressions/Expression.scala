@@ -188,10 +188,18 @@ object Expression {
    * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
    * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
    */
-  def resolveUsing[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
-    resolveUsing(expression, input, errorIfNotFound = false)
+  def tryResolve[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
+    resolve(expression, input, errorIfNotFound = false)
 
-  private def resolveUsing[E <: Expression](
+  /**
+   * Resolves this [[Expression]] using a given list of `input` [[NamedExpression]]s.
+   *
+   * @throws ResolutionFailureException if not all expressions can be successfully resolved.
+   */
+  def resolve[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
+    resolve(expression, input, errorIfNotFound = true)
+
+  private def resolve[E <: Expression](
     expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
   ): E = expression.transformDown {
     case unresolved @ UnresolvedAttribute(name, qualifier) =>

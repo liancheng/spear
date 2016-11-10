@@ -2,7 +2,7 @@ package scraper.plans.logical.analysis
 
 import scraper._
 import scraper.expressions.{Alias, Attribute, Expression, NamedExpression}
-import scraper.expressions.Expression.resolveUsing
+import scraper.expressions.Expression.tryResolve
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
@@ -196,7 +196,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
 
     case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
       val output = projectList map (_.attr)
-      val maybeResolvedOrder = order map resolveUsing(output)
+      val maybeResolvedOrder = order map tryResolve(output)
       val unresolvedRefs = maybeResolvedOrder flatMap (_.references) filterNot (_.isResolved)
 
       if (unresolvedRefs.isEmpty) {

@@ -73,7 +73,7 @@ case class Alias(
 }
 
 object Alias {
-  def unaliasUsing[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E = {
+  def unalias[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E = {
     val aliases = projectList.collect { case a: Alias => a.attr -> a.child }.toMap
     expression transformUp { case a: AttributeRef => aliases.getOrElse(a, a) }
   }.asInstanceOf[E]

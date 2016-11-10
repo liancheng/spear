@@ -7,7 +7,7 @@ import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.AutoAlias.AnonymousColumnName
-import scraper.expressions.Expression.resolveUsing
+import scraper.expressions.Expression.tryResolve
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.expressions.functions.lit
 import scraper.plans.logical._
@@ -48,7 +48,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
       val input = plan.children flatMap (_.output)
       plan transformExpressionsDown {
         case a: UnresolvedAttribute =>
-          try resolveUsing(input)(a) catch {
+          try tryResolve(input)(a) catch {
             case NonFatal(cause) =>
               throw new ResolutionFailureException(
                 s"""Failed to resolve attribute ${a.sqlLike} in logical plan:

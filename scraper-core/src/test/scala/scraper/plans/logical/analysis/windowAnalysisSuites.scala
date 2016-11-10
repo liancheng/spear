@@ -152,9 +152,9 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   // Resolved window specs
   // ---------------------
 
-  private val w0 = Expression.resolveUsing(relation.output)(`?w0?`)
+  private val w0 = Expression.tryResolve(relation.output)(`?w0?`)
 
-  private val w1 = Expression.resolveUsing(relation.output)(`?w1?`)
+  private val w1 = Expression.tryResolve(relation.output)(`?w1?`)
 
   // --------------
   // Window aliases

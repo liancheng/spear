@@ -51,7 +51,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: GenericAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenCondition = resolveAndUnaliasUsing(agg.projectList)(condition)
+      val rewrittenCondition = tryResolveAndUnalias(agg.projectList)(condition)
 
       // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
       // predicates must not reference any (aliases of) window functions.
@@ -79,7 +79,7 @@ class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: GenericAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Only preserves the last sort order.
-      agg.copy(order = order map resolveAndUnaliasUsing(agg.projectList))
+      agg.copy(order = order map tryResolveAndUnalias(agg.projectList))
   }
 }
 
@@ -264,8 +264,8 @@ object AggregationAnalysis {
   def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
     collectAggregateFunctions(expressions).nonEmpty
 
-  def resolveAndUnaliasUsing[E <: Expression](input: Seq[NamedExpression]): E => E =
-    Expression.resolveUsing[E](input) _ andThen Alias.unaliasUsing[E](input)
+  def tryResolveAndUnalias[E <: Expression](input: Seq[NamedExpression]): E => E =
+    Expression.tryResolve[E](input) _ andThen Alias.unalias[E](input)
 
   /**
    * Collects all non-window aggregate functions from the given `expressions`.

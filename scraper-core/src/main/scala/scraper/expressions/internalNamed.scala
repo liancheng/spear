@@ -57,7 +57,7 @@ trait InternalAlias extends UnaryExpression with InternalNamedExpression {
 }
 
 object InternalAlias {
-  def unaliasUsing[E <: Expression](
+  def unalias[E <: Expression](
     targets: Seq[NamedExpression], purposes: Purpose*
   )(expression: E): E = {
     val aliases = targets collect {
