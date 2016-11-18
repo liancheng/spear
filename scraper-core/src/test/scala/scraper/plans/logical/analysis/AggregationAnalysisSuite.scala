@@ -19,15 +19,15 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate in SQL") {
-    val `count(t.a)` = AggregationAlias(count(a of 't))
+    val `@A: count(t.a)` = AggregationAlias(count(a of 't))
 
     checkAnalyzedPlan(
       "SELECT count(a) FROM t",
 
       relation
         subquery 't
-        resolvedAgg `count(t.a)`
-        select (`count(t.a)`.attr as "count(a)")
+        resolvedAgg `@A: count(t.a)`
+        select (`@A: count(t.a)`.attr as "count(a)")
     )
   }
 

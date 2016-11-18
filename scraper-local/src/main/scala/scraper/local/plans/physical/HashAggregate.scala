@@ -102,7 +102,7 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
         //   |<- - - - - - - - - - - ->|<- - - - - - - >|
         //   +-------------------------+----------------+
         //   |   target state buffer   |   input row    |
-        //   |     (stateAttributes)   | (child.output) |
+        //   |    (stateAttributes)    | (child.output) |
         //   +-------------------------+----------------+
         //   |<- - - - - - - - - - - - - - - - - - - - >|
         //                    JoinedRow
