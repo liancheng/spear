@@ -155,7 +155,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
     if (isStrictlyTyped) value else throw new TypeCheckException(this)
 
   /**
-   * Returns `value` if this [[Expression]] is weel-typed.
+   * Returns `value` if this [[Expression]] is well-typed.
    *
    * @see [[strictlyTyped]]
    */
