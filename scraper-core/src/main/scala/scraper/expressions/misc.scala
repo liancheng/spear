@@ -6,7 +6,7 @@ import scraper.types._
 
 case class Length(child: Expression) extends UnaryExpression {
   override protected def typeConstraint: TypeConstraint =
-    child subtypeOf (StringType, ArrayType, MapType)
+    child oneOf (StringType, ArrayType, MapType)
 
   override def dataType: DataType = IntType
 

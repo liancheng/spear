@@ -85,7 +85,7 @@ package object expressions {
 
     def subtypeOf(supertype: AbstractDataType): TypeConstraint = Seq(input) sameSubtypeOf supertype
 
-    def subtypeOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
+    def oneOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
       Seq(input) sameSubtypeOf (first, rest: _*)
   }
 
