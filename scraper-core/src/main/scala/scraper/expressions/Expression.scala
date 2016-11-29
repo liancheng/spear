@@ -194,7 +194,8 @@ object Expression {
   /**
    * Resolves this [[Expression]] using a given list of `input` [[NamedExpression]]s.
    *
-   * @throws ResolutionFailureException if not all expressions can be successfully resolved.
+   * @throws scraper.exceptions.ResolutionFailureException if not all expressions can be
+   *         successfully resolved.
    */
   def resolve[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
     resolve(expression, input, errorIfNotFound = true)
