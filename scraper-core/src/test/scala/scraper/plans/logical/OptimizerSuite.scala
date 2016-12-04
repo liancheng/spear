@@ -175,13 +175,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
         relation
           subquery 'x
           join (relation subquery 'y)
-          filter $"x.a" === $"y.a" && $"x.a" > 0 && $"y.b".notNull
+          filter $"x.a" === $"y.a" && $"x.a" > 0 && $"y.b".isNotNull
       ),
       relation
         subquery 'x
         filter (a of 'x) > 0
         join (
-          newRelation subquery 'y filter (newB of 'y).notNull
+          newRelation subquery 'y filter (newB of 'y).isNotNull
         ) on ((a of 'x) === (newA of 'y))
     )
   }

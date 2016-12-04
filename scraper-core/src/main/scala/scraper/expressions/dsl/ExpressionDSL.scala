@@ -17,7 +17,7 @@ trait ExpressionDSL
 
   def isNull: IsNull = IsNull(this)
 
-  def notNull: IsNotNull = IsNotNull(this)
+  def isNotNull: IsNotNull = IsNotNull(this)
 
   def asc: SortOrder = SortOrder(this, Ascending, nullsLarger = true)
 

@@ -108,8 +108,8 @@ object Optimizer {
       case !(a) && b if a same b => False
       case !(a) || b if a same b => True
 
-      case !(IsNull(child))      => IsNotNull(child)
-      case !(IsNotNull(child))   => IsNull(child)
+      case !(IsNull(child))      => child.isNotNull
+      case !(IsNotNull(child))   => child.isNull
     }
   }
 

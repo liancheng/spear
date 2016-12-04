@@ -71,8 +71,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("filter") {
     checkLogicalPlan(
-      table('t) filter 'a > 3 filter 'b.notNull,
-      r1 subquery 't filter 'a > 3 filter 'b.notNull
+      table('t) filter 'a > 3 filter 'b.isNotNull,
+      r1 subquery 't filter 'a > 3 filter 'b.isNotNull
     )
   }
 

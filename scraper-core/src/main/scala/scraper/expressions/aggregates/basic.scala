@@ -65,7 +65,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
     if (child.isNullable && ignoresNullBool) {
       Seq(
         If(!valueSet, coalesce(child, first), first),
-        valueSet || child.notNull
+        valueSet || child.isNotNull
       )
     } else {
       Seq(

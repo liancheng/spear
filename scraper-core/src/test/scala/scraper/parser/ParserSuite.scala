@@ -91,7 +91,7 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("a IS NULL", 'a.isNull)
 
-  testExpressionParsing("a IS NOT NULL", 'a.notNull)
+  testExpressionParsing("a IS NOT NULL", 'a.isNotNull)
 
   testExpressionParsing("a IN (1, 2, 3)", 'a in (1, 2, 3))
 
