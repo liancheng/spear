@@ -57,7 +57,7 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
 
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
-   * time. Foldable expressions can be optimized out when being compiled. For example
+   * (planning) time. Foldable expressions can be optimized out when being compiled. For example
    * {{{
    *   Plus(Literal(1: Int), Literal(1: Int))
    * }}}
@@ -70,9 +70,9 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
   lazy val isFoldable: Boolean = children forall (_.isFoldable)
 
   /**
-   * Whether this [[Expression]] is pure. A pure [[Expression]] is deterministic, and always returns
-   * the same value when given the same input. Typical examples of impure [[Expression]]s include
-   * [[Rand]].
+   * Whether this [[Expression]] is pure. A pure [[Expression]] is deterministic, and always
+   * returns the same value when given the same input. Typical examples of impure [[Expression]]s
+   * include [[Rand]].
    */
   lazy val isPure: Boolean = children forall (_.isPure)
 
@@ -89,6 +89,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    */
   lazy val isResolved: Boolean = children forall (_.isResolved)
 
+  /**
+   * Whether this [[Expression]] is bound. A bound [[Expression]] is [[isResolved resolved]] and
+   * doesn't contain any [[Attribute]]s.
+   */
   lazy val isBound: Boolean = isResolved && children.forall(_.isBound)
 
   /**
