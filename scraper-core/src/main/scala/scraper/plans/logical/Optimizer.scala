@@ -215,7 +215,7 @@ object Optimizer {
    */
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case (join @ Join(left, right, Inner, joinCondition)) Filter filterCondition =>
+      case Join(left, right, Inner, joinCondition) Filter filterCondition =>
         val (leftPredicates, rightPredicates, commonPredicates) =
           partitionByReferencedBranches(splitConjunction(toCNF(filterCondition)), left, right)
 
