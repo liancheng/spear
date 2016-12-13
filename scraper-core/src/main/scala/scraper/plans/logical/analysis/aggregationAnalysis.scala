@@ -140,7 +140,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
   }
 
   private val resolveGenericAggregates: PartialFunction[LogicalPlan, LogicalPlan] = {
-    case agg @ GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
+    case GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
       def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
         if (aliases.nonEmpty) {
           val aliasList = aliases map { alias =>
@@ -256,7 +256,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
 
   private def hasDistinctAggregateFunction(expression: Expression): Boolean =
     eliminateWindowFunctions(expression).collectFirst {
-      case e: DistinctAggregateFunction =>
+      case _: DistinctAggregateFunction =>
     }.nonEmpty
 }
 
