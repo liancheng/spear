@@ -7,40 +7,72 @@ import scraper.annotations.Explain
 import scraper.reflection.constructorParams
 import scraper.types.StructType
 
+/**
+ * Base trait of simple tree structures that supports recursive transformations. Concrete $tree
+ * classes are usually case classes with child $nodes defined as main constructor parameters:
+ * {{{
+ *   case class Tree1(value: String, left: Tree1, right: Tree1) extends TreeNode[Tree1] {
+ *     def children: Seq[Tree1] = left :: right :: Nil
+ *   }
+ *
+ *   case class Tree2(value: Int, children: Seq[Tree2]) extends TreeNode[Tree2]
+ *
+ *   case class Tree3(value: Double, maybeChild: Option[Tree3]) extends TreeNode[Tree3] {
+ *     def children: Seq[Tree3] = maybeChild.toSeq
+ *   }
+ * }}}
+ *
+ * @define tree [[scraper.trees.TreeNode tree]]
+ * @define trees [[scraper.trees.TreeNode trees]]
+ *
+ * @define node [[scraper.trees.TreeNode tree node]]
+ * @define nodes [[scraper.trees.TreeNode tree nodes]]
+ *
+ * @define topDown Traverses this $tree top-down
+ * @define bottomUp Traverses this $tree bottom-up
+ *
+ * @define transform transforms this $tree by applying a partial function that both accepts and
+ *         returns a $tree to $nodes on which this function is defined.
+ * @define transformChildren transforms child $nodes of this $tree by applying a partial function
+ *         that both accepts and returns a $tree to $nodes on which this function is defined.
+ */
 trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
+  /** Returns all child $nodes of this $tree. */
   def children: Seq[Base]
 
-  /**
-   * Returns whether this and `that` [[TreeNode]]s point to the same reference or equal to each
-   * other.
-   */
+  /** Whether this and `that` $tree point to the same reference or equal to each other. */
   def same(that: Base): Boolean = (this eq that) || this == that
 
-  /**
-   * Applies the given `rule` (a partial function) to this [[TreeNode]] in a top-down fashion.
-   */
+  /** $topDown and $transform */
   def transformDown(rule: PartialFunction[Base, Base]): Base = {
-    val selfTransformed = rule applyOrElse (this, identity[Base])
-    selfTransformed transformChildren (rule, _ transformDown _)
+    val newSelf = rule applyOrElse (this, identity[Base])
+    newSelf transformChildren (rule, _ transformDown _)
   }
 
+  /** $bottomUp and $transform */
   def transformUp(rule: PartialFunction[Base, Base]): Base = {
-    val childrenTransformed = this transformChildren (rule, _ transformUp _)
-    rule applyOrElse (childrenTransformed, identity[Base])
+    val newSelf = this transformChildren (rule, _ transformUp _)
+    rule applyOrElse (newSelf, identity[Base])
   }
 
+  /** $topDown and $transformChildren */
   def transformChildrenDown(rule: PartialFunction[Base, Base]): Base =
-    this transformChildren (rule, _ transformDown _)
+    transformChildren(rule, _ transformDown _)
 
+  /** $bottomUp and $transformChildren */
   def transformChildrenUp(rule: PartialFunction[Base, Base]): Base =
-    this transformChildren (rule, _ transformUp _)
+    transformChildren(rule, _ transformUp _)
 
+  /** Returns the depth of this $tree. */
   def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
 
+  /** Returns the number of $nodes in this $tree. */
   def size: Int = 1 + children.map(_.size).sum
 
+  /** Whether this $node is a leaf node. */
   def isLeaf: Boolean = children.isEmpty
 
+  /** Builds a copy of this $node with new child $nodes. */
   def withChildren(newChildren: Seq[Base]): Base = {
     assert(newChildren.length == children.length)
 
@@ -85,6 +117,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     if (changed) makeCopy(newArgs) else this
   }
 
+  /**
+   * Builds a sequence by applying a partial function to all $nodes in this $tree on which the
+   * function is defined.
+   */
   def collect[T](f: PartialFunction[Base, T]): Seq[T] = {
     val buffer = mutable.Buffer.empty[T]
 
@@ -97,6 +133,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     buffer
   }
 
+  /**
+   * Finds the first $node on which the given partial function is defined and applies the partial
+   * function to it.
+   */
   def collectFirst[T](f: PartialFunction[Base, T]): Option[T] = {
     transformDown {
       case node if f.isDefinedAt(node) =>
@@ -126,11 +166,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   override def toString: String = "\n" + prettyTree
 
+  /**
+   * Returns a pretty-printed tree string for this $tree.
+   */
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   /**
-   * Returns a single-line string representation of this [[scraper.trees.TreeNode TreeNode]] when it
-   * is shown as a node in a pretty-printed tree string.
+   * Returns a single-line string representation of this $tree when it is shown as a node in a
+   * pretty-printed tree string.
    *
    * @see [[prettyTree]]
    */
@@ -139,18 +182,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     Seq(nodeName.casePreserving, pairs mkString ", ") filter (_.nonEmpty) mkString " "
   }
 
+  /** Name of this $node. */
   def nodeName: Name = getClass.getSimpleName stripSuffix "$"
-
-  protected def sameChildren(newChildren: Seq[Base]): Boolean =
-    (newChildren, children).zipped forall (_ same _)
 
   protected def makeCopy(args: Seq[AnyRef]): Base = {
     val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
-    try {
-      defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
-    } catch {
+    try defaultConstructor.newInstance(args: _*).asInstanceOf[Base] catch {
       case cause: IllegalArgumentException =>
         throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
     }
@@ -158,14 +197,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   protected def nestedTrees: Seq[TreeNode[_]] = {
     val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
-    productIterator.toSeq zip nestedTreeMarks collect {
-      case (tree: TreeNode[_], showAsNestedTree @ true) => tree
-    }
+    productIterator.toSeq zip nestedTreeMarks collect { case (tree: TreeNode[_], true) => tree }
   }
 
   /**
-   * String pairs representing constructor parameters of this [[scraper.trees.TreeNode TreeNode]].
-   * Parameters annotated with `@Explain(hidden = true)` are not included here.
+   * String pairs representing constructor parameters of this $tree. Parameters annotated with
+   * `Explain(hidden = true)` are not included here.
    */
   protected def explainParams(show: Any => String): Seq[(String, String)] = {
     val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
@@ -188,15 +225,9 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
 
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
-    // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
-    // equivalent to the original one.
-    def applyRule(tree: Base): (Base, Boolean) = {
-      val transformed = next(tree, rule)
-      if (tree same transformed) tree -> false else transformed -> true
-    }
-
-    val (newChildren, childrenChanged) = children.map(applyRule).unzip
-    if (childrenChanged contains true) withChildren(newChildren) else this
+    val newChildren = children map (next(_, rule))
+    val anyChildChanged = (newChildren, children).zipped map (_ same _) contains false
+    if (anyChildChanged) withChildren(newChildren) else this
   }
 
   /**
