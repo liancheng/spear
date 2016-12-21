@@ -11,11 +11,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def children: Seq[Base]
 
   /**
-   * Returns whether this [[nodeCaption]] and `that` point to the same reference or equal
-   * to each other.
+   * Returns whether this and `that` [[TreeNode]]s point to the same reference or equal to each
+   * other.
    */
   def same(that: Base): Boolean = (this eq that) || this == that
 
+  /**
+   * Applies the given `rule` (a partial function) to this [[TreeNode]] in a top-down fashion.
+   */
   def transformDown(rule: PartialFunction[Base, Base]): Base = {
     val selfTransformed = rule applyOrElse (this, identity[Base])
     selfTransformed transformChildren (rule, _ transformDown _)
@@ -126,7 +129,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def prettyTree: String = buildPrettyTree(0, Nil, StringBuilder.newBuilder).toString.trim
 
   /**
-   * Returns a single line string representation of this [[scraper.trees.TreeNode TreeNode]] when it
+   * Returns a single-line string representation of this [[scraper.trees.TreeNode TreeNode]] when it
    * is shown as a node in a pretty-printed tree string.
    *
    * @see [[prettyTree]]
@@ -186,35 +189,14 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
     // Returns the transformed tree and a boolean flag indicating whether the transformed tree is
-    // equivalent to the original one
+    // equivalent to the original one.
     def applyRule(tree: Base): (Base, Boolean) = {
       val transformed = next(tree, rule)
       if (tree same transformed) tree -> false else transformed -> true
     }
 
-    val (newArgs, argsChanged) = productIterator.map {
-      case t: TreeNode[_] if children contains t =>
-        applyRule(t.asInstanceOf[Base])
-
-      case Some(t: TreeNode[_]) if children contains t =>
-        val (ruleApplied, transformed) = applyRule(t.asInstanceOf[Base])
-        Some(ruleApplied) -> transformed
-
-      case arg: Traversable[_] =>
-        val (newElements, elementsChanged) = arg.map {
-          case node: TreeNode[_] if children contains node => applyRule(node.asInstanceOf[Base])
-          case element                                     => element -> false
-        }.unzip
-        newElements -> (elementsChanged exists (_ == true))
-
-      case arg: AnyRef =>
-        arg -> false
-
-      case null =>
-        (null, false)
-    }.toSeq.unzip
-
-    if (argsChanged contains true) makeCopy(newArgs) else this
+    val (newChildren, childrenChanged) = children.map(applyRule).unzip
+    if (childrenChanged contains true) withChildren(newChildren) else this
   }
 
   /**
