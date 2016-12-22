@@ -11,7 +11,7 @@ lazy val `scraper-core` = project
   .enablePlugins(sbtPlugins: _*)
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= typesafeConfig ++ logging ++ scala ++ scopt,
+    libraryDependencies ++= fastparse ++ typesafeConfig ++ logging ++ scala ++ scopt,
     libraryDependencies ++= Dependencies.testing
   )
 
