@@ -76,7 +76,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     val remainingExpressions = mutable.Stack(expressions.indices: _*)
 
     super.explainParams({
-      case e: Expression => s"$$${remainingExpressions.pop()}"
+      case _: Expression => s"$$${remainingExpressions.pop()}"
       case other         => other.toString
     })
   }

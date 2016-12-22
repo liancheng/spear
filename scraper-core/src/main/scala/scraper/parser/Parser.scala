@@ -499,7 +499,7 @@ class Lexical(keywords: Set[String]) extends StdLexical with Tokens {
     | '/' ~ '*' ~ failure("unclosed multi-line comment")
   ).*
 
-  override protected def processIdent(name: String) = {
+  override protected def processIdent(name: String): Token = {
     val lowerCased = name.toLowerCase
     if (reserved contains lowerCased) Keyword(lowerCased) else UnquotedIdentifier(name)
   }

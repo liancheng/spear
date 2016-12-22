@@ -88,7 +88,7 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case plan @ With(child, name, cteRelation) =>
+    case With(child, name, cteRelation) =>
       child transformDown {
         case UnresolvedRelation(`name`) => cteRelation subquery name
       }

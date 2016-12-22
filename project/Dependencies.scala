@@ -72,13 +72,13 @@ object Dependencies {
     "com.lihaoyi" %% "sourcecode" % Versions.sourcecode
   )
 
-  val testing = mockito ++ scalaCheck ++ scalaTest
+  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
 
   val typesafeConfig = Seq(
     "com.typesafe" % "config" % Versions.config
   )
 
-  val logging = log4j ++ slf4j
+  val logging: Seq[ModuleID] = log4j ++ slf4j
 
-  val overrides = (jline ++ protobuf ++ scala ++ sourcecode).toSet
+  val overrides: Set[ModuleID] = (jline ++ protobuf ++ scala ++ sourcecode).toSet
 }
