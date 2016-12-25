@@ -28,28 +28,31 @@ class IdentifierSuite extends LoggingFunSuite {
         fullyParse(Identifier.identifier, input)
       }
 
-      println(cause.getMessage)
+      logInfo(s"Expected parsing failure: ${cause.getMessage}")
     }
   }
 
   val successfulCases = Seq(
+    // Regular identifiers
     "data" -> "data",
     "数据" -> "数据",
 
+    // Delimited identifiers
     "\"data\"" -> "data",
     "\"数据\"" -> "数据",
     "\"double\"\"quote\"" -> "double\"quote",
 
+    // Unicode delimited identifiers
     "U&\"data\"" -> "data",
     "U&\"\\6570\\636e\"" -> "数据",
     "U&\"\\0064\\0061\\0074\\0061\"" -> "data",
+    "U&\"!!\"" -> "!!",
+    "U&\"\\\\\"" -> "\\",
 
+    // Unicode delimited identifiers with unicode escape specifier
     "U&\"d!0061t!+000061\" UESCAPE '!'" -> "data",
     "U&\"!!\" UESCAPE '!'" -> "!",
-    "U&\"\\\\\" UESCAPE '!'" -> "\\\\",
-
-    "U&\"!!\"" -> "!!",
-    "U&\"\\\\\"" -> "\\"
+    "U&\"\\\\\" UESCAPE '!'" -> "\\\\"
   )
 
   successfulCases foreach {
