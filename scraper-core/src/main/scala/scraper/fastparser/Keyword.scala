@@ -30,7 +30,7 @@ object Keyword {
   val TIME: P0 = mkKeyword("TIME")
   val TIMESTAMP: P0 = mkKeyword("TIMESTAMP")
   val TO: P0 = mkKeyword("TO")
-  val UNESCAPE: P0 = mkKeyword("UNESCAPE")
+  val UESCAPE: P0 = mkKeyword("UESCAPE")
   val WHERE: P0 = mkKeyword("WHERE")
   val YEAR: P0 = mkKeyword("YEAR")
 
