@@ -4,17 +4,16 @@ import fastparse.all._
 
 // SQL06 section 5.2
 object Separator {
-  val whitespace: P0 = {
-    val EoF = '\u001a'
-    CharPred { ch => ch <= ' ' && ch != EoF }
-  }
+  private val EoF = '\u001a'
 
-  val separator: P0 = {
-    val comment: P0 = (
-      "--" ~ (!"\n").rep
-      | "/*" ~ (!"*").rep ~ "*/"
-    )
+  val whitespace: P0 =
+    CharPred { ch => ch <= ' ' && ch != EoF } opaque "whitespace"
 
-    comment | whitespace
-  }
+  private val comment: P0 = (
+    "--" ~ (!"\n").rep
+    | "/*" ~ (!"*").rep ~ "*/"
+  ) opaque "comment"
+
+  val separator: P0 =
+    comment | whitespace opaque "separator"
 }

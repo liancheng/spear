@@ -24,33 +24,45 @@ class IdentifierSuite extends LoggingFunSuite {
 
   private def testFailedParse[T](input: String): Unit = {
     test(s"[x] identifier: $input") {
-      intercept[ParseError] {
+      val cause = intercept[ParseError] {
         fullyParse(Identifier.identifier, input)
       }
+
+      println(cause.getMessage)
     }
   }
 
-  Seq(
-    "data" -> Some("data"),
-    "数据" -> Some("数据"),
-    "_data" -> None,
+  val successfulCases = Seq(
+    "data" -> "data",
+    "数据" -> "数据",
 
-    "\"data\"" -> Some("data"),
-    "\"数据\"" -> Some("数据"),
-    "\"double\"\"quote\"" -> Some("double\"quote"),
-    "\"double\\\"quote\"" -> None,
+    "\"data\"" -> "data",
+    "\"数据\"" -> "数据",
+    "\"double\"\"quote\"" -> "double\"quote",
 
-    "U&\"data\"" -> Some("data"),
-    "U&\"d!0061t!+000061\" UESCAPE '!'" -> Some("data"),
-    "U&\"!!\" UESCAPE '!'" -> Some("!"),
-    "U&\"!!\"" -> Some("!!"),
-    "U&\"\\\\\"" -> Some("\\"),
-    "U&\"\\\\\" UESCAPE '!'" -> Some("\\\\"),
-    "U&\"\\0064\\0061\\0074\\0061\"" -> Some("data"),
-    "U&\"!\" UESCAPE '!'" -> None,
-    "U&\"\\\"" -> None
-  ) foreach {
-    case (input, Some(expected)) => testSuccessfulParse(input, expected)
-    case (input, None)           => testFailedParse(input)
+    "U&\"data\"" -> "data",
+    "U&\"\\6570\\636e\"" -> "数据",
+    "U&\"\\0064\\0061\\0074\\0061\"" -> "data",
+
+    "U&\"d!0061t!+000061\" UESCAPE '!'" -> "data",
+    "U&\"!!\" UESCAPE '!'" -> "!",
+    "U&\"\\\\\" UESCAPE '!'" -> "\\\\",
+
+    "U&\"!!\"" -> "!!",
+    "U&\"\\\\\"" -> "\\"
+  )
+
+  successfulCases foreach {
+    case (input, expected) =>
+      testSuccessfulParse(input, expected)
   }
+
+  val failedCases = Seq(
+    "_data",
+    "\"double\\\"quote\"",
+    "U&\"!\" UESCAPE '!'",
+    "U&\"\\\""
+  )
+
+  failedCases foreach testFailedParse
 }

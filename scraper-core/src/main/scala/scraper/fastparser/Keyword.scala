@@ -9,7 +9,7 @@ object Keyword {
   private val reservedWords: mutable.ArrayBuffer[P0] = mutable.ArrayBuffer.empty[P0]
 
   private def mkKeyword(literal: String): P0 = {
-    val parser = IgnoreCase(literal)
+    val parser = IgnoreCase(literal) opaque literal.toUpperCase
     reservedWords += parser
     parser
   }
@@ -34,5 +34,6 @@ object Keyword {
   val WHERE: P0 = mkKeyword("WHERE")
   val YEAR: P0 = mkKeyword("YEAR")
 
-  val keyword: P0 = reservedWords.reduce(_ | _)
+  val keyword: P0 =
+    reservedWords reduce (_ | _) opaque "keyword"
 }

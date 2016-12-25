@@ -8,8 +8,8 @@ package object fastparser {
 
   val WhitespaceApi: Wrapper = Wrapper(Separator.separator.rep)
 
-  implicit class CaptureSingleChar(parser: P0) {
+  implicit class ExtendedDSL[+T](parser: P[T]) {
     /** Captures the 1st character of the text parsed by `parser` as a `Char`. */
-    def c1: P[Char] = parser.! map (_.head)
+    def char: P[Char] = parser.! map (_.head)
   }
 }

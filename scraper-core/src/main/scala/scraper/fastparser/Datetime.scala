@@ -7,40 +7,62 @@ object Datetime {
   import Keyword._
   import Numeric._
   import Symbol._
+  import WhitespaceApi._
 
-  private val datetimeValue: P0 = unsignedInteger
+  private val datetimeValue: P0 =
+    unsignedInteger opaque "datetime-value"
 
-  val yearsValue: P0 = datetimeValue
+  val yearsValue: P0 =
+    datetimeValue opaque "years-value"
 
-  val monthsValue: P0 = datetimeValue
+  val monthsValue: P0 =
+    datetimeValue opaque "months-value"
 
-  val daysValue: P0 = datetimeValue
+  val daysValue: P0 =
+    datetimeValue opaque "days-value"
 
-  private val unquotedDateString: P0 = yearsValue ~ "-" ~ monthsValue ~ "-" ~ daysValue
+  private val unquotedDateString: P0 =
+    yearsValue ~~ "-" ~~ monthsValue ~~ "-" ~~ daysValue opaque "unquoted-date-string"
 
-  val hoursValue: P0 = datetimeValue
+  val hoursValue: P0 =
+    datetimeValue opaque "hours-value"
 
-  val minutesValue: P0 = datetimeValue
+  val minutesValue: P0 =
+    datetimeValue opaque "minutes-value"
 
-  val secondsValue: P0 = datetimeValue
+  val secondsValue: P0 =
+    datetimeValue opaque "seconds-value"
 
-  private val unquotedTimeString: P0 = {
-    val timeValue: P0 = hoursValue ~ ":" ~ minutesValue ~ ":" ~ secondsValue
-    val timeZoneInterval: P0 = sign ~ hoursValue ~ ":" ~ minutesValue
-    timeValue ~ timeZoneInterval.?
-  }
+  private val timeValue: P0 =
+    hoursValue ~~ ":" ~~ minutesValue ~~ ":" ~~ secondsValue opaque "time-value"
 
-  val datetimeLiteral: P0 = {
-    val dateString: P0 = `'` ~ unquotedDateString ~ `'`
-    val dateLiteral: P0 = DATE ~ dateString
+  private val timezoneInterval: P0 =
+    sign ~~ hoursValue ~~ ":" ~~ minutesValue opaque "timezone-interval"
 
-    val timeString: P0 = `'` ~ unquotedTimeString ~ `'`
-    val timeLiteral: P0 = TIME ~ timeString
+  private val unquotedTimeString: P0 =
+    timeValue ~~ timezoneInterval.? opaque "unquoted-time-string"
 
-    val unquotedTimestampString: P0 = unquotedDateString ~ " " ~ unquotedTimeString
-    val timestampString: P0 = `'` ~ unquotedTimestampString ~ `'`
-    val timestampLiteral: P0 = TIMESTAMP ~ timestampString
+  private val dateString: P0 =
+    `'` ~~ unquotedDateString ~~ `'` opaque "date-string"
 
-    dateLiteral | timeLiteral | timestampLiteral
-  }
+  private val dateLiteral: P0 =
+    DATE ~ dateString opaque "date-literal"
+
+  private val timeString: P0 =
+    `'` ~~ unquotedTimeString ~~ `'` opaque "time-string"
+
+  private val timeLiteral: P0 =
+    TIME ~ timeString opaque "time-literal"
+
+  private val unquotedTimestampString: P0 =
+    unquotedDateString ~~ " " ~~ unquotedTimeString opaque "unquoted-timestamp-string"
+
+  private val timestampString: P0 =
+    `'` ~~ unquotedTimestampString ~~ `'` opaque "timestamp-string"
+
+  private val timestampLiteral: P0 =
+    TIMESTAMP ~ timestampString opaque "timestamp-literal"
+
+  val datetimeLiteral: P0 =
+    dateLiteral | timeLiteral | timestampLiteral opaque "datetime-literal"
 }
