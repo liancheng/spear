@@ -3,7 +3,7 @@ package scraper.fastparser
 import fastparse.all._
 
 // SQL06 section 5.2
-object Separator {
+object SeparatorParser {
   private val EoF = '\u001a'
 
   val whitespace: P0 =

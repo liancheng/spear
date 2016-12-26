@@ -3,7 +3,7 @@ package scraper.fastparser
 import fastparse.all._
 import fastparse.core.Logger
 
-import scraper.LoggingFunSuite
+import scraper._
 
 class IdentifierSuite extends LoggingFunSuite {
   import WhitespaceApi._
@@ -17,7 +17,7 @@ class IdentifierSuite extends LoggingFunSuite {
   private def testSuccessfulParse[T](input: String, expected: T): Unit = {
     test(s"[o] identifier: $input") {
       assertResult(expected) {
-        fullyParse(Identifier.identifier, input)
+        fullyParse(IdentifierParser.identifier, input)
       }
     }
   }
@@ -25,17 +25,17 @@ class IdentifierSuite extends LoggingFunSuite {
   private def testFailedParse[T](input: String): Unit = {
     test(s"[x] identifier: $input") {
       val cause = intercept[ParseError] {
-        fullyParse(Identifier.identifier, input)
+        fullyParse(IdentifierParser.identifier, input)
       }
 
       logInfo(s"Expected parsing failure: ${cause.getMessage}")
     }
   }
 
-  val successfulCases = Seq(
+  val successfulCases: Seq[(String, Name)] = Seq(
     // Regular identifiers
-    "data" -> "data",
-    "数据" -> "数据",
+    "data" -> i"data",
+    "数据" -> i"数据",
 
     // Delimited identifiers
     "\"data\"" -> "data",
