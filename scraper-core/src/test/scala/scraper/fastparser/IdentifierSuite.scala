@@ -8,7 +8,7 @@ import scraper._
 class IdentifierSuite extends LoggingFunSuite {
   import WhitespaceApi._
 
-  private implicit val parsingLogger = Logger(println)
+  private implicit val parsingLogger = Logger(logInfo(_))
 
   private def fullyParse[T](parser: P[T], input: String) = {
     (Start ~~ parser ~~ End parse input).get.value

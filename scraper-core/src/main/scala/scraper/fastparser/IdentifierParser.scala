@@ -6,7 +6,7 @@ import fastparse.all._
 
 import scraper.Name
 
-// SQL06 section 5.2 and 5.4
+// SQL06 section 5.4
 object IdentifierParser {
   import KeywordParser._
   import SymbolParser._
@@ -50,7 +50,7 @@ object IdentifierParser {
     identifierStart ~~ identifierPart.repX opaque "identifier-body"
 
   // SQL06 section 5.2
-  val regularIdentifier: P[Name] =
+  lazy val regularIdentifier: P[Name] =
     identifierBody.! map Name.caseInsensitive opaque "regular-identifier"
 
   private val delimitedIdentifierPart: P[Char] =
@@ -60,7 +60,7 @@ object IdentifierParser {
     delimitedIdentifierPart.repX map (_.mkString) opaque "delimited-identifier-body"
 
   // SQL06 section 5.2
-  val delimitedIdentifier: P[Name] =
+  lazy val delimitedIdentifier: P[Name] =
     `"` ~~ delimitedIdentifierBody ~~ `"` map Name.caseSensitive opaque "delimited-identifier"
 
   private val hexit: P0 =
@@ -75,7 +75,7 @@ object IdentifierParser {
   private val unicodeEscapeCharacter: P0 =
     !(hexit | "+" | `'` | `"` | whitespace) ~~ AnyChar opaque "unicode-escape-character"
 
-  val unicodeEscapeSpecifier: P[Char] = (
+  lazy val unicodeEscapeSpecifier: P[Char] = (
     (UESCAPE ~ (`'` ~~ unicodeEscapeCharacter.char ~~ `'`)).?
     map (_ getOrElse '\\')
     opaque "unicode-escape-specifier"
@@ -104,40 +104,61 @@ object IdentifierParser {
       unicodeCharacterEscapeValue
       | unicode6DigitEscapeValue
       | unicode4DigitEscapeValue
-    ) opaque "unicode-escape-value"
+      opaque "unicode-escape-value"
+    )
 
     val unicodeDelimiterBody = (
       unicodeEscapeValue | delimitedIdentifierPart
       repX 1
       map (_.mkString)
-    ) opaque "unicode-delimiter-body"
+      opaque "unicode-delimiter-body"
+    )
 
     unicodeDelimiterBody.parse(body).get.value
   }
 
-  // SQL06 section 5.2
-  val unicodeDelimitedIdentifier: P[Name] =
-    ("U&" ~~ `"`).~/ ~~ unicodeDelimiterBody ~~ `"` ~ unicodeEscapeSpecifier map {
-      case (body, uescape) =>
-        parseUnicodeRepresentations(body, uescape)
-    } map Name.caseSensitive opaque "unicode-delimited-identifier"
+  private val unicodeDelimitedIdentifier: P[Name] = (
+    ("U&" ~~ `"`).~/ ~~ unicodeDelimiterBody ~~ `"` ~ unicodeEscapeSpecifier
+    map (parseUnicodeRepresentations _).tupled
+    map Name.caseSensitive
+    opaque "unicode-delimited-identifier"
+  )
 
   private val actualIdentifier: P[Name] = (
     unicodeDelimitedIdentifier
     | regularIdentifier
     | delimitedIdentifier
-  ) opaque "actual-identifier"
+    opaque "actual-identifier"
+  )
 
   // SQL06 section 5.4
-  val identifier: P[Name] =
+  lazy val identifier: P[Name] =
     !keyword ~~ actualIdentifier opaque "identifier"
 
-  // SQL06 section 5.4
-  val columnName: P[Name] =
-    identifier opaque "column-name"
-
-  val qualifiedIdentifier: P[Name] =
+  // SQL06 section 5.2
+  lazy val qualifiedIdentifier: P[Name] =
     identifier opaque "qualified-identifier"
+}
+
+// SQL06 section 5.4
+object IdentifierChainParser {
+  import IdentifierParser._
+  import WhitespaceApi._
+
+  private val identifierChain: P[Seq[Name]] =
+    identifier rep (min = 1, sep = ".") opaque "identifier-chain"
+
+  lazy val basicIdentifierChain: P[Seq[Name]] =
+    identifierChain opaque "basic-identifier-chain"
+}
+
+// SQL06 section 5.4
+object NameParser {
+  import IdentifierParser._
+  import WhitespaceApi._
+
+  lazy val columnName: P[Name] =
+    identifier opaque "column-name"
 
   private val catalogName: P[Name] =
     identifier opaque "catalog-name"
@@ -147,22 +168,25 @@ object IdentifierParser {
 
   case class SchemaName(schema: Name, catalog: Option[Name])
 
-  private val schemaName: P[SchemaName] =
-    (catalogName ~ ".").? ~ unqualifiedSchemaName map {
-      case (catalog, schema) => SchemaName(schema, catalog)
-    } opaque "schema-name"
+  private val schemaName: P[SchemaName] = (
+    (catalogName ~ ".").? ~ unqualifiedSchemaName
+    map { _.swap }
+    map SchemaName.tupled
+    opaque "schema-name"
+  )
 
   private val localOrSchemaQualifier: P[SchemaName] =
     schemaName opaque "local-or-schema-qualifier"
 
   case class TableName(table: Name, schema: Option[SchemaName])
 
-  private val localOrSchemaQualifiedName: P[TableName] =
-    (localOrSchemaQualifier ~ ".").? ~ qualifiedIdentifier map {
-      case (schema, table) => TableName(table, schema)
-    } opaque "local-or-schema-qualified-name"
+  private val localOrSchemaQualifiedName: P[TableName] = (
+    (localOrSchemaQualifier ~ ".").? ~ qualifiedIdentifier
+    map { _.swap }
+    map TableName.tupled
+    opaque "local-or-schema-qualified-name"
+  )
 
-  // SQL06 section 5.4
-  val tableName: P[TableName] =
+  lazy val tableName: P[TableName] =
     localOrSchemaQualifiedName opaque "table-name"
 }

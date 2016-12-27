@@ -24,6 +24,7 @@ object KeywordParser {
   val FALSE: P0 = mkKeyword("FALSE")
   val FROM: P0 = mkKeyword("FROM")
   val GROUP: P0 = mkKeyword("GROUP")
+  val HAVING: P0 = mkKeyword("HAVING")
   val HOUR: P0 = mkKeyword("HOUR")
   val INTERVAL: P0 = mkKeyword("INTERVAL")
   val IS: P0 = mkKeyword("IS")
@@ -43,6 +44,5 @@ object KeywordParser {
   val WHERE: P0 = mkKeyword("WHERE")
   val YEAR: P0 = mkKeyword("YEAR")
 
-  val keyword: P0 =
-    reservedWords reduce (_ | _) opaque "keyword"
+  val keyword: P0 = reservedWords reduce (_ | _) opaque "keyword"
 }

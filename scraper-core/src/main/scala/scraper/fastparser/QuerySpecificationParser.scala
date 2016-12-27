@@ -3,83 +3,147 @@ package scraper.fastparser
 import fastparse.all._
 
 import scraper.Name
+import scraper.expressions.{AutoAlias, Expression, NamedExpression, Star}
+import scraper.plans.logical._
 
-object QuerySpecificationParser {
-  import IdentifierParser._
-  import KeywordParser._
-  import SymbolParser._
-  import ValueExpression._
+// SQL06 section 7.6
+object TableReferenceParser {
+  import NameParser._
   import WhitespaceApi._
 
-  val setQuantifier: P0 =
-    DISTINCT | ALL opaque "set-quantifier"
+  private val tableOrQueryName: P[TableName] =
+    tableName opaque "table-or-query-name"
 
-  val asClause: P0 =
-    AS ~ columnName.X opaque "as-clause"
-
-  val derivedColumn: P0 =
-    valueExpression ~ asClause.? opaque "derived-column"
-
-  val asteriskedIdentifier: P0 =
-    identifier.X opaque "asterisked-identifier"
-
-  val asteriskedIdentifierChain: P0 =
-    asteriskedIdentifier rep (min = 1, sep = ".") opaque "asterisked-identifier-chain"
-
-  // SQL06 section 6.3
-  val valueExpressionPrimary: P0 =
-    ???
-
-  val columnNameList: P[Seq[Name]] =
-    columnName rep (min = 1, sep = ",") opaque "column-name-list"
-
-  val allFieldsColumnNameList: P[Seq[Name]] =
-    columnNameList opaque "all-fields-column-name-list"
-
-  val allFieldsReference: P0 = (
-    valueExpressionPrimary ~ "." ~ `*`
-    ~ (AS ~ "(" ~ allFieldsColumnNameList.X ~ ")").?
-  ) opaque "all-fields-reference"
-
-  val qualifiedAsterisk: P0 =
-    asteriskedIdentifierChain ~ "." ~ `*` | allFieldsReference opaque "qualified-asterisk"
-
-  val selectSublist: P0 =
-    derivedColumn | qualifiedAsterisk opaque "select-sublist"
-
-  val selectList: P0 =
-    `*` | selectSublist rep (min = 1, sep = ",") opaque "select-list"
-
-  val tableOrQueryName: P0 =
-    tableName.X opaque "table-or-query-name"
-
-  val tablePrimary: P0 =
+  private val tablePrimary: P[TableName] =
     tableOrQueryName opaque "table-primary"
 
-  val tableFactor: P0 =
+  private val tableFactor: P[TableName] =
     tablePrimary opaque "table-factor"
 
-  // SQL06 section 7.6
-  val tableReference: P0 =
-    tableFactor opaque "table-reference"
+  lazy val tableReference: P[LogicalPlan] =
+    tableFactor map { _.table } map table opaque "table-reference"
+}
 
-  val tableReferenceList: P0 =
-    tableReference rep (min = 1, sep = ",") opaque "table-reference-list"
+// SQL06 section 7.9
+object GroupByClauseParser {
+  import ColumnReferenceParser._
+  import KeywordParser._
+  import ValueExpressionParser._
+  import WhitespaceApi._
 
-  // SQL06 section 7.5
-  val fromClause: P0 =
+  private val groupingColumnReference: P[Expression] =
+    columnReference | valueExpression opaque "grouping-column-reference"
+
+  private val groupingColumnReferenceList: P[Seq[Expression]] =
+    groupingColumnReference rep (min = 1, sep = ",") opaque "grouping-column-reference-list"
+
+  private val ordinaryGroupingSet: P[Seq[Expression]] = (
+    groupingColumnReference.map { _ :: Nil }
+    | "(" ~ groupingColumnReferenceList ~ ")"
+    opaque "ordinary-grouping-set"
+  )
+
+  private val groupingElement: P[Seq[Expression]] =
+    ordinaryGroupingSet opaque "grouping-element"
+
+  private val groupingElementList: P[Seq[Expression]] = (
+    groupingElement
+    rep (min = 1, sep = ",")
+    map { _.flatten }
+    opaque "grouping-element-list"
+  )
+
+  lazy val groupByClause: P[Seq[Expression]] =
+    GROUP ~ BY ~ groupingElementList opaque "group-by-clause"
+}
+
+// SQL06 section 7.12
+object QuerySpecificationParser {
+  import AggregateFunctionParser._
+  import BooleanValueExpressionParser._
+  import GroupByClauseParser._
+  import IdentifierParser._
+  import KeywordParser._
+  import NameParser._
+  import SymbolParser._
+  import TableReferenceParser._
+  import ValueExpressionParser._
+  import WhitespaceApi._
+
+  private val asClause: P[Name] =
+    AS.? ~ columnName opaque "as-clause"
+
+  private val derivedColumn: P[NamedExpression] = (
+    (valueExpression ~ asClause).map { case (e, a) => e as a }
+    | valueExpression.map { AutoAlias.named }
+    opaque "derived-column"
+  )
+
+  private val asteriskedIdentifier: P[Name] =
+    identifier opaque "asterisked-identifier"
+
+  private val asteriskedIdentifierChain: P[Seq[Name]] =
+    asteriskedIdentifier rep (min = 1, sep = ".") opaque "asterisked-identifier-chain"
+
+  private val qualifiedAsterisk: P[Seq[Name]] =
+    asteriskedIdentifierChain ~ "." ~ `*` opaque "qualified-asterisk"
+
+  private val selectSublist: P[NamedExpression] = (
+    qualifiedAsterisk.map { case Seq(qualifier) => Star(Some(qualifier)) }
+    | derivedColumn
+    opaque "select-sublist"
+  )
+
+  private val selectList: P[Seq[NamedExpression]] = (
+    `*`.!.map { _ => Star(None) :: Nil }
+    | selectSublist.rep(min = 1, sep = ",")
+    opaque "select-list"
+  )
+
+  private val tableReferenceList: P[LogicalPlan] = (
+    tableReference
+    rep (min = 1, sep = ",")
+    map { _ reduce (_ join _) }
+    opaque "table-reference-list"
+  )
+
+  private val fromClause: P[LogicalPlan] =
     FROM ~ tableReferenceList opaque "from-clause"
 
-  val whereClause: P0 =
-    ???
+  private val searchCondition: P[Expression] =
+    booleanValueExpression opaque "search-condition"
 
-  // SQL06 section 7.4
-  val tableExpression: P0 = (
-    fromClause
-    ~ whereClause.?
-  ) opaque "table-expression"
+  private val whereClause: P[LogicalPlan => LogicalPlan] = (
+    (WHERE ~ searchCondition)
+    map { cond => (_: LogicalPlan) filter cond }
+    opaque "where-clause"
+  )
 
-  // SQL06 section 7.12
-  val querySpecification: P0 =
-    SELECT ~ setQuantifier.? ~ selectList ~ tableExpression opaque "query-specification"
+  private val havingClause: P[LogicalPlan => LogicalPlan] = (
+    (HAVING ~ searchCondition)
+    map { cond => (_: LogicalPlan) filter cond }
+    opaque "having-clause"
+  )
+
+  private val id: LogicalPlan => LogicalPlan = identity[LogicalPlan]
+
+  lazy val querySpecification: P[LogicalPlan] = (
+    SELECT
+    ~ setQuantifier.?.map { _ getOrElse id }
+    ~ selectList
+    ~ fromClause.?.map { _ getOrElse SingleRowRelation }
+    ~ whereClause.?.map { _ getOrElse id }
+    ~ groupByClause.?
+    ~ havingClause.?.map { _ getOrElse id } map {
+      case (quantify, projectList, relation, filter, maybeGroups, having) =>
+        val projectOrAgg = maybeGroups map { groups =>
+          (_: LogicalPlan) groupBy groups agg projectList
+        } getOrElse {
+          (_: LogicalPlan) select projectList
+        }
+
+        filter andThen projectOrAgg andThen quantify andThen having apply relation
+    }
+    opaque "query-specification"
+  )
 }

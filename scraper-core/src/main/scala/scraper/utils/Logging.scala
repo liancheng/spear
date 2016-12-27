@@ -1,9 +1,9 @@
 package scraper.utils
 
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 trait Logging {
-  protected val logger = LoggerFactory.getLogger(getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(getClass)
 
   protected def logTrace(message: => String): Unit = {
     if (logger.isTraceEnabled) {
