@@ -80,12 +80,6 @@ abstract class TokenParser[T] extends StdTokenParsers {
 }
 
 class Parser extends TokenParser[LogicalPlan] {
-  def parseAttribute(input: String): NamedExpression =
-    phrase(attribute | star)(new lexical.Scanner(input)) match {
-      case Success(a, _)  => a
-      case failureOrError => throw new ParsingException(failureOrError.toString)
-    }
-
   override protected def start: Parser[LogicalPlan] =
     query
 

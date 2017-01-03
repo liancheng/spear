@@ -3,7 +3,7 @@ package scraper
 import scala.language.implicitConversions
 
 import scraper.expressions.typecheck._
-import scraper.parser.Parser
+import scraper.fastparser.{ColumnReferenceParser, QuerySpecificationParser}
 import scraper.types._
 
 package object expressions {
@@ -40,7 +40,17 @@ package object expressions {
     UnresolvedAttribute(name)
 
   implicit class ParsedUnresolvedAttribute(sc: StringContext) {
-    def $(args: Any*): NamedExpression = new Parser parseAttribute sc.s(args: _*)
+    import fastparse.all._
+    import ColumnReferenceParser._
+    import QuerySpecificationParser._
+
+    private val parser: P[NamedExpression] = (
+      asterisk
+      | qualifiedAsterisk
+      | columnReference
+    )
+
+    def $(args: Any*): NamedExpression = (parser parse sc.s(args: _*)).get.value
   }
 
   private[scraper] implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {

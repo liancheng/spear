@@ -104,17 +104,22 @@ object QuerySpecificationParser {
   private val asteriskedIdentifierChain: P[Seq[Name]] =
     asteriskedIdentifier rep (min = 1, sep = ".") opaque "asterisked-identifier-chain"
 
-  private val qualifiedAsterisk: P[Seq[Name]] =
-    asteriskedIdentifierChain ~ "." ~ `*` opaque "qualified-asterisk"
+  val qualifiedAsterisk: P[NamedExpression] = (
+    asteriskedIdentifierChain ~ "." ~ `*`
+    map { case Seq(qualifier) => Star(Some(qualifier)) }
+    opaque "qualified-asterisk"
+  )
 
   private val selectSublist: P[NamedExpression] = (
-    qualifiedAsterisk.map { case Seq(qualifier) => Star(Some(qualifier)) }
+    qualifiedAsterisk
     | derivedColumn
     opaque "select-sublist"
   )
 
+  val asterisk: P[Star] = `*` attach Star(None)
+
   private val selectList: P[Seq[NamedExpression]] = (
-    (`*` attach Star(None) :: Nil)
+    asterisk.map { _ :: Nil }
     | selectSublist.rep(min = 1, sep = ",")
     opaque "select-list"
   )
