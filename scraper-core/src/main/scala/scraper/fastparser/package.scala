@@ -14,5 +14,19 @@ package object fastparser {
 
     /** Drops the semantic value of `parser` and convert `parser` to a `P0`. */
     def drop: P0 = parser map (_ => ())
+
+    def chain[U >: T](sep: => P[(U, U) => U]): P[U] = {
+      import WhitespaceApi._
+
+      parser ~ (sep ~ parser).rep map {
+        case (first, list) =>
+          list.foldLeft(first: U) {
+            case (lhs, (op, rhs)) =>
+              op(lhs, rhs)
+          }
+      }
+    }
+
+    def attach[U](value: => U): P[U] = parser map { _ => value }
   }
 }

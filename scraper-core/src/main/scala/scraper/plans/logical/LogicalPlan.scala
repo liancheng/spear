@@ -125,6 +125,9 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
   override lazy val output: Seq[Attribute] = projectList map (_.attr)
 }
 
+case class Rename(child: LogicalPlan, aliases: Seq[Name])
+  extends UnaryLogicalPlan with UnresolvedLogicalPlan
+
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 }
@@ -326,7 +329,8 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
 case class With(
   child: LogicalPlan,
   name: Name,
-  @Explain(hidden = true, nestedTree = true) cteRelation: LogicalPlan
+  @Explain(hidden = true, nestedTree = true) query: LogicalPlan,
+  aliases: Option[Seq[Name]]
 ) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }
@@ -382,6 +386,8 @@ object LogicalPlan {
     def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
+
+    def rename(aliases: Seq[Name]): Rename = Rename(plan, aliases)
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 

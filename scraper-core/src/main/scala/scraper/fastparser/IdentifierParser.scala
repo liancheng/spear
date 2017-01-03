@@ -50,7 +50,7 @@ object IdentifierParser {
     identifierStart ~~ identifierPart.repX opaque "identifier-body"
 
   // SQL06 section 5.2
-  lazy val regularIdentifier: P[Name] =
+  val regularIdentifier: P[Name] =
     identifierBody.! map Name.caseInsensitive opaque "regular-identifier"
 
   private val delimitedIdentifierPart: P[Char] =
@@ -60,7 +60,7 @@ object IdentifierParser {
     delimitedIdentifierPart.repX map (_.mkString) opaque "delimited-identifier-body"
 
   // SQL06 section 5.2
-  lazy val delimitedIdentifier: P[Name] =
+  val delimitedIdentifier: P[Name] =
     `"` ~~ delimitedIdentifierBody ~~ `"` map Name.caseSensitive opaque "delimited-identifier"
 
   private val hexit: P0 =
@@ -75,7 +75,7 @@ object IdentifierParser {
   private val unicodeEscapeCharacter: P0 =
     !(hexit | "+" | `'` | `"` | whitespace) ~~ AnyChar opaque "unicode-escape-character"
 
-  lazy val unicodeEscapeSpecifier: P[Char] = (
+  val unicodeEscapeSpecifier: P[Char] = (
     (UESCAPE ~ (`'` ~~ unicodeEscapeCharacter.char ~~ `'`)).?
     map (_ getOrElse '\\')
     opaque "unicode-escape-specifier"
@@ -132,11 +132,11 @@ object IdentifierParser {
   )
 
   // SQL06 section 5.4
-  lazy val identifier: P[Name] =
+  val identifier: P[Name] =
     !keyword ~~ actualIdentifier opaque "identifier"
 
   // SQL06 section 5.2
-  lazy val qualifiedIdentifier: P[Name] =
+  val qualifiedIdentifier: P[Name] =
     identifier opaque "qualified-identifier"
 }
 
@@ -148,7 +148,7 @@ object IdentifierChainParser {
   private val identifierChain: P[Seq[Name]] =
     identifier rep (min = 1, sep = ".") opaque "identifier-chain"
 
-  lazy val basicIdentifierChain: P[Seq[Name]] =
+  val basicIdentifierChain: P[Seq[Name]] =
     identifierChain opaque "basic-identifier-chain"
 }
 
@@ -157,7 +157,7 @@ object NameParser {
   import IdentifierParser._
   import WhitespaceApi._
 
-  lazy val columnName: P[Name] =
+  val columnName: P[Name] =
     identifier opaque "column-name"
 
   private val catalogName: P[Name] =
@@ -187,6 +187,15 @@ object NameParser {
     opaque "local-or-schema-qualified-name"
   )
 
-  lazy val tableName: P[TableName] =
+  val tableName: P[TableName] =
     localOrSchemaQualifiedName opaque "table-name"
+
+  val queryName: P[Name] =
+    identifier opaque "query-name"
+
+  val fieldName: P[Name] =
+    identifier opaque "field-name"
+
+  val functionName: P[Name] =
+    identifier opaque "function-name"
 }

@@ -17,6 +17,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
+      new Rename(catalog),
       new ResolveSortReferences(catalog),
       new DeduplicateReferences(catalog),
 
@@ -88,9 +89,10 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case With(child, name, cteRelation) =>
+    case With(child, name, query, aliases) =>
       child transformDown {
-        case UnresolvedRelation(`name`) => cteRelation subquery name
+        case UnresolvedRelation(`name`) =>
+          (aliases fold query) { query.rename } subquery name
       }
   }
 }
@@ -101,6 +103,13 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
 class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
+  }
+}
+
+class Rename(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case Resolved(child) Rename aliases =>
+      child select (child.output, aliases).zipped.map { _ as _ }
   }
 }
 

@@ -150,78 +150,8 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   }
 
   testQueryParsing(
-    "SELECT 1",
-    values(1)
-  )
-
-  testQueryParsing(
-    "SELECT 1 AS a FROM t0",
-    table('t0) select (1 as 'a)
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0",
-    table('t0) select *
-  )
-
-  testQueryParsing(
-    "SELECT a.* FROM t0 a",
-    table('t0) subquery 'a select $"a.*"
-  )
-
-  testQueryParsing(
-    "SELECT a FROM t0 WHERE a > 10",
-    table('t0) filter 'a > 10 select 'a
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a",
-    table('t0) select * orderBy 'a.asc
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a ASC",
-    table('t0) select * orderBy 'a.asc
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a ASC NULLS FIRST",
-    table('t0) select * orderBy 'a.asc.nullsFirst
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a ASC NULLS LAST",
-    table('t0) select * orderBy 'a.asc.nullsLast
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a DESC",
-    table('t0) select * orderBy 'a.desc
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a DESC NULLS FIRST",
-    table('t0) select * orderBy 'a.desc.nullsFirst
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 ORDER BY a DESC NULLS LAST",
-    table('t0) select * orderBy 'a.desc.nullsLast
-  )
-
-  testQueryParsing(
-    "SELECT DISTINCT a FROM t0 WHERE a > 10",
-    (table('t0) filter 'a > 10 select 'a).distinct
-  )
-
-  testQueryParsing(
     "SELECT * FROM t0 LIMIT 1",
     table('t0) select * limit 1
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0, t1",
-    table('t0) join table("t1") select *
   )
 
   testQueryParsing(
@@ -269,46 +199,6 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
     table('t0) join table("t1") on $"t0.a" === $"t1.a" select *
   )
 
-  testQueryParsing(
-    "SELECT 1 AS a UNION ALL SELECT 2 AS a",
-    values(1 as 'a) union values(2 as 'a)
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 INTERSECT SELECT * FROM t1",
-    table('t0) select * intersect (table('t1) select *)
-  )
-
-  testQueryParsing(
-    "SELECT * FROM t0 EXCEPT SELECT * FROM t1",
-    table('t0) select * except (table('t1) select *)
-  )
-
-  testQueryParsing(
-    "SELECT COUNT(a) FROM t0",
-    table('t0) select 'COUNT('a)
-  )
-
-  testQueryParsing(
-    "SELECT COUNT(a) FROM t0 GROUP BY b",
-    table('t0) groupBy 'b agg 'COUNT('a)
-  )
-
-  testQueryParsing(
-    "SELECT COUNT(a) FROM t0 GROUP BY b HAVING COUNT(b) > 0",
-    table('t0) groupBy 'b agg 'COUNT('a) filter 'COUNT('b) > 0
-  )
-
-  testQueryParsing(
-    "SELECT COUNT(a) FROM t0 GROUP BY b ORDER BY COUNT(b) ASC NULLS FIRST",
-    table('t0) groupBy 'b agg 'COUNT('a) orderBy 'COUNT('b).asc.nullsFirst
-  )
-
-  testQueryParsing(
-    "SELECT COUNT(DISTINCT a) FROM t0",
-    table('t0) select 'COUNT('a).distinct
-  )
-
   test("DISTINCT can't be used with star") {
     intercept[ParsingException] {
       parse("SELECT COUNT(DISTINCT *) FROM t0")
@@ -323,47 +213,6 @@ class ParserSuite extends LoggingFunSuite with TestUtils {
   testQueryParsing(
     "SELECT a.* FROM t0 a JOIN t1 b",
     table('t0) subquery 'a join (table("t1") subquery 'b) select $"a.*"
-  )
-
-  testQueryParsing(
-    "SELECT t.a FROM (SELECT * FROM t0) t",
-    table('t0) select * subquery 't select $"t.a"
-  )
-
-  testQueryParsing(
-    "WITH c0 AS (SELECT 1) SELECT * FROM c0",
-    let('c0, values(1)) {
-      table('c0) select *
-    }
-  )
-
-  testQueryParsing(
-    "WITH c0 AS (SELECT 1), c1 AS (SELECT 2) SELECT * FROM c0 UNION ALL SELECT * FROM c1",
-    let('c1, values(2)) {
-      let('c0, values(1)) {
-        table('c0) select * union (table('c1) select *)
-      }
-    }
-  )
-
-  testQueryParsing(
-    "SELECT 1 // comment",
-    values(1)
-  )
-
-  testQueryParsing(
-    "SELECT 1 -- comment",
-    values(1)
-  )
-
-  testQueryParsing(
-    "SELECT 1 # comment",
-    values(1)
-  )
-
-  testQueryParsing(
-    "SELECT 1 /* comment */",
-    values(1)
   )
 
   test("unclosed single-quoted string literal") {

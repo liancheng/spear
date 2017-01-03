@@ -155,7 +155,7 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def namedQuery: Parser[LogicalPlan => LogicalPlan] =
     identifier ~ (AS.? ~ "(" ~> queryNoWith <~ ")") ^^ {
-      case n ~ q => With(_: LogicalPlan, n, q)
+      case n ~ q => With(_: LogicalPlan, n, q, None)
     }
 
   def identifier: Parser[Name] = quotedIdent | unquotedIdent

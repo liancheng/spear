@@ -27,11 +27,11 @@ class ExpandStars(val catalog: Catalog) extends AnalysisRule {
   }
 
   private def expand(maybeQualifier: Option[Name], input: Seq[Attribute]): Seq[Attribute] =
-    maybeQualifier map { qualifier =>
+    maybeQualifier.fold(input) { qualifier =>
       input collect {
         case ref: AttributeRef if ref.qualifier contains qualifier => ref
       }
-    } getOrElse input
+    }
 }
 
 /**

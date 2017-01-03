@@ -16,6 +16,19 @@ class CTEAnalysisSuite extends AnalyzerTest {
     )
   }
 
+  test("CTE with aliases") {
+    checkAnalyzedPlan(
+      let('s, relation0 subquery 't, Seq('x, 'y)) {
+        table('s) select *
+      },
+      relation0
+        subquery 't
+        select (a of 't as 'x, b of 't as 'y)
+        subquery 's
+        select (x of 's, y of 's)
+    )
+  }
+
   test("CTE in SQL") {
     checkAnalyzedPlan(
       "WITH s AS (SELECT a FROM t) SELECT * FROM s",
@@ -69,6 +82,8 @@ class CTEAnalysisSuite extends AnalyzerTest {
   override protected def beforeAll(): Unit = catalog.registerRelation('t, relation0)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
+
+  private val (x, y) = ('x.int.!, 'y.string.?)
 
   private val relation0 = LocalRelation.empty(a, b)
 

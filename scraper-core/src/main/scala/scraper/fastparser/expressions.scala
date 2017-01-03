@@ -48,7 +48,7 @@ object NumericParser {
   import WhitespaceApi._
 
   val sign: P[Int] =
-    P("+").map { _ => 1 } | P("-").map { _ => -1 } opaque "sign"
+    (P("+") attach 1) | (P("-") attach -1) opaque "sign"
 
   val maybeSign: P[Int] =
     sign.? map { _ getOrElse 1 } opaque "maybe-sign"
@@ -60,8 +60,8 @@ object NumericParser {
     digit rep 1 opaque "unsigned-integer"
 
   private val exactNumeric: P[BigDecimal] = (
-    unsignedInteger ~ ("." ~ unsignedInteger.?).?
-    | "." ~ unsignedInteger
+    unsignedInteger ~~ ("." ~~ unsignedInteger.?).?
+    | "." ~~ unsignedInteger
   ).! map { BigDecimal(_) } opaque "exact-numeric"
 
   private val mantissa: P0 =
@@ -244,11 +244,8 @@ object LiteralParser {
   import StringParser._
   import WhitespaceApi._
 
-  val booleanLiteral: P[Literal] = (
-    TRUE.map { _ => True }
-    | FALSE.map { _ => False }
-    opaque "boolean-literal"
-  )
+  val booleanLiteral: P[Literal] =
+    (TRUE attach True) | (FALSE attach False) opaque "boolean-literal"
 
   private val generalLiteral: P[Literal] = (
     characterStringLiteral
@@ -280,13 +277,13 @@ object ValueExpressionPrimaryParser {
   private val parenthesizedValueExpressionPrimary: P[Expression] =
     "(" ~ valueExpression ~ ")" opaque "parenthesized-value-expression-primary"
 
-  lazy val nonparenthesizedValueExpressionPrimary: P[Expression] = (
+  val nonparenthesizedValueExpressionPrimary: P[Expression] = (
     unsignedValueSpecification
     | columnReference
     opaque "nonparenthesized-value-expression-primary"
   )
 
-  lazy val valueExpressionPrimary: P[Expression] = (
+  val valueExpressionPrimary: P[Expression] = (
     parenthesizedValueExpressionPrimary
     | nonparenthesizedValueExpressionPrimary
     opaque "value-expression-primary"
@@ -298,7 +295,7 @@ object ValueSpecificationParser {
   import LiteralParser._
   import WhitespaceApi._
 
-  lazy val unsignedValueSpecification: P[Literal] =
+  val unsignedValueSpecification: P[Literal] =
     unsignedLiteral opaque "unsigned-value-specification"
 }
 
@@ -307,7 +304,7 @@ object ColumnReferenceParser {
   import IdentifierChainParser._
   import scraper.expressions._
 
-  lazy val columnReference: P[Attribute] =
+  val columnReference: P[Attribute] =
     basicIdentifierChain map {
       case Seq(qualifier, column) => column of qualifier
       case Seq(column)            => column: Attribute
@@ -317,15 +314,27 @@ object ColumnReferenceParser {
 // SQL06 section 6.25
 object ValueExpressionParser {
   import BooleanValueExpressionParser._
+  import KeywordParser._
+  import NameParser._
   import NumericValueExpressionParser._
   import WhitespaceApi._
 
-  lazy val commonValueExpression: P[Expression] =
-    numericValueExpression opaque "common-value-expression"
+  private val functionCall: P[UnresolvedFunction] = (
+    functionName ~ "(" ~ DISTINCT.!.? ~ P(valueExpression).rep(sep = ",") ~ ")"
+    map { case (name, isDistinct, args) => (name, args, isDistinct.isDefined) }
+    map UnresolvedFunction.tupled
+    opaque "function-call"
+  )
+
+  val commonValueExpression: P[Expression] = (
+    P(functionCall)
+    | P(numericValueExpression)
+    opaque "common-value-expression"
+  )
 
   lazy val valueExpression: P[Expression] = (
-    booleanValueExpression
-    | commonValueExpression
+    P(commonValueExpression)
+    | P(booleanValueExpression)
     opaque "value-expression"
   )
 }
@@ -340,25 +349,23 @@ object NumericValueExpressionParser {
     valueExpressionPrimary opaque "numeric-primary"
 
   private val factor: P[Expression] = (
-    (maybeSign map Literal.apply) ~ numericPrimary
-    map { _.swap }
-    map Multiply.tupled
+    maybeSign.map {
+      case 1 => identity[Expression] _
+      case 0 => Negate
+    } ~ numericPrimary
+    map { case (f, n) => f apply n }
     opaque "factor"
   )
 
-  private val term: P[Expression] = (
-    factor
-    | (term ~ "*" ~ factor map Multiply.tupled)
-    | (term ~ "/" ~ factor map Divide.tupled)
-    opaque "term"
-  )
+  private val term: P[Expression] = {
+    val operator = (P("*") attach Multiply) | (P("/") attach Divide)
+    factor chain operator opaque "term"
+  }
 
-  lazy val numericValueExpression: P[Expression] = P(
-    term
-      | (numericValueExpression ~ "+" ~ term map Plus.tupled)
-      | (numericValueExpression ~ "-" ~ term map Minus.tupled)
-      opaque "numeric-value-expression"
-  )
+  val numericValueExpression: P[Expression] = {
+    val operator = (P("+") attach Plus) | (P("-") attach Minus)
+    term chain operator opaque "numeric-value-expression"
+  }
 }
 
 // SQL06 section 6.34
@@ -370,11 +377,11 @@ object BooleanValueExpressionParser {
   import WhitespaceApi._
 
   private val parenthesizedBooleanValueExpression: P[Expression] = (
-    "(" ~ booleanValueExpression ~ ")"
+    "(" ~ P(booleanValueExpression) ~ ")"
     opaque "parenthesized-boolean-value-expression"
   )
 
-  lazy val booleanPredicand: P[Expression] = (
+  val booleanPredicand: P[Expression] = (
     parenthesizedBooleanValueExpression
     | nonparenthesizedValueExpressionPrimary
     opaque "boolean-predicand"
@@ -409,17 +416,11 @@ object BooleanValueExpressionParser {
     opaque "boolean-factor"
   )
 
-  private val booleanTerm: P[Expression] = (
-    booleanFactor
-    | (booleanTerm ~ AND ~ booleanFactor map And.tupled)
-    opaque "boolean-term"
-  )
+  private val booleanTerm: P[Expression] =
+    booleanFactor chain (AND attach And) opaque "boolean-term"
 
-  lazy val booleanValueExpression: P[Expression] = P(
-    booleanTerm
-      | (booleanValueExpression ~ OR ~ booleanTerm map Or.tupled)
-      opaque "boolean-value-expression"
-  )
+  lazy val booleanValueExpression: P[Expression] =
+    booleanTerm chain (OR attach Or) opaque "boolean-value-expression"
 }
 
 // SQL06 section 7.1
@@ -428,7 +429,7 @@ object RowValueConstructorParser {
   import ValueExpressionParser._
   import WhitespaceApi._
 
-  lazy val rowValueConstructorPredicand: P[Expression] = (
+  val rowValueConstructorPredicand: P[Expression] = (
     commonValueExpression
     | booleanPredicand
     opaque "row-value-constructor-predicand"
@@ -444,9 +445,9 @@ object RowValueExpressionParser {
   private val rowValueSpecialCase: P[Expression] =
     nonparenthesizedValueExpressionPrimary opaque "row-value-special-case"
 
-  lazy val rowValuePredicand: P[Expression] = (
-    rowValueSpecialCase
-    | rowValueConstructorPredicand
+  val rowValuePredicand: P[Expression] = (
+    rowValueConstructorPredicand
+    | rowValueSpecialCase
     opaque "row-value-predicand"
   )
 }
@@ -456,7 +457,7 @@ object PredicateParser {
   import RowValueExpressionParser._
   import WhitespaceApi._
 
-  lazy val comparisonPredicate: P[Expression] = (
+  val comparisonPredicate: P[Expression] = (
     (rowValuePredicand ~ "=" ~ rowValuePredicand map Eq.tupled)
     | (rowValuePredicand ~ "<>" ~ rowValuePredicand map NotEq.tupled)
     | (rowValuePredicand ~ "<" ~ rowValuePredicand map Lt.tupled)
@@ -466,7 +467,7 @@ object PredicateParser {
     opaque "comparison-predicate"
   )
 
-  lazy val predicate: P[Expression] =
+  val predicate: P[Expression] =
     comparisonPredicate opaque "predicate"
 }
 
@@ -475,9 +476,9 @@ object AggregateFunctionParser {
   import KeywordParser._
   import WhitespaceApi._
 
-  lazy val setQuantifier: P[LogicalPlan => LogicalPlan] = (
-    ALL.map { _ => identity[LogicalPlan] _ }
-    | DISTINCT.map { _ => (_: LogicalPlan).distinct }
+  val setQuantifier: P[LogicalPlan => LogicalPlan] = (
+    (ALL attach identity[LogicalPlan] _)
+    | DISTINCT.attach { (_: LogicalPlan).distinct }
     opaque "setQuantifier"
   )
 }
