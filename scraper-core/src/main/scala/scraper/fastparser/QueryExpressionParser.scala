@@ -3,12 +3,13 @@ package scraper.fastparser
 import fastparse.all._
 
 import scraper.Name
-import scraper.expressions.{AutoAlias, Expression, NamedExpression, SortOrder, Star}
+import scraper.expressions._
 import scraper.plans.logical._
 
 // SQL06 section 7.6
-object TableReferenceParser {
+object TableReferenceParser extends LoggingParser {
   import IdentifierParser._
+  import JoinedTableParser._
   import KeywordParser._
   import NameParser._
   import SubqueryParser._
@@ -33,18 +34,59 @@ object TableReferenceParser {
     opaque "table-primary"
   )
 
-  private val tableFactor: P[LogicalPlan] =
+  val tableFactor: P[LogicalPlan] =
     tablePrimary opaque "table-factor"
 
   val columnNameList: P[Seq[Name]] =
     columnName rep (min = 1, sep = ",") opaque "column-name-list"
 
   val tableReference: P[LogicalPlan] =
-    tableFactor opaque "table-reference"
+    joinedTable | tableFactor opaque "table-reference"
+}
+
+// SQL06 section 7.7
+object JoinedTableParser extends LoggingParser {
+  import KeywordParser._
+  import SearchConditionParser._
+  import TableReferenceParser._
+  import WhitespaceApi._
+
+  private val outerJoinType: P[JoinType] = (
+    (LEFT attach LeftOuter)
+    | (RIGHT attach RightOuter)
+    | (FULL attach FullOuter)
+  ) ~ OUTER.? opaque "outer-join-type"
+
+  private val joinType: P[JoinType] =
+    (INNER attach Inner) | outerJoinType opaque "joinType"
+
+  private val joinCondition: P[Expression] =
+    ON ~ searchCondition opaque "join-condition"
+
+  private val joinSpecification: P[Expression] =
+    joinCondition opaque "join-specification"
+
+  private val qualifiedJoin: P[LogicalPlan] = (
+    (P(tableFactor) | P(tableReference))
+    ~ joinType.? ~ JOIN
+    ~ P(tableReference)
+    ~ joinSpecification.? map {
+      case (lhs, maybeType, rhs, maybeCondition) =>
+        Join(lhs, rhs, maybeType getOrElse Inner, maybeCondition)
+    } opaque "qualified-join"
+  )
+
+  private val crossJoin: P[LogicalPlan] =
+    (P(tableFactor) | P(tableReference)) ~ CROSS ~ JOIN ~ tableFactor map {
+      case (lhs, rhs) => Join(lhs, rhs, Inner, None)
+    } opaque "cross-join"
+
+  val joinedTable: P[LogicalPlan] =
+    crossJoin | qualifiedJoin opaque "joined-table"
 }
 
 // SQL06 section 7.9
-object GroupByClauseParser {
+object GroupByClauseParser extends LoggingParser {
   import ColumnReferenceParser._
   import KeywordParser._
   import ValueExpressionParser._
@@ -77,14 +119,13 @@ object GroupByClauseParser {
 }
 
 // SQL06 section 7.12
-object QuerySpecificationParser {
+object QuerySpecificationParser extends LoggingParser {
   import AggregateFunctionParser._
-  import BooleanValueExpressionParser._
   import GroupByClauseParser._
   import IdentifierParser._
   import KeywordParser._
   import NameParser._
-  import SymbolParser._
+  import SearchConditionParser._
   import TableReferenceParser._
   import ValueExpressionParser._
   import WhitespaceApi._
@@ -105,8 +146,8 @@ object QuerySpecificationParser {
     asteriskedIdentifier rep (min = 1, sep = ".") opaque "asterisked-identifier-chain"
 
   val qualifiedAsterisk: P[NamedExpression] = (
-    asteriskedIdentifierChain ~ "." ~ `*`
-    map { case Seq(qualifier) => Star(Some(qualifier)) }
+    asteriskedIdentifierChain ~ "." ~ "*"
+    map { case Seq(qualifier) => * of qualifier }
     opaque "qualified-asterisk"
   )
 
@@ -116,10 +157,8 @@ object QuerySpecificationParser {
     opaque "select-sublist"
   )
 
-  val asterisk: P[Star] = `*` attach Star(None)
-
   private val selectList: P[Seq[NamedExpression]] = (
-    asterisk.map { _ :: Nil }
+    (P("*") attach * :: Nil)
     | selectSublist.rep(min = 1, sep = ",")
     opaque "select-list"
   )
@@ -127,15 +166,12 @@ object QuerySpecificationParser {
   private val tableReferenceList: P[LogicalPlan] = (
     tableReference
     rep (min = 1, sep = ",")
-    map { _ reduce (_ join _) }
+    map { _ reduce { _ join _ } }
     opaque "table-reference-list"
   )
 
   private val fromClause: P[LogicalPlan] =
     FROM ~ tableReferenceList opaque "from-clause"
-
-  private val searchCondition: P[Expression] =
-    booleanValueExpression opaque "search-condition"
 
   private val whereClause: P[LogicalPlan => LogicalPlan] = (
     WHERE ~ searchCondition
@@ -144,7 +180,7 @@ object QuerySpecificationParser {
   )
 
   private val havingClause: P[LogicalPlan => LogicalPlan] = (
-    HAVING ~ searchCondition
+    HAVING.log() ~ searchCondition.log()
     map { cond => (_: LogicalPlan) filter cond }
     opaque "having-clause"
   )
@@ -176,20 +212,20 @@ object QuerySpecificationParser {
     sortSpecification rep (min = 1, sep = ",") opaque "sort-specification-list"
 
   private val orderByClause: P[LogicalPlan => LogicalPlan] = (
-    ORDER ~ BY
-    ~ sortSpecificationList map { sortOrders => (_: LogicalPlan) orderBy sortOrders }
+    ORDER ~ BY ~ sortSpecificationList
+    map { sortOrders => (_: LogicalPlan) orderBy sortOrders }
     opaque "order-by-clause"
   )
 
   val querySpecification: P[LogicalPlan] = (
-    SELECT
-    ~ setQuantifier.?.map { _ getOrElse identity[LogicalPlan] _ }
-    ~ selectList
-    ~ fromClause.?.map { _ getOrElse SingleRowRelation }
-    ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }
-    ~ groupByClause.?
-    ~ havingClause.?.map { _ getOrElse identity[LogicalPlan] _ }
-    ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
+    SELECT.log()
+    ~ setQuantifier.?.map { _ getOrElse identity[LogicalPlan] _ }.log()
+    ~ selectList.log()
+    ~ fromClause.?.map { _ getOrElse SingleRowRelation }.log()
+    ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }.log()
+    ~ groupByClause.?.log()
+    ~ havingClause.log().?.map { _ getOrElse identity[LogicalPlan] _ }.log()
+    ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ }.log() map {
       case (quantify, projectList, relation, filter, maybeGroups, having, orderBy) =>
         val projectOrAgg = maybeGroups map { groups =>
           (_: LogicalPlan) groupBy groups agg projectList
@@ -204,9 +240,10 @@ object QuerySpecificationParser {
 }
 
 // SQL06 section 7.13
-object QueryExpressionParser {
+object QueryExpressionParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
+  import NumericParser._
   import QuerySpecificationParser._
   import TableReferenceParser._
   import WhitespaceApi._
@@ -230,31 +267,39 @@ object QueryExpressionParser {
     WITH ~ withList opaque "with-clause"
 
   private val simpleTable: P[LogicalPlan] =
-    querySpecification opaque "query-specification"
+    querySpecification.log() opaque "query-specification"
 
   private val queryPrimary: P[LogicalPlan] = (
     "(" ~ P(queryExpressionBody) ~ ")"
-    | simpleTable
+    | simpleTable.log()
     opaque "query-primary"
   )
 
   private val queryTerm: P[LogicalPlan] =
-    queryPrimary chain (INTERSECT attach Intersect) opaque "query-term"
+    queryPrimary.log() chain (INTERSECT attach Intersect) opaque "query-term"
 
   private lazy val queryExpressionBody: P[LogicalPlan] =
-    queryTerm chain (
+    queryTerm.log() chain (
       (UNION ~ ALL.? attach Union) | (EXCEPT attach Except)
-    ).~/ opaque "query-expression-body"
+    ) opaque "query-expression-body"
+
+  private val limitClause: P[LogicalPlan => LogicalPlan] = (
+    LIMIT ~ unsignedInteger filter { _.isValidInt }
+    map { n => (_: LogicalPlan) limit n.toInt }
+    opaque "limit-clause"
+  )
 
   lazy val queryExpression: P[LogicalPlan] = (
-    withClause.?.map { _ getOrElse identity[LogicalPlan] _ }
-    ~ queryExpressionBody map { case (f, query) => f apply query }
+    withClause.?.map { _ getOrElse identity[LogicalPlan] _ }.log()
+    ~ queryExpressionBody.log()
+    ~ limitClause.?.map { _ getOrElse identity[LogicalPlan] _ }.log()
+    map { case (cte, query, limit) => limit andThen cte apply query }
     opaque "query-expression"
   )
 }
 
 // SQL06 section 7.15
-object SubqueryParser {
+object SubqueryParser extends LoggingParser {
   import QueryExpressionParser._
 
   private val subquery: P[LogicalPlan] = "(" ~ P(queryExpression) ~ ")" opaque "subquery"

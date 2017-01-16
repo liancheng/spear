@@ -1,6 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
+import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
@@ -27,6 +28,28 @@ class CTEAnalysisSuite extends AnalyzerTest {
         subquery 's
         select (x of 's, y of 's)
     )
+  }
+
+  test("CTE with fewer aliases") {
+    checkAnalyzedPlan(
+      let('s, relation0 select *, Seq('x)) {
+        table('s)
+      },
+      relation0
+        select (a, b)
+        select (a as 'x, b)
+        subquery 's
+    )
+  }
+
+  test("CTE with excessive aliases") {
+    intercept[AnalysisException] {
+      analyze {
+        let('s, relation0 select *, Seq('x, 'y, 'z)) {
+          table('s)
+        }
+      }
+    }
   }
 
   test("CTE in SQL") {

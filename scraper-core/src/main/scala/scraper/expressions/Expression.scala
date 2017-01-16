@@ -127,7 +127,10 @@ trait Expression extends TreeNode[Expression] with ExpressionDSL {
    *
    * @see [[typeConstraint]]
    */
-  lazy val strictlyTyped: Try[Expression] = typeConstraint.enforced map withChildren
+  lazy val strictlyTyped: Try[Expression] = typeConstraint.enforced map { newChildren =>
+    val changed = (newChildren, children).zipped forall (_ same _)
+    if (changed) this else withChildren(newChildren)
+  }
 
   /**
    * Indicates whether this [[Expression]] is strictly-typed.

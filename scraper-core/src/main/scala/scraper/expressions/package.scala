@@ -3,13 +3,11 @@ package scraper
 import scala.language.implicitConversions
 
 import scraper.expressions.typecheck._
-import scraper.fastparser.{ColumnReferenceParser, QuerySpecificationParser}
+import scraper.fastparser._
 import scraper.types._
 
 package object expressions {
-  object *
-
-  implicit def `*->Star`(s: *.type): Star = Star(None)
+  val * : Star = Star(None)
 
   implicit def `Expression->SortOrder`(e: Expression): SortOrder = e.asc
 
@@ -45,7 +43,7 @@ package object expressions {
     import QuerySpecificationParser._
 
     private val parser: P[NamedExpression] = (
-      asterisk
+      (P("*") attach *)
       | qualifiedAsterisk
       | columnReference
     )

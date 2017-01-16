@@ -9,7 +9,6 @@ import scraper.Name
 // SQL06 section 5.4
 object IdentifierParser {
   import KeywordParser._
-  import SymbolParser._
   import SeparatorParser.whitespace
   import WhitespaceApi._
 
@@ -54,14 +53,17 @@ object IdentifierParser {
     identifierBody.! map Name.caseInsensitive opaque "regular-identifier"
 
   private val delimitedIdentifierPart: P[Char] =
-    (`""` | (!`"` ~~ AnyChar)).char opaque "delimiter-identifier-part"
+    ("\"\"" | (!"\"" ~~ AnyChar)).char opaque "delimiter-identifier-part"
 
   private val delimitedIdentifierBody: P[String] =
     delimitedIdentifierPart.repX map (_.mkString) opaque "delimited-identifier-body"
 
   // SQL06 section 5.2
-  val delimitedIdentifier: P[Name] =
-    `"` ~~ delimitedIdentifierBody ~~ `"` map Name.caseSensitive opaque "delimited-identifier"
+  val delimitedIdentifier: P[Name] = (
+    "\"" ~~ delimitedIdentifierBody ~~ "\""
+    map Name.caseSensitive
+    opaque "delimited-identifier"
+  )
 
   private val hexit: P0 =
     CharIn('A' to 'F', 'a' to 'f', '0' to '9') opaque "hexit"
@@ -73,10 +75,10 @@ object IdentifierParser {
     unicodeIdentifierPart repX 1 map (_.mkString) opaque "unicode-delimiter-body"
 
   private val unicodeEscapeCharacter: P0 =
-    !(hexit | "+" | `'` | `"` | whitespace) ~~ AnyChar opaque "unicode-escape-character"
+    !(hexit | "+" | "'" | "\"" | whitespace) ~~ AnyChar opaque "unicode-escape-character"
 
   val unicodeEscapeSpecifier: P[Char] = (
-    (UESCAPE ~ (`'` ~~ unicodeEscapeCharacter.char ~~ `'`)).?
+    (UESCAPE ~ ("'" ~~ unicodeEscapeCharacter.char ~~ "'")).?
     map (_ getOrElse '\\')
     opaque "unicode-escape-specifier"
   )
@@ -118,7 +120,7 @@ object IdentifierParser {
   }
 
   private val unicodeDelimitedIdentifier: P[Name] = (
-    ("U&" ~~ `"`).~/ ~~ unicodeDelimiterBody ~~ `"` ~ unicodeEscapeSpecifier
+    ("U&" ~~ "\"").~/ ~~ unicodeDelimiterBody ~~ "\"" ~ unicodeEscapeSpecifier
     map (parseUnicodeRepresentations _).tupled
     map Name.caseSensitive
     opaque "unicode-delimited-identifier"

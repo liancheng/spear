@@ -58,9 +58,9 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
 
     function[Concat](i"concat"),
 
-    function[CreateNamedStruct](i"named_struct"),
-    function[CreateArray](i"array"),
-    function[CreateMap](i"map")
+    function[MakeNamedStruct](i"named_struct"),
+    function[MakeArray](i"array"),
+    function[MakeMap](i"map")
   ) foreach registerFunction
 
   private def function[T <: Expression: ClassTag](name: Name): FunctionInfo = {

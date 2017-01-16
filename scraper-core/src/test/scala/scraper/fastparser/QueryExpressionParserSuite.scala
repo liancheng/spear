@@ -4,6 +4,7 @@ import fastparse.core.Logger
 
 import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions._
+import scraper.fastparser.QueryExpressionParser.queryExpression
 import scraper.plans.logical._
 
 class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
@@ -144,12 +145,67 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
   )
 
   testQueryParsing(
+    "SELECT * FROM t0 JOIN t1",
+    table('t0) join table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 INNER JOIN t1",
+    table('t0) join table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 LEFT JOIN t1",
+    table('t0) leftJoin table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 LEFT OUTER JOIN t1",
+    table('t0) leftJoin table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 RIGHT OUTER JOIN t1",
+    table('t0) rightJoin table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 FULL JOIN t1",
+    table('t0) outerJoin table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 FULL OUTER JOIN t1",
+    table('t0) outerJoin table("t1") select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 INNER JOIN t1 ON t0.a = t1.a",
+    table('t0) join table("t1") on $"t0.a" === $"t1.a" select *
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 a JOIN t1 b",
+    table('t0) subquery 'a join (table("t1") subquery 'b) select *
+  )
+
+  testQueryParsing(
+    "SELECT a.* FROM t0 a JOIN t1 b",
+    table('t0) subquery 'a join (table("t1") subquery 'b) select $"a.*"
+  )
+
+  testQueryParsing(
     "WITH c0 AS (SELECT 1), c1 AS (SELECT 2) SELECT * FROM c0 UNION ALL SELECT * FROM c1",
     let('c1, values(2)) {
       let('c0, values(1)) {
         table('c0) select * union (table('c1) select *)
       }
     }
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 LIMIT 1",
+    table('t0) select * limit 1
   )
 
   testQueryParsing(
@@ -170,6 +226,6 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   private def parse(input: String): LogicalPlan = {
     implicit val parserLogger = Logger(logInfo(_))
-    (Start ~ QueryExpressionParser.queryExpression.log() ~ End parse input.trim).get.value
+    (Start ~ queryExpression.log() ~ End parse input.trim).get.value
   }
 }

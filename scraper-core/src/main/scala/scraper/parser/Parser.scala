@@ -302,7 +302,7 @@ class Parser extends TokenParser[LogicalPlan] {
     conjunction * (OR ^^^ Or)
 
   private def conjunction: Parser[Expression] =
-    (comparison | termExpression) * (AND ^^^ And)
+    comparison * (AND ^^^ And)
 
   private def comparison: Parser[Expression] = (
     termExpression ~ ("=" ~> termExpression) ^^ { case e1 ~ e2 => e1 === e2 }
@@ -316,6 +316,7 @@ class Parser extends TokenParser[LogicalPlan] {
     | termExpression <~ IS ~ NOT ~ NULL ^^ IsNotNull
     | termExpression ~ (IN ~> termExpressionList) ^^ { case e ~ es => e in es }
     | termExpression ~ (RLIKE ~> termExpression) ^^ { case e1 ~ e2 => e1 rlike e2 }
+    | termExpression
   )
 
   private def termExpressionList: Parser[Seq[Expression]] =
@@ -384,7 +385,6 @@ class Parser extends TokenParser[LogicalPlan] {
 
   private def joinType: Parser[JoinType] = (
     INNER ^^^ Inner
-    | LEFT ~ SEMI ^^^ LeftSemi
     | LEFT ~ OUTER.? ^^^ LeftOuter
     | RIGHT ~ OUTER.? ^^^ RightOuter
     | FULL ~ OUTER.? ^^^ FullOuter

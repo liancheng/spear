@@ -82,7 +82,7 @@ class TypeCastException(message: String, cause: Throwable)
 class ImplicitCastException(message: String, cause: Throwable)
   extends TypeCastException(message, cause) {
 
-  def this(from: Expression, to: DataType, cause: Throwable) = this({
+  def this(from: Expression, to: DataType, cause: Throwable = null) = this({
     s"""Cannot convert expression ${from.sqlLike} of data type ${from.dataType.sql} to ${to.sql}
        |implicitly.
        |""".oneLine

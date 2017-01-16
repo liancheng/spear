@@ -125,7 +125,55 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
   override lazy val output: Seq[Attribute] = projectList map (_.attr)
 }
 
-case class Rename(child: LogicalPlan, aliases: Seq[Name])
+/**
+ * An unresolved logical plan that helps resolve [[With]] operators. It renames output columns of a
+ * given `child` plan to the give list of `aliases`. If the number of output columns of the child
+ * plan is less than the length of `aliases`, the rest of the output columns are left untouched.
+ *
+ * For example, assuming relation `t` has 3 columns, `a`, `b`, and `c`, then the following query
+ * plan:
+ * {{{
+ *   With name=s, aliases=Some([x, y])
+ *    | +- Project projectList=[*]
+ *    |     +- UnresolvedRelation name=t
+ *    +- Project projectList=[x + y]
+ *        +- UnresolvedRelation name=s
+ * }}}
+ * which is equivalent to SQL query:
+ * {{{
+ *   WITH s (x, y) AS (SELECT * FROM t)
+ *   SELECT x + y, c FROM s
+ * }}}
+ * will be transformed into:
+ * {{{
+ *   Project projectList=[x + y, c]
+ *    +- Subquery alias=s
+ *        +- Rename subqueryName=s, aliases=[x, y]    (1)
+ *            +- Project projectList=[*]              (2)
+ *                +- UnresolvedRelation name=t
+ * }}}
+ * and may be further analyzed into (roughly):
+ * {{{
+ *   Project projectList=[s.x + s.y, s.c] => [x + y, c]
+ *    +- Subquery alias=s => [s.x, s.y, s.c]
+ *        +- Project projectList=[t.a AS x, t.b AS y, t.c]
+ *            +- Project projectList=[t.a, t.b, t.c] => [t.a, t.b, t.c]
+ *                +- Subquery alias=t => [t.a, t.b, t.c]
+ *                    +- LocalRelation => [a, b, c]
+ * }}}
+ * Note that we are not able to construct a proper [[Project]] operator to replace the [[Rename]] at
+ * (1) since the number of output columns of the [[Project]] at (2) is unknown.
+ *
+ * @param child The child plan.
+ * @param subqueryName The name of the child plan in a given CTE declaration. This field is only
+ *        used for error reporting.
+ * @param aliases New column names to apply. Its length should be less than or equal to the number
+ *        of output columns of `child`.
+ *
+ * @see [[With]]
+ * @see [[scraper.plans.logical.analysis.RewriteRenamesToProjects RewriteRenamesToProjects]]
+ */
+case class Rename(child: LogicalPlan, subqueryName: Name, aliases: Seq[Name])
   extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
 case class Filter(child: LogicalPlan, condition: Expression) extends UnaryLogicalPlan {
@@ -221,10 +269,6 @@ case object Inner extends JoinType {
   override def sql: String = "INNER"
 }
 
-case object LeftSemi extends JoinType {
-  override def sql: String = "LEFT SEMI"
-}
-
 case object LeftOuter extends JoinType {
   override def sql: String = "LEFT OUTER"
 }
@@ -244,7 +288,6 @@ case class Join(
   condition: Option[Expression]
 ) extends BinaryLogicalPlan {
   override lazy val output: Seq[Attribute] = joinType match {
-    case LeftSemi   => left.output
     case Inner      => left.output ++ right.output
     case LeftOuter  => left.output ++ right.output.map(_.?)
     case RightOuter => left.output.map(_.?) ++ right.output
@@ -318,12 +361,12 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalP
  * is translated into a query plan like this:
  * {{{
  *   With name=s1
- *    | +- Relation x
+ *    | +- UnresolvedRelation name=x
  *    +- With name=s0
- *        | +- Relation y
+ *        | +- UnresolvedRelation name=y
  *        +- Join
- *            +- Relation s0
- *            +- Relation s1
+ *            +- UnresolvedRelation name=s0
+ *            +- UnresolvedRelation name=s1
  * }}}
  */
 case class With(
@@ -387,7 +430,7 @@ object LogicalPlan {
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
-    def rename(aliases: Seq[Name]): Rename = Rename(plan, aliases)
+    def rename(subqueryName: Name, aliases: Seq[Name]): Rename = Rename(plan, subqueryName, aliases)
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
@@ -417,8 +460,6 @@ object LogicalPlan {
     def join(that: LogicalPlan, joinType: JoinType): Join = Join(plan, that, joinType, None)
 
     def join(that: LogicalPlan): Join = Join(plan, that, Inner, None)
-
-    def leftSemiJoin(that: LogicalPlan): Join = Join(plan, that, LeftSemi, None)
 
     def leftJoin(that: LogicalPlan): Join = Join(plan, that, LeftOuter, None)
 

@@ -15,12 +15,12 @@ package object fastparser {
     /** Drops the semantic value of `parser` and convert `parser` to a `P0`. */
     def drop: P0 = parser map (_ => ())
 
-    def chain[U >: T](sep: => P[(U, U) => U]): P[U] = {
+    def chain[U >: T](sep: => P[(U, U) => U], min: Int = 0): P[U] = {
       import WhitespaceApi._
 
-      parser ~ (sep ~ parser).rep map {
-        case (first, list) =>
-          list.foldLeft(first: U) {
+      parser ~ (sep ~ parser).rep(min = min) map {
+        case (head, tail) =>
+          tail.foldLeft(head: U) {
             case (lhs, (op, rhs)) =>
               op(lhs, rhs)
           }
