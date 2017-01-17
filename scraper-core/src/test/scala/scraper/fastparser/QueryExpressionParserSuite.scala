@@ -204,6 +204,11 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
   )
 
   testQueryParsing(
+    "SELECT * FROM (SELECT 1 FROM t) s",
+    table('t) select 1 subquery 's select *
+  )
+
+  testQueryParsing(
     "SELECT * FROM t0 LIMIT 1",
     table('t0) select * limit 1
   )

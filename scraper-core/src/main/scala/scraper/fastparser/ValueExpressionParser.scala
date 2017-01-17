@@ -134,6 +134,7 @@ object LiteralParser extends LoggingParser {
 // SQL06 section 6.3
 object ValueExpressionPrimaryParser extends LoggingParser {
   import CaseExpressionParser._
+  import CastSpecificationParser._
   import ColumnReferenceParser._
   import IfExpressionParser._
   import ValueExpressionParser._
@@ -141,13 +142,15 @@ object ValueExpressionPrimaryParser extends LoggingParser {
   import WhitespaceApi._
 
   private val parenthesizedValueExpressionPrimary: P[Expression] =
-    "(" ~ valueExpression ~ ")" opaque "parenthesized-value-expression-primary"
+    "(" ~ P(valueExpression) ~ ")" opaque "parenthesized-value-expression-primary"
 
   val nonparenthesizedValueExpressionPrimary: P[Expression] = (
-    unsignedValueSpecification
+    functionCall
+    | unsignedValueSpecification
     | columnReference
     | caseExpression
     | ifExpression
+    | castSpecification
     opaque "nonparenthesized-value-expression-primary"
   )
 
@@ -260,7 +263,7 @@ object CastSpecificationParser extends LoggingParser {
   import ValueExpressionParser._
   import WhitespaceApi._
 
-  private val castOperand: P[Expression] = valueExpression
+  private val castOperand: P[Expression] = P(valueExpression)
 
   val castSpecification: P[Expression] = (
     CAST ~ "(" ~ castOperand ~ AS ~ dataType ~ ")"
@@ -294,29 +297,19 @@ object ValueExpressionParser extends LoggingParser {
   import BooleanValueExpressionParser._
   import KeywordParser._
   import NameParser._
-  import NumericValueExpressionParser._
   import StringValueExpressionParser._
   import WhitespaceApi._
 
-  private val functionCall: P[UnresolvedFunction] = (
+  val functionCall: P[UnresolvedFunction] = (
     functionName ~ "(" ~ DISTINCT.!.? ~ P(valueExpression).rep(sep = ",") ~ ")"
     map { case (name, isDistinct, args) => (name, args, isDistinct.isDefined) }
     map UnresolvedFunction.tupled
     opaque "function-call"
   )
 
-  val commonValueExpression: P[Expression] = (
-    P(stringValueExpression)
-    | P(numericValueExpression)
-    opaque "common-value-expression"
-  )
+  val commonValueExpression: P[Expression] = stringValueExpression opaque "common-value-expression"
 
-  lazy val valueExpression: P[Expression] = (
-    P(functionCall)
-    | P(booleanValueExpression)
-    | P(commonValueExpression)
-    opaque "value-expression"
-  )
+  lazy val valueExpression: P[Expression] = booleanValueExpression opaque "value-expression"
 }
 
 // SQL06 section 6.26
@@ -361,7 +354,7 @@ object StringValueExpressionParser extends LoggingParser {
   import WhitespaceApi._
 
   private val characterPrimary: P[Expression] =
-    P(numericValueExpression) opaque "character-primary"
+    numericValueExpression opaque "character-primary"
 
   private val concatenation: P[Expression] = {
     val operator = P("||") attach { concat(_: Expression, _: Expression) }
@@ -392,7 +385,7 @@ object BooleanValueExpressionParser extends LoggingParser {
   )
 
   private val booleanPrimary: P[Expression] =
-    predicate.log() | booleanPredicand.log() opaque "boolean-primary"
+    predicate | booleanPredicand opaque "boolean-primary"
 
   private val truthValue: P[Literal] =
     booleanLiteral opaque "truth-value"
@@ -409,22 +402,22 @@ object BooleanValueExpressionParser extends LoggingParser {
   } opaque "boolean-test-suffix"
 
   private val booleanTest: P[Expression] = (
-    booleanPrimary.log() ~ booleanTestSuffix
+    booleanPrimary ~ booleanTestSuffix
     map { case (bool, f) => f(bool) }
     opaque "boolean-test"
   )
 
   private val booleanFactor: P[Expression] = (
     (NOT ~ booleanTest map Not)
-    | booleanTest.log()
+    | booleanTest
     opaque "boolean-factor"
   )
 
   private val booleanTerm: P[Expression] =
-    booleanFactor.log() chain (AND attach And) opaque "boolean-term"
+    booleanFactor chain (AND attach And) opaque "boolean-term"
 
   lazy val booleanValueExpression: P[Expression] =
-    booleanTerm.log() chain (OR attach Or) opaque "boolean-value-expression"
+    booleanTerm chain (!ORDER ~ OR attach Or) opaque "boolean-value-expression"
 }
 
 // SQL06 section 7.1
@@ -514,7 +507,7 @@ object NullPredicateParser extends LoggingParser {
 object SearchConditionParser extends LoggingParser {
   import BooleanValueExpressionParser._
 
-  val searchCondition: P[Expression] = P(booleanValueExpression).log()
+  val searchCondition: P[Expression] = P(booleanValueExpression)
 }
 
 // SQL06 section 10.9

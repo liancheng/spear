@@ -2,8 +2,8 @@ package scraper.fastparser
 
 import fastparse.core.Logger
 
-import scraper.types._
 import scraper.{LoggingFunSuite, TestUtils}
+import scraper.types._
 
 class DataTypeParserSuite extends LoggingFunSuite with TestUtils {
   import fastparse.all._

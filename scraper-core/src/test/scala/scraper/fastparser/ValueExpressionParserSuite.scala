@@ -5,6 +5,7 @@ import fastparse.core.Logger
 import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions._
 import scraper.expressions.functions._
+import scraper.types.IntType
 
 class ValueExpressionParserSuite extends LoggingFunSuite with TestUtils {
   import fastparse.all._
@@ -71,9 +72,13 @@ class ValueExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("a ^ b", 'a ^ 'b)
 
-  testExpressionParsing("a + b * 3 - c / d", 'a + ('b * 3) - ('c / 'd))
+  testExpressionParsing("a + b * c - d / e", 'a + ('b * 'c) - ('d / 'e))
+
+  testExpressionParsing("a + b * (c - d) / e", 'a + 'b * ('c - 'd) / 'e)
 
   testExpressionParsing("a + b * c ^ d", 'a + ('b * ('c ^ 'd)))
+
+  testExpressionParsing("CAST(RAND(42) * 100 AS INT)", ('rand(42) * 100) cast IntType)
 
   testExpressionParsing(
     "CASE WHEN 1 THEN 'x' WHEN 2 THEN 'y' END",
