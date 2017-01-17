@@ -2,6 +2,7 @@ package scraper.fastparser
 
 import fastparse.all._
 
+import scraper.annotations.ExtendedSQLSyntax
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.expressions.Literal.{False, True}
@@ -136,7 +137,6 @@ object ValueExpressionPrimaryParser extends LoggingParser {
   import CaseExpressionParser._
   import CastSpecificationParser._
   import ColumnReferenceParser._
-  import IfExpressionParser._
   import ValueExpressionParser._
   import ValueSpecificationParser._
   import WhitespaceApi._
@@ -149,7 +149,6 @@ object ValueExpressionPrimaryParser extends LoggingParser {
     | unsignedValueSpecification
     | columnReference
     | caseExpression
-    | ifExpression
     | castSpecification
     opaque "nonparenthesized-value-expression-primary"
   )
@@ -184,6 +183,7 @@ object ColumnReferenceParser extends LoggingParser {
 
 // SQL06 section 6.11
 object CaseExpressionParser extends LoggingParser {
+  import BooleanValueExpressionParser._
   import KeywordParser._
   import PredicateParser._
   import RowValueExpressionParser._
@@ -202,8 +202,16 @@ object CaseExpressionParser extends LoggingParser {
     opaque "coalesce"
   )
 
+  @ExtendedSQLSyntax
+  private val ifExpression: P[Expression] = {
+    val test = P(booleanValueExpression)
+    val yes = P(valueExpression)
+    val no = P(valueExpression)
+    IF ~ "(" ~ test ~ "," ~ yes ~ "," ~ no ~ ")" map If.tupled opaque "if-expression"
+  }
+
   private val caseAbbreviation: P[Expression] =
-    nullif | coalesce opaque "case-abbreviation"
+    ifExpression | nullif | coalesce opaque "case-abbreviation"
 
   private val caseOperand: P[Expression] =
     P(rowValuePredicand) opaque "row-value-predicand"
@@ -272,26 +280,6 @@ object CastSpecificationParser extends LoggingParser {
   )
 }
 
-// Non-standard extension
-object IfExpressionParser extends LoggingParser {
-  import BooleanValueExpressionParser._
-  import KeywordParser._
-  import ValueExpressionParser._
-  import WhitespaceApi._
-
-  private val condition: P[Expression] = P(booleanValueExpression) opaque "condition"
-
-  private val consequence: P[Expression] = P(valueExpression) opaque "consequence"
-
-  private val alternative: P[Expression] = P(valueExpression) opaque "alternative"
-
-  val ifExpression: P[Expression] = (
-    IF ~ "(" ~ condition ~ "," ~ consequence ~ "," ~ alternative ~ ")"
-    map If.tupled
-    opaque "if-expression"
-  )
-}
-
 // SQL06 section 6.25
 object ValueExpressionParser extends LoggingParser {
   import BooleanValueExpressionParser._
@@ -327,17 +315,13 @@ object NumericValueExpressionParser extends LoggingParser {
       case (_, n)        => n
     } opaque "base"
 
-  private val factor: P[Expression] =
-    // Non-standard extension
-    base chain (P("^") attach Power) opaque "factor"
+  @ExtendedSQLSyntax
+  private val factor: P[Expression] = base chain (P("^") attach Power) opaque "factor"
 
   private val term: P[Expression] = {
-    val operator = (
-      P("*").attach(Multiply)
-      | P("/").attach(Divide)
-      // Non-standard extension
-      | P("%").attach(Remainder)
-    )
+    @ExtendedSQLSyntax
+    val remainder = P("%") attach Remainder
+    val operator = P("*").attach(Multiply) | P("/").attach(Divide) | remainder
 
     factor chain operator opaque "term"
   }

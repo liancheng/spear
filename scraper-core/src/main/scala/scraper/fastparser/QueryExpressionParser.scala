@@ -3,6 +3,7 @@ package scraper.fastparser
 import fastparse.all._
 
 import scraper.Name
+import scraper.annotations.ExtendedSQLSyntax
 import scraper.expressions._
 import scraper.plans.logical._
 
@@ -92,6 +93,7 @@ object GroupByClauseParser extends LoggingParser {
   import ValueExpressionParser._
   import WhitespaceApi._
 
+  @ExtendedSQLSyntax
   private val groupingColumnReference: P[Expression] =
     columnReference | valueExpression opaque "grouping-column-reference"
 
@@ -283,6 +285,7 @@ object QueryExpressionParser extends LoggingParser {
       (UNION ~ ALL.? attach Union) | (EXCEPT attach Except)
     ) opaque "query-expression-body"
 
+  @ExtendedSQLSyntax
   private val limitClause: P[LogicalPlan => LogicalPlan] = (
     LIMIT ~ unsignedInteger filter { _.isValidInt }
     map { n => (_: LogicalPlan) limit n.toInt }
