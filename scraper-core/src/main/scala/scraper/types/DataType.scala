@@ -1,5 +1,7 @@
 package scraper.types
 
+import java.sql.Date
+
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
@@ -207,6 +209,26 @@ case object BooleanType extends PrimitiveType {
   override val ordering: Option[Ordering[Boolean]] = Some(Ordering.Boolean)
 
   override def sql: String = "BOOLEAN"
+}
+
+case object DateType extends PrimitiveType {
+  override type InternalType = Date
+
+  override protected def ordering: Option[Ordering[Date]] = Some(new Ordering[Date] {
+    override def compare(lhs: Date, rhs: Date): Int = lhs compareTo rhs
+  })
+
+  override def sql: String = "DATE"
+}
+
+case class TimestampType(precision: Int) extends PrimitiveType {
+  require(0 <= precision && precision <= 6)
+
+  override type InternalType = Long
+
+  override val ordering: Option[Ordering[Long]] = Some(Ordering.Long)
+
+  override def sql: String = s"TIME ($precision)"
 }
 
 case class ObjectType(className: String) extends PrimitiveType {

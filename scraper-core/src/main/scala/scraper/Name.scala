@@ -54,5 +54,5 @@ object Name {
 
   def caseInsensitive(name: String): Name = new Name(CaseInsensitive(name))
 
-  def quote(name: String): String = "`" + name.replace("`", "``") + "`"
+  def quote(name: String): String = "\"" + name.replace("\"", "\"\"") + "\""
 }

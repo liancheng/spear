@@ -21,10 +21,10 @@ class RowOrdering(boundSortOrders: Seq[SortOrder]) extends Ordering[Row] {
 
   private val nullSafeOrderings = boundSortOrders.map {
     case order @ SortOrder(_, Ascending, _) =>
-      new NullSafeOrdering(order.dataType, order.nullsLarger)
+      new NullSafeOrdering(order.dataType, order.isNullLarger)
 
     case order @ SortOrder(_, Descending, _) =>
-      new NullSafeOrdering(order.dataType, order.nullsLarger).reverse
+      new NullSafeOrdering(order.dataType, order.isNullLarger).reverse
   }
 
   def compare(a: Row, b: Row): Int = {

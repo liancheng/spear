@@ -1,6 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
+import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
@@ -14,6 +15,41 @@ class CTEAnalysisSuite extends AnalyzerTest {
       },
       relation0 subquery 't select (a of 't) subquery 's select (a of 's)
     )
+  }
+
+  test("CTE with aliases") {
+    checkAnalyzedPlan(
+      let('s, relation0 subquery 't, Seq('x, 'y)) {
+        table('s) select *
+      },
+      relation0
+        subquery 't
+        select (a of 't as 'x, b of 't as 'y)
+        subquery 's
+        select (x of 's, y of 's)
+    )
+  }
+
+  test("CTE with fewer aliases") {
+    checkAnalyzedPlan(
+      let('s, relation0 select *, Seq('x)) {
+        table('s)
+      },
+      relation0
+        select (a, b)
+        select (a as 'x, b)
+        subquery 's
+    )
+  }
+
+  test("CTE with excessive aliases") {
+    intercept[AnalysisException] {
+      analyze {
+        let('s, relation0 select *, Seq('x, 'y, 'z)) {
+          table('s)
+        }
+      }
+    }
   }
 
   test("CTE in SQL") {
@@ -69,6 +105,8 @@ class CTEAnalysisSuite extends AnalyzerTest {
   override protected def beforeAll(): Unit = catalog.registerRelation('t, relation0)
 
   private val (a, b) = ('a.int.!, 'b.string.?)
+
+  private val (x, y) = ('x.int.!, 'y.string.?)
 
   private val relation0 = LocalRelation.empty(a, b)
 

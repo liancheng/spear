@@ -67,25 +67,25 @@ package object functions {
 
   def named_struct(
     first: (Expression, Expression), rest: (Expression, Expression)*
-  ): CreateNamedStruct = {
+  ): MakeNamedStruct = {
     val (names, values) = (first +: rest).unzip
-    CreateNamedStruct(names, values)
+    MakeNamedStruct(names, values)
   }
 
-  def struct(first: Expression, rest: Expression*): CreateNamedStruct = struct(first +: rest)
+  def struct(first: Expression, rest: Expression*): MakeNamedStruct = struct(first +: rest)
 
-  def struct(args: Seq[Expression]): CreateNamedStruct = {
+  def struct(args: Seq[Expression]): MakeNamedStruct = {
     val fieldNames = args.indices.map("c" + _).map(lit)
-    CreateNamedStruct(fieldNames, args)
+    MakeNamedStruct(fieldNames, args)
   }
 
-  def array(first: Expression, rest: Expression*): CreateArray = CreateArray(first +: rest)
+  def array(first: Expression, rest: Expression*): MakeArray = MakeArray(first +: rest)
 
-  def map(keyValues: Expression*): CreateMap = {
+  def map(keyValues: Expression*): MakeMap = {
     require(keyValues.length % 2 == 0)
     val (keys, values) = keyValues.sliding(2, 2).map {
       case Seq(key, value) => key -> value
     }.toSeq.unzip
-    CreateMap(keys, values)
+    MakeMap(keys, values)
   }
 }

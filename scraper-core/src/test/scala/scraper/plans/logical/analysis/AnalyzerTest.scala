@@ -3,7 +3,7 @@ package scraper.plans.logical.analysis
 import org.scalatest.BeforeAndAfterAll
 
 import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
-import scraper.parser.Parser
+import scraper.fastparser.QueryExpressionParser.queryExpression
 import scraper.plans.logical.LogicalPlan
 
 abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
@@ -12,7 +12,7 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
   protected val analyze = new Analyzer(catalog)
 
   protected def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
-    checkAnalyzedPlan(new Parser parse sql, expected)
+    checkAnalyzedPlan(queryExpression.parse(sql).get.value, expected)
 
   protected def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)

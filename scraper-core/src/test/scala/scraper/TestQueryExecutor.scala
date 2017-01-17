@@ -1,7 +1,7 @@
 package scraper
 
 import scraper.expressions.Attribute
-import scraper.parser.Parser
+import scraper.fastparser.QueryExpressionParser.queryExpression
 import scraper.plans.QueryExecution
 import scraper.plans.logical.{LogicalPlan, Optimizer}
 import scraper.plans.logical.analysis.Analyzer
@@ -10,7 +10,7 @@ import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan}
 class TestQueryExecutor extends QueryExecutor {
   override val catalog: Catalog = new InMemoryCatalog
 
-  override def parse(query: String): LogicalPlan = new Parser parse query
+  override def parse(query: String): LogicalPlan = queryExpression.parse(query).get.value
 
   override def analyze(plan: LogicalPlan): LogicalPlan = analyzer apply plan
 

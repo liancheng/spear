@@ -42,6 +42,8 @@ case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedN
 
   override protected def template(childList: Seq[String]): String =
     (qualifier map (_.toString)).toSeq :+ "*" mkString "."
+
+  def of(qualifier: Name): Star = copy(qualifier = Some(qualifier))
 }
 
 case class Alias(

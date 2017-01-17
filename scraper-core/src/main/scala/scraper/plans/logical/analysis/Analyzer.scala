@@ -1,6 +1,7 @@
 package scraper.plans.logical.analysis
 
 import scraper._
+import scraper.exceptions.AnalysisException
 import scraper.expressions.{Alias, Attribute, Expression, NamedExpression}
 import scraper.expressions.Expression.tryResolve
 import scraper.expressions.NamedExpression.newExpressionID
@@ -17,6 +18,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelations(catalog),
+      new RewriteRenamesToProjects(catalog),
       new ResolveSortReferences(catalog),
       new DeduplicateReferences(catalog),
 
@@ -88,9 +90,10 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case With(child, name, cteRelation) =>
+    case With(child, name, query, aliases) =>
       child transformDown {
-        case UnresolvedRelation(`name`) => cteRelation subquery name
+        case UnresolvedRelation(`name`) =>
+          (aliases fold query) { query.rename(name, _) } subquery name
       }
   }
 }
@@ -101,6 +104,26 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
 class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
+  }
+}
+
+/**
+ * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolve CTE queries.
+ */
+class RewriteRenamesToProjects(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case Rename(Resolved(child), subqueryName, aliases) =>
+      if (child.output.length >= aliases.length) {
+        val aliasCount = aliases.length
+        val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
+        child select (aliased ++ (child.output drop aliasCount))
+      } else {
+        val expected = child.output.length
+        val actual = aliases.length
+        throw new AnalysisException(
+          s"WITH query $subqueryName has $expected columns available but $actual columns specified"
+        )
+      }
   }
 }
 
@@ -136,8 +159,8 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
     def rewriteExpressionIDs(oldPlan: LogicalPlan, newPlan: LogicalPlan): LogicalPlan = {
       val rewrite = {
-        val oldOutput = oldPlan.output map (a => a: Expression)
-        val newOutput = newPlan.output map (a => a: Expression)
+        val oldOutput = oldPlan.output map { a => a: Expression }
+        val newOutput = newPlan.output map { a => a: Expression }
         (oldOutput zip newOutput).toMap
       }
 
@@ -195,7 +218,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
       plan
 
     case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
-      val output = projectList map (_.attr)
+      val output = projectList map { _.attr }
       val maybeResolvedOrder = order map tryResolve(output)
       val unresolvedRefs = maybeResolvedOrder flatMap (_.references) filterNot (_.isResolved)
 

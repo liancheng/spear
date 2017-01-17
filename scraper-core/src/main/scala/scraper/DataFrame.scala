@@ -58,7 +58,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
 
   def orderBy(first: Expression, rest: Expression*): DataFrame =
-    orderBy(first +: rest map (SortOrder(_, Ascending, nullsLarger = true)))
+    orderBy(first +: rest map (SortOrder(_, Ascending, isNullLarger = true)))
 
   def subquery(name: String): DataFrame = withPlan(_ subquery name)
 

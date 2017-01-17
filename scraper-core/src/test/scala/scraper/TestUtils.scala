@@ -29,14 +29,14 @@ trait TestUtils { this: FunSuite =>
   }
 
   def assertSideBySide[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
-    if (expected != actual) {
+    if (actual != expected) {
       fail(sideBySide(
         s"""Actual
-           |${expected.prettyTree}
+           |${actual.prettyTree}
            |""".stripMargin,
 
         s"""Expected
-           |${actual.prettyTree}
+           |${expected.prettyTree}
            |""".stripMargin,
 
         withHeader = true
@@ -61,7 +61,7 @@ trait TestUtils { this: FunSuite =>
   }
 
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
-    checkTree(normalizeExpressionIDs(expected), normalizeExpressionIDs(actual))
+    checkTree(normalizeExpressionIDs(actual), normalizeExpressionIDs(expected))
 
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)

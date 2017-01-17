@@ -1,10 +1,10 @@
 package scraper.local
 
 import scraper._
+import scraper.fastparser.QueryExpressionParser.queryExpression
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
-import scraper.parser.Parser
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.Analyzer
@@ -13,7 +13,7 @@ import scraper.plans.physical.{NotImplemented, PhysicalPlan}
 class LocalQueryExecutor extends QueryExecutor {
   override val catalog: Catalog = new InMemoryCatalog
 
-  override def parse(query: String): LogicalPlan = new Parser parse query
+  override def parse(query: String): LogicalPlan = queryExpression.parse(query).get.value
 
   override def analyze(plan: LogicalPlan): LogicalPlan = analyzer apply plan
 

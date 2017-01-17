@@ -13,20 +13,22 @@ case object Descending extends SortDirection {
   override def toString: String = "DESC"
 }
 
-case class SortOrder(child: Expression, direction: SortDirection, nullsLarger: Boolean)
+case class SortOrder(child: Expression, direction: SortDirection, isNullLarger: Boolean)
   extends UnaryExpression with UnevaluableExpression {
 
   override def dataType: DataType = child.dataType
 
   override def isNullable: Boolean = child.isNullable
 
-  def nullsFirst: SortOrder = copy(nullsLarger = !isAscending)
+  def nullsFirst: SortOrder = copy(isNullLarger = !isAscending)
 
-  def nullsLast: SortOrder = copy(nullsLarger = isAscending)
+  def nullsLast: SortOrder = copy(isNullLarger = isAscending)
+
+  def nullsLarger: SortOrder = copy(isNullLarger = true)
 
   def isAscending: Boolean = direction == Ascending
 
-  def isNullsFirst: Boolean = isAscending ^ nullsLarger
+  def isNullsFirst: Boolean = isAscending ^ isNullLarger
 
   override protected lazy val typeConstraint: TypeConstraint = child subtypeOf OrderedType
 
