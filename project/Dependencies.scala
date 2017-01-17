@@ -16,7 +16,6 @@ object Dependencies {
     val protobuf = "2.5.0"
     val scala = "2.11.8"
     val scalaCheck = "1.12.5"
-    val scalaParserCombinators = "1.0.4"
     val scalaTest = "2.2.5"
     val scalaXml = "1.0.4"
     val scopt = "3.4.0"
@@ -51,7 +50,6 @@ object Dependencies {
   val scala = Seq(
     "org.scala-lang" % "scala-library" % Versions.scala,
     "org.scala-lang" % "scala-reflect" % Versions.scala,
-    "org.scala-lang.modules" %% "scala-parser-combinators" % Versions.scalaParserCombinators,
     "org.scala-lang.modules" %% "scala-xml" % Versions.scalaXml
   )
 
