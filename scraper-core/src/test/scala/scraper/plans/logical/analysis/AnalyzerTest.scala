@@ -3,7 +3,7 @@ package scraper.plans.logical.analysis
 import org.scalatest.BeforeAndAfterAll
 
 import scraper.{InMemoryCatalog, LoggingFunSuite, TestUtils}
-import scraper.fastparser.QueryExpressionParser.queryExpression
+import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.plans.logical.LogicalPlan
 
 abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {

@@ -1,4 +1,4 @@
-package scraper.fastparser
+package scraper.parsers
 
 import scala.collection.mutable
 
@@ -69,8 +69,8 @@ object KeywordParser {
   val NUMERIC: P0 = mkKeyword("NUMERIC")
   val OBJECT: P0 = mkKeyword("OBJECT")
   val ON: P0 = mkKeyword("ON")
-  val OR: P0 = mkKeyword("OR")
   val ORDER: P0 = mkKeyword("ORDER")
+  val OR: P0 = !ORDER ~ mkKeyword("OR")
   val OUTER: P0 = mkKeyword("OUTER")
   val PRECISION: P0 = mkKeyword("PRECISION")
   val REAL: P0 = mkKeyword("REAL")

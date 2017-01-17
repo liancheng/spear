@@ -1,10 +1,10 @@
-package scraper.fastparser
+package scraper.parsers
 
 import fastparse.core.Logger
 
 import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions._
-import scraper.fastparser.QueryExpressionParser.queryExpression
+import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.plans.logical._
 
 class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
@@ -73,6 +73,11 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
   testQueryParsing(
     "SELECT * FROM t0 ORDER BY a DESC NULLS LAST",
     table('t0) select * orderBy 'a.desc.nullsLast
+  )
+
+  testQueryParsing(
+    "SELECT * FROM t0 WHERE a > 0 ORDER BY a",
+    table('t0) where 'a > 0 select * orderBy 'a.asc
   )
 
   testQueryParsing(

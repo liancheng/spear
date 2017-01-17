@@ -3,7 +3,7 @@ package scraper
 import scala.language.implicitConversions
 
 import scraper.expressions.typecheck._
-import scraper.fastparser._
+import scraper.parsers._
 import scraper.types._
 
 package object expressions {

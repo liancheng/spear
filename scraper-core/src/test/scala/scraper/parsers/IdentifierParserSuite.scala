@@ -1,11 +1,11 @@
-package scraper.fastparser
+package scraper.parsers
 
 import fastparse.all._
 import fastparse.core.Logger
 
 import scraper._
 
-class IdentifierSuite extends LoggingFunSuite {
+class IdentifierParserSuite extends LoggingFunSuite {
   import WhitespaceApi._
 
   private implicit val parsingLogger = Logger(logInfo(_))

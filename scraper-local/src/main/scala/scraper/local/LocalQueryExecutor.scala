@@ -1,7 +1,7 @@
 package scraper.local
 
 import scraper._
-import scraper.fastparser.QueryExpressionParser.queryExpression
+import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._

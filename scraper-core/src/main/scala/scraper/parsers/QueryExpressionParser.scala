@@ -1,4 +1,4 @@
-package scraper.fastparser
+package scraper.parsers
 
 import fastparse.all._
 

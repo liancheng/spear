@@ -1,4 +1,4 @@
-package scraper.fastparser
+package scraper.parsers
 
 import fastparse.all._
 
@@ -401,7 +401,7 @@ object BooleanValueExpressionParser extends LoggingParser {
     booleanFactor chain (AND attach And) opaque "boolean-term"
 
   lazy val booleanValueExpression: P[Expression] =
-    booleanTerm chain (!ORDER ~ OR attach Or) opaque "boolean-value-expression"
+    booleanTerm chain (OR attach Or) opaque "boolean-value-expression"
 }
 
 // SQL06 section 7.1

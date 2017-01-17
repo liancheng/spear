@@ -3,7 +3,7 @@ package scraper
 import fastparse.WhitespaceApi.Wrapper
 
 // SQL06 section 5.2
-package object fastparser {
+package object parsers {
   import fastparse.all._
 
   val WhitespaceApi: Wrapper = Wrapper(SeparatorParser.separator.rep)

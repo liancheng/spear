@@ -1,4 +1,4 @@
-package scraper.fastparser
+package scraper.parsers
 
 import java.lang.Character._
 
@@ -42,11 +42,9 @@ object IdentifierParser {
     } opaque "identifier-extend"
   }
 
-  private val identifierPart: P0 =
-    identifierStart | identifierExtend opaque "identifier-part"
+  private val identifierPart: P0 = identifierStart | identifierExtend opaque "identifier-part"
 
-  private val identifierBody: P0 =
-    identifierStart ~~ identifierPart.repX opaque "identifier-body"
+  private val identifierBody: P0 = identifierStart ~~ identifierPart.repX opaque "identifier-body"
 
   // SQL06 section 5.2
   val regularIdentifier: P[Name] =
@@ -65,8 +63,7 @@ object IdentifierParser {
     opaque "delimited-identifier"
   )
 
-  private val hexit: P0 =
-    CharIn('A' to 'F', 'a' to 'f', '0' to '9') opaque "hexit"
+  private val hexit: P0 = CharIn('A' to 'F', 'a' to 'f', '0' to '9') opaque "hexit"
 
   private val unicodeIdentifierPart: P[Char] =
     delimitedIdentifierPart opaque "unicode-identifier-part"
@@ -88,8 +85,7 @@ object IdentifierParser {
       Integer.parseInt(_, 16).toChar
     }
 
-    val unicodeEscapeCharacter: P0 =
-      uescape.toString opaque "unicode-escape-character"
+    val unicodeEscapeCharacter: P0 = uescape.toString opaque "unicode-escape-character"
 
     val unicodeCharacterEscapeValue: P[Char] =
       unicodeEscapeCharacter.repX(min = 2, max = 2).char opaque "unicode-character-escape-value"
@@ -126,20 +122,14 @@ object IdentifierParser {
     opaque "unicode-delimited-identifier"
   )
 
-  private val actualIdentifier: P[Name] = (
-    unicodeDelimitedIdentifier
-    | regularIdentifier
-    | delimitedIdentifier
-    opaque "actual-identifier"
-  )
+  private val actualIdentifier: P[Name] =
+    unicodeDelimitedIdentifier | regularIdentifier | delimitedIdentifier opaque "actual-identifier"
 
   // SQL06 section 5.4
-  val identifier: P[Name] =
-    !keyword ~~ actualIdentifier opaque "identifier"
+  val identifier: P[Name] = !keyword ~~ actualIdentifier opaque "identifier"
 
   // SQL06 section 5.2
-  val qualifiedIdentifier: P[Name] =
-    identifier opaque "qualified-identifier"
+  val qualifiedIdentifier: P[Name] = identifier opaque "qualified-identifier"
 }
 
 // SQL06 section 5.4

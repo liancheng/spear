@@ -1,7 +1,7 @@
 package scraper
 
 import scraper.expressions.Attribute
-import scraper.fastparser.QueryExpressionParser.queryExpression
+import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.plans.QueryExecution
 import scraper.plans.logical.{LogicalPlan, Optimizer}
 import scraper.plans.logical.analysis.Analyzer
