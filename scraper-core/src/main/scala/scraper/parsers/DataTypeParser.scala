@@ -61,13 +61,45 @@ object DataTypeParser extends LoggingParser {
 
   private val rowTypeBody: P[StructType] = (
     "(" ~ fieldDefinition.rep(min = 1, sep = ",") ~ ")"
-    map { StructType.apply }
+    map StructType.apply
     opaque "row-type-body"
   )
 
   private val rowType: P[StructType] =
     ROW ~ rowTypeBody opaque "row-type"
 
+  @ExtendedSQLSyntax
+  private val structField: P[StructField] = (
+    fieldName ~ ":" ~ P(dataType)
+    map { case (name, fieldType) => StructField(name, fieldType, isNullable = true) }
+    opaque "struct-field"
+  )
+
+  @ExtendedSQLSyntax
+  private val structType: P[StructType] = (
+    STRUCT ~ "<" ~ structField.rep ~ ">"
+    map StructType.apply
+    opaque "struct-type"
+  )
+
+  @ExtendedSQLSyntax
+  private val arrayType: P[ArrayType] = (
+    ARRAY ~ "<" ~ P(dataType) ~ ">"
+    map { ArrayType(_, isElementNullable = true) }
+    opaque "array-type"
+  )
+
+  @ExtendedSQLSyntax
+  private val mapType: P[MapType] = (
+    MAP ~ "<" ~ P(dataType) ~ "," ~ P(dataType) ~ ">"
+    map { case (keyType, valueType) => MapType(keyType, valueType, isValueNullable = true) }
+    opaque "map-type"
+  )
+
+  @ExtendedSQLSyntax
+  private val extendedNestedType: P[DataType] =
+    structType | arrayType | mapType opaque "extended-nested-type"
+
   lazy val dataType: P[DataType] =
-    predefinedType | rowType opaque "data-type"
+    predefinedType | rowType | extendedNestedType opaque "data-type"
 }
