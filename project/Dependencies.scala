@@ -15,8 +15,9 @@ object Dependencies {
     val mockito = "2.1.0-beta.120"
     val protobuf = "2.5.0"
     val scala = "2.11.8"
-    val scalaCheck = "1.12.5"
-    val scalaTest = "2.2.5"
+    val scalaCheck = "1.13.4"
+    val scalaCheckShapeless = "1.1.4"
+    val scalaTest = "3.0.1"
     val scalaXml = "1.0.4"
     val scopt = "3.4.0"
     val slf4j = "1.6.4"
@@ -40,7 +41,7 @@ object Dependencies {
   )
 
   val mockito = Seq(
-    "org.mockito" % "mockito-core" % Versions.mockito % "test"
+    "org.mockito" % "mockito-core" % Versions.mockito
   )
 
   val protobuf = Seq(
@@ -54,11 +55,12 @@ object Dependencies {
   )
 
   val scalaCheck = Seq(
-    "org.scalacheck" %% "scalacheck" % Versions.scalaCheck % "test"
+    "org.scalacheck" %% "scalacheck" % Versions.scalaCheck,
+    "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % Versions.scalaCheckShapeless
   )
 
   val scalaTest = Seq(
-    "org.scalatest" %% "scalatest" % Versions.scalaTest % "test"
+    "org.scalatest" %% "scalatest" % Versions.scalaTest
   )
 
   val scopt = Seq(
@@ -75,7 +77,7 @@ object Dependencies {
     "com.lihaoyi" %% "sourcecode" % Versions.sourcecode
   )
 
-  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
+  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest map { _ % "test" }
 
   val typesafeConfig = Seq(
     "com.typesafe" % "config" % Versions.config

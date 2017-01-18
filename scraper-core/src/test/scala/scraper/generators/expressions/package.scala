@@ -1,6 +1,7 @@
 package scraper.generators
 
 import scala.collection.immutable.Stream.Empty
+import scala.util.Random
 
 import org.scalacheck.{Gen, Shrink}
 import org.scalacheck.Arbitrary._
@@ -276,7 +277,7 @@ package object expressions extends Logging {
       size <- Gen.size
       op <- Gen.oneOf(ops)
 
-      lhsSize = params.rng.nextInt(size - 1)
+      lhsSize = Random.nextInt(size - 1)
       lhs <- Gen.resize(lhsSize, genBranch)
 
       rhsSize = size - 1 - lhsSize
