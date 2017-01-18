@@ -221,10 +221,11 @@ object CaseExpressionParser extends LoggingParser {
     | P(comparisonPredicatePart2)
   )
 
-  private val whenOperandList: P[Expression => Expression] =
-    whenOperand rep (min = 1, sep = ",") map { makeCondition => (key: Expression) =>
-      makeCondition map { _ apply key } reduce Or
-    } opaque "when-operand-list"
+  private val whenOperandList: P[Expression => Expression] = (
+    whenOperand rep (min = 1, sep = ",")
+    map { mkConditions => (key: Expression) => mkConditions map { _ apply key } reduce Or }
+    opaque "when-operand-list"
+  )
 
   private val result: P[Expression] =
     P(valueExpression) opaque "result"
@@ -239,8 +240,8 @@ object CaseExpressionParser extends LoggingParser {
     map {
       case (key, whenClauses, alternative) =>
         val (conditions, consequences) = whenClauses.map {
-          case (makeCondition, consequence) =>
-            makeCondition(key) -> consequence
+          case (mkCondition, consequence) =>
+            mkCondition(key) -> consequence
         }.unzip
 
         CaseWhen(conditions, consequences, alternative)
@@ -251,12 +252,11 @@ object CaseExpressionParser extends LoggingParser {
   private val searchedWhenClause: P[(Expression, Expression)] =
     WHEN ~ searchCondition ~ THEN ~ result opaque "when-operand"
 
-  private val searchedCase: P[Expression] =
-    CASE ~ (searchedWhenClause rep 1) ~ elseClause.? ~ END map {
-      case (whenClauses, alternative) =>
-        val (conditions, consequences) = whenClauses.unzip
-        CaseWhen(conditions, consequences, alternative)
-    } opaque "searched-case"
+  private val searchedCase: P[Expression] = (
+    CASE ~ (searchedWhenClause rep 1).map { _.unzip } ~ elseClause.? ~ END
+    map CaseWhen.tupled
+    opaque "searched-case"
+  )
 
   private val caseSpecification: P[Expression] =
     simpleCase | searchedCase opaque "case-specification"
@@ -457,7 +457,7 @@ object PredicateParser extends LoggingParser {
 
   private val comparisonPredicate: P[Expression] = (
     rowValuePredicand ~ comparisonPredicatePart2
-    map { case (lhs, makeComparison) => makeComparison(lhs) }
+    map { case (lhs, mkComparison) => mkComparison(lhs) }
     opaque "comparison-predicate"
   )
 
