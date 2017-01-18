@@ -19,7 +19,6 @@ object Dependencies {
     val scalaCheckShapeless = "1.1.4"
     val scalaTest = "3.0.1"
     val scalaXml = "1.0.4"
-    val scopt = "3.4.0"
     val slf4j = "1.6.4"
     val sourcecode = "0.1.2"
   }
@@ -61,10 +60,6 @@ object Dependencies {
 
   val scalaTest = Seq(
     "org.scalatest" %% "scalatest" % Versions.scalaTest
-  )
-
-  val scopt = Seq(
-    "com.github.scopt" %% "scopt" % Versions.scopt
   )
 
   val slf4j = Seq(
