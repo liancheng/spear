@@ -77,7 +77,7 @@ object DataTypeParser extends LoggingParser {
 
   @ExtendedSQLSyntax
   private val structType: P[StructType] = (
-    STRUCT ~ "<" ~ structField.rep ~ ">"
+    STRUCT ~ "<" ~ structField.rep(sep = ",") ~ ">"
     map StructType.apply
     opaque "struct-type"
   )

@@ -22,8 +22,12 @@ class DataTypeParserSuite extends LoggingFunSuite with TestUtils {
 
   testDataTypeParsing("DOUBLE", DoubleType)
 
+  testDataTypeParsing("ARRAY<INT>", ArrayType(IntType.?))
+
+  testDataTypeParsing("MAP<INT, STRING>", MapType(IntType, StringType.?))
+
   testDataTypeParsing(
-    "ROW(name STRING, age INT)",
+    "STRUCT<name: STRING, age: INT>",
     StructType(
       'name -> StringType.?,
       'age -> IntType.?
@@ -31,10 +35,26 @@ class DataTypeParserSuite extends LoggingFunSuite with TestUtils {
   )
 
   testDataTypeParsing(
-    "ROW(\"name\" STRING, \"age\" INT)",
+    "STRUCT<\"name\": STRING, \"age\": INT>",
     StructType(
       'name -> StringType.?,
       'age -> IntType.?
+    )
+  )
+
+  testDataTypeParsing(
+    "ROW(name STRING, age INT)",
+    StructType(
+      'NAME -> StringType.?,
+      'AGE -> IntType.?
+    )
+  )
+
+  testDataTypeParsing(
+    "ROW(\"name\" STRING, \"age\" INT)",
+    StructType(
+      "name" -> StringType.?,
+      "age" -> IntType.?
     )
   )
 
