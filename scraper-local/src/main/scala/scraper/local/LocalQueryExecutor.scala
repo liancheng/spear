@@ -1,10 +1,10 @@
 package scraper.local
 
 import scraper._
-import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
+import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.plans.{QueryExecution, QueryPlanner}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.Analyzer
