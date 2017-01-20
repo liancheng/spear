@@ -76,8 +76,8 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
     //           MutableRow                  Row
     //   |<- - - - - - - - - - - >|<- - - - - - - - - - - >|
     //   +------------------------+------------------------+
-    //   |   target state buffer  |   input state buffer   |
-    //   |    (stateAttributes)   | (inputStateAttributes) |
+    //   |  target state buffer   |   input state buffer   |
+    //   |   (stateAttributes)    | (inputStateAttributes) |
     //   +------------------------+------------------------+
     //   |<- - - - - - - - - - - - - - - - - - - - - - - ->|
     //                        JoinedRow
@@ -98,13 +98,13 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
         // a `JoinedRow`, which joins the target state buffer on the left side and the input row on
         // the right side:
         //
-        //         MutableRow             Row
-        //   |<- - - - - - - - - - - ->|<- - - - - - - >|
-        //   +-------------------------+----------------+
-        //   |   target state buffer   |   input row    |
-        //   |    (stateAttributes)    | (child.output) |
-        //   +-------------------------+----------------+
-        //   |<- - - - - - - - - - - - - - - - - - - - >|
+        //           MutableRow              Row
+        //   |<- - - - - - - - - - - >|<- - - - - - - >|
+        //   +------------------------+----------------+
+        //   |  target state buffer   |   input row    |
+        //   |   (stateAttributes)    | (child.output) |
+        //   +------------------------+----------------+
+        //   |<- - - - - - - - - - - - - - - - - - - ->|
         //                    JoinedRow
         //
         // Note that when `bind` is being invoked, child expressions of all aggregate functions
