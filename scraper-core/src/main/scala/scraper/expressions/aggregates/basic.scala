@@ -20,7 +20,7 @@ case class Count(child: Expression) extends FoldLeft {
 
   override def mergeFunction: MergeFunction = Plus
 
-  override protected lazy val value = 'value of dataType.!
+  override protected lazy val value: AttributeRef = 'value of dataType.!
 }
 
 case class Max(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {

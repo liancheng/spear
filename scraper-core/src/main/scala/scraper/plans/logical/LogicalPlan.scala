@@ -25,7 +25,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
 
   lazy val isDeduplicated: Boolean = children.forall(_.isResolved) && (
-    children.length < 2 || (children map (_.outputSet) reduce (_ intersectByID _)).isEmpty
+    children.length < 2 || (children map { _.outputSet } reduce { _ intersectByID _ }).isEmpty
   )
 
   /**
@@ -343,7 +343,9 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
 
   override def isResolved: Boolean = super.isResolved
 
-  override lazy val output: Seq[Attribute] = (keys ++ functions) map (_.attr)
+  override lazy val output: Seq[Attribute] = keys ++ functions map { _.attr }
+
+  override lazy val derivedOutput: Seq[Attribute] = keys ++ functions map { _.attr }
 }
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
@@ -384,7 +386,7 @@ case class Window(
   partitionSpec: Seq[Expression] = Nil,
   orderSpec: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan {
-  override lazy val output: Seq[Attribute] = child.output ++ functions map (_.attr)
+  override lazy val output: Seq[Attribute] = child.output ++ functions map { _.attr }
 }
 
 object Window {
@@ -406,13 +408,13 @@ object Window {
 
   private def windowBuilders(windowAliases: Seq[WindowAlias]): Seq[LogicalPlan => Window] = {
     // Finds out all distinct window specs.
-    val windowSpecs = windowAliases.map(_.child.window).distinct
+    val windowSpecs = windowAliases.map { _.child.window }.distinct
 
     // Groups all window functions by their window specs. We are doing sorts here so that it would
     // be easier to reason about the order of all the generated `Window` operators.
     val windowAliasGroups = windowAliases
       .groupBy(_.child.window)
-      .mapValues(_ sortBy windowAliases.indexOf)
+      .mapValues { _ sortBy windowAliases.indexOf }
       .toSeq
       .sortBy { case (spec: WindowSpec, _) => windowSpecs indexOf spec }
 
@@ -496,7 +498,7 @@ object LogicalPlan {
       resolvedAgg(first +: rest)
 
     def window(functions: Seq[WindowAlias]): Window = {
-      val Seq(windowSpec) = functions.map(_.child.window).distinct
+      val Seq(windowSpec) = functions.map { _.child.window }.distinct
       Window(plan, functions, windowSpec.partitionSpec, windowSpec.orderSpec)
     }
 

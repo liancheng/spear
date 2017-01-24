@@ -7,13 +7,13 @@ import scraper.expressions.windows._
 import scraper.plans.logical.LocalRelation
 
 abstract class WindowAnalysisTest extends AnalyzerTest { self =>
-  protected val (a, b) = ('a.int.!, 'b.string.?)
+  protected val (a: AttributeRef, b: AttributeRef) = ('a.int.!, 'b.string.?)
 
-  protected val relation = LocalRelation.empty(a, b)
+  protected val relation: LocalRelation = LocalRelation.empty(a, b)
 
-  protected val f0 = WindowFrame(RowsFrame, UnboundedPreceding, CurrentRow)
+  protected val f0: WindowFrame = WindowFrame(RowsFrame, UnboundedPreceding, CurrentRow)
 
-  protected val f1 = WindowFrame(RangeFrame, Preceding(1), Following(1))
+  protected val f1: WindowFrame = WindowFrame(RangeFrame, Preceding(1), Following(1))
 
   // -------------------
   // Aggregation aliases

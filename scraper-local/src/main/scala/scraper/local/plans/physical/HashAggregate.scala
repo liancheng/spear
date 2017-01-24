@@ -14,7 +14,7 @@ case class HashAggregate(
   keyAliases: Seq[GroupingAlias],
   aggAliases: Seq[AggregationAlias]
 ) extends UnaryPhysicalPlan {
-  override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map (_.attr)
+  override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map { _.attr }
 
   override def requireMaterialization: Boolean = true
 
@@ -50,7 +50,7 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
   require(aggs.forall(_.isBound))
 
   def newStateBuffer(): MutableRow = {
-    val buffer = new BasicMutableRow(aggs.map(_.stateAttributes.length).sum)
+    val buffer = new BasicMutableRow(aggs.map { _.stateAttributes.length }.sum)
     initializationProjection target buffer apply ()
     buffer
   }
@@ -120,14 +120,14 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
   private val join: JoinedRow = new JoinedRow()
 
   private val initializationProjection: MutableProjection = MutableProjection(
-    aggs flatMap (_.initialValues)
+    aggs flatMap { _.initialValues }
   )
 
   private val updateProjection: MutableProjection = MutableProjection(
-    aggs flatMap (_.updateExpressions) map bind
+    aggs flatMap { _.updateExpressions } map bind
   )
 
   private val resultProjection: MutableProjection = MutableProjection(
-    aggs map (_.resultExpression) map bind
+    aggs map { _.resultExpression } map bind
   )
 }

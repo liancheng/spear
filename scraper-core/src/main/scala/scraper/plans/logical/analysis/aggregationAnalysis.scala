@@ -118,7 +118,7 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
-    tree collectFirst preConditionViolations map (_ => tree) getOrElse {
+    tree collectFirst preConditionViolations map { _ => tree } getOrElse {
       tree transformDown resolveGenericAggregates
     }
 
@@ -155,7 +155,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
           )
         }
 
-      val keyAliases = keys map (GroupingAlias(_))
+      val keyAliases = keys map { GroupingAlias(_) }
       logInternalAliases(keyAliases, "grouping keys")
 
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
@@ -164,7 +164,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
       aggs foreach rejectNestedAggregateFunction
 
-      val aggAliases = aggs map (AggregationAlias(_))
+      val aggAliases = aggs map { AggregationAlias(_) }
       logInternalAliases(aggAliases, "aggregate functions")
 
       val aggRewriter = buildRewriter(aggAliases)
@@ -185,14 +185,14 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
 
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
       val wins = collectWindowFunctions(projectList ++ order map (rewriteAggs andThen rewriteKeys))
-      val winAliases = wins map (WindowAlias(_))
+      val winAliases = wins map { WindowAlias(_) }
       logInternalAliases(winAliases, "window functions")
 
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
       val restoreWins = (_: Expression) transformUp buildRestorer(winAliases)
 
       val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
-      val restore = restoreWins andThen restoreKeys andThen restoreAggs
+      val restore = restoreAggs compose restoreKeys compose restoreWins
 
       // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
       // outside. This method aliases them using names and expression IDs of the original named
@@ -210,7 +210,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
         component: String, whitelist: Seq[Attribute] = Nil
       )(e: Expression) = e.references collectFirst {
         case a: AttributeRef if !(whitelist contains a) =>
-          val keyList = keys map (_.sqlLike) mkString ("[", ", ", "]")
+          val keyList = keys map { _.sqlLike } mkString ("[", ", ", "]")
           throw new IllegalAggregationException(
             s"""Attribute ${a.sqlLike} in $component ${restore(e).sqlLike} is neither referenced
                |by a non-window aggregate function nor a grouping key among $keyList
@@ -218,7 +218,7 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
           )
       }
 
-      val output = rewrittenProjectList map (_.attr)
+      val output = rewrittenProjectList map { _.attr }
       wins foreach rejectOrphanReferences("window function")
       rewrittenProjectList foreach rejectOrphanReferences("SELECT field")
 

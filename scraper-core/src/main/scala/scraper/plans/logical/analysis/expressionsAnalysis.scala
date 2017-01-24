@@ -115,16 +115,16 @@ object ResolveAliases {
  */
 class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
-    case UnresolvedFunction(name, Seq(_: Star), isDistinct @ false) if name == i"count" =>
+    case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>
       Count(1)
 
     case Count((_: Star)) =>
       Count(1)
 
-    case UnresolvedFunction(_, Seq(_: Star), isDistinct @ true) =>
+    case UnresolvedFunction(_, Seq(_: Star), true) =>
       throw new AnalysisException("DISTINCT cannot be used together with star")
 
-    case UnresolvedFunction(name, Seq(_: Star), _) =>
+    case UnresolvedFunction(_, Seq(_: Star), _) =>
       throw new AnalysisException("Only function \"count\" may have star as argument")
 
     case UnresolvedFunction(name, args, isDistinct) if args forall (_.isResolved) =>
@@ -133,7 +133,7 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
         case f: AggregateFunction if isDistinct =>
           DistinctAggregateFunction(f)
 
-        case f if isDistinct =>
+        case _ if isDistinct =>
           throw new AnalysisException(
             s"Cannot decorate function $name with DISTINCT since it is not an aggregate function"
           )

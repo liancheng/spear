@@ -21,7 +21,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
   val stateAttributes: Seq[Attribute]
 
   final lazy val inputStateAttributes: Seq[Attribute] =
-    stateAttributes map (_ withID newExpressionID())
+    stateAttributes map { _ withID newExpressionID() }
 
   /**
    * Initial literal values of aggregation state fields.
@@ -150,7 +150,7 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 
   override lazy val resultExpression: Expression = value
 
-  protected lazy val value = 'value of dataType nullable isNullable
+  protected lazy val value: AttributeRef = 'value of dataType nullable isNullable
 }
 
 object FoldLeft {
