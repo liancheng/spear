@@ -166,7 +166,7 @@ case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
 trait ResolvedAttribute extends Attribute {
   override def debugString: String = {
     val nullability = if (isNullable) "?" else "!"
-    s"${name.toString}:${dataType.sql}$nullability#${expressionID.id}"
+    s"${name.toString}#${expressionID.id}:${dataType.sql}$nullability"
   }
 
   override def sql: Try[String] = Success(s"${name.toString}")
