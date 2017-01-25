@@ -6,8 +6,8 @@ import scala.util.control.NonFatal
 import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
-import scraper.expressions.AutoAlias.AnonymousColumnName
 import scraper.expressions.Expression.tryResolve
+import scraper.expressions.NamedExpression.AnonymousColumnName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.expressions.functions.lit
 import scraper.plans.logical._

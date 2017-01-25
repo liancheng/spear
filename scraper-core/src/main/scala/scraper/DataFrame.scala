@@ -4,7 +4,6 @@ import java.io.PrintStream
 
 import scraper.exceptions.ResolutionFailureException
 import scraper.expressions._
-import scraper.expressions.AutoAlias.named
 import scraper.expressions.functions._
 import scraper.plans.QueryExecution
 import scraper.plans.logical._
@@ -208,8 +207,9 @@ class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) ext
 }
 
 class GroupedData(df: DataFrame, keys: Seq[Expression]) {
-  def agg(projectList: Seq[Expression]): DataFrame =
-    df.withPlan(GenericAggregate(_, keys, projectList map named))
+  def agg(projectList: Seq[Expression]): DataFrame = df.withPlan {
+    _ groupBy keys agg projectList
+  }
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }

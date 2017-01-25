@@ -33,6 +33,13 @@ object NamedExpression {
   def newExpressionID(): ExpressionID = ExpressionID(currentID.getAndIncrement())
 
   def unapply(e: NamedExpression): Option[(Name, DataType)] = Some((e.name, e.dataType))
+
+  val AnonymousColumnName: String = "?column?"
+
+  def named(child: Expression): NamedExpression = child match {
+    case e: NamedExpression => e
+    case _                  => AutoAlias(child)
+  }
 }
 
 case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedNamedExpression {
@@ -99,15 +106,6 @@ case class AutoAlias private (child: Expression)
   override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
   override def debugString: String = s"${child.debugString} AS ?alias?"
-}
-
-object AutoAlias {
-  val AnonymousColumnName: String = "?column?"
-
-  def named(child: Expression): NamedExpression = child match {
-    case e: NamedExpression => e
-    case _                  => AutoAlias(child)
-  }
 }
 
 trait Attribute extends NamedExpression with LeafExpression {

@@ -57,15 +57,15 @@ trait InternalAlias extends UnaryExpression with InternalNamedExpression {
 }
 
 object InternalAlias {
-  def unalias[E <: Expression](
+  def unalias(
     targets: Seq[NamedExpression], purposes: Purpose*
-  )(expression: E): E = {
+  )(expression: Expression): Expression = {
     val aliases = targets collect {
       case a: InternalAlias if purposes contains a.purpose =>
         (a.attr: Expression) -> a.child
     }
 
-    expression.transformUp(aliases.toMap).asInstanceOf[E]
+    expression transformUp aliases.toMap
   }
 
   def buildRewriter(aliases: Seq[InternalAlias]): Map[Expression, Expression] =

@@ -8,9 +8,8 @@ import scraper.{Name, Row}
 import scraper.annotations.Explain
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
-import scraper.expressions.AutoAlias.named
 import scraper.expressions.Cast.widestTypeOf
-import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.NamedExpression.{named, newExpressionID}
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.expressions.windows.WindowSpec
@@ -334,7 +333,7 @@ case class GenericAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
-  havingConditions: Seq[Expression] = Nil,
+  conditions: Seq[Expression] = Nil,
   order: Seq[SortOrder] = Nil
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
@@ -427,7 +426,9 @@ object Window {
 }
 
 object LogicalPlan {
-  implicit class LogicalPlanDSL(plan: LogicalPlan) {
+  trait LowPriorityLogicalPlanDSL {
+    val plan: LogicalPlan
+
     def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
@@ -507,6 +508,8 @@ object LogicalPlan {
     def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
       stackWindowsOption(plan, functions)
   }
+
+  implicit class LogicalPlanDSL(val plan: LogicalPlan) extends LowPriorityLogicalPlanDSL
 
   class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {
     def agg(projectList: Seq[Expression]): GenericAggregate =

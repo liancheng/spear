@@ -63,7 +63,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
       }
 
       // All having conditions should be preserved.
-      agg.copy(havingConditions = agg.havingConditions :+ rewrittenCondition)
+      agg.copy(conditions = agg.conditions :+ rewrittenCondition)
   }
 }
 
