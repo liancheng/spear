@@ -12,8 +12,6 @@ package object dsl {
 
     def filter(condition: Expression): Filter = Filter(plan, condition)
 
-    def where(condition: Expression): Filter = filter(condition)
-
     def limit(n: Expression): Limit = Limit(plan, n)
 
     def limit(n: Int): Limit = limit(lit(n))

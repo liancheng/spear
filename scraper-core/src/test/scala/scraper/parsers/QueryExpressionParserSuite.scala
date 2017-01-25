@@ -77,7 +77,7 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT * FROM t0 WHERE a > 0 ORDER BY a",
-    table('t0) where 'a > 0 select * orderBy 'a.asc
+    table('t0) filter 'a > 0 select * orderBy 'a.asc
   )
 
   testQueryParsing(

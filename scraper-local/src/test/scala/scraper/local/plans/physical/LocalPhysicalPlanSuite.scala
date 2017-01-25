@@ -63,7 +63,7 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("filter") {
     checkPhysicalPlan(
-      r1 where a1 > 1,
+      r1 filter a1 > 1,
       Row(2, "b")
     )
   }

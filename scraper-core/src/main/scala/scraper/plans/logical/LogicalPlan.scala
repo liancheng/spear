@@ -439,8 +439,6 @@ object LogicalPlan {
     def filterOption(predicates: Seq[Expression]): LogicalPlan =
       predicates reduceOption And map filter getOrElse plan
 
-    def where(condition: Expression): Filter = filter(condition)
-
     def limit(n: Expression): Limit = Limit(plan, n)
 
     def limit(n: Int): Limit = this limit lit(n)
