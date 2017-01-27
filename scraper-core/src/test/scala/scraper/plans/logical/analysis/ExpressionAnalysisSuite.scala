@@ -14,7 +14,7 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
   testAutoAliasing('a + 1, "(a + 1)")
 
   // Case-insensitive name resolution
-  testAutoAliasing('B + 1, "(b + 1)")
+  testAutoAliasing('A + 1, "(a + 1)")
 
   testAutoAliasing($"t.a" + 1, "(a + 1)")
 

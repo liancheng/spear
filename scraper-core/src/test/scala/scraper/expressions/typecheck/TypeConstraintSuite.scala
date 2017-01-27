@@ -9,11 +9,11 @@ import scraper.types._
 class TypeConstraintSuite extends LoggingFunSuite {
   testTypeConstraint(classOf[StrictlyTyped]) {
     expectExpressions(1) {
-      StrictlyTyped(1 :: Nil)
+      lit(1).anyType
     }
 
     expectExpressions((1 cast LongType) + 1L) {
-      StrictlyTyped((lit(1) + 1L) :: Nil)
+      (lit(1) + 1L).anyType
     }
   }
 
@@ -45,11 +45,11 @@ class TypeConstraintSuite extends LoggingFunSuite {
 
   testTypeConstraint(classOf[Foldable]) {
     expectExpressions(1, "foo") {
-      Foldable(Seq(1, "foo"))
+      Foldable(Seq(lit(1), "foo"))
     }
 
     expectException[TypeMismatchException] {
-      Foldable(('a of IntType.!) :: Nil)
+      ('a of IntType.!).foldable
     }
   }
 

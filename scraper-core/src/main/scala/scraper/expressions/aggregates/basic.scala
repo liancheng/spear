@@ -6,7 +6,7 @@ import scraper.{Name, Row}
 import scraper.expressions._
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
-import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{ArrayType, BooleanType, DataType, OrderedType}
 
 case class Count(child: Expression) extends FoldLeft {
@@ -44,8 +44,7 @@ abstract class FirstLike(child: Expression, ignoresNull: Expression)
 
   override def isNullable: Boolean = child.isNullable
 
-  override protected def typeConstraint: TypeConstraint =
-    StrictlyTyped(child :: Nil) ++ Foldable(ignoresNull :: Nil)
+  override protected def typeConstraint: TypeConstraint = child.anyType concat ignoresNull.foldable
 
   override protected lazy val strictDataType: DataType = child.dataType
 

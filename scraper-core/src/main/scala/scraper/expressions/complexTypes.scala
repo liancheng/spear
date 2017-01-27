@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.{Name, Row}
-import scraper.expressions.typecheck.{Foldable, StrictlyTyped, TypeConstraint}
+import scraper.expressions.typecheck.{Foldable, TypeConstraint}
 import scraper.types._
 
 case class MakeNamedStruct(children: Seq[Expression]) extends Expression {
@@ -14,7 +14,7 @@ case class MakeNamedStruct(children: Seq[Expression]) extends Expression {
   override def evaluate(input: Row): Any = Row.fromSeq(values map (_ evaluate input))
 
   override protected def typeConstraint: TypeConstraint =
-    (names sameTypeAs StringType andAlso Foldable) ++ StrictlyTyped(values)
+    names sameTypeAs StringType andAlso Foldable concat values.anyType
 
   override protected lazy val strictDataType: DataType = {
     val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {
@@ -68,7 +68,7 @@ case class MakeMap(children: Seq[Expression]) extends Expression {
   override def evaluate(input: Row): Any =
     (keys map (_ evaluate input) zip (values map (_ evaluate input))).toMap
 
-  override protected def typeConstraint: TypeConstraint = keys.sameType ++ values.sameType
+  override protected def typeConstraint: TypeConstraint = keys.sameType concat values.sameType
 
   override protected lazy val strictDataType: DataType = {
     val valueNullable = values exists (_.isNullable)

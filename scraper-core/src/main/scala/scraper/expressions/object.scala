@@ -1,7 +1,7 @@
 package scraper.expressions
 
 import scraper.Row
-import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{DataType, ObjectType}
 
 case class Invoke(
@@ -19,7 +19,7 @@ case class Invoke(
   }
 
   override protected def typeConstraint: TypeConstraint =
-    (target subtypeOf ObjectType) ++ StrictlyTyped(args)
+    target subtypeOf ObjectType concat args.anyType
 
   private lazy val targetClass: Class[_] = target.dataType match {
     case t: ObjectType => Class.forName(t.className)

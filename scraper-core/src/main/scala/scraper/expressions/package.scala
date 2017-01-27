@@ -82,23 +82,28 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
   }
 
   implicit class TypeConstraintDSL(input: Seq[Expression]) {
+    def anyType: TypeConstraint = StrictlyTyped(input)
+
     def sameTypeAs(dataType: DataType): TypeConstraint = SameTypeAs(input, dataType)
 
     def sameSubtypeOf(supertype: AbstractDataType): TypeConstraint = SameSubtypeOf(input, supertype)
 
-    def sameSubtypeOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
-      SameSubtypeOf(input, OneOf(first +: rest))
-
     def sameType: TypeConstraint = SameType(input)
+
+    def foldable: TypeConstraint = Foldable(input)
   }
 
   implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
+    def anyType: TypeConstraint = StrictlyTyped(Seq(input))
+
     def sameTypeAs(dataType: DataType): TypeConstraint = Seq(input) sameTypeAs dataType
 
     def subtypeOf(supertype: AbstractDataType): TypeConstraint = Seq(input) sameSubtypeOf supertype
 
     def oneOf(first: AbstractDataType, rest: AbstractDataType*): TypeConstraint =
-      Seq(input) sameSubtypeOf (first, rest: _*)
+      Seq(input) sameSubtypeOf OneOf(first +: rest)
+
+    def foldable: TypeConstraint = Foldable(Seq(input))
   }
 
   implicit class Invoker(expression: Expression) {

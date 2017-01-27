@@ -21,7 +21,7 @@ case class RLike(left: Expression, right: Expression) extends BinaryOperator {
   override def dataType: DataType = BooleanType
 
   override protected def typeConstraint: TypeConstraint =
-    (left sameTypeAs StringType) ++ (right sameTypeAs StringType andAlso Foldable)
+    left sameTypeAs StringType concat (right sameTypeAs StringType andAlso Foldable)
 
   private lazy val compiledPattern =
     Pattern.compile(right.evaluated match { case pattern: String => pattern })

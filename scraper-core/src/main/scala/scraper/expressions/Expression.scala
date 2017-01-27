@@ -4,7 +4,7 @@ import scala.util.{Failure, Try}
 
 import scraper.{Name, Row}
 import scraper.exceptions._
-import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
+import scraper.expressions.typecheck.TypeConstraint
 import scraper.trees.TreeNode
 import scraper.types.{DataType, VoidType}
 import scraper.utils._
@@ -148,7 +148,7 @@ trait Expression extends TreeNode[Expression] {
   /**
    * Type constraint for all input expressions.
    */
-  protected def typeConstraint: TypeConstraint = StrictlyTyped(children)
+  protected def typeConstraint: TypeConstraint = children.anyType
 
   /**
    * Returns `value` if this [[Expression]] is strictly-typed, otherwise throws a

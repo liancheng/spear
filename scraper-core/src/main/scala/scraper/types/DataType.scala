@@ -7,10 +7,14 @@ import scala.util.{Failure, Success, Try}
 
 import scraper.exceptions.TypeMismatchException
 import scraper.expressions.Cast.{castable, compatible}
+import scraper.expressions.Expression
 import scraper.trees.TreeNode
 
 trait AbstractDataType {
   def isSupertypeOf(dataType: DataType): Boolean
+
+  def unapply(expression: Expression): Option[DataType] =
+    Option(expression.dataType) filter isSupertypeOf
 }
 
 case class OneOf(supertypes: Seq[AbstractDataType]) extends AbstractDataType {
