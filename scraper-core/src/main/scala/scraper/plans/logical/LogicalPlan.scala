@@ -329,7 +329,7 @@ case class Subquery(child: LogicalPlan, alias: Name) extends UnaryLogicalPlan {
  * queries involving aggregation, and must be rewritten into combinations of other resolved
  * operators.
  */
-case class GenericAggregate(
+case class UnresolvedAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
@@ -426,9 +426,7 @@ object Window {
 }
 
 object LogicalPlan {
-  trait LowPriorityLogicalPlanDSL {
-    val plan: LogicalPlan
-
+  implicit class LogicalPlanDSL(plan: LogicalPlan) {
     def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
@@ -475,17 +473,17 @@ object LogicalPlan {
     def except(that: LogicalPlan): Except = Except(plan, that)
 
     def groupBy(keys: Seq[Expression]): UnresolvedAggregateBuilder =
-      new UnresolvedAggregateBuilder(plan, keys)
+      new UnresolvedAggregateBuilder(keys)
 
     def groupBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
-      new UnresolvedAggregateBuilder(plan, first +: rest)
+      groupBy(first +: rest)
 
-    def agg(projectList: Seq[Expression]): GenericAggregate = this groupBy Nil agg projectList
+    def agg(projectList: Seq[Expression]): UnresolvedAggregate = this groupBy Nil agg projectList
 
-    def agg(first: Expression, rest: Expression*): GenericAggregate = agg(first +: rest)
+    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
 
     def resolvedGroupBy(keys: Seq[GroupingAlias]): AggregateBuilder =
-      new AggregateBuilder(plan, keys)
+      new AggregateBuilder(keys)
 
     def resolvedGroupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
       resolvedGroupBy(first +: rest)
@@ -507,20 +505,18 @@ object LogicalPlan {
 
     def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
       stackWindowsOption(plan, functions)
-  }
 
-  implicit class LogicalPlanDSL(val plan: LogicalPlan) extends LowPriorityLogicalPlanDSL
+    class UnresolvedAggregateBuilder(keys: Seq[Expression]) {
+      def agg(projectList: Seq[Expression]): UnresolvedAggregate =
+        UnresolvedAggregate(plan, keys, projectList map named)
 
-  class UnresolvedAggregateBuilder(plan: LogicalPlan, keys: Seq[Expression]) {
-    def agg(projectList: Seq[Expression]): GenericAggregate =
-      GenericAggregate(plan, keys, projectList map named)
+      def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
+    }
 
-    def agg(first: Expression, rest: Expression*): GenericAggregate = agg(first +: rest)
-  }
+    class AggregateBuilder(keys: Seq[GroupingAlias]) {
+      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)
 
-  class AggregateBuilder(plan: LogicalPlan, keys: Seq[GroupingAlias]) {
-    def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)
-
-    def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
+      def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
+    }
   }
 }
