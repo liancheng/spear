@@ -29,8 +29,8 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule converts a [[Project]] containing aggregate functions into a global aggregate, i.e. a
- * [[GenericAggregate]] without any grouping keys.
+ * This rule converts a [[Project]] containing aggregate functions into a global aggregate, i.e. an
+ * [[UnresolvedAggregate]] without any grouping keys.
  */
 class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -40,16 +40,16 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * A [[Filter]] directly over a [[GenericAggregate]] corresponds to a `HAVING` clause. Its predicate
- * must be resolved together with the [[GenericAggregate]] because it may refer to grouping keys and
- * aggregate functions. This rule extracts the predicate expression of such a [[Filter]] and merges
- * the predicate into the [[GenericAggregate]] underneath.
+ * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a `HAVING` clause. Its
+ * predicate must be resolved together with the [[UnresolvedAggregate]] because it may refer to
+ * grouping keys and aggregate functions. This rule extracts the predicate expression of such a
+ * [[Filter]] and merges the predicate into the [[UnresolvedAggregate]] underneath.
  *
- * @see [[ResolveGenericAggregates]]
+ * @see [[RewriteUnresolvedAggregates]]
  */
 class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: GenericAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
+    case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenCondition = tryResolveAndUnalias(agg.projectList)(condition)
 
@@ -68,16 +68,16 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
 }
 
 /**
- * A [[Sort]] directly over a [[GenericAggregate]] is special, its sort ordering expressions must be
- * resolved together with the [[GenericAggregate]] since it may refer to grouping keys and aggregate
- * functions. This rule extracts sort ordering expressions of such a [[Sort]] and merges them into
- * the [[GenericAggregate]] underneath.
+ * A [[Sort]] directly over an [[UnresolvedAggregate]] is special, its sort ordering expressions
+ * must be resolved together with the [[UnresolvedAggregate]] since it may refer to grouping keys
+ * and aggregate functions. This rule extracts sort ordering expressions of such a [[Sort]] and
+ * merges them into the [[UnresolvedAggregate]] underneath.
  *
- * @see [[ResolveGenericAggregates]]
+ * @see [[RewriteUnresolvedAggregates]]
  */
 class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: GenericAggregate) Sort order if agg.projectList forall (_.isResolved) =>
+    case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
       // Only preserves the last sort order.
       agg.copy(order = order map tryResolveAndUnalias(agg.projectList))
   }
@@ -91,7 +91,7 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * This rule resolves a [[GenericAggregate]] into a combination of the following operators:
+ * This rule rewrites an [[UnresolvedAggregate]] into a combination of the following operators:
  *
  *  - an [[Aggregate]] that evaluates non-window aggregate function found in `SELECT`, `HAVING`,
  *    and/or `ORDER BY` clauses, and
@@ -115,11 +115,11 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  *                        +- <child plan>
  * }}}
  */
-class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
+class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
     tree collectFirst preConditionViolations map { _ => tree } getOrElse {
-      tree transformDown resolveGenericAggregates
+      tree transformDown rewrite
     }
 
   // This partial function performs as a guard, who ensures all the pre-conditions of this analysis
@@ -127,34 +127,34 @@ class ResolveGenericAggregates(val catalog: Catalog) extends AnalysisRule {
   // contains any of the following patterns.
   private val preConditionViolations: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all adjacent having conditions are absorbed.
-    case ((_: GenericAggregate) Filter _) =>
+    case ((_: UnresolvedAggregate) Filter _) =>
 
     // Waits until all adjacent sorts are absorbed.
-    case ((_: GenericAggregate) Sort _) =>
+    case ((_: UnresolvedAggregate) Sort _) =>
 
     // Waits until project list, having condition, and sort order expressions are all resolved.
-    case plan: GenericAggregate if plan.expressions exists (!_.isResolved) =>
+    case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
 
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
-    case plan: GenericAggregate if hasDistinctAggregateFunction(plan.projectList) =>
+    case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
   }
 
-  private val resolveGenericAggregates: PartialFunction[LogicalPlan, LogicalPlan] = {
-    case GenericAggregate(Resolved(child), keys, projectList, conditions, order) =>
-      def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
-        if (aliases.nonEmpty) {
-          val aliasList = aliases map { alias =>
-            s"  - ${alias.child.sqlLike} -> ${alias.attr.debugString}"
-          } mkString "\n"
+  private def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
+    if (aliases.nonEmpty) {
+      val aliasList = aliases map { alias =>
+        s"  - ${alias.child.sqlLike} -> ${alias.attr.debugString}"
+      } mkString "\n"
 
-          logDebug(
-            s"""Collected $collectionName:
-               |
-               |$aliasList
-               |""".stripMargin
-          )
-        }
+      logDebug(
+        s"""Collected $collectionName:
+           |
+           |$aliasList
+           |""".stripMargin
+      )
+    }
 
+  private val rewrite: PartialFunction[LogicalPlan, LogicalPlan] = {
+    case UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
       val keyAliases = keys map { GroupingAlias(_) }
       logInternalAliases(keyAliases, "grouping keys")
 

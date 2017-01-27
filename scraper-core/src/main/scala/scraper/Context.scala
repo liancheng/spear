@@ -4,7 +4,7 @@ import scala.collection.Iterable
 import scala.reflect.runtime.universe.WeakTypeTag
 
 import scraper.config.{QueryExecutorClass, Settings}
-import scraper.expressions._
+import scraper.expressions.Expression
 import scraper.plans.logical.{LocalRelation, SingleRowRelation}
 import scraper.types.{LongType, StructType}
 

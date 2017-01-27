@@ -2,14 +2,18 @@ package scraper
 
 import scala.language.implicitConversions
 
+import scraper.expressions.dsl.ExpressionDSL
 import scraper.expressions.typecheck._
 import scraper.parsers._
 import scraper.types._
 
-package object expressions {
+package object expressions extends expressions.dsl.LowPriorityImplicits {
   val * : Star = Star(None)
 
-  implicit def `Expression->SortOrder`(e: Expression): SortOrder = e.asc
+  implicit def `Expression->ExpressionDSL`(expression: Expression): ExpressionDSL =
+    new ExpressionDSL {
+      override val self: Expression = expression
+    }
 
   implicit def `Boolean->Literal`(value: Boolean): Literal = Literal(value, BooleanType)
 

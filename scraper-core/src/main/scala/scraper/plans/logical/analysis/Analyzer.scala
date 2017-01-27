@@ -38,7 +38,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new RewriteProjectsAsGlobalAggregates(catalog),
       new AbsorbHavingConditionsIntoAggregates(catalog),
       new AbsorbSortsIntoAggregates(catalog),
-      new ResolveGenericAggregates(catalog)
+      new RewriteUnresolvedAggregates(catalog)
     )),
 
     RuleBatch("Type check", Once, Seq(

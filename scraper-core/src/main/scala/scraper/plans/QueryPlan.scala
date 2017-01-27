@@ -3,7 +3,7 @@ package scraper.plans
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-import scraper.expressions._
+import scraper.expressions.{Attribute, Expression, ExpressionID}
 import scraper.trees.TreeNode
 import scraper.types.StructType
 

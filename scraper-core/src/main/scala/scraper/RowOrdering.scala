@@ -1,6 +1,6 @@
 package scraper
 
-import scraper.expressions._
+import scraper.expressions.{Ascending, Attribute, Descending, SortOrder}
 import scraper.expressions.BoundRef.bindTo
 import scraper.types.{DataType, OrderedType}
 

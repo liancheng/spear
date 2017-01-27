@@ -4,7 +4,7 @@ import fastparse.all._
 
 import scraper.Name
 import scraper.annotations.ExtendedSQLSyntax
-import scraper.expressions._
+import scraper.expressions.{*, Expression, NamedExpression, SortOrder}
 import scraper.plans.logical._
 
 // SQL06 section 7.6

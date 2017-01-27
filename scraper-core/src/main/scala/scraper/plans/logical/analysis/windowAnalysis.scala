@@ -24,7 +24,7 @@ class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisR
  */
 class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
-    tree collectFirst preConditionViolation map (_ => tree) getOrElse {
+    tree collectFirst preConditionViolation map { _ => tree } getOrElse {
       tree transformDown {
         case Resolved(child Sort order) if hasWindowFunction(order) =>
           val winAliases = collectWindowFunctions(order) map (WindowAlias(_))

@@ -4,7 +4,6 @@ import scala.util.{Failure, Try}
 
 import scraper.{Name, Row}
 import scraper.exceptions._
-import scraper.expressions.dsl.ExpressionDSL
 import scraper.expressions.typecheck.{StrictlyTyped, TypeConstraint}
 import scraper.trees.TreeNode
 import scraper.types.{DataType, VoidType}
@@ -14,7 +13,7 @@ import scraper.utils._
  * A trait for expressions. Typically, concrete expression classes are immutable. One exception is
  * impure expressions (e.g., [[Rand]]), which are non-deterministic and contain mutable states.
  */
-trait Expression extends TreeNode[Expression] with ExpressionDSL {
+trait Expression extends TreeNode[Expression] {
   override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
   override def toString: String = sqlLike

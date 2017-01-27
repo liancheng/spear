@@ -108,9 +108,12 @@ object Window {
 
   def partitionBy(first: Expression, rest: Expression*): WindowSpec = partitionBy(first +: rest)
 
-  def orderBy(spec: Seq[SortOrder]): WindowSpec = Default.copy(orderSpec = spec)
+  def orderBy(spec: Seq[Expression]): WindowSpec = Default.copy(orderSpec = spec map {
+    case e: SortOrder => e
+    case e            => e.asc
+  })
 
-  def orderBy(first: SortOrder, rest: SortOrder*): WindowSpec = orderBy(first +: rest)
+  def orderBy(first: Expression, rest: Expression*): WindowSpec = orderBy(first +: rest)
 
   def between(windowFrame: WindowFrame): WindowSpec = Default.between(windowFrame)
 
