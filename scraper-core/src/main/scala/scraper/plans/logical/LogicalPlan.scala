@@ -12,7 +12,7 @@ import scraper.expressions.Cast.widestTypeOf
 import scraper.expressions.NamedExpression.{named, newExpressionID}
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
-import scraper.expressions.windows.WindowSpec
+import scraper.expressions.windows.{BasicWindowSpec, WindowSpec}
 import scraper.plans.QueryPlan
 import scraper.plans.logical.Window._
 import scraper.reflection.fieldSpecFor
@@ -419,7 +419,7 @@ object Window {
 
     // Builds one `Window` operator builder function for each group.
     windowAliasGroups map {
-      case (WindowSpec(partitionSpec, orderSpec, _), aliases) =>
+      case (BasicWindowSpec(partitionSpec, orderSpec, _), aliases) =>
         Window(_: LogicalPlan, aliases, partitionSpec, orderSpec)
     }
   }

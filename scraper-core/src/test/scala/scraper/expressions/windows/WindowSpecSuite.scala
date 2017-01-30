@@ -62,10 +62,30 @@ class WindowSpecSuite extends LoggingFunSuite {
   }
 
   test("window spec") {
+    def checkWindowSpec(sql: String)(spec: => WindowSpec): Unit = assertResult(Try(sql))(spec.sql)
+
     val rowsFrame = WindowFrame.Default.copy(frameType = RowsFrame)
     val rangeFrame = WindowFrame.Default.copy(frameType = RangeFrame)
 
-    def checkWindowSpec(sql: String)(spec: => WindowSpec): Unit = assertResult(Try(sql))(spec.sql)
+    checkWindowSpec(s"(PARTITION BY a, b ORDER BY c ASC NULLS FIRST)") {
+      Window partitionBy (a, b) orderBy c.asc.nullsFirst
+    }
+
+    checkWindowSpec(s"(PARTITION BY a, b ORDER BY c ASC NULLS FIRST)") {
+      Window orderBy c.asc.nullsFirst partitionBy (a, b)
+    }
+
+    checkWindowSpec(s"(ORDER BY c ASC NULLS FIRST)") {
+      Window orderBy c.asc.nullsFirst
+    }
+
+    checkWindowSpec(s"(PARTITION BY a, b)") {
+      Window partitionBy (a, b)
+    }
+
+    checkWindowSpec("()") {
+      Window.Default
+    }
 
     Seq(rowsFrame, rangeFrame) foreach { frame =>
       checkWindowSpec(s"(PARTITION BY a, b ORDER BY c ASC NULLS FIRST $frame)") {

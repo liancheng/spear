@@ -1,5 +1,6 @@
 package scraper.expressions.windows
 
+import scraper.Name
 import scraper.expressions.{Expression, LeafExpression, SortOrder, UnaryExpression, UnevaluableExpression}
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.IntegralType
@@ -67,51 +68,85 @@ object WindowFrame {
     WindowFrame(RangeFrame, start, end)
 }
 
-case class WindowSpec(
-  partitionSpec: Seq[Expression] = Nil,
-  orderSpec: Seq[SortOrder] = Nil,
-  windowFrame: WindowFrame = WindowFrame.Default
-) extends UnevaluableExpression {
-  override def children: Seq[Expression] = partitionSpec ++ orderSpec
+trait WindowSpec extends UnevaluableExpression {
+  def partitionSpec: Seq[Expression]
 
-  def partitionBy(spec: Seq[Expression]): WindowSpec = copy(partitionSpec = spec)
+  def orderSpec: Seq[SortOrder]
+
+  def partitionBy(spec: Seq[Expression]): WindowSpec
 
   def partitionBy(first: Expression, rest: Expression*): WindowSpec = partitionBy(first +: rest)
 
-  def orderBy(spec: Seq[Expression]): WindowSpec = copy(orderSpec = spec map {
-    case e: SortOrder => e
-    case e            => e.asc
-  })
+  def orderBy(spec: Seq[Expression]): WindowSpec
 
   def orderBy(first: Expression, rest: Expression*): WindowSpec = orderBy(first +: rest)
 
-  def between(windowFrame: WindowFrame): WindowSpec = copy(windowFrame = windowFrame)
+  def between(windowFrame: WindowFrame): WindowSpec
 
   def rowsBetween(start: FrameBoundary, end: FrameBoundary): WindowSpec =
     between(WindowFrame.rowsBetween(start, end))
 
   def rangeBetween(start: FrameBoundary, end: FrameBoundary): WindowSpec =
     between(WindowFrame.rangeBetween(start, end))
+}
+
+object WindowSpec {
+  val Default: WindowSpec = BasicWindowSpec()
+}
+
+case class BasicWindowSpec(
+  partitionSpec: Seq[Expression] = Nil,
+  orderSpec: Seq[SortOrder] = Nil,
+  windowFrame: Option[WindowFrame] = None
+) extends WindowSpec {
+
+  override def children: Seq[Expression] = partitionSpec ++ orderSpec
+
+  def partitionBy(spec: Seq[Expression]): WindowSpec = copy(partitionSpec = spec)
+
+  def orderBy(spec: Seq[Expression]): WindowSpec = copy(orderSpec = spec map {
+    case e: SortOrder => e
+    case e            => e.asc
+  })
+
+  def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
 
   override protected def template(childList: Seq[String]): String = {
     val (partitions, orders) = childList.splitAt(partitionSpec.length)
     val partitionBy = if (partitions.isEmpty) "" else partitions.mkString("PARTITION BY ", ", ", "")
     val orderBy = if (orders.isEmpty) "" else orders.mkString("ORDER BY ", ", ", "")
-    Seq(partitionBy, orderBy, windowFrame.toString) filter (_.nonEmpty) mkString ("(", " ", ")")
+    val frame = (windowFrame fold "") { _.toString }
+    Seq(partitionBy, orderBy, frame) filter (_.nonEmpty) mkString ("(", " ", ")")
   }
 }
 
-object Window {
-  val Default: WindowSpec = WindowSpec()
+case class WindowSpecRef(
+  name: Name,
+  partitionSpec: Seq[Expression] = Nil,
+  orderSpec: Seq[SortOrder] = Nil,
+  windowFrame: Option[WindowFrame] = None
+) extends WindowSpec {
 
-  def partitionBy(spec: Seq[Expression]): WindowSpec = Default.copy(partitionSpec = spec)
+  override def children: Seq[Expression] = partitionSpec ++ orderSpec
 
-  def partitionBy(first: Expression, rest: Expression*): WindowSpec = partitionBy(first +: rest)
+  override def partitionBy(spec: Seq[Expression]): WindowSpec = copy(partitionSpec = spec)
 
-  def orderBy(spec: Seq[Expression]): WindowSpec = Default.copy(orderSpec = spec map {
+  override def orderBy(spec: Seq[Expression]): WindowSpec = copy(orderSpec = spec map {
     case e: SortOrder => e
     case e            => e.asc
   })
+
+  override def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
+}
+
+object Window {
+  val Default: WindowSpec = WindowSpec.Default
+
+  def partitionBy(spec: Seq[Expression]): WindowSpec = Default partitionBy spec
+
+  def partitionBy(first: Expression, rest: Expression*): WindowSpec = partitionBy(first +: rest)
+
+  def orderBy(spec: Seq[Expression]): WindowSpec = Default orderBy spec
 
   def orderBy(first: Expression, rest: Expression*): WindowSpec = orderBy(first +: rest)
 

@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import scraper.Name
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
-import scraper.expressions.windows.{WindowFunction, WindowSpec}
+import scraper.expressions.windows.{Window, WindowFunction, WindowSpec}
 import scraper.types.DataType
 
 trait ExpressionDSL {
@@ -67,7 +67,7 @@ trait ExpressionDSL {
 
   def over(window: WindowSpec): WindowFunction = WindowFunction(self, window)
 
-  def over(): WindowFunction = WindowFunction(self, WindowSpec())
+  def over(): WindowFunction = WindowFunction(self, Window.Default)
 }
 
 trait LowPriorityImplicits {
