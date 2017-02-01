@@ -4,8 +4,9 @@ import fastparse.core.Logger
 
 import scraper.{LoggingFunSuite, TestUtils}
 import scraper.expressions._
+import scraper.expressions.windows.{CurrentRow, UnboundedPreceding, Window, WindowFrame}
 import scraper.parsers.QueryExpressionParser.queryExpression
-import scraper.plans.logical._
+import scraper.plans.logical.{let, table, values, LogicalPlan}
 
 class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
   import fastparse.all._
@@ -204,6 +205,27 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
     let('c1, values(2)) {
       let('c0, values(1)) {
         table('c0) select * union (table('c1) select *)
+      }
+    }
+  )
+
+  testQueryParsing(
+    "SELECT count(a) OVER () FROM t0",
+    table('t0) select 'count('a).over()
+  )
+
+  testQueryParsing(
+    "SELECT count(a) OVER w0 FROM t0 WINDOW w0 AS ()",
+    let('w0, Window.Default) {
+      table('t0) select 'count('a).over(Window('w0))
+    }
+  )
+
+  testQueryParsing(
+    "SELECT count(a) OVER w1 FROM t0 WINDOW w0 AS (), w1 AS (w0 ROWS UNBOUNDED PRECEDING)",
+    let('w1, Window('w0) between WindowFrame.rowsBetween(UnboundedPreceding, CurrentRow)) {
+      let('w0, Window.Default) {
+        table('t0) select 'count('a).over(Window('w1))
       }
     }
   )
