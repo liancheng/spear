@@ -149,14 +149,11 @@ object NameParser {
   import IdentifierParser._
   import WhitespaceApi._
 
-  val columnName: P[Name] =
-    identifier opaque "column-name"
+  val columnName: P[Name] = identifier opaque "column-name"
 
-  private val catalogName: P[Name] =
-    identifier opaque "catalog-name"
+  private val catalogName: P[Name] = identifier opaque "catalog-name"
 
-  private val unqualifiedSchemaName: P[Name] =
-    identifier opaque "unqualified-schema-name"
+  private val unqualifiedSchemaName: P[Name] = identifier opaque "unqualified-schema-name"
 
   case class SchemaName(schema: Name, catalog: Option[Name])
 
@@ -179,15 +176,13 @@ object NameParser {
     opaque "local-or-schema-qualified-name"
   )
 
-  val tableName: P[TableName] =
-    localOrSchemaQualifiedName opaque "table-name"
+  val tableName: P[TableName] = localOrSchemaQualifiedName opaque "table-name"
 
-  val queryName: P[Name] =
-    identifier opaque "query-name"
+  val queryName: P[Name] = identifier opaque "query-name"
 
-  val fieldName: P[Name] =
-    identifier opaque "field-name"
+  val fieldName: P[Name] = identifier opaque "field-name"
 
-  val functionName: P[Name] =
-    identifier opaque "function-name"
+  val functionName: P[Name] = identifier opaque "function-name"
+
+  val windowName: P[Name] = identifier opaque "window-name"
 }
