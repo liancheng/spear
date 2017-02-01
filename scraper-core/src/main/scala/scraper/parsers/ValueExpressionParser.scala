@@ -6,6 +6,7 @@ import scraper.annotations.ExtendedSQLSyntax
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.expressions.Literal.{False, True}
+import scraper.expressions.windows.{WindowFunction, WindowSpec, WindowSpecRef}
 import scraper.plans.logical.LogicalPlan
 
 // SQL06 section 5.3
@@ -137,20 +138,31 @@ object ValueExpressionPrimaryParser extends LoggingParser {
   import CaseExpressionParser._
   import CastSpecificationParser._
   import ColumnReferenceParser._
+  import KeywordParser._
+  import NameParser._
   import ValueExpressionParser._
   import ValueSpecificationParser._
   import WhitespaceApi._
+  import WindowFunctionParser._
 
   private val parenthesizedValueExpressionPrimary: P[Expression] =
     "(" ~ P(valueExpression) ~ ")" opaque "parenthesized-value-expression-primary"
 
-  val nonparenthesizedValueExpressionPrimary: P[Expression] = (
-    functionCall
-    | unsignedValueSpecification
-    | columnReference
-    | caseExpression
-    | castSpecification
-    opaque "nonparenthesized-value-expression-primary"
+  val simpleFunction: P[UnresolvedFunction] = (
+    functionName ~ "(" ~ DISTINCT.!.? ~ P(valueExpression).rep(sep = ",") ~ ")"
+    map { case (name, isDistinct, args) => (name, args, isDistinct.isDefined) }
+    map UnresolvedFunction.tupled
+    opaque "function-call"
+  )
+
+  val nonparenthesizedValueExpressionPrimary: P[Expression] = P(
+    windowFunction
+      | simpleFunction
+      | unsignedValueSpecification
+      | columnReference
+      | caseExpression
+      | castSpecification
+      opaque "nonparenthesized-value-expression-primary"
   )
 
   val valueExpressionPrimary: P[Expression] = (
@@ -179,6 +191,27 @@ object ColumnReferenceParser extends LoggingParser {
       case Seq(qualifier, column) => column of qualifier
       case Seq(column)            => column: Attribute
     } opaque "column-reference"
+}
+
+// SQL06 section 6.10
+
+object WindowFunctionParser extends LoggingParser {
+  import KeywordParser._
+  import NameParser._
+  import ValueExpressionPrimaryParser._
+  import WhitespaceApi._
+  import WindowClauseParser._
+
+  private val windowNameOrSpecification: P[WindowSpec] =
+    windowName.map { WindowSpecRef(_) } | windowSpecification opaque "window-name-or-specification"
+
+  private val windowFunctionType: P[Expression] = simpleFunction
+
+  val windowFunction: P[Expression] = (
+    windowFunctionType ~ OVER ~ windowNameOrSpecification
+    map WindowFunction.tupled
+    opaque "window-function"
+  )
 }
 
 // SQL06 section 6.11
@@ -283,17 +316,8 @@ object CastSpecificationParser extends LoggingParser {
 // SQL06 section 6.25
 object ValueExpressionParser extends LoggingParser {
   import BooleanValueExpressionParser._
-  import KeywordParser._
-  import NameParser._
   import StringValueExpressionParser._
   import WhitespaceApi._
-
-  val functionCall: P[UnresolvedFunction] = (
-    functionName ~ "(" ~ DISTINCT.!.? ~ P(valueExpression).rep(sep = ",") ~ ")"
-    map { case (name, isDistinct, args) => (name, args, isDistinct.isDefined) }
-    map UnresolvedFunction.tupled
-    opaque "function-call"
-  )
 
   val commonValueExpression: P[Expression] = stringValueExpression opaque "common-value-expression"
 
@@ -321,7 +345,7 @@ object NumericValueExpressionParser extends LoggingParser {
   private val term: P[Expression] = {
     @ExtendedSQLSyntax
     val remainder = P("%") attach Remainder
-    val operator = P("*").attach(Multiply) | P("/").attach(Divide) | remainder
+    val operator = (P("*") attach Multiply) | (P("/") attach Divide) | remainder
 
     factor chain operator opaque "term"
   }
