@@ -379,6 +379,12 @@ case class With(
   override def output: Seq[Attribute] = child.output
 }
 
+case class WindowDef(child: LogicalPlan, name: Name, windowSpec: WindowSpec)
+  extends UnaryLogicalPlan {
+
+  override def output: Seq[Attribute] = child.output
+}
+
 case class Window(
   child: LogicalPlan,
   functions: Seq[WindowAlias],
