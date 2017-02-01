@@ -4,7 +4,8 @@ import fastparse.all._
 
 import scraper.Name
 import scraper.annotations.ExtendedSQLSyntax
-import scraper.expressions.{*, Expression, NamedExpression, SortOrder}
+import scraper.expressions.{*, Attribute, Expression, NamedExpression, SortOrder}
+import scraper.expressions.windows._
 import scraper.plans.logical._
 
 // SQL06 section 7.6
@@ -120,6 +121,96 @@ object GroupByClauseParser extends LoggingParser {
     GROUP ~ BY ~ groupingElementList opaque "group-by-clause"
 }
 
+object WindowClauseParser extends LoggingParser {
+  import ColumnReferenceParser._
+  import KeywordParser._
+  import NameParser._
+  import SortSpecificationListParser._
+  import ValueSpecificationParser._
+  import WhitespaceApi._
+
+  private val existingWindowName: P[Name] = windowName opaque "existing-window-name"
+
+  private val windowPartitionColumnReference: P[Attribute] =
+    columnReference opaque "window-partition-column-reference"
+
+  private val windowPartitionColumnReferenceList: P[Seq[Attribute]] = (
+    windowPartitionColumnReference.rep(min = 1, sep = ",")
+    opaque "window-partition-column-reference-list"
+  )
+
+  private val windowPartitionClause: P[Seq[Expression]] =
+    PARTITION ~ BY ~ windowPartitionColumnReferenceList opaque "window-partition-clause"
+
+  private val windowOrderClause: P[Seq[SortOrder]] =
+    ORDER ~ BY ~ sortSpecificationList opaque "window-order-clause"
+
+  private val windowFrameUnits: P[WindowFrameType] =
+    (ROWS attach RowsFrame) | (RANGE attach RangeFrame) opaque "window-frame-units"
+
+  private val windowFramePreceding: P[FrameBoundary] =
+    unsignedValueSpecification ~ PRECEDING map Preceding opaque "window-frame-preceding"
+
+  private val windowFrameStart: P[FrameBoundary] = (
+    (UNBOUNDED ~ PRECEDING attach UnboundedPreceding)
+    | windowFramePreceding
+    | (CURRENT ~ ROW attach CurrentRow)
+    opaque "window-frame-start"
+  )
+
+  private val windowFrameFollowing: P[FrameBoundary] =
+    unsignedValueSpecification ~ FOLLOWING map Following opaque "window-frame-following"
+
+  private val windowFrameBound: P[FrameBoundary] = (
+    windowFrameStart
+    | (UNBOUNDED ~ FOLLOWING attach UnboundedFollowing)
+    | windowFrameFollowing
+    opaque "window-frame-bound"
+  )
+
+  private val windowFrameBetween: P[(FrameBoundary, FrameBoundary)] =
+    BETWEEN ~ windowFrameBound ~ AND ~ windowFrameBound opaque "window-frame-between"
+
+  private val windowFrameExtent: P[(FrameBoundary, FrameBoundary)] =
+    windowFrameStart.map { _ -> CurrentRow } | windowFrameBetween opaque "window-frame-extent"
+
+  private val windowFrameClause: P[WindowFrame] =
+    windowFrameUnits ~ windowFrameExtent map {
+      case (frameType, (start, end)) => frameType.extent(start, end)
+    } opaque "window-frame-clause"
+
+  private val basicWindowSpecification: P[WindowSpec] = (
+    windowPartitionClause.?.map { _ getOrElse Nil }
+    ~ windowOrderClause.?.map { _ getOrElse Nil }
+    ~ windowFrameClause.?
+    map BasicWindowSpec.tupled
+    opaque "basic-window-specification"
+  )
+
+  private val refinedWindowSpecification: P[WindowSpec] =
+    existingWindowName.map { WindowSpecRef(_) } ~ windowFrameClause.? map {
+      case (ref, frame) => ref betweenOption frame
+    } opaque "refined-window-specification"
+
+  val windowSpecification: P[WindowSpec] = (
+    "(" ~ (refinedWindowSpecification | basicWindowSpecification) ~ ")"
+    opaque "window-specification"
+  )
+
+  private val windowDefinition: P[LogicalPlan => WindowDef] =
+    windowName ~ AS ~ windowSpecification map {
+      case (name, spec) => WindowDef(_: LogicalPlan, name, spec)
+    } opaque "window-definition"
+
+  private val windowDefinitionList: P[LogicalPlan => WindowDef] =
+    windowDefinition rep (min = 1, sep = ",") map {
+      _ reduce { _ andThen _ }
+    } opaque "window-definition-list"
+
+  val windowClause: P[LogicalPlan => WindowDef] =
+    WINDOW ~ windowDefinitionList opaque "window-clause"
+}
+
 // SQL06 section 7.12
 object QuerySpecificationParser extends LoggingParser {
   import AggregateFunctionParser._
@@ -128,9 +219,11 @@ object QuerySpecificationParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
   import SearchConditionParser._
+  import SortSpecificationListParser._
   import TableReferenceParser._
   import ValueExpressionParser._
   import WhitespaceApi._
+  import WindowClauseParser._
 
   private val asClause: P[Name] =
     AS.? ~ columnName opaque "as-clause"
@@ -187,32 +280,6 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "having-clause"
   )
 
-  private val orderingSpecification: P[Expression => SortOrder] = (
-    ASC.attach { (_: Expression).asc }
-    | DESC.attach { (_: Expression).desc }
-    opaque "ordering-specification"
-  )
-
-  private val nullOrdering: P[SortOrder => SortOrder] =
-    NULLS ~ (
-      FIRST.attach { (_: SortOrder).nullsFirst }
-      | LAST.attach { (_: SortOrder).nullsLast }
-    ) opaque "null-ordering"
-
-  private val sortKey: P[Expression] =
-    valueExpression opaque "sort-key"
-
-  private val sortSpecification: P[SortOrder] = (
-    sortKey
-    ~ orderingSpecification.?.map { _ getOrElse { (_: Expression).asc } }
-    ~ nullOrdering.?.map { _ getOrElse { (_: SortOrder).nullsLarger } }
-    map { case (key, f, g) => f andThen g apply key }
-    opaque "sort-specification"
-  )
-
-  private val sortSpecificationList: P[Seq[SortOrder]] =
-    sortSpecification rep (min = 1, sep = ",") opaque "sort-specification-list"
-
   private val orderByClause: P[LogicalPlan => LogicalPlan] = (
     ORDER ~ BY ~ sortSpecificationList
     map { sortOrders => (_: LogicalPlan) orderBy sortOrders }
@@ -227,15 +294,18 @@ object QuerySpecificationParser extends LoggingParser {
     ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ groupByClause.?
     ~ havingClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
-      case (quantify, projectList, relation, filter, maybeGroups, having, orderBy) =>
+      case (quantify, projectList, relation, filter, maybeGroups, having, window, orderBy) =>
         val projectOrAgg = maybeGroups map { groups =>
           (_: LogicalPlan) groupBy groups agg projectList
         } getOrElse {
           (_: LogicalPlan) select projectList
         }
 
-        filter andThen projectOrAgg andThen quantify andThen having andThen orderBy apply relation
+        Seq(
+          filter, projectOrAgg, quantify, having, window, orderBy
+        ) reduce { _ andThen _ } apply relation
     }
     opaque "query-specification"
   )
@@ -309,4 +379,36 @@ object SubqueryParser extends LoggingParser {
   private val subquery: P[LogicalPlan] = "(" ~ P(queryExpression) ~ ")" opaque "subquery"
 
   val tableSubquery: P[LogicalPlan] = subquery opaque "table-subquery"
+}
+
+object SortSpecificationListParser extends LoggingParser {
+  import KeywordParser._
+  import ValueExpressionParser._
+  import WhitespaceApi._
+
+  private val orderingSpecification: P[Expression => SortOrder] = (
+    ASC.attach { (_: Expression).asc }
+    | DESC.attach { (_: Expression).desc }
+    opaque "ordering-specification"
+  )
+
+  private val nullOrdering: P[SortOrder => SortOrder] =
+    NULLS ~ (
+      FIRST.attach { (_: SortOrder).nullsFirst }
+      | LAST.attach { (_: SortOrder).nullsLast }
+    ) opaque "null-ordering"
+
+  private val sortKey: P[Expression] =
+    valueExpression opaque "sort-key"
+
+  private val sortSpecification: P[SortOrder] = (
+    sortKey
+    ~ orderingSpecification.?.map { _ getOrElse { (_: Expression).asc } }
+    ~ nullOrdering.?.map { _ getOrElse { (_: SortOrder).nullsLarger } }
+    map { case (key, f, g) => f andThen g apply key }
+    opaque "sort-specification"
+  )
+
+  val sortSpecificationList: P[Seq[SortOrder]] =
+    sortSpecification rep (min = 1, sep = ",") opaque "sort-specification-list"
 }
