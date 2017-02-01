@@ -110,11 +110,11 @@ class WindowSpecSuite extends LoggingFunSuite {
     }
 
     checkWindowSpec(s"($rowsFrame)") {
-      Window rowsBetween (UnboundedPreceding, UnboundedFollowing)
+      Window rowsBetween (UnboundedPreceding, CurrentRow)
     }
 
     checkWindowSpec(s"($rangeFrame)") {
-      Window rangeBetween (UnboundedPreceding, UnboundedFollowing)
+      Window rangeBetween (UnboundedPreceding, CurrentRow)
     }
   }
 

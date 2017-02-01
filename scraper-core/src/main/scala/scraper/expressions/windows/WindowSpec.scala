@@ -1,17 +1,26 @@
 package scraper.expressions.windows
 
 import scraper.Name
-import scraper.expressions.{Expression, LeafExpression, SortOrder, UnaryExpression, UnevaluableExpression}
+import scraper.exceptions.ExpressionUnresolvedException
+import scraper.expressions.{Expression, LeafExpression, SortOrder, UnaryExpression, UnevaluableExpression, UnresolvedExpression}
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.IntegralType
 
-sealed trait WindowFrameType
+sealed trait WindowFrameType {
+  def extent(start: FrameBoundary, end: FrameBoundary): WindowFrame
+}
 
 case object RowsFrame extends WindowFrameType {
+  override def extent(start: FrameBoundary, end: FrameBoundary): WindowFrame =
+    WindowFrame(RowsFrame, start, end)
+
   override def toString: String = "ROWS"
 }
 
 case object RangeFrame extends WindowFrameType {
+  override def extent(start: FrameBoundary, end: FrameBoundary): WindowFrame =
+    WindowFrame(RangeFrame, start, end)
+
   override def toString: String = "RANGE"
 }
 
@@ -48,7 +57,7 @@ case class Following(offset: Expression) extends FrameBoundary with UnaryExpress
 case class WindowFrame(
   frameType: WindowFrameType = RowsFrame,
   start: FrameBoundary = UnboundedPreceding,
-  end: FrameBoundary = UnboundedFollowing
+  end: FrameBoundary = CurrentRow
 ) extends UnevaluableExpression {
   override def children: Seq[Expression] = start :: end :: Nil
 
@@ -83,6 +92,8 @@ trait WindowSpec extends UnevaluableExpression {
 
   def between(windowFrame: WindowFrame): WindowSpec
 
+  def betweenOption(frame: Option[WindowFrame]): WindowSpec
+
   def rowsBetween(start: FrameBoundary, end: FrameBoundary): WindowSpec =
     between(WindowFrame.rowsBetween(start, end))
 
@@ -91,7 +102,7 @@ trait WindowSpec extends UnevaluableExpression {
 }
 
 object WindowSpec {
-  val Default: WindowSpec = BasicWindowSpec()
+  val Default: BasicWindowSpec = BasicWindowSpec()
 }
 
 case class BasicWindowSpec(
@@ -111,6 +122,8 @@ case class BasicWindowSpec(
 
   def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
 
+  def betweenOption(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
+
   override protected def template(childList: Seq[String]): String = {
     val (partitions, orders) = childList.splitAt(partitionSpec.length)
     val partitionBy = if (partitions.isEmpty) "" else partitions.mkString("PARTITION BY ", ", ", "")
@@ -120,27 +133,33 @@ case class BasicWindowSpec(
   }
 }
 
-case class WindowSpecRef(
-  name: Name,
-  partitionSpec: Seq[Expression] = Nil,
-  orderSpec: Seq[SortOrder] = Nil,
-  windowFrame: Option[WindowFrame] = None
-) extends WindowSpec {
+case class WindowSpecRef(name: Name, windowFrame: Option[WindowFrame] = None)
+  extends WindowSpec with UnresolvedExpression {
 
-  override def children: Seq[Expression] = partitionSpec ++ orderSpec
+  override def children: Seq[Expression] = windowFrame.toSeq
 
-  override def partitionBy(spec: Seq[Expression]): WindowSpec = copy(partitionSpec = spec)
+  override def partitionSpec: Seq[Expression] = throw new ExpressionUnresolvedException(this)
 
-  override def orderBy(spec: Seq[Expression]): WindowSpec = copy(orderSpec = spec map {
-    case e: SortOrder => e
-    case e            => e.asc
-  })
+  override def orderSpec: Seq[SortOrder] = throw new ExpressionUnresolvedException(this)
+
+  override def partitionBy(spec: Seq[Expression]): WindowSpec =
+    throw new ExpressionUnresolvedException(this)
+
+  override def orderBy(spec: Seq[Expression]): WindowSpec =
+    throw new ExpressionUnresolvedException(this)
 
   override def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
+
+  override def betweenOption(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
+
+  override protected def template(childList: Seq[String]): String =
+    name +: childList mkString ("(", " ", ")")
 }
 
 object Window {
   val Default: WindowSpec = WindowSpec.Default
+
+  def apply(name: Name): WindowSpecRef = WindowSpecRef(name)
 
   def partitionBy(spec: Seq[Expression]): WindowSpec = Default partitionBy spec
 
