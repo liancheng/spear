@@ -194,9 +194,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(`@A: count(b)`)
-        .window(`@W: count(b) over w1`)
+        .window(`@W: count(b) over w0`)
         .select(
-          `@W: count(b) over w1`.attr as 'win_count,
+          `@W: count(b) over w0`.attr as 'win_count,
           `@A: count(b)`.attr as 'agg_count
         )
     )
@@ -216,11 +216,11 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         .agg(Nil)
         .window(
           `@W: count(a + 1) over w0`,
-          `@W: count(b) over w1`
+          `@W: count(b) over w0`
         )
         .select(
           `@W: count(a + 1) over w0`.attr as 'count,
-          `@W: count(b) over w1`.attr as 'count
+          `@W: count(b) over w0`.attr as 'count
         )
     )
   }
@@ -238,10 +238,10 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(Nil)
         .window(`@W: count(a + 1) over w0`)
-        .window(`@W: count(b) over w2`)
+        .window(`@W: count(b) over w1`)
         .select(
           `@W: count(a + 1) over w0`.attr as 'count,
-          `@W: count(b) over w2`.attr as 'count
+          `@W: count(b) over w1`.attr as 'count
         )
     )
   }
@@ -255,8 +255,8 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
         .agg(`@A: max(a)`)
-        .window(`@W: count(b) over w3`)
-        .select(`@W: count(b) over w3`.attr as 'win_count)
+        .window(`@W: count(b) over w2`)
+        .select(`@W: count(b) over w2`.attr as 'win_count)
     )
   }
 
@@ -435,9 +435,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   private val `@W: count(a + 1) over w0` = WindowAlias(count(`@G: a + 1`.attr) over w0)
 
-  private val `@W: count(b) over w1` = WindowAlias(count(`@G: b`.attr) over w0)
+  private val `@W: count(b) over w0` = WindowAlias(count(`@G: b`.attr) over w0)
 
-  private val `@W: count(b) over w2` = WindowAlias(count(`@G: b`.attr) over w1)
+  private val `@W: count(b) over w1` = WindowAlias(count(`@G: b`.attr) over w1)
 
-  private val `@W: count(b) over w3` = WindowAlias(count(`@G: b`.attr) over w2)
+  private val `@W: count(b) over w2` = WindowAlias(count(`@G: b`.attr) over w2)
 }
