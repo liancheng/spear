@@ -2,6 +2,7 @@ package scraper.plans
 
 import scraper.Name
 import scraper.expressions.Expression
+import scraper.expressions.windows.WindowSpec
 
 package object logical {
   def table(name: Name): UnresolvedRelation = UnresolvedRelation(name)
@@ -14,7 +15,9 @@ package object logical {
     With(body, name, plan, None)
   }
 
-  def let(name: Name, plan: LogicalPlan, aliases: Seq[Name])(body: => LogicalPlan): With = {
+  def let(name: Name, plan: LogicalPlan, aliases: Seq[Name])(body: => LogicalPlan): With =
     With(body, name, plan, Some(aliases))
-  }
+
+  def let(name: Name, windowSpec: WindowSpec)(body: => LogicalPlan): WindowDef =
+    WindowDef(body, name, windowSpec)
 }
