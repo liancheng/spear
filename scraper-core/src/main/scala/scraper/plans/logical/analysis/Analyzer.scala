@@ -5,6 +5,7 @@ import scraper.exceptions.AnalysisException
 import scraper.expressions.{Alias, Attribute, Expression, NamedExpression}
 import scraper.expressions.Expression.tryResolve
 import scraper.expressions.NamedExpression.newExpressionID
+import scraper.expressions.windows.WindowSpecRef
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.trees.{Rule, RulesExecutor}
@@ -13,7 +14,8 @@ import scraper.trees.RulesExecutor.{FixedPoint, Once}
 class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("CTE inlining", FixedPoint.Unlimited, Seq(
-      new InlineCTERelationsAsSubqueries(catalog)
+      new InlineCTERelationsAsSubqueries(catalog),
+      new InlineWindowDefinitions(catalog)
     )),
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
@@ -94,6 +96,16 @@ class InlineCTERelationsAsSubqueries(val catalog: Catalog) extends AnalysisRule 
       child transformDown {
         case UnresolvedRelation(`name`) =>
           (aliases fold query) { query.rename(name, _) } subquery name
+      }
+  }
+}
+
+class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
+  override def apply(v1: LogicalPlan): LogicalPlan = v1 transformUp {
+    case WindowDef(child, name, windowSpec) =>
+      child.transformAllExpressionsDown {
+        case WindowSpecRef(`name`, maybeFrame) =>
+          (maybeFrame fold windowSpec) { windowSpec.between }
       }
   }
 }
