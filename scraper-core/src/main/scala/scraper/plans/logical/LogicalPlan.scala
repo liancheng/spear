@@ -394,7 +394,7 @@ object Window {
    * [[Window]] operators over `plan`.
    */
   def stackWindowsOption(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
-    (windowBuilders(windowAliases) foldLeft plan) { (p, f) => f apply p }
+    windowBuilders(windowAliases) reduceOption { _ andThen _ } map { _ apply plan } getOrElse plan
 
   /**
    * Given a logical `plan` and a list of one or more window functions, stacks one or more
@@ -412,7 +412,7 @@ object Window {
     // Groups all window functions by their window specs. We are doing sorts here so that it would
     // be easier to reason about the order of all the generated `Window` operators.
     val windowAliasGroups = windowAliases
-      .groupBy(_.child.window)
+      .groupBy { _.child.window }
       .mapValues { _ sortBy windowAliases.indexOf }
       .toSeq
       .sortBy { case (spec: WindowSpec, _) => windowSpecs indexOf spec }
@@ -501,7 +501,7 @@ object LogicalPlan {
 
     def window(first: WindowAlias, rest: WindowAlias*): Window = window(first +: rest)
 
-    def windows(functions: Seq[WindowAlias]): Window = stackWindows(plan, functions)
+    def windows(functions: Seq[WindowAlias]): LogicalPlan = stackWindowsOption(plan, functions)
 
     def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
       stackWindowsOption(plan, functions)
