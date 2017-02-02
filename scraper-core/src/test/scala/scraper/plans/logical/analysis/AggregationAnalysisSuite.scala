@@ -249,6 +249,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   override protected def beforeAll(): Unit = catalog.registerRelation('t, relation)
 
+  override protected def afterAll(): Unit = catalog.removeRelation('t)
+
   private val (a, b) = ('a.int.!, 'b.string.?)
 
   private val `@A: count(a)` = AggregationAlias(count(self.a))

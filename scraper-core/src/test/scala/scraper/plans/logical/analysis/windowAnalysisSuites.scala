@@ -4,12 +4,17 @@ import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.expressions.windows._
-import scraper.plans.logical.LocalRelation
+import scraper.plans.logical.{table, LocalRelation, LogicalPlan}
 
 abstract class WindowAnalysisTest extends AnalyzerTest { self =>
-  protected val (a: AttributeRef, b: AttributeRef) = ('a.int.!, 'b.string.?)
+  override protected def afterAll(): Unit = catalog.removeRelation('t)
 
-  protected val relation: LocalRelation = LocalRelation.empty(a, b)
+  protected val relation: LogicalPlan = {
+    catalog.registerRelation('t, LocalRelation.empty('a.int.!, 'b.string.?))
+    catalog.lookupRelation('t)
+  }
+
+  protected val Seq(a: AttributeRef, b: AttributeRef) = relation.output
 
   protected val f0: WindowFrame = WindowFrame(RowsFrame, UnboundedPreceding, CurrentRow)
 
@@ -27,27 +32,57 @@ abstract class WindowAnalysisTest extends AnalyzerTest { self =>
 class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   test("single window function") {
     checkAnalyzedPlan(
-      relation.select('max('a) over `?w0?` as 'win_max),
+      """SELECT max(a) OVER (
+        |  PARTITION BY a
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) AS win_max
+        |FROM t
+        |""".stripMargin,
+
+      table('t) select ('max('a) over `?w0?` as 'win_max),
 
       relation
-        .window(`@W: max(a) over w0`)
-        .select(`@W: max(a) over w0`.attr as 'win_max)
+        window `@W: max(a) over w0`
+        select (`@W: max(a) over w0`.attr as 'win_max)
     )
   }
 
   test("single window function with non-window expressions") {
     checkAnalyzedPlan(
-      relation.select('a + ('max('a) over `?w0?`) as 'win_max),
+      """SELECT a + max(a) OVER (
+        |  PARTITION BY a
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) as win_max
+        |FROM t
+        |""".stripMargin,
+
+      table('t) select ('a + ('max('a) over `?w0?`) as 'win_max),
 
       relation
-        .window(`@W: max(a) over w0`)
-        .select(a + `@W: max(a) over w0`.attr as 'win_max)
+        window `@W: max(a) over w0`
+        select (a + `@W: max(a) over w0`.attr as 'win_max)
     )
   }
 
   test("multiple window functions with the same window spec") {
     checkAnalyzedPlan(
-      relation.select(
+      """SELECT
+        |  max(a) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_max,
+        |  count(b) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_count
+        |FROM t
+        |""".stripMargin,
+
+      table('t).select(
         'max('a) over `?w0?` as 'win_max,
         'count('b) over `?w0?` as 'win_count
       ),
@@ -64,7 +99,21 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
   test("multiple window functions with the same window spec and non-window expressions") {
     checkAnalyzedPlan(
-      relation.select(
+      """SELECT
+        |  a + max(a) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS c0,
+        |  count(b) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS c1
+        |FROM t
+        |""".stripMargin,
+
+      table('t).select(
         ('a + ('max('a) over `?w0?`)) as 'c0,
         'count('b) over `?w0?` as 'c1
       ),
@@ -81,7 +130,21 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
   test("multiple window functions with different window specs") {
     checkAnalyzedPlan(
-      relation.select(
+      """SELECT
+        |  max(a) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_max,
+        |  count(b) OVER (
+        |    PARTITION BY b
+        |    ORDER BY a
+        |    RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING
+        |  ) AS win_count
+        |FROM t
+        |""".stripMargin,
+
+      table('t).select(
         'max('a) over `?w0?` as 'win_max,
         'count('b) over `?w1?` as 'win_count
       ),
@@ -98,27 +161,50 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
   test("multiple window functions with different window specs and non-window expressions") {
     checkAnalyzedPlan(
-      relation.select(
-        ('a + ('max('a) over `?w0?`)) as 'x,
-        'count('b) over `?w1?` as 'y
+      """SELECT
+        |  a + max(a) OVER (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_max,
+        |  count(b) OVER (
+        |    PARTITION BY b
+        |    ORDER BY a
+        |    RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING
+        |  ) AS win_count
+        |FROM t
+        |""".stripMargin,
+
+      table('t).select(
+        ('a + ('max('a) over `?w0?`)) as 'win_max,
+        'count('b) over `?w1?` as 'win_count
       ),
 
       relation
         .window(`@W: max(a) over w0`)
         .window(`@W: count(b) over w1`)
         .select(
-          a + `@W: max(a) over w0`.attr as 'x,
-          `@W: count(b) over w1`.attr as 'y
+          a + `@W: max(a) over w0`.attr as 'win_max,
+          `@W: count(b) over w1`.attr as 'win_count
         )
     )
   }
 
   test("window function in ORDER BY clause") {
     checkAnalyzedPlan(
-      relation
-        .orderBy('max('a) over `?w0?`),
+      """SELECT *
+        |FROM t
+        |ORDER BY max(a) OVER (
+        |  PARTITION BY a
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |)
+        |""".stripMargin,
+
+      table('t) select * orderBy ('max('a) over `?w0?`),
 
       relation
+        .select(a, b)
         .window(`@W: max(a) over w0`)
         .orderBy(`@W: max(a) over w0`.attr)
         .select(a, b)
@@ -129,7 +215,16 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val win_max = `@W: max(a) over w0`.attr as 'win_max
 
     checkAnalyzedPlan(
-      relation
+      """SELECT max(a) OVER (
+        |  PARTITION BY a
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) AS win_max
+        |FROM t
+        |ORDER BY win_max
+        |""".stripMargin,
+
+      table('t)
         .select('max('a) over `?w0?` as 'win_max)
         .orderBy('win_max),
 
@@ -170,7 +265,16 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   test("single window function") {
     checkAnalyzedPlan(
-      relation
+      """SELECT count(a + 1) OVER (
+        |  PARTITION BY a + 1
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) AS count
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg('count('a + 1) over `?w0?` as 'count),
 
@@ -184,7 +288,18 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("single window function with non-window aggregate function") {
     checkAnalyzedPlan(
-      relation
+      """SELECT
+        |  count(b) OVER (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_count,
+        |  count(b) AS agg_count
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg(
           'count('b) over `?w0?` as 'win_count,
@@ -204,11 +319,26 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("multiple window functions with the same window spec") {
     checkAnalyzedPlan(
-      relation
+      """SELECT
+        |  count(a + 1) OVER (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_count0,
+        |  count(b) OVER (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_count1
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg(
-          'count('a + 1) over `?w0?` as 'count,
-          'count('b) over `?w0?` as 'count
+          'count('a + 1) over `?w0?` as 'win_count0,
+          'count('b) over `?w0?` as 'win_count1
         ),
 
       relation
@@ -219,19 +349,34 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
           `@W: count(b) over w0`
         )
         .select(
-          `@W: count(a + 1) over w0`.attr as 'count,
-          `@W: count(b) over w0`.attr as 'count
+          `@W: count(a + 1) over w0`.attr as 'win_count0,
+          `@W: count(b) over w0`.attr as 'win_count1
         )
     )
   }
 
   test("multiple window functions with multiple window spec") {
     checkAnalyzedPlan(
-      relation
+      """SELECT
+        |  count(a + 1) OVER (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ) AS win_count0,
+        |  count(b) OVER (
+        |    PARTITION BY b
+        |    ORDER BY a + 1
+        |    RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING
+        |  ) AS win_count1
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg(
-          'count('a + 1) over `?w0?` as 'count,
-          'count('b) over `?w1?` as 'count
+          'count('a + 1) over `?w0?` as 'win_count0,
+          'count('b) over `?w1?` as 'win_count1
         ),
 
       relation
@@ -240,15 +385,22 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         .window(`@W: count(a + 1) over w0`)
         .window(`@W: count(b) over w1`)
         .select(
-          `@W: count(a + 1) over w0`.attr as 'count,
-          `@W: count(b) over w1`.attr as 'count
+          `@W: count(a + 1) over w0`.attr as 'win_count0,
+          `@W: count(b) over w1`.attr as 'win_count1
         )
     )
   }
 
   test("aggregate function inside window spec") {
     checkAnalyzedPlan(
-      relation
+      """SELECT count(b) OVER (
+        |  PARTITION BY max(a)
+        |) AS win_count
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg('count('b) over `?w2?` as 'win_count),
 
@@ -265,7 +417,16 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     val `@W: max(avg(a)) over w0` = WindowAlias(max(`@A: avg(a)`.attr) over w0)
 
     checkAnalyzedPlan(
-      relation
+      """SELECT max(avg(a)) OVER (
+        |  PARTITION BY a + 1
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) AS win_max_of_avg
+        |FROM t
+        |GROUP BY a + 1, b
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg('max('avg('a)) over `?w0?` as 'win_max_of_avg),
 
@@ -279,7 +440,17 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("window function in ORDER BY clause") {
     checkAnalyzedPlan(
-      relation
+      """SELECT a + 1 AS key
+        |FROM t
+        |GROUP BY a + 1, b
+        |ORDER BY count(a + 1) OVER (
+        |  PARTITION BY a + 1
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |)
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg('a + 1 as 'key)
         .orderBy('count('a + 1) over `?w0?`),
@@ -295,7 +466,17 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("reference window function alias in ORDER BY clause") {
     checkAnalyzedPlan(
-      relation
+      """SELECT count(a + 1) OVER (
+        |  PARTITION BY a + 1
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |) AS win_count
+        |FROM t
+        |GROUP BY a + 1, b
+        |ORDER BY win_count
+        |""".stripMargin,
+
+      table('t)
         .groupBy('a + 1, 'b)
         .agg('count('a + 1) over `?w0?` as 'win_count)
         .orderBy('win_count),
@@ -337,9 +518,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("illegal attribute reference in window function in SELECT clause") {
     val patterns = Seq(
-      "Attribute a",
+      "Attribute t.a",
       s"window function ${count(a).over().sqlLike}",
-      "[(a + 1)]"
+      "[(t.a + 1)]"
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
@@ -353,9 +534,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("illegal attribute reference in window function in ORDER BY clause") {
     val patterns = Seq(
-      "Attribute a",
+      "Attribute t.a",
       s"window function ${count(a).over().sqlLike}",
-      "[(a + 1)]"
+      "[(t.a + 1)]"
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
@@ -370,9 +551,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("illegal attribute reference in window spec in SELECT clause") {
     val patterns = Seq(
-      "Attribute b",
+      "Attribute t.b",
       s"window function ${count(a + 1).over(Window partitionBy b).sqlLike}",
-      "[(a + 1)]"
+      "[(t.a + 1)]"
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
@@ -386,9 +567,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("illegal attribute reference in window spec in ORDER BY clause") {
     val patterns = Seq(
-      "Attribute a",
+      "Attribute t.a",
       s"window function ${count(a + 1).over(Window partitionBy a).sqlLike}",
-      "[(a + 1)]"
+      "[(t.a + 1)]"
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {

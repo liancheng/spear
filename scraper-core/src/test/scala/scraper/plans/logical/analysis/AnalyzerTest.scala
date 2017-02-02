@@ -12,10 +12,18 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
   protected val analyze = new Analyzer(catalog)
 
   protected def checkAnalyzedPlan(sql: String, expected: LogicalPlan): Unit =
-    checkAnalyzedPlan(queryExpression.parse(sql).get.value, expected)
+    checkAnalyzedPlan(parse(sql), expected)
 
   protected def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)
+
+  protected def checkAnalyzedPlan(
+    sql: String, expectedParsed: LogicalPlan, expectedAnalyzed: LogicalPlan
+  ): Unit = {
+    val actualParsed = parse(sql)
+    checkPlan(actualParsed, expectedParsed)
+    checkPlan(analyze(actualParsed), expectedAnalyzed)
+  }
 
   protected def checkMessage[T <: Throwable: Manifest](patterns: String*)(f: => Any): Unit = {
     val cause = intercept[T](f)
@@ -56,5 +64,10 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
            |""".stripMargin
       )
     }
+  }
+
+  private def parse(sql: String): LogicalPlan = {
+    import fastparse.all._
+    (queryExpression ~ End).parse(sql).get.value
   }
 }

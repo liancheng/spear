@@ -4,7 +4,7 @@ import fastparse.all._
 
 import scraper.Name
 import scraper.annotations.ExtendedSQLSyntax
-import scraper.expressions.{*, Attribute, Expression, NamedExpression, SortOrder}
+import scraper.expressions.{*, Expression, NamedExpression, SortOrder}
 import scraper.expressions.windows._
 import scraper.plans.logical._
 
@@ -96,7 +96,7 @@ object GroupByClauseParser extends LoggingParser {
 
   @ExtendedSQLSyntax
   private val groupingColumnReference: P[Expression] =
-    columnReference | valueExpression opaque "grouping-column-reference"
+    valueExpression | columnReference opaque "grouping-column-reference"
 
   private val groupingColumnReferenceList: P[Seq[Expression]] =
     groupingColumnReference rep (min = 1, sep = ",") opaque "grouping-column-reference-list"
@@ -126,15 +126,17 @@ object WindowClauseParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
   import SortSpecificationListParser._
+  import ValueExpressionParser._
   import ValueSpecificationParser._
   import WhitespaceApi._
 
   private val existingWindowName: P[Name] = windowName opaque "existing-window-name"
 
-  private val windowPartitionColumnReference: P[Attribute] =
-    columnReference opaque "window-partition-column-reference"
+  @ExtendedSQLSyntax
+  private val windowPartitionColumnReference: P[Expression] =
+    valueExpression | columnReference opaque "window-partition-column-reference"
 
-  private val windowPartitionColumnReferenceList: P[Seq[Attribute]] = (
+  private val windowPartitionColumnReferenceList: P[Seq[Expression]] = (
     windowPartitionColumnReference.rep(min = 1, sep = ",")
     opaque "window-partition-column-reference-list"
   )
