@@ -47,17 +47,9 @@ trait TestUtils { this: FunSuite =>
     assertSideBySide(actual, expected)
 
   private def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    val namedExpressions = plan.collectFromAllExpressions {
-      case e: NamedExpression => e
-    }.distinct
-
-    val normalizedIDOf = namedExpressions.zipWithIndex.map {
-      case (e, index) => e -> ExpressionID(index)
-    }.toMap
-
-    plan transformAllExpressionsDown {
-      case e: NamedExpression => e withID normalizedIDOf(e)
-    }
+    val namedExpressions = plan.collectFromAllExpressions { case e: NamedExpression => e }.distinct
+    val normalizedIDOf = namedExpressions.zipWithIndex.toMap.mapValues(ExpressionID(_))
+    plan transformAllExpressionsDown { case e: NamedExpression => e withID normalizedIDOf(e) }
   }
 
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
