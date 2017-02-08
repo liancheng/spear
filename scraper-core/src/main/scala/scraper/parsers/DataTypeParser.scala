@@ -15,18 +15,18 @@ object DataTypeParser extends LoggingParser {
     TINYINT attach ByteType opaque "extended-type"
 
   private val exactNumericType: P[DataType] = (
-    BIGINT.attach(LongType)
-    | INT.attach(IntType)
-    | INTEGER.attach(IntType)
-    | SMALLINT.attach(ShortType)
+    (BIGINT attach LongType)
+    | (INT attach IntType)
+    | (INTEGER attach IntType)
+    | (SMALLINT attach ShortType)
     | extendedNumericType
     opaque "exact-numeric-type"
   )
 
   private val approximateNumericType: P[DataType] = (
-    FLOAT.attach(FloatType)
-    | REAL.attach(DoubleType)
-    | DOUBLE.attach(DoubleType)
+    (FLOAT attach FloatType)
+    | (REAL attach DoubleType)
+    | (DOUBLE attach DoubleType)
     opaque "approximate-numeric-type"
   )
 

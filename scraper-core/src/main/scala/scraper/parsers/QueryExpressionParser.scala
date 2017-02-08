@@ -255,7 +255,7 @@ object QuerySpecificationParser extends LoggingParser {
   )
 
   private val selectList: P[Seq[NamedExpression]] = (
-    (P("*") attach * :: Nil)
+    ("*" attach * :: Nil)
     | selectSublist.rep(min = 1, sep = ",")
     opaque "select-list"
   )

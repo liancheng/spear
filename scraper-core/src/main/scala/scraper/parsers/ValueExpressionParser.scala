@@ -47,7 +47,7 @@ object NumericParser extends LoggingParser {
   import WhitespaceApi._
 
   val sign: P[Int] =
-    (P("+") attach 1) | (P("-") attach -1) opaque "sign"
+    ("+" attach 1) | ("-" attach -1) opaque "sign"
 
   private val digit: P0 =
     CharIn('0' to '9') opaque "digit"
@@ -340,18 +340,18 @@ object NumericValueExpressionParser extends LoggingParser {
     } opaque "base"
 
   @ExtendedSQLSyntax
-  private val factor: P[Expression] = base chain (P("^") attach Power) opaque "factor"
+  private val factor: P[Expression] = base chain ("^" attach Power) opaque "factor"
 
   private val term: P[Expression] = {
     @ExtendedSQLSyntax
-    val remainder = P("%") attach Remainder
-    val operator = (P("*") attach Multiply) | (P("/") attach Divide) | remainder
+    val remainder = "%" attach Remainder
+    val operator = ("*" attach Multiply) | ("/" attach Divide) | remainder
 
     factor chain operator opaque "term"
   }
 
   val numericValueExpression: P[Expression] = {
-    val operator = P("+").attach(Plus) | P("-").attach(Minus)
+    val operator = ("+" attach Plus) | ("-" attach Minus)
     term chain operator opaque "numeric-value-expression"
   }
 }
@@ -365,7 +365,7 @@ object StringValueExpressionParser extends LoggingParser {
     numericValueExpression opaque "character-primary"
 
   private val concatenation: P[Expression] = {
-    val operator = P("||") attach { concat(_: Expression, _: Expression) }
+    val operator = "||" attach { concat(_: Expression, _: Expression) }
     characterPrimary chain operator opaque "concatenation"
   }
 
@@ -464,12 +464,12 @@ object PredicateParser extends LoggingParser {
   import WhitespaceApi._
 
   private val compOp: P[(Expression, Expression) => Expression] = (
-    P("=").attach(Eq)
-    | P("<>").attach(NotEq)
-    | P("<=").attach(LtEq)
-    | P(">=").attach(GtEq)
-    | P("<").attach(Lt)
-    | P(">").attach(Gt)
+    ("=" attach Eq)
+    | ("<>" attach NotEq)
+    | ("<=" attach LtEq)
+    | (">=" attach GtEq)
+    | ("<" attach Lt)
+    | (">" attach Gt)
     opaque "comp-op"
   )
 
