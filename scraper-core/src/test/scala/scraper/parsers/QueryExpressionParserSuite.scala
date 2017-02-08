@@ -223,8 +223,8 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT count(a) OVER w1 FROM t0 WINDOW w0 AS (), w1 AS (w0 ROWS UNBOUNDED PRECEDING)",
-    let('w1, Window('w0) between WindowFrame.rowsBetween(UnboundedPreceding, CurrentRow)) {
-      let('w0, Window.Default) {
+    let('w0, Window.Default) {
+      let('w1, Window('w0) between WindowFrame.rowsBetween(UnboundedPreceding, CurrentRow)) {
         table('t0) select 'count('a).over(Window('w1))
       }
     }
