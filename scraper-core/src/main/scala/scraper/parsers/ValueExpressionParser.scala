@@ -166,8 +166,8 @@ object ValueExpressionPrimaryParser extends LoggingParser {
   )
 
   val valueExpressionPrimary: P[Expression] = (
-    parenthesizedValueExpressionPrimary
-    | nonparenthesizedValueExpressionPrimary
+    nonparenthesizedValueExpressionPrimary
+    | parenthesizedValueExpressionPrimary
     opaque "value-expression-primary"
   )
 }
@@ -387,8 +387,8 @@ object BooleanValueExpressionParser extends LoggingParser {
   )
 
   val booleanPredicand: P[Expression] = (
-    parenthesizedBooleanValueExpression
-    | P(commonValueExpression)
+    P(commonValueExpression)
+    | parenthesizedBooleanValueExpression
     opaque "boolean-predicand"
   )
 

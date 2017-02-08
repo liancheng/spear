@@ -22,7 +22,11 @@ class ValueExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testExpressionParsing("'1'", "1")
 
-  testExpressionParsing("('a' || 'b' || 'c')", concat(concat("a", "b"), "c"))
+  testExpressionParsing("'a' || 'b' || 'c'", concat(concat("a", "b"), "c"))
+
+  testExpressionParsing("('a' || 'b') || 'c'", concat(concat("a", "b"), "c"))
+
+  testExpressionParsing("'a' || ('b' || 'c')", concat("a", concat("b", "c")))
 
   testExpressionParsing("'a' 'b'", "ab")
 
@@ -41,6 +45,8 @@ class ValueExpressionParserSuite extends LoggingFunSuite with TestUtils {
   testExpressionParsing("a OR b", 'a || 'b)
 
   testExpressionParsing("NOT a", !'a)
+
+  testExpressionParsing("(a AND a) AND a", ('a && 'a) && 'a)
 
   testExpressionParsing("a = b", 'a === 'b)
 
@@ -77,6 +83,10 @@ class ValueExpressionParserSuite extends LoggingFunSuite with TestUtils {
   testExpressionParsing("a + b * (c - d) / e", 'a + 'b * ('c - 'd) / 'e)
 
   testExpressionParsing("a + b * c ^ d", 'a + ('b * ('c ^ 'd)))
+
+  testExpressionParsing("(a + b) + c", ('a + 'b) + 'c)
+
+  testExpressionParsing("a + (b + c)", 'a + ('b + 'c))
 
   testExpressionParsing("CAST(RAND(42) * 100 AS INT)", ('rand(42) * 100) cast IntType)
 
