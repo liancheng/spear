@@ -15,7 +15,7 @@ class IdentifierParserSuite extends LoggingFunSuite {
   }
 
   private def testSuccessfulParse[T](input: String, expected: T): Unit = {
-    test(s"[o] identifier: $input") {
+    test(s"parsing identifier: $input") {
       assertResult(expected) {
         fullyParse(IdentifierParser.identifier, input)
       }
@@ -23,7 +23,7 @@ class IdentifierParserSuite extends LoggingFunSuite {
   }
 
   private def testFailedParse[T](input: String): Unit = {
-    test(s"[x] identifier: $input") {
+    test(s"illegal identifier: $input") {
       val cause = intercept[ParseError] {
         fullyParse(IdentifierParser.identifier, input)
       }
