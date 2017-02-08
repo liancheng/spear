@@ -111,7 +111,7 @@ case class BasicWindowSpec(
   windowFrame: Option[WindowFrame] = None
 ) extends WindowSpec {
 
-  override def children: Seq[Expression] = partitionSpec ++ orderSpec
+  override def children: Seq[Expression] = partitionSpec ++ orderSpec ++ windowFrame
 
   def partitionBy(spec: Seq[Expression]): WindowSpec = copy(partitionSpec = spec)
 
@@ -125,11 +125,11 @@ case class BasicWindowSpec(
   def betweenOption(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
 
   override protected def template(childList: Seq[String]): String = {
-    val (partitions, orders) = childList.splitAt(partitionSpec.length)
+    val (partitions, tail) = childList splitAt partitionSpec.length
+    val (orders, frame) = tail splitAt orderSpec.length
     val partitionBy = if (partitions.isEmpty) "" else partitions.mkString("PARTITION BY ", ", ", "")
     val orderBy = if (orders.isEmpty) "" else orders.mkString("ORDER BY ", ", ", "")
-    val frame = (windowFrame fold "") { _.toString }
-    Seq(partitionBy, orderBy, frame) filter (_.nonEmpty) mkString ("(", " ", ")")
+    Seq(partitionBy, orderBy) ++ frame filter { _.nonEmpty } mkString ("(", " ", ")")
   }
 }
 
