@@ -206,7 +206,7 @@ object WindowClauseParser extends LoggingParser {
 
   private val windowDefinitionList: P[LogicalPlan => WindowDef] =
     windowDefinition rep (min = 1, sep = ",") map {
-      _ reduce { _ andThen _ }
+      _ reduce { _ compose _ }
     } opaque "window-definition-list"
 
   val windowClause: P[LogicalPlan => WindowDef] =

@@ -67,6 +67,8 @@ trait ExpressionDSL {
 
   def over(window: WindowSpec): WindowFunction = WindowFunction(self, window)
 
+  def over(windowName: Name): WindowFunction = WindowFunction(self, Window(windowName))
+
   def over(): WindowFunction = WindowFunction(self, Window.Default)
 }
 

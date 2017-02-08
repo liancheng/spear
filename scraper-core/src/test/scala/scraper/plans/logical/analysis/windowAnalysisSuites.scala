@@ -4,7 +4,7 @@ import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.expressions.windows._
-import scraper.plans.logical.{table, LocalRelation, LogicalPlan}
+import scraper.plans.logical.{let, table, LocalRelation, LogicalPlan}
 
 abstract class WindowAnalysisTest extends AnalyzerTest { self =>
   override protected def afterAll(): Unit = catalog.removeRelation('t)
@@ -82,7 +82,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         |FROM t
         |""".stripMargin,
 
-      table('t).select(
+      table('t) select (
         'max('a) over `?w0?` as 'win_max,
         'count('b) over `?w0?` as 'win_count
       ),
@@ -113,7 +113,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         |FROM t
         |""".stripMargin,
 
-      table('t).select(
+      table('t) select (
         ('a + ('max('a) over `?w0?`)) as 'c0,
         'count('b) over `?w0?` as 'c1
       ),
@@ -144,15 +144,15 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         |FROM t
         |""".stripMargin,
 
-      table('t).select(
+      table('t) select (
         'max('a) over `?w0?` as 'win_max,
         'count('b) over `?w1?` as 'win_count
       ),
 
       relation
-        .window(`@W: max(a) over w0`)
-        .window(`@W: count(b) over w1`)
-        .select(
+        window `@W: max(a) over w0`
+        window `@W: count(b) over w1`
+        select (
           `@W: max(a) over w0`.attr as 'win_max,
           `@W: count(b) over w1`.attr as 'win_count
         )
@@ -175,15 +175,15 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         |FROM t
         |""".stripMargin,
 
-      table('t).select(
+      table('t) select (
         ('a + ('max('a) over `?w0?`)) as 'win_max,
         'count('b) over `?w1?` as 'win_count
       ),
 
       relation
-        .window(`@W: max(a) over w0`)
-        .window(`@W: count(b) over w1`)
-        .select(
+        window `@W: max(a) over w0`
+        window `@W: count(b) over w1`
+        select (
           a + `@W: max(a) over w0`.attr as 'win_max,
           `@W: count(b) over w1`.attr as 'win_count
         )
@@ -204,10 +204,10 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
       table('t) select * orderBy ('max('a) over `?w0?`),
 
       relation
-        .select(a, b)
-        .window(`@W: max(a) over w0`)
-        .orderBy(`@W: max(a) over w0`.attr)
-        .select(a, b)
+        select (a, b)
+        window `@W: max(a) over w0`
+        orderBy `@W: max(a) over w0`.attr
+        select (a, b)
     )
   }
 
@@ -232,6 +232,65 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         .window(`@W: max(a) over w0`)
         .select(win_max)
         .orderBy(win_max.attr)
+    )
+  }
+
+  test("single window definition") {
+    checkSQLAnalysis(
+      """SELECT max(a) OVER w0 AS win_max
+        |FROM t
+        |WINDOW w0 AS (
+        |  PARTITION BY a
+        |  ORDER BY b
+        |  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |)
+        |""".stripMargin,
+
+      let('w0, `?w0?`) {
+        table('t) select ('max('a) over 'w0 as 'win_max)
+      },
+
+      relation
+        window `@W: max(a) over w0`
+        select (`@W: max(a) over w0`.attr as 'win_max)
+    )
+  }
+
+  test("multiple window definitions") {
+    checkSQLAnalysis(
+      """SELECT
+        |  max(a) OVER w0 AS win_max,
+        |  count(b) OVER w1 AS win_count
+        |FROM t
+        |WINDOW
+        |  w0 AS (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ),
+        |  w1 AS (
+        |    PARTITION BY b
+        |    ORDER BY a
+        |    RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING
+        |  )
+        |""".stripMargin,
+
+      let('w0, `?w0?`) {
+        let('w1, `?w1?`) {
+          table('t) select (
+            'max('a) over 'w0 as 'win_max,
+            'count('b) over 'w1 as 'win_count
+          )
+        }
+      },
+
+      relation
+        window `@W: max(a) over w0`
+        window `@W: count(b) over w1`
+        select (
+          `@W: max(a) over w0`.attr as 'win_max,
+          `@W: count(b) over w1`.attr as 'win_count
+        )
     )
   }
 
@@ -274,9 +333,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg('count('a + 1) over `?w0?` as 'count),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'count('a + 1) over `?w0?` as 'count
+      ),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
@@ -299,18 +358,16 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg(
-          'count('b) over `?w0?` as 'win_count,
-          'count('b) as 'agg_count
-        ),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'count('b) over `?w0?` as 'win_count,
+        'count('b) as 'agg_count
+      ),
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(`@A: count(b)`)
-        .window(`@W: count(b) over w0`)
-        .select(
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg `@A: count(b)`
+        window `@W: count(b) over w0`
+        select (
           `@W: count(b) over w0`.attr as 'win_count,
           `@A: count(b)`.attr as 'agg_count
         )
@@ -334,12 +391,10 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg(
-          'count('a + 1) over `?w0?` as 'win_count0,
-          'count('b) over `?w0?` as 'win_count1
-        ),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'count('a + 1) over `?w0?` as 'win_count0,
+        'count('b) over `?w0?` as 'win_count1
+      ),
 
       relation
         .resolvedGroupBy(`@G: a + 1`, `@G: b`)
@@ -372,19 +427,17 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg(
-          'count('a + 1) over `?w0?` as 'win_count0,
-          'count('b) over `?w1?` as 'win_count1
-        ),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'count('a + 1) over `?w0?` as 'win_count0,
+        'count('b) over `?w1?` as 'win_count1
+      ),
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(Nil)
-        .window(`@W: count(a + 1) over w0`)
-        .window(`@W: count(b) over w1`)
-        .select(
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg Nil
+        window `@W: count(a + 1) over w0`
+        window `@W: count(b) over w1`
+        select (
           `@W: count(a + 1) over w0`.attr as 'win_count0,
           `@W: count(b) over w1`.attr as 'win_count1
         )
@@ -400,15 +453,15 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg('count('b) over `?w2?` as 'win_count),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'count('b) over `?w2?` as 'win_count
+      ),
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(`@A: max(a)`)
-        .window(`@W: count(b) over w2`)
-        .select(`@W: count(b) over w2`.attr as 'win_count)
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg `@A: max(a)`
+        window `@W: count(b) over w2`
+        select (`@W: count(b) over w2`.attr as 'win_count)
     )
   }
 
@@ -426,15 +479,15 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |GROUP BY a + 1, b
         |""".stripMargin,
 
-      table('t)
-        .groupBy('a + 1, 'b)
-        .agg('max('avg('a)) over `?w0?` as 'win_max_of_avg),
+      table('t) groupBy ('a + 1, 'b) agg (
+        'max('avg('a)) over `?w0?` as 'win_max_of_avg
+      ),
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(`@A: avg(a)`)
-        .window(`@W: max(avg(a)) over w0`)
-        .select(`@W: max(avg(a)) over w0`.attr as 'win_max_of_avg)
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg `@A: avg(a)`
+        window `@W: max(avg(a)) over w0`
+        select (`@W: max(avg(a)) over w0`.attr as 'win_max_of_avg)
     )
   }
 
@@ -451,16 +504,16 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |""".stripMargin,
 
       table('t)
-        .groupBy('a + 1, 'b)
-        .agg('a + 1 as 'key)
-        .orderBy('count('a + 1) over `?w0?`),
+        groupBy ('a + 1, 'b)
+        agg ('a + 1 as 'key)
+        orderBy ('count('a + 1) over `?w0?`),
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(Nil)
-        .window(`@W: count(a + 1) over w0`)
-        .orderBy(`@W: count(a + 1) over w0`.attr)
-        .select(`@G: a + 1`.attr as 'key)
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg Nil
+        window `@W: count(a + 1) over w0`
+        orderBy `@W: count(a + 1) over w0`.attr
+        select (`@G: a + 1`.attr as 'key)
     )
   }
 
@@ -477,16 +530,16 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         |""".stripMargin,
 
       table('t)
-        .groupBy('a + 1, 'b)
-        .agg('count('a + 1) over `?w0?` as 'win_count)
-        .orderBy('win_count),
+        groupBy ('a + 1, 'b)
+        agg ('count('a + 1) over `?w0?` as 'win_count)
+        orderBy 'win_count,
 
       relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(Nil)
-        .window(`@W: count(a + 1) over w0`)
-        .orderBy(`@W: count(a + 1) over w0`.attr)
-        .select(`@W: count(a + 1) over w0`.attr as 'win_count)
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg Nil
+        window `@W: count(a + 1) over w0`
+        orderBy `@W: count(a + 1) over w0`.attr
+        select (`@W: count(a + 1) over w0`.attr as 'win_count)
     )
   }
 
@@ -496,9 +549,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg('a + 1)
-          .filter('count('a + 1) over `?w0?`)
+          groupBy 'a + 1
+          agg 'a + 1
+          filter ('count('a + 1) over `?w0?`)
       )
     }
   }
@@ -509,9 +562,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg('count('a + 1) over `?w0?` as 'win_count)
-          .filter('win_count > 1)
+          groupBy 'a + 1
+          agg ('count('a + 1) over `?w0?` as 'win_count)
+          filter 'win_count > 1
       )
     }
   }
@@ -526,8 +579,8 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg('count('a) over () as 'win_count)
+          groupBy 'a + 1
+          agg ('count('a) over () as 'win_count)
       )
     }
   }
@@ -542,9 +595,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg(Nil)
-          .orderBy('count('a) over ())
+          groupBy 'a + 1
+          agg Nil
+          orderBy ('count('a) over ())
       )
     }
   }
@@ -559,8 +612,8 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg('count('a + 1) over (Window partitionBy 'b) as 'win_count)
+          groupBy 'a + 1
+          agg ('count('a + 1) over (Window partitionBy 'b) as 'win_count)
       )
     }
   }
@@ -575,9 +628,9 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
         relation
-          .groupBy('a + 1)
-          .agg(Nil)
-          .orderBy('count('a + 1) over (Window partitionBy 'a))
+          groupBy 'a + 1
+          agg Nil
+          orderBy ('count('a + 1) over (Window partitionBy 'a))
       )
     }
   }
