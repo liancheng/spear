@@ -31,7 +31,7 @@ abstract class WindowAnalysisTest extends AnalyzerTest { self =>
 
 class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   test("single window function") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT max(a) OVER (
         |  PARTITION BY a
         |  ORDER BY b
@@ -49,7 +49,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("single window function with non-window expressions") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT a + max(a) OVER (
         |  PARTITION BY a
         |  ORDER BY b
@@ -67,7 +67,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with the same window spec") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  max(a) OVER (
         |    PARTITION BY a
@@ -98,7 +98,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with the same window spec and non-window expressions") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  a + max(a) OVER (
         |    PARTITION BY a
@@ -129,7 +129,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with different window specs") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  max(a) OVER (
         |    PARTITION BY a
@@ -160,7 +160,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with different window specs and non-window expressions") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  a + max(a) OVER (
         |    PARTITION BY a
@@ -191,7 +191,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("window function in ORDER BY clause") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT *
         |FROM t
         |ORDER BY max(a) OVER (
@@ -214,7 +214,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   test("reference window function alias in ORDER BY clause") {
     val win_max = `@W: max(a) over w0`.attr as 'win_max
 
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT max(a) OVER (
         |  PARTITION BY a
         |  ORDER BY b
@@ -264,7 +264,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
 class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   test("single window function") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT count(a + 1) OVER (
         |  PARTITION BY a + 1
         |  ORDER BY b
@@ -287,7 +287,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("single window function with non-window aggregate function") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  count(b) OVER (
         |    PARTITION BY a + 1
@@ -318,7 +318,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("multiple window functions with the same window spec") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  count(a + 1) OVER (
         |    PARTITION BY a + 1
@@ -356,7 +356,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("multiple window functions with multiple window spec") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT
         |  count(a + 1) OVER (
         |    PARTITION BY a + 1
@@ -392,7 +392,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("aggregate function inside window spec") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT count(b) OVER (
         |  PARTITION BY max(a)
         |) AS win_count
@@ -416,7 +416,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     val `@A: avg(a)` = AggregationAlias(avg(a))
     val `@W: max(avg(a)) over w0` = WindowAlias(max(`@A: avg(a)`.attr) over w0)
 
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT max(avg(a)) OVER (
         |  PARTITION BY a + 1
         |  ORDER BY b
@@ -439,7 +439,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("window function in ORDER BY clause") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT a + 1 AS key
         |FROM t
         |GROUP BY a + 1, b
@@ -465,7 +465,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("reference window function alias in ORDER BY clause") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       """SELECT count(a + 1) OVER (
         |  PARTITION BY a + 1
         |  ORDER BY b

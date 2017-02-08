@@ -12,7 +12,7 @@ import scraper.types.{IntType, LongType}
 
 class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       "SELECT count(a) FROM t",
 
       table('t) select 'count('a),
@@ -22,7 +22,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with HAVING clause referencing projected attribute") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       "SELECT count(b) AS c FROM t GROUP BY a HAVING c > 1",
 
       table('t)
@@ -39,7 +39,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with ORDER BY clause referencing projected attribute") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       "SELECT count(b) AS c FROM t GROUP BY a ORDER BY c DESC",
 
       table('t)
@@ -56,7 +56,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with both HAVING and ORDER BY clauses") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       "SELECT a FROM t GROUP BY a HAVING a > 1 ORDER BY count(b) ASC",
 
       table('t) groupBy 'a agg 'a filter 'a > 1 orderBy 'count('b).asc,
@@ -124,7 +124,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   ignore("aggregate with count(*)") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       // TODO Make the parser recognize "count(*)".
       "SELECT count(*) FROM t GROUP BY a",
 
@@ -145,7 +145,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(relation groupBy 'a + 1 agg a + 1 + a + 1)
+      analyze(table('t) groupBy 'a + 1 agg 'a + 1 + 'a + 1)
     }
   }
 
@@ -157,7 +157,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(relation groupBy 'a agg 'count('a) filter 'b > 0)
+      analyze(table('t) groupBy 'a agg 'count('a) filter 'b > 0)
     }
   }
 
@@ -169,7 +169,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(relation groupBy 'a agg 'count('a) orderBy 'b)
+      analyze(table('t) groupBy 'a agg 'count('a) orderBy 'b)
     }
   }
 
@@ -180,12 +180,12 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(relation agg 'max('count('a)))
+      analyze(table('t) agg 'max('count('a)))
     }
   }
 
   test("distinct") {
-    checkAnalyzedPlan(
+    checkSQLAnalysis(
       "SELECT DISTINCT * FROM t",
 
       table('t).select(*).distinct,

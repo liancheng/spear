@@ -17,12 +17,12 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
   protected def checkAnalyzedPlan(unresolved: LogicalPlan, expected: LogicalPlan): Unit =
     checkPlan(analyze(unresolved), expected)
 
-  protected def checkAnalyzedPlan(
-    sql: String, expectedParsed: LogicalPlan, expectedAnalyzed: LogicalPlan
+  protected def checkSQLAnalysis(
+    sql: String, expectedParsedPlan: LogicalPlan, expectedAnalyzedPlan: LogicalPlan
   ): Unit = {
     val actualParsed = parse(sql)
-    checkPlan(actualParsed, expectedParsed)
-    checkPlan(analyze(actualParsed), expectedAnalyzed)
+    checkPlan(actualParsed, expectedParsedPlan)
+    checkPlan(analyze(actualParsed), expectedAnalyzedPlan)
   }
 
   protected def checkMessage[T <: Throwable: Manifest](patterns: String*)(f: => Any): Unit = {
@@ -40,7 +40,7 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
              |Full error message:
              |
              |  ${cause.getMessage}
-           """.stripMargin
+             |""".stripMargin
         )
       }
 
