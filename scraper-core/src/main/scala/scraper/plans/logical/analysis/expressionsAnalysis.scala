@@ -9,9 +9,7 @@ import scraper.expressions._
 import scraper.expressions.Expression.tryResolve
 import scraper.expressions.NamedExpression.AnonymousColumnName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
-import scraper.expressions.functions.lit
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.ResolveAliases.UnquotedName
 import scraper.types.StringType
 
 /**
@@ -66,33 +64,31 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
  * This rule converts [[scraper.expressions.AutoAlias AutoAlias]]es into real
  * [[scraper.expressions.Alias Alias]]es, as long as aliased expressions are resolved.
  */
-class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
+class ResolveAutoAliases(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case AutoAlias(Resolved(child: Expression)) =>
-      // Uses `UnquotedName` to eliminate back-ticks and double-quotes in internal alias names.
+      // Uses `UnquotedName` to eliminate quotes in internal alias names.
       val alias = child.transformDown {
-        case a: AttributeRef                  => UnquotedName(a)
-        case Literal(lit: String, StringType) => UnquotedName(lit)
+        case a: AttributeRef                      => UnquotedName(a)
+        case e @ Literal(lit: String, StringType) => UnquotedName(e as lit)
       }.sql getOrElse AnonymousColumnName
 
       child as Name.caseSensitive(alias)
   }
-}
 
-object ResolveAliases {
   /**
-   * Auxiliary class only used for removing back-ticks and double-quotes from auto-generated column
-   * names. For example, for the following SQL query:
+   * Auxiliary class only used for removing quotes from auto-generated column names. For example,
+   * for the following SQL query:
    * {{{
-   *   SELECT concat("hello", "world")
+   *   SELECT 'hello' || 'world'
    * }}}
    * should produce a column named as
    * {{{
-   *   concat(hello, world)
+   *   hello || world
    * }}}
    * instead of
    * {{{
-   *   concat('hello', 'world')
+   *   'hello' || 'world'
    * }}}
    */
   private case class UnquotedName(named: NamedExpression)
@@ -101,11 +97,6 @@ object ResolveAliases {
     override lazy val isResolved: Boolean = named.isResolved
 
     override def sql: Try[String] = Try(named.name.casePreserving)
-  }
-
-  private object UnquotedName {
-    def apply(stringLiteral: String): UnquotedName =
-      UnquotedName(lit(stringLiteral) as Name.caseSensitive(stringLiteral))
   }
 }
 

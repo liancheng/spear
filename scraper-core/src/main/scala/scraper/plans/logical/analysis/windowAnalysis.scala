@@ -3,7 +3,7 @@ package scraper.plans.logical.analysis
 import scraper._
 import scraper.expressions._
 import scraper.expressions.InternalAlias.buildRewriter
-import scraper.expressions.windows.WindowFunction
+import scraper.expressions.windows.{WindowFunction, WindowSpecRef}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.WindowAnalysis._
 
@@ -35,6 +35,16 @@ class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule
 
   private val preConditionViolation: PartialFunction[LogicalPlan, Unit] = {
     case _: UnresolvedAggregate =>
+  }
+}
+
+class InlineWindowDefinition(val catalog: Catalog) extends AnalysisRule {
+  override def apply(v1: LogicalPlan): LogicalPlan = v1 transformUp {
+    case WindowDef(child, name, windowSpec) =>
+      child.transformAllExpressionsDown {
+        case WindowSpecRef(`name`, maybeFrame) =>
+          (maybeFrame fold windowSpec) { windowSpec.between }
+      }
   }
 }
 
