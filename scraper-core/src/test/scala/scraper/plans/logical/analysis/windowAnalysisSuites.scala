@@ -294,6 +294,40 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     )
   }
 
+  test("reference to existing window definition") {
+    checkSQLAnalysis(
+      """SELECT
+        |  max(a) OVER w0 AS win_max,
+        |  count(b) OVER w1 AS win_count
+        |FROM t
+        |WINDOW
+        |  w0 AS (
+        |    PARTITION BY a
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ),
+        |  w1 AS (w0)
+        |""".stripMargin,
+
+      let('w0, `?w0?`) {
+        let('w1, 'w0) {
+          table('t) select (
+            'max('a) over 'w0 as 'win_max,
+            'count('b) over 'w1 as 'win_count
+          )
+        }
+      },
+
+      relation.window(
+        `@W: max(a) over w0`,
+        `@W: count(b) over w0`
+      ).select(
+        `@W: max(a) over w0`.attr as 'win_max,
+        `@W: count(b) over w0`.attr as 'win_count
+      )
+    )
+  }
+
   // -----------------------
   // Unresolved window specs
   // -----------------------
@@ -396,17 +430,13 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         'count('b) over `?w0?` as 'win_count1
       ),
 
-      relation
-        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
-        .agg(Nil)
-        .window(
-          `@W: count(a + 1) over w0`,
-          `@W: count(b) over w0`
-        )
-        .select(
-          `@W: count(a + 1) over w0`.attr as 'win_count0,
-          `@W: count(b) over w0`.attr as 'win_count1
-        )
+      relation.resolvedGroupBy(`@G: a + 1`, `@G: b`).agg(Nil).window(
+        `@W: count(a + 1) over w0`,
+        `@W: count(b) over w0`
+      ).select(
+        `@W: count(a + 1) over w0`.attr as 'win_count0,
+        `@W: count(b) over w0`.attr as 'win_count1
+      )
     )
   }
 
@@ -540,6 +570,86 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         window `@W: count(a + 1) over w0`
         orderBy `@W: count(a + 1) over w0`.attr
         select (`@W: count(a + 1) over w0`.attr as 'win_count)
+    )
+  }
+
+  test("multiple window definitions") {
+    checkSQLAnalysis(
+      """SELECT
+        |  count(a + 1) OVER w0 AS win_count0,
+        |  count(b) OVER w1 AS win_count1
+        |FROM t
+        |GROUP BY a + 1, b
+        |WINDOW
+        |  w0 AS (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ),
+        |  w1 AS (
+        |    PARTITION BY b
+        |    ORDER BY a + 1
+        |    RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING
+        |  )
+        |""".stripMargin,
+
+      let('w0, `?w0?`) {
+        let('w1, `?w1?`) {
+          table('t) groupBy ('a + 1, 'b) agg (
+            'count('a + 1) over 'w0 as 'win_count0,
+            'count('b) over 'w1 as 'win_count1
+          )
+        }
+      },
+
+      relation
+        resolvedGroupBy (`@G: a + 1`, `@G: b`)
+        agg Nil
+        window `@W: count(a + 1) over w0`
+        window `@W: count(b) over w1`
+        select (
+          `@W: count(a + 1) over w0`.attr as 'win_count0,
+          `@W: count(b) over w1`.attr as 'win_count1
+        )
+    )
+  }
+
+  test("reference to existing window definition") {
+    checkSQLAnalysis(
+      """SELECT
+        |  count(a + 1) OVER w0 AS win_count0,
+        |  count(b) OVER w1 AS win_count1
+        |FROM t
+        |GROUP BY a + 1, b
+        |WINDOW
+        |  w0 AS (
+        |    PARTITION BY a + 1
+        |    ORDER BY b
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        |  ),
+        |  w1 AS (w0)
+        |""".stripMargin,
+
+      let('w0, `?w0?`) {
+        let('w1, 'w0) {
+          table('t) groupBy ('a + 1, 'b) agg (
+            'count('a + 1) over 'w0 as 'win_count0,
+            'count('b) over 'w1 as 'win_count1
+          )
+        }
+      },
+
+      relation
+        .resolvedGroupBy(`@G: a + 1`, `@G: b`)
+        .agg(Nil)
+        .window(
+          `@W: count(a + 1) over w0`,
+          `@W: count(b) over w0`
+        )
+        .select(
+          `@W: count(a + 1) over w0`.attr as 'win_count0,
+          `@W: count(b) over w0`.attr as 'win_count1
+        )
     )
   }
 

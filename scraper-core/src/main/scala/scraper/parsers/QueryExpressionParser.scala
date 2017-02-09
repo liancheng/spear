@@ -305,9 +305,13 @@ object QuerySpecificationParser extends LoggingParser {
           (_: LogicalPlan) select projectList
         }
 
-        Seq(
-          filter, projectOrAgg, quantify, having, window, orderBy
-        ) reduce { _ andThen _ } apply relation
+        filter
+          .andThen(projectOrAgg)
+          .andThen(quantify)
+          .andThen(having)
+          .andThen(window)
+          .andThen(orderBy)
+          .apply(relation)
     }
     opaque "query-specification"
   )
