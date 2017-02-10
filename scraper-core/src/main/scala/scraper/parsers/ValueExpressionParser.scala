@@ -148,8 +148,11 @@ object ValueExpressionPrimaryParser extends LoggingParser {
   private val parenthesizedValueExpressionPrimary: P[Expression] =
     "(" ~ P(valueExpression) ~ ")" opaque "parenthesized-value-expression-primary"
 
+  private val functionArgs: P[Seq[Expression]] =
+    P("*").attach(Seq(*)) | P(valueExpression).rep(sep = ",") opaque "function-args"
+
   val simpleFunction: P[UnresolvedFunction] = (
-    functionName ~ "(" ~ DISTINCT.!.? ~ P(valueExpression).rep(sep = ",") ~ ")"
+    functionName ~ "(" ~ DISTINCT.!.? ~ functionArgs ~ ")"
     map { case (name, isDistinct, args) => (name, args, isDistinct.isDefined) }
     map UnresolvedFunction.tupled
     opaque "function-call"

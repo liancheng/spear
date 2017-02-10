@@ -123,9 +123,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  ignore("aggregate with count(*)") {
+  test("aggregate with count(*)") {
     checkSQLAnalysis(
-      // TODO Make the parser recognize "count(*)".
       "SELECT count(*) FROM t GROUP BY a",
 
       table('t) groupBy 'a agg 'count(*),
