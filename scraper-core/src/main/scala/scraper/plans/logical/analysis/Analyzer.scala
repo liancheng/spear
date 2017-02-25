@@ -14,7 +14,10 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Pre-processing", FixedPoint.Unlimited, Seq(
       new RewriteCTEsAsSubquery(catalog),
-      new InlineWindowDefinition(catalog)
+      new InlineWindowDefinitions(catalog)
+    )),
+
+    RuleBatch("Pre-processing check", Once, Seq( // TODO Check for undefined window references
     )),
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
@@ -71,7 +74,7 @@ trait AnalysisRule extends Rule[LogicalPlan] {
 }
 
 /**
- * This rule inlines CTE relation definitions as sub-queries. E.g., it transforms
+ * This rule rewrites CTE relation definitions as sub-queries. E.g., it transforms
  * {{{
  *   WITH
  *     c0 AS (SELECT * FROM t0),

@@ -166,3 +166,9 @@ class SettingsValidationException(message: String, cause: Throwable)
 
   def this(message: String) = this(message, null)
 }
+
+class WindowAnalysisException(message: String, cause: Throwable)
+  extends AnalysisException(message, cause) {
+
+  def this(message: String) = this(message, null)
+}

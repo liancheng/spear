@@ -1,11 +1,13 @@
 package scraper.plans.logical.analysis
 
 import scraper._
+import scraper.exceptions.WindowAnalysisException
 import scraper.expressions._
 import scraper.expressions.InternalAlias.buildRewriter
 import scraper.expressions.windows.{WindowFunction, WindowSpecRef}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.WindowAnalysis._
+import scraper.utils._
 
 /**
  * This rule extracts window functions inside projections into separate `Window` operators.
@@ -38,12 +40,21 @@ class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule
   }
 }
 
-class InlineWindowDefinition(val catalog: Catalog) extends AnalysisRule {
-  override def apply(v1: LogicalPlan): LogicalPlan = v1 transformUp {
+class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case WindowDef(child, name, windowSpec) =>
-      child.transformAllExpressionsDown {
+      child transformAllExpressionsDown {
         case WindowSpecRef(`name`, maybeFrame) =>
-          (maybeFrame fold windowSpec) { windowSpec.between }
+          for {
+            existingFrame <- windowSpec.windowFrame
+            newFrame <- maybeFrame
+          } throw new WindowAnalysisException(
+            s"""Cannot decorate window $name with frame $newFrame
+               |because it already has frame $existingFrame
+               |""".oneLine
+          )
+
+          windowSpec betweenOption (windowSpec.windowFrame orElse maybeFrame)
       }
   }
 }

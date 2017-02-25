@@ -82,6 +82,8 @@ trait WindowSpec extends UnevaluableExpression {
 
   def orderSpec: Seq[SortOrder]
 
+  def windowFrame: Option[WindowFrame]
+
   def partitionBy(spec: Seq[Expression]): WindowSpec
 
   def partitionBy(first: Expression, rest: Expression*): WindowSpec = partitionBy(first +: rest)
