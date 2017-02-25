@@ -180,8 +180,7 @@ object ValueSpecificationParser extends LoggingParser {
   import LiteralParser._
   import WhitespaceApi._
 
-  val unsignedValueSpecification: P[Literal] =
-    unsignedLiteral opaque "unsigned-value-specification"
+  val unsignedValueSpecification: P[Literal] = unsignedLiteral opaque "unsigned-value-specification"
 }
 
 // SQL06 section 6.7
@@ -189,11 +188,10 @@ object ColumnReferenceParser extends LoggingParser {
   import IdentifierChainParser._
   import scraper.expressions._
 
-  val columnReference: P[Attribute] =
-    basicIdentifierChain map {
-      case Seq(qualifier, column) => column of qualifier
-      case Seq(column)            => column: Attribute
-    } opaque "column-reference"
+  val columnReference: P[Attribute] = basicIdentifierChain map {
+    case Seq(qualifier, column) => column of qualifier
+    case Seq(column)            => column: Attribute
+  } opaque "column-reference"
 }
 
 // SQL06 section 6.10
@@ -249,8 +247,7 @@ object CaseExpressionParser extends LoggingParser {
   private val caseAbbreviation: P[Expression] =
     ifExpression | nullif | coalesce opaque "case-abbreviation"
 
-  private val caseOperand: P[Expression] =
-    P(rowValuePredicand) opaque "row-value-predicand"
+  private val caseOperand: P[Expression] = P(rowValuePredicand) opaque "row-value-predicand"
 
   private val whenOperand: P[Expression => Expression] = (
     P(rowValuePredicand).map { rhs => (_: Expression) === rhs }
@@ -263,17 +260,15 @@ object CaseExpressionParser extends LoggingParser {
     opaque "when-operand-list"
   )
 
-  private val result: P[Expression] =
-    P(valueExpression) opaque "result"
+  private val result: P[Expression] = P(valueExpression) opaque "result"
 
   private val simpleWhenClause: P[(Expression => Expression, Expression)] =
     WHEN ~ whenOperandList ~ THEN ~ result opaque "simple-when-clause"
 
   private val elseClause: P[Expression] = ELSE ~ result opaque "else-clause"
 
-  private val simpleCase: P[Expression] = (
-    CASE ~ caseOperand ~ simpleWhenClause.rep(1) ~ elseClause.? ~ END
-    map {
+  private val simpleCase: P[Expression] =
+    CASE ~ caseOperand ~ simpleWhenClause.rep(1) ~ elseClause.? ~ END map {
       case (key, whenClauses, alternative) =>
         val (conditions, consequences) = whenClauses.map {
           case (mkCondition, consequence) =>
@@ -281,9 +276,7 @@ object CaseExpressionParser extends LoggingParser {
         }.unzip
 
         CaseWhen(conditions, consequences, alternative)
-    }
-    opaque "simple-case"
-  )
+    } opaque "simple-case"
 
   private val searchedWhenClause: P[(Expression, Expression)] =
     WHEN ~ searchCondition ~ THEN ~ result opaque "when-operand"
@@ -297,8 +290,7 @@ object CaseExpressionParser extends LoggingParser {
   private val caseSpecification: P[Expression] =
     simpleCase | searchedCase opaque "case-specification"
 
-  val caseExpression: P[Expression] =
-    caseAbbreviation | caseSpecification opaque "case-expression"
+  val caseExpression: P[Expression] = caseAbbreviation | caseSpecification opaque "case-expression"
 }
 
 object CastSpecificationParser extends LoggingParser {
@@ -333,8 +325,7 @@ object NumericValueExpressionParser extends LoggingParser {
   import ValueExpressionPrimaryParser._
   import WhitespaceApi._
 
-  private val numericPrimary: P[Expression] =
-    valueExpressionPrimary opaque "numeric-primary"
+  private val numericPrimary: P[Expression] = valueExpressionPrimary opaque "numeric-primary"
 
   private val base: P[Expression] =
     signedNumericLiteral | (sign.? ~ numericPrimary).map {
@@ -364,16 +355,14 @@ object StringValueExpressionParser extends LoggingParser {
   import NumericValueExpressionParser._
   import WhitespaceApi._
 
-  private val characterPrimary: P[Expression] =
-    numericValueExpression opaque "character-primary"
+  private val characterPrimary: P[Expression] = numericValueExpression opaque "character-primary"
 
   private val concatenation: P[Expression] = {
     val operator = "||" attach { concat(_: Expression, _: Expression) }
     characterPrimary chain operator opaque "concatenation"
   }
 
-  lazy val stringValueExpression: P[Expression] =
-    concatenation opaque "string-value-expression"
+  lazy val stringValueExpression: P[Expression] = concatenation opaque "string-value-expression"
 }
 
 // SQL06 section 6.34
@@ -384,22 +373,15 @@ object BooleanValueExpressionParser extends LoggingParser {
   import ValueExpressionParser._
   import WhitespaceApi._
 
-  private val parenthesizedBooleanValueExpression: P[Expression] = (
-    "(" ~ P(booleanValueExpression) ~ ")"
-    opaque "parenthesized-boolean-value-expression"
-  )
+  private val parenthesizedBooleanValueExpression: P[Expression] =
+    "(" ~ P(booleanValueExpression) ~ ")" opaque "parenthesized-boolean-value-expression"
 
-  val booleanPredicand: P[Expression] = (
-    P(commonValueExpression)
-    | parenthesizedBooleanValueExpression
-    opaque "boolean-predicand"
-  )
+  val booleanPredicand: P[Expression] =
+    P(commonValueExpression) | parenthesizedBooleanValueExpression opaque "boolean-predicand"
 
-  private val booleanPrimary: P[Expression] =
-    predicate | booleanPredicand opaque "boolean-primary"
+  private val booleanPrimary: P[Expression] = predicate | booleanPredicand opaque "boolean-primary"
 
-  private val truthValue: P[Literal] =
-    booleanLiteral opaque "truth-value"
+  private val truthValue: P[Literal] = booleanLiteral opaque "truth-value"
 
   private val booleanTestSuffix: P[Expression => Expression] = {
     IS ~ NOT.!.? ~ truthValue map {
@@ -412,17 +394,11 @@ object BooleanValueExpressionParser extends LoggingParser {
     _ getOrElse identity[Expression] _
   } opaque "boolean-test-suffix"
 
-  private val booleanTest: P[Expression] = (
-    booleanPrimary ~ booleanTestSuffix
-    map { case (bool, f) => f(bool) }
-    opaque "boolean-test"
-  )
+  private val booleanTest: P[Expression] =
+    booleanPrimary ~ booleanTestSuffix map { case (bool, f) => f(bool) } opaque "boolean-test"
 
-  private val booleanFactor: P[Expression] = (
-    (NOT ~ booleanTest map Not)
-    | booleanTest
-    opaque "boolean-factor"
-  )
+  private val booleanFactor: P[Expression] =
+    (NOT ~ booleanTest map Not) | booleanTest opaque "boolean-factor"
 
   private val booleanTerm: P[Expression] =
     booleanFactor chain (AND attach And) opaque "boolean-term"
@@ -437,11 +413,8 @@ object RowValueConstructorParser extends LoggingParser {
   import ValueExpressionParser._
   import WhitespaceApi._
 
-  val rowValueConstructorPredicand: P[Expression] = (
-    commonValueExpression
-    | booleanPredicand
-    opaque "row-value-constructor-predicand"
-  )
+  val rowValueConstructorPredicand: P[Expression] =
+    commonValueExpression | booleanPredicand opaque "row-value-constructor-predicand"
 }
 
 // SQL06 section 7.2
@@ -453,11 +426,8 @@ object RowValueExpressionParser extends LoggingParser {
   private val rowValueSpecialCase: P[Expression] =
     nonparenthesizedValueExpressionPrimary opaque "row-value-special-case"
 
-  val rowValuePredicand: P[Expression] = (
-    rowValueConstructorPredicand
-    | rowValueSpecialCase
-    opaque "row-value-predicand"
-  )
+  val rowValuePredicand: P[Expression] =
+    rowValueConstructorPredicand | rowValueSpecialCase opaque "row-value-predicand"
 }
 
 // SQL06 section 8.1
@@ -476,23 +446,16 @@ object PredicateParser extends LoggingParser {
     opaque "comp-op"
   )
 
-  val comparisonPredicatePart2: P[Expression => Expression] = (
-    compOp ~ rowValuePredicand
-    map { case (comparator, rhs) => comparator(_: Expression, rhs) }
-    opaque "comparison-predicate-part-2"
-  )
+  val comparisonPredicatePart2: P[Expression => Expression] = compOp ~ rowValuePredicand map {
+    case (comparator, rhs) => comparator(_: Expression, rhs)
+  } opaque "comparison-predicate-part-2"
 
-  private val comparisonPredicate: P[Expression] = (
-    rowValuePredicand ~ comparisonPredicatePart2
-    map { case (lhs, mkComparison) => mkComparison(lhs) }
-    opaque "comparison-predicate"
-  )
+  private val comparisonPredicate: P[Expression] =
+    rowValuePredicand ~ comparisonPredicatePart2 map {
+      case (lhs, mkComparison) => mkComparison(lhs)
+    } opaque "comparison-predicate"
 
-  val predicate: P[Expression] = (
-    comparisonPredicate
-    | nullPredicate
-    opaque "predicate"
-  )
+  val predicate: P[Expression] = comparisonPredicate | nullPredicate opaque "predicate"
 }
 
 // SQL06 section 8.8
@@ -501,17 +464,14 @@ object NullPredicateParser extends LoggingParser {
   import RowValueExpressionParser._
   import WhitespaceApi._
 
-  private val nullPredicatePart2: P[Expression => Expression] =
-    IS ~ NOT.!.? ~ NULL map {
-      case Some(_) => (_: Expression).isNotNull
-      case _       => (_: Expression).isNull
-    } opaque "null-predicate-part-2"
+  private val nullPredicatePart2: P[Expression => Expression] = IS ~ NOT.!.? ~ NULL map {
+    case Some(_) => (_: Expression).isNotNull
+    case _       => (_: Expression).isNull
+  } opaque "null-predicate-part-2"
 
-  val nullPredicate: P[Expression] = (
-    rowValuePredicand ~ nullPredicatePart2
-    map { case (value, predicate) => predicate(value) }
-    opaque "null-predicate"
-  )
+  val nullPredicate: P[Expression] = rowValuePredicand ~ nullPredicatePart2 map {
+    case (value, predicate) => predicate(value)
+  } opaque "null-predicate"
 }
 
 // SQL06 section 8.20

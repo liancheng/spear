@@ -17,29 +17,30 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
 
-  def apply(column: Name): Attribute =
-    queryExecution.analyzedPlan.output find (_.name == column) getOrElse {
-      throw new ResolutionFailureException(s"Failed to resolve column name $column")
-    }
+  def apply(column: Name): Attribute = queryExecution.analyzedPlan.output find {
+    _.name == column
+  } getOrElse {
+    throw new ResolutionFailureException(s"Failed to resolve column name $column")
+  }
 
   def rename(newNames: String*): DataFrame = {
     assert(newNames.length == schema.fields.length)
-    val oldNames = schema.fields map (_.name)
-    val aliases = (oldNames, newNames).zipped map (_ as _)
+    val oldNames = schema.fields map { _.name }
+    val aliases = (oldNames, newNames).zipped map { _ as _ }
     this select aliases
   }
 
   def select(first: Expression, rest: Expression*): DataFrame = this select (first +: rest)
 
-  def select(expressions: Seq[Expression]): DataFrame = withPlan(_ select expressions)
+  def select(expressions: Seq[Expression]): DataFrame = withPlan { _ select expressions }
 
-  def filter(condition: Expression): DataFrame = withPlan(_ filter condition)
+  def filter(condition: Expression): DataFrame = withPlan { _ filter condition }
 
-  def limit(n: Expression): DataFrame = withPlan(_ limit n)
+  def limit(n: Expression): DataFrame = withPlan { _ limit n }
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
-  def distinct: DataFrame = withPlan(Distinct)
+  def distinct: DataFrame = withPlan { Distinct }
 
   def join(right: DataFrame, joinType: JoinType): JoinedDataFrame =
     new JoinedDataFrame(this, right, joinType)
@@ -52,22 +53,35 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def outerJoin(right: DataFrame): JoinedDataFrame = join(right, FullOuter)
 
-  def orderBy(order: Seq[SortOrder]): DataFrame = withPlan(Sort(_, order))
+  def orderBy(order: Seq[SortOrder]): DataFrame = withPlan {
+    Sort(_, order)
+  }
 
   def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
 
-  def orderBy(first: Expression, rest: Expression*): DataFrame =
-    orderBy(first +: rest map (SortOrder(_, Ascending, isNullLarger = true)))
+  def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(
+    first +: rest map {
+      SortOrder(_, Ascending, isNullLarger = true)
+    }
+  )
 
-  def subquery(name: String): DataFrame = withPlan(_ subquery name)
+  def subquery(name: String): DataFrame = withPlan {
+    _ subquery name
+  }
 
   def subquery(name: Symbol): DataFrame = subquery(name.name)
 
-  def union(that: DataFrame): DataFrame = withPlan(_ union that.queryExecution.logicalPlan)
+  def union(that: DataFrame): DataFrame = withPlan {
+    _ union that.queryExecution.logicalPlan
+  }
 
-  def intersect(that: DataFrame): DataFrame = withPlan(_ intersect that.queryExecution.logicalPlan)
+  def intersect(that: DataFrame): DataFrame = withPlan {
+    _ intersect that.queryExecution.logicalPlan
+  }
 
-  def except(that: DataFrame): DataFrame = withPlan(_ except that.queryExecution.logicalPlan)
+  def except(that: DataFrame): DataFrame = withPlan {
+    _ except that.queryExecution.logicalPlan
+  }
 
   def groupBy(keys: Seq[Expression]): GroupedData = new GroupedData(this, keys)
 

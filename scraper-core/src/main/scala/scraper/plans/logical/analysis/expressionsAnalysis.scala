@@ -109,7 +109,7 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
     case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>
       Count(1)
 
-    case Count((_: Star)) =>
+    case Count(_: Star) =>
       Count(1)
 
     case UnresolvedFunction(_, Seq(_: Star), true) =>

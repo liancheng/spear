@@ -5,7 +5,6 @@ import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
-import scraper.utils._
 
 class CTEAnalysisSuite extends AnalyzerTest {
   test("CTE") {
@@ -82,7 +81,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
         |  s1 AS (SELECT 2 AS x)
         |SELECT *
         |FROM s0 UNION ALL SELECT * FROM s1
-      """.oneLine,
+        |""".stripMargin,
       values(1 as 'x) subquery 's0 select (x0 of 's0) union (
         values(2 as 'x) subquery 's1 select (x1 of 's1)
       )
