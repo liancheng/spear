@@ -107,7 +107,7 @@ case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysica
 
   override def iterator: Iterator[Row] = {
     val buffer = ArrayBuffer.empty[Row]
-    child.iterator.foreach(buffer += _.copy())
+    child.iterator foreach { buffer += _.copy() }
     buffer.sorted(rowOrdering).iterator
   }
 }

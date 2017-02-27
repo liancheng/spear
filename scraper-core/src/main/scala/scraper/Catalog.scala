@@ -26,8 +26,8 @@ class InMemoryCatalog extends Catalog {
   override def lookupRelation(tableName: Name): LogicalPlan =
     tables
       .get(tableName)
-      .map(_ subquery tableName)
-      .getOrElse(throw new TableNotFoundException(tableName))
+      .map { _ subquery tableName }
+      .getOrElse { throw new TableNotFoundException(tableName) }
 
   private val tables: mutable.Map[Name, LogicalPlan] = mutable.Map.empty
 }

@@ -55,7 +55,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
 
   test("andAlso") {
     expectExpressions(1 cast LongType, 1L) {
-      Seq[Expression](1, 1L) sameSubtypeOf OrderedType andAlso (_.sameType)
+      Seq[Expression](1, 1L) sameSubtypeOf OrderedType andAlso { _.sameType }
     }
   }
 

@@ -34,7 +34,7 @@ class Context(val queryExecutor: QueryExecutor) {
   def range(begin: Long, end: Long): DataFrame = range(begin, end, 1L)
 
   def range(begin: Long, end: Long, step: Long): DataFrame = {
-    val rows = begin until end by step map (Row apply _)
+    val rows = begin until end by step map { Row apply _ }
     val output = StructType('id -> LongType.!).toAttributes
     new DataFrame(LocalRelation(rows, output), this)
   }

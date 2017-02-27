@@ -75,7 +75,7 @@ package object functions {
   def struct(first: Expression, rest: Expression*): MakeNamedStruct = struct(first +: rest)
 
   def struct(args: Seq[Expression]): MakeNamedStruct = {
-    val fieldNames = args.indices.map("c" + _).map(lit)
+    val fieldNames = args.indices map { "c" + _ } map lit
     MakeNamedStruct(fieldNames, args)
   }
 

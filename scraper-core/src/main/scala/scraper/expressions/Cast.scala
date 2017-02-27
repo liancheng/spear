@@ -43,11 +43,11 @@ object Cast {
   private val asByte = (_: Any) match { case v: Byte => v }
 
   private val implicitlyFromByte: PartialCastBuilder = {
-    case ShortType  => asByte andThen (_.toShort)
-    case IntType    => asByte andThen (_.toInt)
-    case LongType   => asByte andThen (_.toLong)
-    case FloatType  => asByte andThen (_.toFloat)
-    case DoubleType => asByte andThen (_.toDouble)
+    case ShortType  => asByte andThen { _.toShort }
+    case IntType    => asByte andThen { _.toInt }
+    case LongType   => asByte andThen { _.toLong }
+    case FloatType  => asByte andThen { _.toFloat }
+    case DoubleType => asByte andThen { _.toDouble }
     case StringType => _.toString
   }
 
@@ -58,58 +58,58 @@ object Cast {
   private val asShort = (_: Any) match { case v: Short => v }
 
   private val implicitlyFromShort: PartialCastBuilder = {
-    case IntType    => asShort andThen (_.toInt)
-    case LongType   => asShort andThen (_.toLong)
-    case FloatType  => asShort andThen (_.toFloat)
-    case DoubleType => asShort andThen (_.toDouble)
+    case IntType    => asShort andThen { _.toInt }
+    case LongType   => asShort andThen { _.toLong }
+    case FloatType  => asShort andThen { _.toFloat }
+    case DoubleType => asShort andThen { _.toDouble }
     case StringType => _.toString
   }
 
   private val explicitlyFromShort: PartialCastBuilder = {
-    case ByteType => asShort andThen (_.toByte)
+    case ByteType => asShort andThen { _.toByte }
   }
 
   private val asInt = (_: Any) match { case v: Int => v }
 
   private val implicitlyFromInt: PartialCastBuilder = {
-    case BooleanType => asInt andThen (_ != 0)
-    case LongType    => asInt andThen (_.toLong)
-    case FloatType   => asInt andThen (_.toFloat)
-    case DoubleType  => asInt andThen (_.toDouble)
+    case BooleanType => asInt andThen { _ != 0 }
+    case LongType    => asInt andThen { _.toLong }
+    case FloatType   => asInt andThen { _.toFloat }
+    case DoubleType  => asInt andThen { _.toDouble }
     case StringType  => _.toString
   }
 
   private val explicitlyFromInt: PartialCastBuilder = {
-    case ByteType  => asInt andThen (_.toByte)
-    case ShortType => asInt andThen (_.toShort)
+    case ByteType  => asInt andThen { _.toByte }
+    case ShortType => asInt andThen { _.toShort }
   }
 
   private val asLong = (_: Any) match { case v: Long => v }
 
   private val implicitlyFromLong: PartialCastBuilder = {
-    case FloatType  => asLong andThen (_.toFloat)
-    case DoubleType => asLong andThen (_.toDouble)
+    case FloatType  => asLong andThen { _.toFloat }
+    case DoubleType => asLong andThen { _.toDouble }
     case StringType => _.toString
   }
 
   private val explicitlyFromLong: PartialCastBuilder = {
-    case ByteType  => asLong andThen (_.toByte)
-    case ShortType => asLong andThen (_.toShort)
-    case IntType   => asLong andThen (_.toInt)
+    case ByteType  => asLong andThen { _.toByte }
+    case ShortType => asLong andThen { _.toShort }
+    case IntType   => asLong andThen { _.toInt }
   }
 
   private val asFloat = (_: Any) match { case v: Float => v }
 
   private val implicitlyFromFloat: PartialCastBuilder = {
-    case DoubleType => asFloat andThen (_.toDouble)
+    case DoubleType => asFloat andThen { _.toDouble }
     case StringType => _.toString
   }
 
   private val explicitlyFromFloat: PartialCastBuilder = {
-    case ByteType  => asFloat andThen (_.toByte)
-    case ShortType => asFloat andThen (_.toShort)
-    case IntType   => asFloat andThen (_.toInt)
-    case LongType  => asFloat andThen (_.toLong)
+    case ByteType  => asFloat andThen { _.toByte }
+    case ShortType => asFloat andThen { _.toShort }
+    case IntType   => asFloat andThen { _.toInt }
+    case LongType  => asFloat andThen { _.toLong }
   }
 
   private val implicitlyFromDouble: PartialCastBuilder = {
@@ -119,11 +119,11 @@ object Cast {
   private val asDouble = (_: Any) match { case v: Double => v }
 
   private val explicitlyFromDouble: PartialCastBuilder = {
-    case ByteType  => asDouble andThen (_.toByte)
-    case ShortType => asDouble andThen (_.toShort)
-    case IntType   => asDouble andThen (_.toInt)
-    case LongType  => asDouble andThen (_.toLong)
-    case FloatType => asDouble andThen (_.toFloat)
+    case ByteType  => asDouble andThen { _.toByte }
+    case ShortType => asDouble andThen { _.toShort }
+    case IntType   => asDouble andThen { _.toInt }
+    case LongType  => asDouble andThen { _.toLong }
+    case FloatType => asDouble andThen { _.toFloat }
   }
 
   private[scraper] val booleanTrueStrings = Set("yes", "y", "true", "t", "on")
@@ -142,16 +142,16 @@ object Cast {
   }
 
   private val implicitlyFromString: PartialCastBuilder = {
-    case BooleanType => asString andThen (_.toLowerCase) andThen stringToBoolean
+    case BooleanType => asString andThen { _.toLowerCase } andThen stringToBoolean
   }
 
   private val explicitlyFromString: PartialCastBuilder = {
-    case ByteType   => asString andThen (_.toByte)
-    case ShortType  => asString andThen (_.toShort)
-    case IntType    => asString andThen (_.toInt)
-    case LongType   => asString andThen (_.toLong)
-    case FloatType  => asString andThen (_.toFloat)
-    case DoubleType => asString andThen (_.toDouble)
+    case ByteType   => asString andThen { _.toByte }
+    case ShortType  => asString andThen { _.toShort }
+    case IntType    => asString andThen { _.toInt }
+    case LongType   => asString andThen { _.toLong }
+    case FloatType  => asString andThen { _.toFloat }
+    case DoubleType => asString andThen { _.toDouble }
   }
 
   private val implicitlyFromNull: PartialCastBuilder = {

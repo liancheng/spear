@@ -21,10 +21,10 @@ import scraper.types.{DataType, IntType, StructType}
 import scraper.utils._
 
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
-  def isResolved: Boolean = (expressions forall (_.isResolved)) && isDeduplicated
+  def isResolved: Boolean = expressions.forall { _.isResolved } && isDeduplicated
 
-  lazy val isDeduplicated: Boolean = children.forall(_.isResolved) && (
-    children.length < 2 || (children map { _.outputSet } reduce { _ intersectByID _ }).isEmpty
+  lazy val isDeduplicated: Boolean = children.forall { _.isResolved } && (
+    children.length < 2 || children.map { _.outputSet }.reduce { _ intersectByID _ }.isEmpty
   )
 
   /**
@@ -93,7 +93,7 @@ case class LocalRelation(
   @Explain(hidden = true) data: Iterable[Row],
   @Explain(hidden = true) output: Seq[Attribute]
 ) extends MultiInstanceRelation {
-  override def newInstance(): LogicalPlan = copy(output = output map (_ withID newExpressionID()))
+  override def newInstance(): LogicalPlan = copy(output = output map { _ withID newExpressionID() })
 
   override protected def nestedTrees: Seq[TreeNode[_]] = Nil
 }
@@ -121,7 +121,7 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])
 
   override def expressions: Seq[Expression] = projectList
 
-  override lazy val output: Seq[Attribute] = projectList map (_.attr)
+  override lazy val output: Seq[Attribute] = projectList map { _.attr }
 }
 
 /**
@@ -192,7 +192,7 @@ case class Limit(child: LogicalPlan, count: Expression) extends UnaryLogicalPlan
 trait SetOperator extends BinaryLogicalPlan {
   private def checkBranchSchemata(): Unit =
     require(
-      left.output.map(_.name) == right.output.map(_.name), {
+      left.output.map { _.name } == right.output.map { _.name }, {
         val schemaDiff = sideBySide(
           s"""Left branch
              |${left.schema.prettyTree}
@@ -223,8 +223,9 @@ trait SetOperator extends BinaryLogicalPlan {
         })
       }
 
-    for (widenedTypes <- trySequence(branches.map(_.schema.fieldTypes).transpose map widestTypeOf))
-      yield branches map (align(_, widenedTypes))
+    for {
+      widenedTypes <- trySequence(branches.map { _.schema.fieldTypes }.transpose map widestTypeOf)
+    } yield branches map (align(_, widenedTypes))
   }
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {
@@ -288,9 +289,9 @@ case class Join(
 ) extends BinaryLogicalPlan {
   override lazy val output: Seq[Attribute] = joinType match {
     case Inner      => left.output ++ right.output
-    case LeftOuter  => left.output ++ right.output.map(_.?)
-    case RightOuter => left.output.map(_.?) ++ right.output
-    case FullOuter  => left.output.map(_.?) ++ right.output.map(_.?)
+    case LeftOuter  => left.output ++ right.output.map { _.? }
+    case RightOuter => left.output.map { _.? } ++ right.output
+    case FullOuter  => left.output.map { _.? } ++ right.output.map { _.? }
   }
 
   def on(condition: Expression): Join = copy(condition = Some(condition))

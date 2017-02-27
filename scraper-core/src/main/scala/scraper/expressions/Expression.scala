@@ -23,11 +23,11 @@ trait Expression extends TreeNode[Expression] {
    * ([[isNullable]] is true, while this expression never returns null), while false negative is not
    * allowed.
    */
-  def isNullable: Boolean = children exists (_.isNullable)
+  def isNullable: Boolean = children exists { _.isNullable }
 
   def referenceSet: Set[Attribute] = references.toSet
 
-  def references: Seq[Attribute] = children.flatMap(_.references).distinct
+  def references: Seq[Attribute] = children.flatMap { _.references }.distinct
 
   /**
    * Returns the data type of this [[Expression]] if it's well-typed, or throws
@@ -48,11 +48,11 @@ trait Expression extends TreeNode[Expression] {
 
   def evaluated: Any = evaluate(null)
 
-  def debugString: String = template(children map (_.debugString))
+  def debugString: String = template(children map { _.debugString })
 
-  def sql: Try[String] = trySequence(children map (_.sql)) map template
+  def sql: Try[String] = trySequence(children map { _.sql }) map template
 
-  def sqlLike: String = template(children map (e => e.sql getOrElse e.debugString))
+  def sqlLike: String = template(children map { e => e.sql getOrElse e.debugString })
 
   /**
    * Whether this expression can be folded (evaluated) into a single [[Literal]] value at compile
@@ -66,14 +66,14 @@ trait Expression extends TreeNode[Expression] {
    * }}}
    * is not.
    */
-  lazy val isFoldable: Boolean = children forall (_.isFoldable)
+  lazy val isFoldable: Boolean = children forall { _.isFoldable }
 
   /**
    * Whether this [[Expression]] is pure. A pure [[Expression]] is deterministic, and always
    * returns the same value when given the same input. Typical examples of impure [[Expression]]s
    * include [[Rand]].
    */
-  lazy val isPure: Boolean = children forall (_.isPure)
+  lazy val isPure: Boolean = children forall { _.isPure }
 
   /**
    * Whether this [[Expression]] is resolved. An [[Expression]] is resolved if and only if it
@@ -86,13 +86,13 @@ trait Expression extends TreeNode[Expression] {
    *     - [[AutoAlias]]
    *  2. All of its child [[Expression]]s are resolved.
    */
-  lazy val isResolved: Boolean = children forall (_.isResolved)
+  lazy val isResolved: Boolean = children forall { _.isResolved }
 
   /**
    * Whether this [[Expression]] is bound. A bound [[Expression]] is [[isResolved resolved]] and
    * doesn't contain any [[Attribute]]s.
    */
-  lazy val isBound: Boolean = isResolved && children.forall(_.isBound)
+  lazy val isBound: Boolean = isResolved && children.forall { _.isBound }
 
   /**
    * Tries to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
@@ -127,7 +127,7 @@ trait Expression extends TreeNode[Expression] {
    * @see [[typeConstraint]]
    */
   lazy val strictlyTyped: Try[Expression] = typeConstraint.enforced map { newChildren =>
-    val changed = (newChildren, children).zipped forall (_ same _)
+    val changed = (newChildren, children).zipped forall { _ same _ }
     if (changed) this else withChildren(newChildren)
   }
 
@@ -210,7 +210,7 @@ object Expression {
     expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
   ): E = expression.transformDown {
     case unresolved @ UnresolvedAttribute(name, qualifier) =>
-      val candidates = input.map(_.attr).distinct.collect {
+      val candidates = input.map { _.attr }.distinct.collect {
         case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
         case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
       }
@@ -220,7 +220,7 @@ object Expression {
           attribute
 
         case Nil =>
-          Option(unresolved).filterNot(_ => errorIfNotFound).getOrElse {
+          Option(unresolved) filterNot { _ => errorIfNotFound } getOrElse {
             throw new ResolutionFailureException(
               s"Failed to resolve attribute $unresolved using ${input mkString ("[", ", ", "]")}"
             )
@@ -295,7 +295,7 @@ trait UnaryExpression extends Expression {
     )
 
   override def evaluate(input: Row): Any = {
-    Option(child.evaluate(input)).map(nullSafeEvaluate).orNull
+    Option(child.evaluate(input)).map { nullSafeEvaluate }.orNull
   }
 
   override protected def template(childList: Seq[String]): String = template(childList.head)

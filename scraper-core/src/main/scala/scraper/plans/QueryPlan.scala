@@ -14,11 +14,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   lazy val schema: StructType = StructType fromAttributes output
 
-  lazy val references: Seq[Attribute] = expressions.flatMap((_: Expression).references).distinct
+  lazy val references: Seq[Attribute] = expressions.flatMap { (_: Expression).references }.distinct
 
   lazy val referenceSet: Set[Attribute] = references.toSet
 
-  lazy val referenceIDs: Set[ExpressionID] = referenceSet map (_.expressionID)
+  lazy val referenceIDs: Set[ExpressionID] = referenceSet map { _.expressionID }
 
   def expressions: Seq[Expression] = productIterator.flatMap {
     case element: Expression       => element :: Nil
@@ -66,7 +66,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   /**
    * Returns string representations of each output attribute of this query plan.
    */
-  protected def outputStrings: Seq[String] = output map (_.debugString)
+  protected def outputStrings: Seq[String] = output map { _.debugString }
 
   override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
     case (e, index) => QueryPlan.ExpressionNode(index, e)
@@ -102,7 +102,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
           case e: Expression => applyRule(e)
           case e             => e -> false
         }.unzip
-        newElements -> (elementsChanged exists (_ == true))
+        newElements -> elementsChanged.exists { _ == true }
 
       case arg: AnyRef =>
         arg -> false

@@ -25,7 +25,7 @@ class ExpandStars(val catalog: Catalog) extends AnalysisRule {
   }
 
   private def expand(maybeQualifier: Option[Name], input: Seq[Attribute]): Seq[Attribute] =
-    maybeQualifier.fold(input) { qualifier =>
+    (maybeQualifier fold input) { qualifier =>
       input collect {
         case ref: AttributeRef if ref.qualifier contains qualifier => ref
       }
@@ -43,7 +43,7 @@ class ExpandStars(val catalog: Catalog) extends AnalysisRule {
 class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
-      val input = plan.children flatMap (_.output)
+      val input = plan.children flatMap { _.output }
       plan transformExpressionsDown {
         case a: UnresolvedAttribute =>
           try tryResolve(input)(a) catch {
@@ -118,9 +118,9 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
     case UnresolvedFunction(_, Seq(_: Star), _) =>
       throw new AnalysisException("Only function \"count\" may have star as argument")
 
-    case UnresolvedFunction(name, args, isDistinct) if args forall (_.isResolved) =>
-      val fnInfo = catalog.functionRegistry.lookupFunction(name)
-      fnInfo.builder(args) match {
+    case UnresolvedFunction(name, args, isDistinct) if args forall { _.isResolved } =>
+      val fnInfo = catalog.functionRegistry lookupFunction name
+      fnInfo builder args match {
         case f: AggregateFunction if isDistinct =>
           DistinctAggregateFunction(f)
 

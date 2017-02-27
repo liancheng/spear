@@ -56,18 +56,18 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
   }
 
   private[scraper] implicit class NamedExpressionSet[E <: NamedExpression](set: Set[E]) {
-    require(set forall (_.isResolved))
+    require(set forall { _.isResolved })
 
     def intersectByID(other: Set[E]): Set[E] = {
-      require(other forall (_.isResolved))
-      val otherIDs = other map (_.expressionID)
-      set filter (e => otherIDs contains e.expressionID)
+      require(other forall { _.isResolved })
+      val otherIDs = other map { _.expressionID }
+      set filter { e => otherIDs contains e.expressionID }
     }
 
     def subsetOfByID(other: Set[E]): Boolean = {
-      require(other forall (_.isResolved))
-      val otherIDs = other map (_.expressionID)
-      set forall (e => otherIDs contains e.expressionID)
+      require(other forall { _.isResolved })
+      val otherIDs = other map { _.expressionID }
+      set forall { e => otherIDs contains e.expressionID }
     }
   }
 

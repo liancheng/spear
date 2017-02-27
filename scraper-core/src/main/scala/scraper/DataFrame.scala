@@ -97,7 +97,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     context.queryExecutor.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
 
   def toSeq: Seq[Row] = if (queryExecution.physicalPlan.requireMaterialization) {
-    iterator.map(_.copy()).toSeq
+    iterator.map { _.copy() }.toSeq
   } else {
     iterator.toSeq
   }
@@ -147,7 +147,7 @@ class DataFrame(val queryExecution: QueryExecution) {
       (toSeq, false)
     }
 
-    val rows = schema.fields.map(_.name.casePreserving) +: data.map {
+    val rows = schema.fields.map { _.name.casePreserving } +: data.map {
       _ map { cell =>
         val content = cell match {
           case null => "NULL"
@@ -167,7 +167,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     val builder = StringBuilder.newBuilder
 
     // TODO This is slow for large datasets
-    val columnWidths = rows.transpose map (_.map(_.length).max + 2)
+    val columnWidths = rows.transpose map { _.map { _.length }.max + 2 }
 
     val bar = "\u2500"
     val thickBar = "\u2550"
@@ -184,9 +184,9 @@ class DataFrame(val queryExecution: QueryExecution) {
     val upperTee = "\u2564"
     val lowerTee = "\u2567"
 
-    val upper = columnWidths map (thickBar * _) mkString (upperLeft, upperTee, upperRight + "\n")
-    val middle = columnWidths map (bar * _) mkString (leftTee, cross, rightTee + "\n")
-    val lower = columnWidths map (thickBar * _) mkString (lowerLeft, lowerTee, lowerRight + "\n")
+    val upper = columnWidths.map { thickBar * _ } mkString (upperLeft, upperTee, upperRight + "\n")
+    val middle = columnWidths.map { bar * _ } mkString (leftTee, cross, rightTee + "\n")
+    val lower = columnWidths.map { thickBar * _ } mkString (lowerLeft, lowerTee, lowerRight + "\n")
 
     def displayRow(row: Seq[String]): String = row zip columnWidths map {
       case (content, width) if truncate => " " * (width - content.length - 1) + content + " "

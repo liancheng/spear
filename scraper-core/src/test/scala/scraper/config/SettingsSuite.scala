@@ -53,37 +53,37 @@ class SettingsSuite extends LoggingFunSuite {
 }
 
 object SettingsSuite {
-  val booleanKey = Key("boolean-value").boolean
+  val booleanKey: Key[Boolean] = Key("boolean-value").boolean
 
-  val numberKey = Key("number-value").number
+  val numberKey: Key[Number] = Key("number-value").number
 
-  val stringKey = Key("string-value").string
+  val stringKey: Key[String] = Key("string-value").string
 
-  val intKey = Key("int-value").int
+  val intKey: Key[Int] = Key("int-value").int
 
-  val longKey = Key("long-value").long
+  val longKey: Key[Long] = Key("long-value").long
 
-  val doubleKey = Key("double-value").double
+  val doubleKey: Key[Double] = Key("double-value").double
 
-  val anyrefKey = Key("anyref-value").anyref
+  val anyrefKey: Key[AnyRef] = Key("anyref-value").anyref
 
-  val nanosKey = Key("nanos-value").nanos
+  val nanosKey: Key[Duration] = Key("nanos-value").nanos
 
-  val microsKey = Key("micros-value").micros
+  val microsKey: Key[Duration] = Key("micros-value").micros
 
-  val millisKey = Key("millis-value").millis
+  val millisKey: Key[Duration] = Key("millis-value").millis
 
-  val secondsKey = Key("seconds-value").seconds
+  val secondsKey: Key[Duration] = Key("seconds-value").seconds
 
-  val minutesKey = Key("minutes-value").minutes
+  val minutesKey: Key[Duration] = Key("minutes-value").minutes
 
-  val hoursKey = Key("hours-value").hours
+  val hoursKey: Key[Duration] = Key("hours-value").hours
 
-  val daysKey = Key("days-value").days
+  val daysKey: Key[Duration] = Key("days-value").days
 
-  val validatedKey = Key("int-value").int.validate {
-    Try(_) filter (_ % 2 == 0) orElse Failure(new RuntimeException("Expecting an even number."))
+  val validatedKey: Key[Int] = Key("int-value").int.validate {
+    Try(_) filter { _ % 2 == 0 } orElse Failure(new RuntimeException("Expecting an even number."))
   }
 
-  val invalidKey = Key("invalid").int
+  val invalidKey: Key[Int] = Key("invalid").int
 }

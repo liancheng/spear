@@ -70,7 +70,7 @@ object Settings {
         // System properties comes after environment variables
         .withFallback(ConfigFactory.systemProperties())
         // Then follows user provided configuration files
-        .withFallback((first +: rest) map ConfigFactory.parseResources reduce (_ withFallback _))
+        .withFallback(first +: rest map ConfigFactory.parseResources reduce { _ withFallback _ })
         // Then follows the reference configuration file
         .withFallback(ConfigFactory.parseResources("scraper-reference.conf"))
         // Configurations of all other components (like Akka)

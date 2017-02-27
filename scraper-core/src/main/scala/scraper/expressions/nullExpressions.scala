@@ -10,7 +10,7 @@ case class Coalesce(children: Seq[Expression]) extends Expression {
   override protected lazy val typeConstraint: TypeConstraint = children.sameType
 
   override def evaluate(input: Row): Any =
-    (children.iterator map (_ evaluate input) find (_ != null)).orNull
+    children.iterator.map { _ evaluate input }.find { _ != null }.orNull
 }
 
 object Coalesce {

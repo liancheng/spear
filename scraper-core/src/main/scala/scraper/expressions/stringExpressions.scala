@@ -15,10 +15,10 @@ case class Concat(children: Seq[Expression]) extends Expression {
   override protected def typeConstraint: TypeConstraint = children sameTypeAs StringType
 
   override def evaluate(input: Row): Any =
-    (children map (_ evaluate input) map (_.asInstanceOf[String]) filter (_ != null)).mkString
+    children.map { _ evaluate input }.map { _.asInstanceOf[String] }.filter { _ != null }.mkString
 
   override def sql: Try[String] =
-    trySequence(children.map { _.sql }) map { _ mkString ("(", " || ", ")") }
+    trySequence(children map { _.sql }) map { _ mkString ("(", " || ", ")") }
 }
 
 case class RLike(left: Expression, right: Expression) extends BinaryOperator {

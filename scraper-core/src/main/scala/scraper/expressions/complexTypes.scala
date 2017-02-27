@@ -11,15 +11,19 @@ case class MakeNamedStruct(children: Seq[Expression]) extends Expression {
 
   override def nodeName: Name = "named_struct"
 
-  override def evaluate(input: Row): Any = Row.fromSeq(values map (_ evaluate input))
+  override def evaluate(input: Row): Any = Row.fromSeq(values map { _ evaluate input })
 
   override protected def typeConstraint: TypeConstraint =
     names sameTypeAs StringType andAlso Foldable concat values.anyType
 
   override protected lazy val strictDataType: DataType = {
-    val fields = (evaluatedNames, values map (_.dataType), values map (_.isNullable)).zipped map {
-      (name, dataType, nullable) => StructField(Name.caseSensitive(name), dataType, nullable)
-    }
+    val fields = (
+      evaluatedNames,
+      values map { _.dataType },
+      values map { _.isNullable }
+    ).zipped map {
+        (name, dataType, nullable) => StructField(Name.caseSensitive(name), dataType, nullable)
+      }
 
     StructType(fields)
   }
@@ -32,8 +36,9 @@ case class MakeNamedStruct(children: Seq[Expression]) extends Expression {
 
   private lazy val (names, values) = children.splitAt(children.length / 2)
 
-  private lazy val evaluatedNames: Seq[String] =
-    names map (_.evaluated match { case n: String => n })
+  private lazy val evaluatedNames: Seq[String] = names map { _.evaluated } map {
+    case n: String => n
+  }
 }
 
 object MakeNamedStruct {
@@ -50,7 +55,7 @@ case class MakeArray(values: Seq[Expression]) extends Expression {
 
   override def nodeName: Name = "array"
 
-  override def evaluate(input: Row): Any = values map (_ evaluate input)
+  override def evaluate(input: Row): Any = values map { _ evaluate input }
 
   override protected def typeConstraint: TypeConstraint = values.sameType
 
@@ -66,12 +71,12 @@ case class MakeMap(children: Seq[Expression]) extends Expression {
   override def isNullable: Boolean = false
 
   override def evaluate(input: Row): Any =
-    (keys map (_ evaluate input) zip (values map (_ evaluate input))).toMap
+    (keys.map { _ evaluate input } zip values.map { _ evaluate input }).toMap
 
   override protected def typeConstraint: TypeConstraint = keys.sameType concat values.sameType
 
   override protected lazy val strictDataType: DataType = {
-    val valueNullable = values exists (_.isNullable)
+    val valueNullable = values exists { _.isNullable }
     MapType(keys.head.dataType, values.head.dataType, valueNullable)
   }
 

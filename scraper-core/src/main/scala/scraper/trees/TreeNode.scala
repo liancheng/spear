@@ -64,10 +64,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     transformChildren(rule, _ transformUp _)
 
   /** Returns the depth of this $tree. */
-  def depth: Int = 1 + (children map (_.depth) foldLeft 0) { _ max _ }
+  def depth: Int = 1 + (children map { _.depth } foldLeft 0) { _ max _ }
 
   /** Returns the number of $nodes in this $tree. */
-  def size: Int = 1 + children.map(_.size).sum
+  def size: Int = 1 + children.map { _.size }.sum
 
   /** Whether this $node is a leaf node. */
   def isLeaf: Boolean = children.isEmpty
@@ -178,15 +178,15 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * @see [[prettyTree]]
    */
   def nodeCaption: String = {
-    val pairs = explainParams(_.toString) map (_.productIterator.mkString("="))
-    Seq(nodeName.casePreserving, pairs mkString ", ") filter (_.nonEmpty) mkString " "
+    val pairs = explainParams(_.toString).map { _.productIterator mkString "=" }
+    Seq(nodeName.casePreserving, pairs mkString ", ") filter { _.nonEmpty } mkString " "
   }
 
   /** Name of this $node. */
   def nodeName: Name = getClass.getSimpleName stripSuffix "$"
 
   protected def makeCopy(args: Seq[AnyRef]): Base = {
-    val constructors = this.getClass.getConstructors.filter(_.getParameterTypes.nonEmpty)
+    val constructors = this.getClass.getConstructors filter { _.getParameterTypes.nonEmpty }
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
     val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
     try defaultConstructor.newInstance(args: _*).asInstanceOf[Base] catch {
@@ -196,7 +196,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   protected def nestedTrees: Seq[TreeNode[_]] = {
-    val nestedTreeMarks = constructorParamExplainAnnotations map (_ exists (_.nestedTree()))
+    val nestedTreeMarks = constructorParamExplainAnnotations map { _ exists { _.nestedTree() } }
     productIterator.toSeq zip nestedTreeMarks collect { case (tree: TreeNode[_], true) => tree }
   }
 
@@ -205,15 +205,15 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * `Explain(hidden = true)` are not included here.
    */
   protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val argNames: List[String] = constructorParams(getClass) map (_.name.toString)
+    val argNames: List[String] = constructorParams(getClass) map { _.name.toString }
     val annotations = constructorParamExplainAnnotations
 
     (argNames, productIterator.toSeq, annotations).zipped.map {
-      case (_, _, maybeAnnotated) if maybeAnnotated exists (_.hidden()) =>
+      case (_, _, maybeAnnotated) if maybeAnnotated exists { _.hidden() } =>
         None
 
       case (name, value, _) =>
-        explainParamValue(value, show) map (name -> _)
+        explainParamValue(value, show) map { name -> _ }
     }.flatten
   }
 
@@ -225,8 +225,8 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
 
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
-    val newChildren = children map (next(_, rule))
-    val anyChildChanged = (newChildren, children).zipped map (_ same _) contains false
+    val newChildren = children map { next(_, rule) }
+    val anyChildChanged = (newChildren, children).zipped map { _ same _ } contains false
     if (anyChildChanged) withChildren(newChildren) else this
   }
 
@@ -258,7 +258,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     buildNestedTree(depth, lastChildren, builder)
 
     if (children.nonEmpty) {
-      children.init foreach (_ buildPrettyTree (depth + 1, lastChildren :+ false, builder))
+      children.init foreach { _ buildPrettyTree (depth + 1, lastChildren :+ false, builder) }
       children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
     }
 

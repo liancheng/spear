@@ -48,7 +48,7 @@ case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedN
   override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
   override protected def template(childList: Seq[String]): String =
-    (qualifier map (_.toString)).toSeq :+ "*" mkString "."
+    qualifier.map { _.toString }.toSeq :+ "*" mkString "."
 
   def of(qualifier: Name): Star = copy(qualifier = Some(qualifier))
 }
@@ -62,7 +62,7 @@ case class Alias(
 
   override protected lazy val strictDataType: DataType = child.dataType
 
-  override def evaluate(input: Row): Any = child.evaluate(input)
+  override def evaluate(input: Row): Any = child evaluate input
 
   override lazy val attr: Attribute = if (child.isResolved) {
     AttributeRef(name, child.dataType, child.isNullable, expressionID)

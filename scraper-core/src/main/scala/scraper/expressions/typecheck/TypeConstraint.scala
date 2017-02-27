@@ -41,7 +41,7 @@ trait TypeConstraint { self =>
    * Essentially, [[TypeConstraint]] is a monad with [[andAlso]] being the `flatMap` method.
    */
   def andAlso(next: Seq[Expression] => TypeConstraint): TypeConstraint = new TypeConstraint {
-    override def enforced: Try[Seq[Expression]] = self.enforced flatMap (next(_).enforced)
+    override def enforced: Try[Seq[Expression]] = self.enforced map next flatMap { _.enforced }
   }
 
   /**
@@ -58,7 +58,7 @@ trait TypeConstraint { self =>
  * form. Fails when any of the `input` expressions is not well-formed.
  */
 case class StrictlyTyped(input: Seq[Expression]) extends TypeConstraint {
-  override def enforced: Try[Seq[Expression]] = trySequence(input map (_.strictlyTyped))
+  override def enforced: Try[Seq[Expression]] = trySequence(input map { _.strictlyTyped })
 }
 
 /**
@@ -84,10 +84,10 @@ case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
 
   override def enforced: Try[Seq[Expression]] = for {
     strictInput <- input.anyType.enforced
-    strictTypes = strictInput map (_.dataType)
-    widestType <- widestTypeOf(strictTypes).filter(_ isSubtypeOf supertype).recover {
+    strictTypes = strictInput map { _.dataType }
+    widestType <- widestTypeOf(strictTypes) filter { _ isSubtypeOf supertype } recover {
       case NonFatal(cause) =>
-        val violators = input filterNot (_.dataType isSubtypeOf supertype)
+        val violators = input filterNot { _.dataType isSubtypeOf supertype }
 
         if (violators.nonEmpty) {
           // Reports all expressions whose data type is not a subtype of `supertype`, if any.
@@ -108,7 +108,7 @@ case class SameType(input: Seq[Expression]) extends TypeConstraint {
 
   override def enforced: Try[Seq[Expression]] = for {
     strictInput <- input.anyType.enforced
-    widestType = widestTypeOf(strictInput map (_.dataType)) getOrElse {
+    widestType = widestTypeOf(strictInput map { _.dataType }) getOrElse {
       throw new TypeMismatchException(
         s"""Cannot find a common data type for data types of all the following expressions:
            |${input map { e => s" - Expression $e of type ${e.dataType.sql}" } mkString "\n"}

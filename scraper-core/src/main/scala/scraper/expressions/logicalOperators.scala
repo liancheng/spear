@@ -67,8 +67,9 @@ case class CaseWhen(
   override def children: Seq[Expression] = conditions ++ consequences ++ alternative
 
   override def evaluate(input: Row): Any = {
-    val branches = conditions.iterator map (_ evaluate input) zip consequences.iterator
-    def alternativeValue = alternative map (_ evaluate input)
+    val branches = conditions.iterator map { _ evaluate input } zip consequences.iterator
+    def alternativeValue = alternative map { _ evaluate input }
+
     val hitBranchValue = branches collectFirst {
       case (JBoolean.TRUE, consequence) => consequence evaluate input
     }
@@ -92,7 +93,7 @@ case class CaseWhen(
     val (tests, rest) = childList splitAt conditions.length
     val (values, alternativeString) = rest splitAt conditions.length
     val elsePart = alternativeString.headOption map (" ELSE " + _) getOrElse ""
-    val cases = (tests, values).zipped map ("WHEN " + _ + " THEN " + _) mkString " "
+    val cases = (tests, values).zipped map { "WHEN " + _ + " THEN " + _ } mkString " "
     s"CASE $cases$elsePart END"
   }
 }
@@ -103,5 +104,5 @@ object CaseKeyWhen {
     candidates: Seq[Expression],
     consequences: Seq[Expression],
     alternative: Option[Expression]
-  ): CaseWhen = CaseWhen(candidates map (key === _), consequences, alternative)
+  ): CaseWhen = CaseWhen(candidates map { key === _ }, consequences, alternative)
 }

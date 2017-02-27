@@ -49,7 +49,7 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
  */
 class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall (_.isResolved) =>
+    case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
       val rewrittenCondition = tryResolveAndUnalias(agg.projectList)(condition)
 
@@ -77,7 +77,7 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
  */
 class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case (agg: UnresolvedAggregate) Sort order if agg.projectList forall (_.isResolved) =>
+    case (agg: UnresolvedAggregate) Sort order if agg.projectList forall { _.isResolved } =>
       // Only preserves the last sort order.
       agg.copy(order = order map tryResolveAndUnalias(agg.projectList))
   }
@@ -133,7 +133,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
     case ((_: UnresolvedAggregate) Sort _) =>
 
     // Waits until project list, having condition, and sort order expressions are all resolved.
-    case plan: UnresolvedAggregate if plan.expressions exists (!_.isResolved) =>
+    case plan: UnresolvedAggregate if plan.expressions exists { !_.isResolved } =>
 
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
     case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
@@ -243,12 +243,14 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       rejectNestedAggregateFunction(child)
 
     case e =>
-      e.children foreach (_ collectFirst {
-        case _: AggregateFunction =>
-          throw new IllegalAggregationException(
-            "Aggregate function can't be nested within another aggregate function: " + e.sqlLike
-          )
-      })
+      e.children foreach {
+        _ collectFirst {
+          case _: AggregateFunction =>
+            throw new IllegalAggregationException(
+              "Aggregate function can't be nested within another aggregate function: " + e.sqlLike
+            )
+        }
+      }
   }
 
   private def hasDistinctAggregateFunction(expressions: Seq[Expression]): Boolean =

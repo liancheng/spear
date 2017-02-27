@@ -15,8 +15,7 @@ object Main {
 
   def main(args: Array[String]) {
     val predef = {
-      val contextClassLoader = Thread.currentThread().getContextClassLoader
-      val stream = contextClassLoader.getResourceAsStream("predef.scala")
+      val stream = getClass.getClassLoader.getResourceAsStream("predef.scala")
       Source.fromInputStream(stream, "UTF-8").mkString
     }
 

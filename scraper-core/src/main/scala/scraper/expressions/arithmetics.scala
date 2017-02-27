@@ -88,7 +88,7 @@ case class Divide(left: Expression, right: Expression) extends BinaryArithmeticO
 
 case class Remainder(left: Expression, right: Expression) extends BinaryArithmeticOperator {
   override protected def typeConstraint: TypeConstraint =
-    super.typeConstraint andAlso (_ sameSubtypeOf IntegralType)
+    super.typeConstraint andAlso { _ sameSubtypeOf IntegralType }
 
   override protected lazy val strictDataType: DataType = left.dataType
 

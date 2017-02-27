@@ -119,7 +119,7 @@ object DataType {
   }
 
   case class StructTypeNode(dataType: StructType) extends DataTypeNode {
-    override def children: Seq[DataTypeNode] = dataType.fields.map(StructFieldNode)
+    override def children: Seq[DataTypeNode] = dataType.fields map StructFieldNode
 
     override def nodeCaption: String = dataType.simpleName
   }
@@ -179,7 +179,7 @@ trait PrimitiveType extends DataType {
   protected def ordering: Option[Ordering[InternalType]] = None
 
   override def genericOrdering: Option[Ordering[Any]] =
-    ordering map (_.asInstanceOf[Ordering[Any]])
+    ordering map { _.asInstanceOf[Ordering[Any]] }
 }
 
 object PrimitiveType extends AbstractDataType {

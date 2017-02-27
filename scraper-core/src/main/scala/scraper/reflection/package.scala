@@ -76,9 +76,9 @@ package object reflection {
       constructorSymbol.asMethod
     } else {
       // The type has multiple constructors. Let's pick the primary one.
-      constructorSymbol.asTerm.alternatives find { symbol =>
+      constructorSymbol.asTerm.alternatives.find { symbol =>
         symbol.isMethod && symbol.asMethod.isPrimaryConstructor && symbol.asMethod.isPublic
-      } map (_.asMethod) getOrElse {
+      }.map { _.asMethod } getOrElse {
         throw ScalaReflectionException(s"Type $tpe doesn't have a public primary constructor")
       }
     }

@@ -11,7 +11,7 @@ class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     tree.transformExpressionsDown {
       // Tries to collect a "minimum" unresolved expression.
-      case Unresolved(e) if e.children forall (_.isResolved) =>
+      case Unresolved(e) if e.children forall { _.isResolved } =>
         throw new ResolutionFailureException(
           s"""Failed to resolve expression ${e.sqlLike} in the analyzed logical plan:
              |
@@ -26,7 +26,7 @@ class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     tree.transformDown {
       // Tries to collect a "minimum" unresolved logical plan node.
-      case Unresolved(plan) if plan.children.forall(_.isResolved) =>
+      case Unresolved(plan) if plan.children forall { _.isResolved } =>
         throw new ResolutionFailureException(
           s"""Failed to resolve the following logical plan operator
              |
@@ -46,7 +46,7 @@ class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRul
     val internal = tree.output.collect { case e: InternalNamedExpression => e }
 
     if (internal.nonEmpty) {
-      val internalList = internal map (_.sqlLike) mkString ("[", ", ", "]")
+      val internalList = internal map { _.sqlLike } mkString ("[", ", ", "]")
       val suggestion =
         """You probably hit an internal bug since internal attributes are only used internally by
           |the analyzer and should never appear in a fully analyzed logical plan.
@@ -73,7 +73,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
     }
 
     if (distinctAggs.nonEmpty) {
-      val distinctAggList = distinctAggs map (_.sqlLike) mkString ("[", ", ", "]")
+      val distinctAggList = distinctAggs map { _.sqlLike } mkString ("[", ", ", "]")
       val suggestion =
         """You probably hit an internal bug since all distinct aggregate functions should have
           |been resolved into normal aggregate functions by the analyzer.
@@ -94,12 +94,12 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
 }
 
 class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformUp {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan: LeafLogicalPlan =>
       plan
 
     case plan =>
-      val inputSet = plan.children.flatMap(_.outputSet) ++ plan.derivedOutput
+      val inputSet = plan.children.flatMap { _.outputSet } ++ plan.derivedOutput
       val orphans = plan.references filterNot inputSet.contains
 
       if (orphans.nonEmpty) {

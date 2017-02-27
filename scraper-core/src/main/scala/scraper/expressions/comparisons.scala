@@ -73,7 +73,7 @@ case class In(test: Expression, list: Seq[Expression]) extends Expression {
 
   override def evaluate(input: Row): Any = {
     val testValue = test evaluate input
-    val listValues = list map (_ evaluate input)
+    val listValues = list map { _ evaluate input }
     listValues contains testValue
   }
 

@@ -28,10 +28,10 @@ class RowOrdering(boundSortOrders: Seq[SortOrder]) extends Ordering[Row] {
   }
 
   def compare(a: Row, b: Row): Int = {
-    val children = boundSortOrders map (_.child)
+    val children = boundSortOrders map { _.child }
     (children zip nullSafeOrderings).iterator map {
       case (e, ordering) =>
         ordering.compare(e evaluate a, e evaluate b)
-    } find (_ != 0) getOrElse 0
+    } find { _ != 0 } getOrElse 0
   }
 }

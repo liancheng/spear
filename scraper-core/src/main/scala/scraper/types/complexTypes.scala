@@ -95,7 +95,7 @@ object StructField {
 
 case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType {
   override val genericOrdering: Option[Ordering[Any]] =
-    if (fields.map(_.dataType.genericOrdering).forall(_.isDefined)) {
+    if (fields map { _.dataType.genericOrdering } forall { _.isDefined }) {
       val sortOrders = fields.zipWithIndex map {
         case (field, index) =>
           BoundRef(index, field.dataType, field.isNullable).asc
@@ -105,13 +105,13 @@ case class StructType(fields: Seq[StructField] = Seq.empty) extends ComplexType 
       None
     }
 
-  def apply(fieldName: String): StructField = fields.find(_.name == fieldName).get
+  def apply(fieldName: String): StructField = fields.find { _.name == fieldName }.get
 
   def apply(index: Int): StructField = fields(index)
 
   def length: Int = fields.length
 
-  def fieldTypes: Seq[DataType] = fields map (_.dataType)
+  def fieldTypes: Seq[DataType] = fields map { _.dataType }
 
   def toAttributes: Seq[AttributeRef] = fields map {
     field => AttributeRef(field.name, field.dataType, field.isNullable, newExpressionID())

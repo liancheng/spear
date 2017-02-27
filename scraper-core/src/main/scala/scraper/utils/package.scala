@@ -7,12 +7,12 @@ package object utils {
     val lhsLines = lhs split "\n"
     val rhsLines = rhs split "\n"
 
-    val lhsWidth = (lhsLines map (_.length)).max
-    val rhsWidth = (rhsLines map (_.length)).max
+    val lhsWidth = lhsLines.map { _.length }.max
+    val rhsWidth = rhsLines.map { _.length }.max
 
     val height = lhsLines.length max rhsLines.length
-    val paddedLhs = lhsLines map (_ padTo (lhsWidth, ' ')) padTo (height, " " * lhsWidth)
-    val paddedRhs = rhsLines map (_ padTo (rhsWidth, ' ')) padTo (height, " " * rhsWidth)
+    val paddedLhs = lhsLines map { _ padTo (lhsWidth, ' ') } padTo (height, " " * lhsWidth)
+    val paddedRhs = rhsLines map { _ padTo (rhsWidth, ' ') } padTo (height, " " * rhsWidth)
 
     val zipped = paddedLhs zip paddedRhs
     val header = if (withHeader) zipped.headOption else None

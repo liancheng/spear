@@ -18,10 +18,10 @@ case class HashAggregate(
 
   override def requireMaterialization: Boolean = true
 
-  private lazy val boundKeys: Seq[Expression] = keyAliases map (_.child) map bindTo(child.output)
+  private lazy val boundKeys: Seq[Expression] = keyAliases map { _.child } map bindTo(child.output)
 
   private lazy val aggregator: Aggregator = {
-    val boundAggs = aggAliases map (_.child) map bindTo(child.output)
+    val boundAggs = aggAliases map { _.child } map bindTo(child.output)
     new Aggregator(boundAggs)
   }
 
@@ -30,7 +30,7 @@ case class HashAggregate(
   override def iterator: Iterator[Row] = {
     // Builds the hash map by consuming all input rows
     child.iterator foreach { input =>
-      val groupingRow = Row.fromSeq(boundKeys map (_ evaluate input))
+      val groupingRow = Row.fromSeq(boundKeys map { _ evaluate input })
       val stateBuffer = hashMap.getOrElseUpdate(groupingRow, aggregator.newStateBuffer())
       aggregator.update(stateBuffer, input)
     }
@@ -84,8 +84,8 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
     //
     // Here, `stateAttributes` and `inputStateAttributes` represent columns of the target and input
     // state buffer respectively.
-    val stateAttributes = aggs flatMap (_.stateAttributes)
-    val inputStateAttributes = aggs flatMap (_.inputStateAttributes)
+    val stateAttributes = aggs flatMap { _.stateAttributes }
+    val inputStateAttributes = aggs flatMap { _.inputStateAttributes }
 
     (_: Expression) transformDown {
       case ref: AttributeRef =>

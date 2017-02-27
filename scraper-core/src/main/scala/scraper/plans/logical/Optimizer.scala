@@ -185,7 +185,7 @@ object Optimizer {
    */
   object MergeFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Filter inner Filter outer => plan filter (inner && outer)
+      case plan Filter inner Filter outer => plan filter { inner && outer }
     }
   }
 
@@ -204,7 +204,7 @@ object Optimizer {
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projectList Filter condition if projectList forall (_.isPure) =>
+      case plan Project projectList Filter condition if projectList forall { _.isPure } =>
         val rewrittenCondition = Alias.unalias(projectList)(condition)
         plan filter rewrittenCondition select projectList
     }
@@ -258,7 +258,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Aggregate(child, keys, functions) Filter condition if functions forall (_.isPure) =>
+      case Aggregate(child, keys, functions) Filter condition if functions forall { _.isPure } =>
         // Predicates that don't reference any aggregate functions can be pushed down
         val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 
