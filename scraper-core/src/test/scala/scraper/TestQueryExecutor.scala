@@ -1,11 +1,12 @@
 package scraper
 
-import scraper.expressions.Attribute
+import org.mockito.Mockito._
+
 import scraper.parsers.QueryExpressionParser.queryExpression
 import scraper.plans.QueryExecution
 import scraper.plans.logical.{LogicalPlan, Optimizer}
 import scraper.plans.logical.analysis.Analyzer
-import scraper.plans.physical.{LeafPhysicalPlan, PhysicalPlan}
+import scraper.plans.physical.PhysicalPlan
 
 class TestQueryExecutor extends QueryExecutor {
   override val catalog: Catalog = new InMemoryCatalog
@@ -16,7 +17,8 @@ class TestQueryExecutor extends QueryExecutor {
 
   override def optimize(plan: LogicalPlan): LogicalPlan = optimizer(plan)
 
-  override def plan(plan: LogicalPlan): PhysicalPlan = MockPhysicalPlan(plan.output)
+  override def plan(plan: LogicalPlan): PhysicalPlan =
+    when(mock(classOf[PhysicalPlan]).iterator).thenReturn(Iterator.empty).getMock[PhysicalPlan]
 
   override def execute(context: Context, plan: LogicalPlan): QueryExecution =
     new QueryExecution(context, plan)
@@ -24,8 +26,4 @@ class TestQueryExecutor extends QueryExecutor {
   private val analyzer = new Analyzer(catalog)
 
   private val optimizer = new Optimizer
-}
-
-case class MockPhysicalPlan(output: Seq[Attribute]) extends LeafPhysicalPlan {
-  override def iterator: Iterator[Row] = Iterator.empty
 }
