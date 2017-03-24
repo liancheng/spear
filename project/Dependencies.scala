@@ -10,16 +10,16 @@ object Dependencies {
     val ammonite = "0.7.8"
     val config = "1.2.1"
     val fastparse = "0.4.1"
-    val jline = "2.12.1"
     val log4j = "1.2.16"
     val mockito = "2.1.0-beta.120"
-    val protobuf = "2.5.0"
     val scala = "2.11.8"
     val scalaCheck = "1.12.5"
     val scalaTest = "2.2.5"
     val scalaXml = "1.0.4"
-    val scopt = "3.4.0"
     val slf4j = "1.6.4"
+
+    val jline = "2.12.1"
+    val protobuf = "2.5.0"
     val sourcecode = "0.1.2"
   }
 
@@ -59,10 +59,6 @@ object Dependencies {
 
   val scalaTest = Seq(
     "org.scalatest" %% "scalatest" % Versions.scalaTest % "test"
-  )
-
-  val scopt = Seq(
-    "com.github.scopt" %% "scopt" % Versions.scopt
   )
 
   val slf4j = Seq(
