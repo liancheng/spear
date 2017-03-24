@@ -14,7 +14,7 @@ import scraper.utils._
  * impure expressions (e.g., [[Rand]]), which are non-deterministic and contain mutable states.
  */
 trait Expression extends TreeNode[Expression] {
-  override def nodeName: Name = getClass.getSimpleName.toLowerCase stripSuffix "$"
+  override def nodeName: String = getClass.getSimpleName.toLowerCase stripSuffix "$"
 
   override def toString: String = sqlLike
 
@@ -176,7 +176,7 @@ trait Expression extends TreeNode[Expression] {
    * A template method for building `debugString` and `sql`.
    */
   protected def template(childList: Seq[String]): String =
-    childList mkString (s"${nodeName.casePreserving}(", ", ", ")")
+    childList mkString (s"$nodeName(", ", ", ")")
 
   /**
    * Returns the data type of this [[Expression]]. Different from [[Expression.dataType]], this
@@ -328,7 +328,7 @@ trait BinaryExpression extends Expression {
 trait Operator { this: Expression =>
   def operator: String
 
-  override def nodeName: Name = operator
+  override def nodeName: String = operator
 }
 
 trait BinaryOperator extends BinaryExpression with Operator {

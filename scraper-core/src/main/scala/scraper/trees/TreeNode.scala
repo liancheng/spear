@@ -2,10 +2,8 @@ package scraper.trees
 
 import scala.collection.{mutable, Traversable}
 
-import scraper.Name
 import scraper.annotations.Explain
 import scraper.reflection.constructorParams
-import scraper.types.StructType
 
 /**
  * Base trait of simple tree structures that supports recursive transformations. Concrete $tree
@@ -80,9 +78,6 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     var changed = false
 
     val newArgs = productIterator.map {
-      case arg: StructType =>
-        arg
-
       case arg: TreeNode[_] if children contains arg =>
         val newChild = remainingNewChildren.head
         remainingNewChildren.remove(0)
@@ -179,11 +174,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    */
   def nodeCaption: String = {
     val pairs = explainParams(_.toString).map { _.productIterator mkString "=" }
-    Seq(nodeName.casePreserving, pairs mkString ", ") filter { _.nonEmpty } mkString " "
+    Seq(nodeName, pairs mkString ", ") filter { _.nonEmpty } mkString " "
   }
 
   /** Name of this $node. */
-  def nodeName: Name = getClass.getSimpleName stripSuffix "$"
+  def nodeName: String = getClass.getSimpleName stripSuffix "$"
 
   protected def makeCopy(args: Seq[AnyRef]): Base = {
     val constructors = this.getClass.getConstructors filter { _.getParameterTypes.nonEmpty }

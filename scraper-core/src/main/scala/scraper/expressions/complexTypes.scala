@@ -9,7 +9,7 @@ case class MakeNamedStruct(children: Seq[Expression]) extends Expression {
 
   override def isNullable: Boolean = false
 
-  override def nodeName: Name = "named_struct"
+  override def nodeName: String = "named_struct"
 
   override def evaluate(input: Row): Any = Row.fromSeq(values map { _ evaluate input })
 
@@ -53,7 +53,7 @@ case class MakeArray(values: Seq[Expression]) extends Expression {
 
   override def children: Seq[Expression] = values
 
-  override def nodeName: Name = "array"
+  override def nodeName: String = "array"
 
   override def evaluate(input: Row): Any = values map { _ evaluate input }
 
@@ -66,7 +66,7 @@ case class MakeArray(values: Seq[Expression]) extends Expression {
 case class MakeMap(children: Seq[Expression]) extends Expression {
   assert(children.length % 2 == 0)
 
-  override def nodeName: Name = "map"
+  override def nodeName: String = "map"
 
   override def isNullable: Boolean = false
 

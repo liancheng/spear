@@ -2,7 +2,7 @@ package scraper.expressions.aggregates
 
 import scala.collection.mutable.ArrayBuffer
 
-import scraper.{Name, Row}
+import scraper.Row
 import scraper.expressions._
 import scraper.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
 import scraper.expressions.functions._
@@ -54,7 +54,7 @@ abstract class FirstLike(child: Expression, ignoresNull: Expression)
 case class First(child: Expression, ignoresNull: Expression) extends FirstLike(child, ignoresNull) {
   def this(child: Expression) = this(child, lit(true))
 
-  override def nodeName: Name = "first_value"
+  override def nodeName: String = "first_value"
 
   override lazy val stateAttributes: Seq[Attribute] = Seq(first, valueSet)
 
@@ -88,7 +88,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(child, ignoresNull) {
   def this(child: Expression) = this(child, lit(true))
 
-  override def nodeName: Name = "last_value"
+  override def nodeName: String = "last_value"
 
   override lazy val stateAttributes: Seq[Attribute] = Seq(last)
 
@@ -114,7 +114,7 @@ case class ArrayAgg(child: Expression)
 
   override protected lazy val strictDataType: DataType = ArrayType(child.dataType, child.isNullable)
 
-  override def nodeName: Name = "array_agg"
+  override def nodeName: String = "array_agg"
 
   override def initialState: State = ArrayBuffer.empty[Any]
 

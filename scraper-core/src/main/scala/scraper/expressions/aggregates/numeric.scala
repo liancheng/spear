@@ -1,6 +1,5 @@
 package scraper.expressions.aggregates
 
-import scraper.Name
 import scraper.expressions._
 import scraper.expressions.aggregates.FoldLeft.UpdateFunction
 import scraper.expressions.functions._
@@ -8,7 +7,7 @@ import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{DataType, DoubleType, NumericType}
 
 case class Average(child: Expression) extends UnaryExpression with AggregateFunction {
-  override def nodeName: Name = "avg"
+  override def nodeName: String = "avg"
 
   override def dataType: DataType = DoubleType
 
@@ -43,7 +42,7 @@ case class Sum(child: Expression) extends NullableReduceLeft {
 }
 
 case class Product_(child: Expression) extends NullableReduceLeft {
-  override def nodeName: Name = "product"
+  override def nodeName: String = "product"
 
   override val updateFunction: UpdateFunction = Multiply
 

@@ -2,7 +2,7 @@ package scraper.expressions
 
 import java.lang.{Boolean => JBoolean}
 
-import scraper.{Name, Row}
+import scraper.Row
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.{BooleanType, DataType}
 
@@ -62,7 +62,7 @@ case class CaseWhen(
 
   require(conditions.nonEmpty && conditions.length == consequences.length)
 
-  override def nodeName: Name = "CASE"
+  override def nodeName: String = "CASE"
 
   override def children: Seq[Expression] = conditions ++ consequences ++ alternative
 

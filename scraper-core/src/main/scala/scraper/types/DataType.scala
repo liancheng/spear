@@ -30,10 +30,6 @@ case class OneOf(supertypes: Seq[AbstractDataType]) extends AbstractDataType {
   }
 }
 
-object OneOf {
-  def apply(first: AbstractDataType, rest: AbstractDataType*): OneOf = OneOf(first +: rest)
-}
-
 trait DataType extends AbstractDataType { self =>
   def genericOrdering: Option[Ordering[Any]]
 
