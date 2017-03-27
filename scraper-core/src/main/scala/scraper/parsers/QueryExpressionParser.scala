@@ -83,8 +83,7 @@ object JoinedTableParser extends LoggingParser {
       case (lhs, rhs) => Join(lhs, rhs, Inner, None)
     } opaque "cross-join"
 
-  val joinedTable: P[LogicalPlan] =
-    crossJoin | qualifiedJoin opaque "joined-table"
+  val joinedTable: P[LogicalPlan] = crossJoin | qualifiedJoin opaque "joined-table"
 }
 
 // SQL06 section 7.9
@@ -107,8 +106,7 @@ object GroupByClauseParser extends LoggingParser {
     opaque "ordinary-grouping-set"
   )
 
-  private val groupingElement: P[Seq[Expression]] =
-    ordinaryGroupingSet opaque "grouping-element"
+  private val groupingElement: P[Seq[Expression]] = ordinaryGroupingSet opaque "grouping-element"
 
   private val groupingElementList: P[Seq[Expression]] = (
     groupingElement
@@ -326,8 +324,7 @@ object QueryExpressionParser extends LoggingParser {
   import TableReferenceParser._
   import WhitespaceApi._
 
-  private val withColumnList: P[Seq[Name]] =
-    columnNameList opaque "with-column-list"
+  private val withColumnList: P[Seq[Name]] = columnNameList opaque "with-column-list"
 
   private val withListElement: P[LogicalPlan => LogicalPlan] =
     queryName ~ ("(" ~ withColumnList ~ ")").? ~ AS ~ "(" ~ P(queryExpression) ~ ")" map {
@@ -341,11 +338,9 @@ object QueryExpressionParser extends LoggingParser {
     opaque "with-list"
   )
 
-  private val withClause: P[LogicalPlan => LogicalPlan] =
-    WITH ~ withList opaque "with-clause"
+  private val withClause: P[LogicalPlan => LogicalPlan] = WITH ~ withList opaque "with-clause"
 
-  private val simpleTable: P[LogicalPlan] =
-    querySpecification opaque "query-specification"
+  private val simpleTable: P[LogicalPlan] = querySpecification opaque "query-specification"
 
   private val queryPrimary: P[LogicalPlan] = (
     "(" ~ P(queryExpressionBody) ~ ")"
@@ -404,8 +399,7 @@ object SortSpecificationListParser extends LoggingParser {
       | LAST.attach { (_: SortOrder).nullsLast }
     ) opaque "null-ordering"
 
-  private val sortKey: P[Expression] =
-    valueExpression opaque "sort-key"
+  private val sortKey: P[Expression] = valueExpression opaque "sort-key"
 
   private val sortSpecification: P[SortOrder] = (
     sortKey
