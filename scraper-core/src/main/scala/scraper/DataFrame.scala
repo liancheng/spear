@@ -42,16 +42,17 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def distinct: DataFrame = withPlan { Distinct }
 
-  def join(right: DataFrame, joinType: JoinType): JoinedDataFrame =
-    new JoinedDataFrame(this, right, joinType)
+  def crossJoin(right: DataFrame): DataFrame = withPlan {
+    Join(_, right.queryExecution.logicalPlan, Inner, None)
+  }
 
-  def join(right: DataFrame): JoinedDataFrame = join(right, Inner)
+  def join(right: DataFrame): JoinedData = new JoinedData(this, right, Inner)
 
-  def leftJoin(right: DataFrame): JoinedDataFrame = join(right, LeftOuter)
+  def leftJoin(right: DataFrame): JoinedData = new JoinedData(this, right, LeftOuter)
 
-  def rightJoin(right: DataFrame): JoinedDataFrame = join(right, RightOuter)
+  def rightJoin(right: DataFrame): JoinedData = new JoinedData(this, right, RightOuter)
 
-  def outerJoin(right: DataFrame): JoinedDataFrame = join(right, FullOuter)
+  def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
 
   def orderBy(order: Seq[SortOrder]): DataFrame = withPlan {
     Sort(_, order)
@@ -209,15 +210,13 @@ class DataFrame(val queryExecution: QueryExecution) {
   }
 }
 
-class JoinedDataFrame(left: DataFrame, right: DataFrame, joinType: JoinType) extends {
-  private val join = {
+class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
+  def on(condition: Expression): DataFrame = {
     val leftPlan = left.queryExecution.logicalPlan
     val rightPlan = right.queryExecution.logicalPlan
-    Join(leftPlan, rightPlan, joinType, None)
+    val join = Join(leftPlan, rightPlan, joinType, Some(condition))
+    new DataFrame(join, left.context)
   }
-} with DataFrame(join, left.context) {
-  def on(condition: Expression): DataFrame =
-    new DataFrame(join.copy(condition = Some(condition)), context)
 }
 
 class GroupedData(df: DataFrame, keys: Seq[Expression]) {

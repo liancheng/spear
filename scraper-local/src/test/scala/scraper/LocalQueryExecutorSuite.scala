@@ -92,7 +92,7 @@ class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
     val right = range(2) select ('id + 1 cast StringType as "str")
 
     checkDataFrame(
-      left join right,
+      left crossJoin right,
       Row(0, "1"), Row(0, "2"), Row(1, "1"), Row(1, "2")
     )
 
@@ -120,7 +120,7 @@ class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
     val df = range(2)
 
     checkDataFrame(
-      df subquery 'a join (df subquery 'b),
+      df subquery 'a crossJoin (df subquery 'b),
       Row(0, 0), Row(0, 1), Row(1, 0), Row(1, 1)
     )
 
