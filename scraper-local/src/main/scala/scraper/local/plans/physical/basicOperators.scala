@@ -76,7 +76,7 @@ case class Except(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysica
   override def iterator: Iterator[Row] = (left.iterator.toSeq diff right.iterator.toSeq).iterator
 }
 
-case class CartesianProduct(
+case class NestedLoopJoin(
   left: PhysicalPlan,
   right: PhysicalPlan,
   condition: Option[Expression]
@@ -93,7 +93,7 @@ case class CartesianProduct(
 
   override def requireMaterialization: Boolean = true
 
-  def on(condition: Expression): CartesianProduct = copy(condition = Some(condition))
+  def on(condition: Expression): NestedLoopJoin = copy(condition = Some(condition))
 
   private lazy val boundCondition = condition map bindTo(output) getOrElse True
 

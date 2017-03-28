@@ -54,10 +54,10 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
         (planLater(child) limit n) :: Nil
 
       case Join(left, right, Inner, Some(condition)) =>
-        (planLater(left) cartesian planLater(right) on condition) :: Nil
+        (planLater(left) nestedLoopJoin planLater(right) on condition) :: Nil
 
       case Join(left, right, Inner, _) =>
-        (planLater(left) cartesian planLater(right)) :: Nil
+        (planLater(left) nestedLoopJoin planLater(right)) :: Nil
 
       case child Sort order =>
         (planLater(child) orderBy order) :: Nil
