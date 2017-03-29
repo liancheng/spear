@@ -36,7 +36,7 @@ object StringParser extends LoggingParser {
 
   val unicodeCharacterStringLiteral: P[Literal] = (
     "U&" ~~ quotedCharacterRepresentationsList ~ unicodeEscapeSpecifier
-    map (parseUnicodeRepresentations _).tupled
+    map { parseUnicodeRepresentations _ }.tupled
     map Literal.apply
     opaque "unicode-character-string-literal"
   )

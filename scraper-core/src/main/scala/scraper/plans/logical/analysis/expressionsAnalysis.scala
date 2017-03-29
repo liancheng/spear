@@ -61,42 +61,18 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule converts [[scraper.expressions.AutoAlias AutoAlias]]es into real
- * [[scraper.expressions.Alias Alias]]es, as long as aliased expressions are resolved.
+ * This rule converts [[scraper.expressions.UnresolvedAlias unresolved aliases]] into proper
+ * [[scraper.expressions.Alias aliases]].
  */
-class ResolveAutoAliases(val catalog: Catalog) extends AnalysisRule {
+class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
-    case AutoAlias(Resolved(child: Expression)) =>
-      // Uses `UnquotedName` to eliminate quotes in internal alias names.
+    case UnresolvedAlias(Resolved(child: Expression)) =>
       val alias = child.transformDown {
-        case a: AttributeRef                      => UnquotedName(a)
-        case e @ Literal(lit: String, StringType) => UnquotedName(e as lit)
+        // Drops attribute qualifier when generating alias names.
+        case a: AttributeRef => a qualifiedBy None
       }.sql getOrElse AnonymousColumnName
 
       child as Name.caseSensitive(alias)
-  }
-
-  /**
-   * Auxiliary class only used for removing quotes from auto-generated column names. For example,
-   * for the following SQL query:
-   * {{{
-   *   SELECT 'hello' || 'world'
-   * }}}
-   * should produce a column named as
-   * {{{
-   *   hello || world
-   * }}}
-   * instead of
-   * {{{
-   *   'hello' || 'world'
-   * }}}
-   */
-  private case class UnquotedName(named: NamedExpression)
-    extends LeafExpression with UnevaluableExpression {
-
-    override lazy val isResolved: Boolean = named.isResolved
-
-    override def sql: Try[String] = Try(named.name.casePreserving)
   }
 }
 

@@ -30,7 +30,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ExpandStars(catalog),
       new ResolveReferences(catalog),
       new ResolveFunctions(catalog),
-      new ResolveAutoAliases(catalog),
+      new ResolveAliases(catalog),
 
       // Rules that help resolving window functions
       new ExtractWindowFunctionsFromProjects(catalog),

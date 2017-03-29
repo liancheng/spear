@@ -83,7 +83,7 @@ trait Expression extends TreeNode[Expression] {
    *     - [[UnresolvedAttribute]]
    *     - [[UnresolvedFunction]]
    *     - [[Star]]
-   *     - [[AutoAlias]]
+   *     - [[UnresolvedAlias]]
    *  2. All of its child [[Expression]]s are resolved.
    */
   lazy val isResolved: Boolean = children forall { _.isResolved }

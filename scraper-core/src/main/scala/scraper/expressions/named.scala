@@ -38,7 +38,7 @@ object NamedExpression {
 
   def named(child: Expression): NamedExpression = child match {
     case e: NamedExpression => e
-    case _                  => AutoAlias(child)
+    case _                  => UnresolvedAlias(child)
   }
 }
 
@@ -89,13 +89,13 @@ object Alias {
 }
 
 /**
- * Wherever a [[NamedExpression]] is required but an arbitrary [[Expression]] is given, we use
- * [[AutoAlias]] to wrap the given expression and defer decision of the final alias name until
- * analysis time.  The final alias name is usually the SQL representation of the finally resolved
- * expression.  If the resolved expression doesn't have a SQL representation (e.g., Scala UDF),
- * a default name `?column?` will be used.
+ * Wherever a [[NamedExpression]] is required but an arbitrary unresolved [[Expression]] is given,
+ * we use [[UnresolvedAlias]] to wrap the given expression and defer decision of the final alias
+ * name until analysis time. The final alias name is usually the SQL representation of the finally
+ * resolved expression. If the resolved expression doesn't have a SQL representation (e.g., Scala
+ * UDF), a default name `?column?` will be used.
  */
-case class AutoAlias private (child: Expression)
+case class UnresolvedAlias private (child: Expression)
   extends NamedExpression
   with UnaryExpression
   with UnresolvedNamedExpression
