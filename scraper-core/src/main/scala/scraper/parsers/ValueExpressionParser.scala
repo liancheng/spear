@@ -15,7 +15,7 @@ object StringParser extends LoggingParser {
   import WhitespaceApi._
 
   private val nonquoteCharacter: P[Char] =
-    !P("'") ~ AnyChar.char opaque "nonquote-character"
+    !P("'") ~~ AnyChar.char opaque "nonquote-character"
 
   private val characterRepresentation: P[Char] =
     nonquoteCharacter | P("''").char opaque "character-representation"
