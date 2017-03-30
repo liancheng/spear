@@ -190,50 +190,44 @@ trait Expression extends TreeNode[Expression] {
 }
 
 object Expression {
-  /**
-   * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
-   * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
-   */
-  def tryResolve[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
-    resolve(expression, input, errorIfNotFound = false)
+  implicit class ExpressionResolver[E <: Expression](e: E) {
+    /**
+     * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
+     * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
+     */
+    def tryResolve(input: Seq[NamedExpression]): E = resolve(e, input, errorIfNotFound = false)
 
-  /**
-   * Resolves this [[Expression]] using a given list of `input` [[NamedExpression]]s.
-   *
-   * @throws scraper.exceptions.ResolutionFailureException if not all expressions can be
-   *         successfully resolved.
-   */
-  def resolve[E <: Expression](input: Seq[NamedExpression])(expression: E): E =
-    resolve(expression, input, errorIfNotFound = true)
+    def resolve(input: Seq[NamedExpression]): E = resolve(e, input, errorIfNotFound = true)
 
-  private def resolve[E <: Expression](
-    expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
-  ): E = expression.transformDown {
-    case unresolved @ UnresolvedAttribute(name, qualifier) =>
-      val candidates = input.map { _.attr }.distinct.collect {
-        case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
-        case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
-      }
+    private def resolve(
+      expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
+    ): E = expression.transformDown {
+      case unresolved @ UnresolvedAttribute(name, qualifier) =>
+        val candidates = input.map { _.attr }.distinct.collect {
+          case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
+          case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
+        }
 
-      candidates match {
-        case Seq(attribute) =>
-          attribute
+        candidates match {
+          case Seq(attribute) =>
+            attribute
 
-        case Nil =>
-          Option(unresolved) filterNot { _ => errorIfNotFound } getOrElse {
+          case Nil =>
+            Option(unresolved) filterNot { _ => errorIfNotFound } getOrElse {
+              throw new ResolutionFailureException(
+                s"Failed to resolve attribute $unresolved using ${input mkString ("[", ", ", "]")}"
+              )
+            }
+
+          case _ =>
             throw new ResolutionFailureException(
-              s"Failed to resolve attribute $unresolved using ${input mkString ("[", ", ", "]")}"
+              s"""Multiple ambiguous input attributes found while resolving $unresolved using
+                 |${input mkString ("[", ", ", "]")}
+                 |""".oneLine
             )
-          }
-
-        case _ =>
-          throw new ResolutionFailureException(
-            s"""Multiple ambiguous input attributes found while resolving $unresolved using
-               |${input mkString ("[", ", ", "]")}
-               |""".oneLine
-          )
-      }
-  }.asInstanceOf[E]
+        }
+    }.asInstanceOf[E]
+  }
 }
 
 trait StatefulExpression[State] extends Expression {

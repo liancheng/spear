@@ -267,7 +267,7 @@ object AggregationAnalysis {
     collectAggregateFunctions(expressions).nonEmpty
 
   def tryResolveAndUnalias[E <: Expression](input: Seq[NamedExpression]): E => E =
-    Expression.tryResolve[E](input) _ andThen Alias.unalias[E](input)
+    (e: E) => Alias.unalias[E](input)(e tryResolve input)
 
   /**
    * Collects all non-window aggregate functions from the given `expressions`.

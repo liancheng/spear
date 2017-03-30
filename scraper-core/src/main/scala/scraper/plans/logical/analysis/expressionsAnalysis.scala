@@ -1,16 +1,13 @@
 package scraper.plans.logical.analysis
 
-import scala.util.Try
 import scala.util.control.NonFatal
 
 import scraper._
 import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
-import scraper.expressions.Expression.tryResolve
 import scraper.expressions.NamedExpression.AnonymousColumnName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.plans.logical._
-import scraper.types.StringType
 
 /**
  * This rule expands "`*`" appearing in `SELECT`.
@@ -46,7 +43,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
       val input = plan.children flatMap { _.output }
       plan transformExpressionsDown {
         case a: UnresolvedAttribute =>
-          try tryResolve(input)(a) catch {
+          try a tryResolve input catch {
             case NonFatal(cause) =>
               throw new ResolutionFailureException(
                 s"""Failed to resolve attribute ${a.sqlLike} in logical plan:

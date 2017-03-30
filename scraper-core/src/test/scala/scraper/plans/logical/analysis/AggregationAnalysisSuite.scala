@@ -12,6 +12,8 @@ import scraper.types.{IntType, LongType}
 
 class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
+    val `@A: count(a)` = AggregationAlias(count(self.a))
+
     checkSQLAnalysis(
       "SELECT count(a) FROM t",
 
@@ -22,6 +24,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with HAVING clause referencing projected attribute") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkSQLAnalysis(
       "SELECT count(b) AS c FROM t GROUP BY a HAVING c > 1",
 
@@ -39,6 +44,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with ORDER BY clause referencing projected attribute") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkSQLAnalysis(
       "SELECT count(b) AS c FROM t GROUP BY a ORDER BY c DESC",
 
@@ -56,6 +64,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with both HAVING and ORDER BY clauses") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkSQLAnalysis(
       "SELECT a FROM t GROUP BY a HAVING a > 1 ORDER BY count(b) ASC",
 
@@ -71,6 +82,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple ORDER BY clauses") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkAnalyzedPlan(
       table('t)
         groupBy 'a
@@ -88,6 +102,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple HAVING conditions") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkAnalyzedPlan(
       table('t)
         groupBy 'a
@@ -105,6 +122,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple alternating HAVING and ORDER BY clauses") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(b)` = AggregationAlias(count(self.b))
+
     checkAnalyzedPlan(
       table('t)
         groupBy 'a
@@ -124,6 +144,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with count(*)") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@A: count(1)` = AggregationAlias(count(1))
+
     checkSQLAnalysis(
       "SELECT count(*) FROM t GROUP BY a",
 
@@ -184,6 +207,9 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("distinct") {
+    val `@G: a` = GroupingAlias(self.a)
+    val `@G: b` = GroupingAlias(self.b)
+
     checkSQLAnalysis(
       "SELECT DISTINCT * FROM t",
 
@@ -257,14 +283,4 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   private val Seq(a: AttributeRef, b: AttributeRef) = relation.output
-
-  private val `@A: count(a)` = AggregationAlias(count(self.a))
-
-  private val `@A: count(b)` = AggregationAlias(count(self.b))
-
-  private val `@A: count(1)` = AggregationAlias(count(1))
-
-  private val `@G: a` = GroupingAlias(self.a)
-
-  private val `@G: b` = GroupingAlias(self.b)
 }

@@ -64,29 +64,29 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
 
   test("resolve references") {
     checkAnalyzedPlan(
-      relation select (('a + 1) as 's),
-      relation select ((a + 1) as 's)
+      relation select ('a + 1 as 's),
+      relation select (a + 1 as 's)
     )
   }
 
   test("resolve references in SQL") {
     checkAnalyzedPlan(
       "SELECT a + 1 AS s FROM t",
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation subquery 't select ((a of 't) + 1 as 's)
     )
   }
 
   test("resolve qualified references") {
     checkAnalyzedPlan(
-      relation subquery 't select (($"t.a" + 1) as 's),
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation subquery 't select ($"t.a" + 1 as 's),
+      relation subquery 't select ((a of 't) + 1 as 's)
     )
   }
 
   test("resolve qualified references in SQL") {
     checkAnalyzedPlan(
       "SELECT t.a + 1 AS s FROM t",
-      relation subquery 't select (((a of 't) + 1) as 's)
+      relation subquery 't select ((a of 't) + 1 as 's)
     )
   }
 
