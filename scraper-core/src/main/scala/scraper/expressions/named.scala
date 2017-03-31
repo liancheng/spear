@@ -81,13 +81,6 @@ case class Alias(
   override def withID(id: ExpressionID): Alias = copy(expressionID = id)
 }
 
-object Alias {
-  def unalias[E <: Expression](projectList: Seq[NamedExpression])(expression: E): E = {
-    val aliases = projectList.collect { case a: Alias => a.attr -> a.child }.toMap
-    expression transformUp { case a: AttributeRef => aliases.getOrElse(a, a) }
-  }.asInstanceOf[E]
-}
-
 /**
  * Wherever a [[NamedExpression]] is required but an arbitrary unresolved [[Expression]] is given,
  * we use [[UnresolvedAlias]] to wrap the given expression and defer decision of the final alias

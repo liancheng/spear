@@ -190,18 +190,17 @@ trait Expression extends TreeNode[Expression] {
 }
 
 object Expression {
-  implicit class ExpressionResolver[E <: Expression](e: E) {
+  implicit class ExpressionResolver(expression: Expression) {
     /**
      * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
      * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
      */
-    def tryResolve(input: Seq[NamedExpression]): E = resolve(e, input, errorIfNotFound = false)
-
-    def resolve(input: Seq[NamedExpression]): E = resolve(e, input, errorIfNotFound = true)
+    def tryResolve(input: Seq[NamedExpression]): Expression =
+      resolve(expression, input, errorIfNotFound = false)
 
     private def resolve(
-      expression: E, input: Seq[NamedExpression], errorIfNotFound: Boolean
-    ): E = expression.transformDown {
+      expression: Expression, input: Seq[NamedExpression], errorIfNotFound: Boolean
+    ): Expression = expression.transformDown {
       case unresolved @ UnresolvedAttribute(name, qualifier) =>
         val candidates = input.map { _.attr }.distinct.collect {
           case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
@@ -226,7 +225,22 @@ object Expression {
                  |""".oneLine
             )
         }
-    }.asInstanceOf[E]
+    }
+
+    import scraper.expressions.InternalNamedExpression.Purpose
+
+    def unalias(projectList: Seq[NamedExpression], purposes: Purpose*): Expression = {
+      val rewrite = projectList collect {
+        case a: Alias =>
+          (a.attr: Expression) -> a.child
+
+        case a: InternalAlias if purposes contains a.purpose =>
+          (a.attr: Expression) -> a.child
+      }
+
+      expression transformUp rewrite.toMap
+    }
+
   }
 }
 

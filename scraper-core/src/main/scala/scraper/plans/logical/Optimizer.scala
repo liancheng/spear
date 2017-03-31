@@ -133,12 +133,10 @@ object Optimizer {
         plan
 
       case plan Project innerList Project outerList =>
-        val unalias = Alias.unalias[Expression](innerList) _
-
         plan select (outerList map {
-          case e: Alias        => e.copy(child = unalias(e.child))
-          case e: AttributeRef => unalias(e) as e.name withID e.expressionID
-          case e               => unalias(e)
+          case e: Alias        => e.copy(child = e.child unalias innerList)
+          case e: AttributeRef => e unalias innerList as e.name withID e.expressionID
+          case e               => e unalias innerList
         })
     }
   }
@@ -205,7 +203,7 @@ object Optimizer {
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall { _.isPure } =>
-        val rewrittenCondition = Alias.unalias(projectList)(condition)
+        val rewrittenCondition = condition unalias projectList
         plan filter rewrittenCondition select projectList
     }
   }
@@ -269,7 +267,7 @@ object Optimizer {
           })
         }
 
-        val unaliasedPushDown = pushDown map InternalAlias.unalias(keys, ForGrouping)
+        val unaliasedPushDown = pushDown map { _ unalias (keys, ForGrouping) }
 
         child
           .filterOption(unaliasedPushDown)
