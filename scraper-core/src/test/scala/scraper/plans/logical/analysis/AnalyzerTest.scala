@@ -21,8 +21,14 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
     sql: String, expectedParsedPlan: LogicalPlan, expectedAnalyzedPlan: LogicalPlan
   ): Unit = {
     val actualParsed = parse(sql)
-    checkPlan(actualParsed, expectedParsedPlan)
-    checkPlan(analyze(actualParsed), expectedAnalyzedPlan)
+
+    withClue("Checking SQL parsing result") {
+      checkPlan(actualParsed, expectedParsedPlan)
+    }
+
+    withClue("Checking analysis result") {
+      checkPlan(analyze(actualParsed), expectedAnalyzedPlan)
+    }
   }
 
   protected def checkMessage[T <: Throwable: Manifest](patterns: String*)(f: => Any): Unit = {

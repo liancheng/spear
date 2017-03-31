@@ -12,14 +12,14 @@ import scraper.types.{IntType, LongType}
 
 class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
-    val `@A: count(a)` = AggregationAlias(count(self.a))
+    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
 
     checkSQLAnalysis(
       "SELECT count(a) FROM t",
 
       table('t) select 'count('a),
 
-      relation resolvedAgg `@A: count(a)` select (`@A: count(a)`.attr as "count(a)")
+      relation resolvedAgg `@A: count(a)` select (`@A: count(a)`.attr as "count(t.a)")
     )
   }
 
@@ -97,7 +97,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         agg `@A: count(b)`
         // Only the last sort order should be preserved
         orderBy `@A: count(b)`.attr.asc
-        select (`@A: count(b)`.attr as "count(b)")
+        select (`@A: count(b)`.attr as "count(t.b)")
     )
   }
 
@@ -117,7 +117,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         agg `@A: count(b)`
         // All `HAVING` conditions should be preserved
         filter `@G: a`.attr > 1 && `@A: count(b)`.attr < 3L
-        select (`@A: count(b)`.attr as "count(b)")
+        select (`@A: count(b)`.attr as "count(t.b)")
     )
   }
 

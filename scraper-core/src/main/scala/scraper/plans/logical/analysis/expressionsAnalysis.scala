@@ -64,12 +64,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
 class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case UnresolvedAlias(Resolved(child: Expression)) =>
-      val alias = child.transformDown {
-        // Drops attribute qualifier when generating alias names.
-        case a: AttributeRef => a qualifiedBy None
-      }.sql getOrElse AnonymousColumnName
-
-      child as Name.caseSensitive(alias)
+      child as Name.caseSensitive(child.sql getOrElse AnonymousColumnName)
   }
 }
 

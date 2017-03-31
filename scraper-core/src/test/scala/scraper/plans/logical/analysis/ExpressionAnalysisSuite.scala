@@ -11,12 +11,12 @@ import scraper.plans.logical.analysis.ExpressionAnalysisSuite.NonSQL
 import scraper.types.{DataType, NullType}
 
 class ExpressionAnalysisSuite extends AnalyzerTest {
-  testAutoAliasing('a + 1, "(a + 1)")
+  testAutoAliasing('a + 1, "(t.a + 1)")
 
   // Case-insensitive name resolution
-  testAutoAliasing('A + 1, "(a + 1)")
+  testAutoAliasing('A + 1, "(t.a + 1)")
 
-  testAutoAliasing($"t.a" + 1, "(a + 1)")
+  testAutoAliasing($"t.a" + 1, "(t.a + 1)")
 
   testAutoAliasing(lit("foo"), "'foo'")
 
