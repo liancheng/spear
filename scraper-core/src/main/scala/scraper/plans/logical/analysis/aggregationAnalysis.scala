@@ -164,7 +164,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
       val restoreKeys = (_: Expression) transformUp buildRestorer(keyAliases)
 
-      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order)
+      val aggs = collectAggregateFunctions(projectList ++ conditions ++ order map rewriteKeys)
       aggs foreach rejectNestedAggregateFunction
 
       val aggAliases = aggs map { AggregationAlias(_) }
@@ -187,15 +187,15 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       }
 
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
-      val wins = collectWindowFunctions(projectList ++ order map (rewriteAggs andThen rewriteKeys))
+      val wins = collectWindowFunctions(projectList ++ order map (rewriteKeys andThen rewriteAggs))
       val winAliases = wins map { WindowAlias(_) }
       logInternalAliases(winAliases, "window functions")
 
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
       val restoreWins = (_: Expression) transformUp buildRestorer(winAliases)
 
-      val rewrite = rewriteAggs andThen rewriteKeys andThen rewriteWins
-      val restore = restoreAggs compose restoreKeys compose restoreWins
+      val rewrite = rewriteKeys andThen rewriteAggs andThen rewriteWins
+      val restore = restoreKeys compose restoreAggs compose restoreWins
 
       // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
       // outside. This method aliases them using names and expression IDs of the original named

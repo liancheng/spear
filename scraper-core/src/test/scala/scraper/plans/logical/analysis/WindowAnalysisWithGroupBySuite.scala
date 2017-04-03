@@ -48,7 +48,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     val w0 = w0_? partitionBy `@G: a + 1`.attr orderBy `@G: b`.attr
 
     val `@W: count(b) over w0` = WindowAlias(count(`@G: b`.attr) over w0)
-    val `@A: count(b)` = AggregationAlias(count(b))
+    val `@A: count(b)` = AggregationAlias(count(`@G: b`.attr))
 
     checkSQLAnalysis(
       """SELECT
