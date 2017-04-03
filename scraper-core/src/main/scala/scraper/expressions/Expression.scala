@@ -190,7 +190,7 @@ trait Expression extends TreeNode[Expression] {
 }
 
 object Expression {
-  implicit class ExpressionResolver(expression: Expression) {
+  implicit class ResolutionUtils(expression: Expression) {
     /**
      * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
      * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
@@ -230,17 +230,16 @@ object Expression {
     import scraper.expressions.InternalNamedExpression.Purpose
 
     def unalias(projectList: Seq[NamedExpression], purposes: Purpose*): Expression = {
-      val rewrite = projectList collect {
-        case a: Alias =>
-          (a.attr: Expression) -> a.child
+      val rewrite = projectList.collect {
+        case a: InternalAlias if purposes contains a.purpose => a.expressionID -> a.child
+        case a: Alias                                        => a.expressionID -> a.child
+      }.toMap
 
-        case a: InternalAlias if purposes contains a.purpose =>
-          (a.attr: Expression) -> a.child
+      expression transformUp {
+        case a: ResolvedAttribute if rewrite contains a.expressionID =>
+          rewrite(a.expressionID)
       }
-
-      expression transformUp rewrite.toMap
     }
-
   }
 }
 
