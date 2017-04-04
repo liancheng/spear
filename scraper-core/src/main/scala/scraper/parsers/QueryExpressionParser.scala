@@ -74,13 +74,13 @@ object JoinedTableParser extends LoggingParser {
     ~ P(tableReference)
     ~ joinSpecification.? map {
       case (lhs, maybeType, rhs, maybeCondition) =>
-        Join(lhs, rhs, maybeType getOrElse Inner, maybeCondition)
+        Join(maybeType getOrElse Inner, maybeCondition, lhs, rhs)
     } opaque "qualified-join"
   )
 
   private val crossJoin: P[LogicalPlan] =
     (P(tableFactor) | P(tableReference)) ~ CROSS ~ JOIN ~ tableFactor map {
-      case (lhs, rhs) => Join(lhs, rhs, Inner, None)
+      case (lhs, rhs) => Join(Inner, None, lhs, rhs)
     } opaque "cross-join"
 
   val joinedTable: P[LogicalPlan] = crossJoin | qualifiedJoin opaque "joined-table"
@@ -329,7 +329,7 @@ object QueryExpressionParser extends LoggingParser {
   private val withListElement: P[LogicalPlan => LogicalPlan] =
     queryName ~ ("(" ~ withColumnList ~ ")").? ~ AS ~ "(" ~ P(queryExpression) ~ ")" map {
       case (name, maybeColumns, query) =>
-        (child: LogicalPlan) => With(child, name, query, maybeColumns)
+        (child: LogicalPlan) => With(name, query, maybeColumns, child)
     } opaque "with-list-element"
 
   private val withList: P[LogicalPlan => LogicalPlan] = (

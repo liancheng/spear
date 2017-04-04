@@ -158,7 +158,7 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
   private def testFunctionResolution(unresolved: Expression, expected: => Expression): Unit = {
     test(s"function resolution - ${unresolved.sqlLike} to ${expected.sqlLike}") {
       val analyzed = new ResolveFunctions(catalog).apply(relation select unresolved)
-      val actual = analyzed match { case _ Project Seq(UnresolvedAlias(resolved)) => resolved }
+      val actual = analyzed match { case Project(Seq(UnresolvedAlias(resolved)), _) => resolved }
       assert(actual == expected)
     }
   }

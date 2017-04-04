@@ -12,11 +12,11 @@ package object logical {
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
   def let(name: Name, plan: LogicalPlan)(body: => LogicalPlan): With = {
-    With(body, name, plan, None)
+    With(name, plan, None, body)
   }
 
   def let(name: Name, plan: LogicalPlan, aliases: Seq[Name])(body: => LogicalPlan): With =
-    With(body, name, plan, Some(aliases))
+    With(name, plan, Some(aliases), body)
 
   def let(name: Name, windowSpec: WindowSpec)(body: => LogicalPlan): WindowDef =
     WindowDef(body, name, windowSpec)

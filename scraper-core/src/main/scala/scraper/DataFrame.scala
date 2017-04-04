@@ -43,7 +43,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def distinct: DataFrame = withPlan { Distinct }
 
   def crossJoin(right: DataFrame): DataFrame = withPlan {
-    Join(_, right.queryExecution.logicalPlan, Inner, None)
+    Join(Inner, None, _, right.queryExecution.logicalPlan)
   }
 
   def join(right: DataFrame): JoinedData = new JoinedData(this, right, Inner)
@@ -55,7 +55,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
 
   def orderBy(order: Seq[SortOrder]): DataFrame = withPlan {
-    Sort(_, order)
+    Sort(order, _)
   }
 
   def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
@@ -214,7 +214,7 @@ class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   def on(condition: Expression): DataFrame = {
     val leftPlan = left.queryExecution.logicalPlan
     val rightPlan = right.queryExecution.logicalPlan
-    val join = Join(leftPlan, rightPlan, joinType, Some(condition))
+    val join = Join(joinType, Some(condition), leftPlan, rightPlan)
     new DataFrame(join, left.context)
   }
 }

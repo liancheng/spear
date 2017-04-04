@@ -129,10 +129,10 @@ object Optimizer {
    */
   object MergeProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projectList if projectList == plan.output =>
+      case Project(projectList, plan) if projectList == plan.output =>
         plan
 
-      case plan Project innerList Project outerList =>
+      case Project(outerList, Project(innerList, plan)) =>
         plan select (outerList map {
           case e: Alias        => e.copy(child = e.child unalias innerList)
           case e: AttributeRef => e unalias innerList as e.name withID e.expressionID
@@ -146,7 +146,7 @@ object Optimizer {
    */
   object ReduceAliases extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case child Project projectList =>
+      case Project(projectList, child) =>
         child select (projectList map eliminateNonTopLevelAliases)
 
       case Aggregate(child, keys, functions) =>
@@ -174,7 +174,7 @@ object Optimizer {
   object CNFConversion extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       // TODO CNF budget control
-      case plan Filter condition => plan filter toCNF(condition)
+      case Filter(condition, plan) => plan filter toCNF(condition)
     }
   }
 
@@ -183,7 +183,7 @@ object Optimizer {
    */
   object MergeFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Filter inner Filter outer => plan filter { inner && outer }
+      case Filter(outer, Filter(inner, plan)) => plan filter { inner && outer }
     }
   }
 
@@ -192,8 +192,8 @@ object Optimizer {
    */
   object EliminateConstantFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Filter True  => plan
-      case plan Filter False => LocalRelation(Nil, plan.output)
+      case Filter(True, plan)  => plan
+      case Filter(False, plan) => LocalRelation(Nil, plan.output)
     }
   }
 
@@ -202,7 +202,7 @@ object Optimizer {
    */
   object PushFiltersThroughProjects extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Project projectList Filter condition if projectList forall { _.isPure } =>
+      case Filter(condition, Project(projectList, plan)) if projectList forall { _.isPure } =>
         val rewrittenCondition = condition unalias projectList
         plan filter rewrittenCondition select projectList
     }
@@ -213,7 +213,7 @@ object Optimizer {
    */
   object PushFiltersThroughJoins extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Join(left, right, Inner, joinCondition) Filter filterCondition =>
+      case Filter(filterCondition, Join(Inner, joinCondition, left, right)) =>
         val (leftPredicates, rightPredicates, commonPredicates) =
           partitionByReferencedBranches(splitConjunction(toCNF(filterCondition)), left, right)
 
@@ -256,7 +256,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Aggregate(child, keys, functions) Filter condition if functions forall { _.isPure } =>
+      case Filter(condition, Aggregate(child, keys, functions)) if functions forall { _.isPure } =>
         // Predicates that don't reference any aggregate functions can be pushed down
         val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 
@@ -283,14 +283,14 @@ object Optimizer {
 
   object PushProjectsThroughLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Project projectList if projectList.length < plan.output.length =>
+      case Project(projectList, Limit(n, plan)) if projectList.length < plan.output.length =>
         plan select projectList limit n
     }
   }
 
   object ReduceLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case plan Limit n Limit m => plan limit Least(n, m)
+      case Limit(m, Limit(n, plan)) => plan limit Least(n, m)
     }
   }
 
@@ -300,7 +300,7 @@ object Optimizer {
    */
   object EliminateSubqueries extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case child Subquery _ => child
+      case Subquery(_, child) => child
     } transformAllExpressionsDown {
       case ref: AttributeRef => ref.copy(qualifier = None)
     }

@@ -93,7 +93,7 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case With(child, name, query, aliases) =>
+    case With(name, query, aliases, child) =>
       child transformDown {
         case UnresolvedRelation(`name`) =>
           (aliases fold query) { query.rename(name, _) } subquery name
@@ -115,7 +115,7 @@ class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
  */
 class RewriteRenamesToProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case Rename(Resolved(child), subqueryName, aliases) =>
+    case Rename(subqueryName, aliases, Resolved(child)) =>
       if (child.output.length >= aliases.length) {
         val aliasCount = aliases.length
         val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
@@ -178,7 +178,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
         plan -> plan.newInstance()
 
       // Handles projections that introduce ambiguous aliases
-      case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
+      case plan @ Project(projectList, _) if hasDuplicates(collectAliases(projectList)) =>
         plan -> plan.copy(projectList = projectList map {
           case a: Alias => a withID newExpressionID()
           case e        => e
@@ -217,10 +217,10 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores `Sort`s over global aggregations. They are handled separately by other aggregation
     // analysis rules.
-    case plan @ (Resolved(_ Project projectList) Sort _) if hasAggregateFunction(projectList) =>
+    case plan @ Resolved(Sort(_, Project(projectList, _))) if hasAggregateFunction(projectList) =>
       plan
 
-    case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
+    case Unresolved(sort @ Sort(order, Resolved(Project(projectList, child)))) =>
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
