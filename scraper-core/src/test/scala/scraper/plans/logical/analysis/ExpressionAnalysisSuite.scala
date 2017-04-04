@@ -20,6 +20,16 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
 
   testAutoAliasing(lit("foo"), "'foo'")
 
+  testAutoAliasing(
+    concat("foo", " ", "bar"),
+    "('foo' || ' ' || 'bar')"
+  )
+
+  testAutoAliasing(
+    concat(concat("foo", " "), "bar"),
+    "(('foo' || ' ') || 'bar')"
+  )
+
   testAutoAliasing(NonSQL, "?column?")
 
   testFunctionResolution(
