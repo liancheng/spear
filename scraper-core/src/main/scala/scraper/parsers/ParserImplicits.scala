@@ -16,7 +16,7 @@ trait ParserImplicits[+T] {
   def chain[U >: T](sep: => P[(U, U) => U], min: Int = 0): P[U] = {
     import WhitespaceApi._
 
-    self ~ (sep ~ self).rep(min = min) map {
+    self ~ (sep ~ self rep (min = min)) map {
       case (head, tail) =>
         tail.foldLeft(head: U) {
           case (lhs, (op, rhs)) =>

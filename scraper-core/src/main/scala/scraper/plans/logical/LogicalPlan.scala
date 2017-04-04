@@ -310,7 +310,7 @@ case class Subquery(alias: Name, child: LogicalPlan) extends UnaryLogicalPlan {
 }
 
 /**
- * A generic aggregate operator that captures semantics of queries in the form of
+ * A generic unresolved aggregate operator that captures semantics of queries in the form of
  * {{{
  *   SELECT <project-list>
  *   FROM <child-plan>
@@ -320,13 +320,19 @@ case class Subquery(alias: Name, child: LogicalPlan) extends UnaryLogicalPlan {
  * }}}
  * where
  *
- *  - `project-list`, `condition`, and `order` may reference non-window aggregate functions and
+ *  - `project-list`, `condition`, and `order` may reference non-window aggregate functions and/or
  *    grouping keys, and
- *  - `project-list` and `order` may also reference window functions.
+ *  - `project-list` and `order` may reference window functions.
  *
  * This operator is unresolved because it's only allowed during analysis phase to help resolve
- * queries involving aggregation, and must be rewritten into combinations of other resolved
- * operators.
+ * queries involving aggregation, and must be resolved into a combination of the following resolved
+ * operators:
+ *
+ *  - [[Project]]
+ *  - [[Sort]]
+ *  - [[Window]]
+ *  - [[Filter]]
+ *  - [[Aggregate]]
  */
 case class UnresolvedAggregate(
   keys: Seq[Expression],
@@ -414,12 +420,12 @@ object Window {
     // Finds out all distinct window specs.
     val windowSpecs = windowAliases.map { _.child.window }.distinct
 
-    // Groups all window functions by their window specs. We are doing sorts here so that it would
-    // be easier to reason about the order of all the generated `Window` operators.
+    // Groups all window functions by their window specs.
     val windowAliasGroups = windowAliases
       .groupBy { _.child.window }
       .mapValues { _ sortBy windowAliases.indexOf }
       .toSeq
+      // Sorts them to ensure a deterministic order of all generated `Window` operators.
       .sortBy { case (spec: WindowSpec, _) => windowSpecs indexOf spec }
 
     // Builds one `Window` operator builder function for each group.
