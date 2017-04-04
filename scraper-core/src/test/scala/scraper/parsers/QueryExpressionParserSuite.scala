@@ -145,7 +145,7 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "WITH c0 (n) AS (SELECT 1) SELECT * FROM c0",
-    let('c0, values(1), 'n :: Nil) {
+    let('c0, values(1) rename 'n) {
       table('c0) select *
     }
   )

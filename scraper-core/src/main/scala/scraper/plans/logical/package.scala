@@ -15,9 +15,6 @@ package object logical {
     With(name, plan, None, body)
   }
 
-  def let(name: Name, plan: LogicalPlan, aliases: Seq[Name])(body: => LogicalPlan): With =
-    With(name, plan, Some(aliases), body)
-
   def let(name: Name, windowSpec: WindowSpec)(body: => LogicalPlan): WindowDef =
     WindowDef(body, name, windowSpec)
 

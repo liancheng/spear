@@ -328,8 +328,8 @@ object QueryExpressionParser extends LoggingParser {
 
   private val withListElement: P[LogicalPlan => LogicalPlan] =
     queryName ~ ("(" ~ withColumnList ~ ")").? ~ AS ~ "(" ~ P(queryExpression) ~ ")" map {
-      case (name, maybeColumns, query) =>
-        (child: LogicalPlan) => With(name, query, maybeColumns, child)
+      case (name, Some(columns), query) => let(name, query rename columns)(_: LogicalPlan)
+      case (name, None, query)          => let(name, query)(_: LogicalPlan)
     } opaque "with-list-element"
 
   private val withList: P[LogicalPlan => LogicalPlan] = (

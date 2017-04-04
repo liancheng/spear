@@ -93,10 +93,10 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case With(name, query, aliases, child) =>
+    case With(name, query, maybeAliases, child) =>
       child transformDown {
         case UnresolvedRelation(`name`) =>
-          (aliases fold query) { query.rename(name, _) } subquery name
+          (maybeAliases fold query) { query rename _ } subquery name
       }
   }
 }
@@ -115,11 +115,11 @@ class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
  */
 class RewriteRenamesToProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case Rename(subqueryName, aliases, Resolved(child)) =>
+    case Subquery(subqueryName, Rename(aliases, Resolved(child))) =>
       if (child.output.length >= aliases.length) {
         val aliasCount = aliases.length
         val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
-        child select (aliased ++ (child.output drop aliasCount))
+        child select (aliased ++ (child.output drop aliasCount)) subquery subqueryName
       } else {
         val expected = child.output.length
         val actual = aliases.length

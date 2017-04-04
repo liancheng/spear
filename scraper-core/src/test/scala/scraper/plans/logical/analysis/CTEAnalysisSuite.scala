@@ -18,7 +18,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
 
   test("CTE with aliases") {
     checkAnalyzedPlan(
-      let('s, relation0 subquery 't, Seq('x, 'y)) {
+      let('s, relation0 subquery 't rename ('x, 'y)) {
         table('s) select *
       },
       relation0
@@ -31,7 +31,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
 
   test("CTE with fewer aliases") {
     checkAnalyzedPlan(
-      let('s, relation0 select *, Seq('x)) {
+      let('s, relation0 select * rename 'x) {
         table('s)
       },
       relation0
@@ -44,7 +44,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
   test("CTE with excessive aliases") {
     intercept[AnalysisException] {
       analyze {
-        let('s, relation0 select *, Seq('x, 'y, 'z)) {
+        let('s, relation0 select * rename ('x, 'y, 'z)) {
           table('s)
         }
       }

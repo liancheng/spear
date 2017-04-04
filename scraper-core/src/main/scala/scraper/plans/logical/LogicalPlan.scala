@@ -147,7 +147,7 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
  * {{{
  *   Project projectList=[x + y, c]
  *    +- Subquery alias=s
- *        +- Rename subqueryName=s, aliases=[x, y]    (1)
+ *        +- Rename aliases=[x, y]                    (1)
  *            +- Project projectList=[*]              (2)
  *                +- UnresolvedRelation name=t
  * }}}
@@ -164,15 +164,13 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
  * (1) since the number of output columns of the [[Project]] at (2) is unknown.
  *
  * @param child The child plan.
- * @param subqueryName The name of the child plan in a given CTE declaration. This field is only
- *        used for error reporting.
  * @param aliases New column names to apply. Its length should be less than or equal to the number
  *        of output columns of `child`.
  *
  * @see [[With]]
  * @see [[scraper.plans.logical.analysis.RewriteRenamesToProjects RewriteRenamesToProjects]]
  */
-case class Rename(subqueryName: Name, aliases: Seq[Name], child: LogicalPlan)
+case class Rename(aliases: Seq[Name], child: LogicalPlan)
   extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
 case class Filter(condition: Expression, child: LogicalPlan) extends UnaryLogicalPlan {
@@ -438,7 +436,9 @@ object LogicalPlan {
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
-    def rename(subqueryName: Name, aliases: Seq[Name]): Rename = Rename(subqueryName, aliases, plan)
+    def rename(aliases: Seq[Name]): Rename = Rename(aliases, plan)
+
+    def rename(first: Name, rest: Name*): Rename = rename(first +: rest)
 
     def filter(condition: Expression): Filter = Filter(condition, plan)
 
