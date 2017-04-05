@@ -25,7 +25,7 @@ case class Literal(value: Any, override val dataType: DataType) extends LeafExpr
     case (v: Float, FloatType)     => s"CAST($v AS ${FloatType.sql})"
     case (v: Double, DoubleType)   => s"CAST($v AS ${DoubleType.sql})"
     case (v, _) if v == null       => "NULL"
-    case (v, _: ComplexType)       => throw new UnsupportedOperationException
+    case (_, _: ComplexType)       => throw new UnsupportedOperationException
     case (v, _)                    => v.toString
   })
 }

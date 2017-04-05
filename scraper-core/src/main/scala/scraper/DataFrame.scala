@@ -23,7 +23,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     throw new ResolutionFailureException(s"Failed to resolve column name $column")
   }
 
-  def rename(newNames: String*): DataFrame = {
+  def rename(newNames: Name*): DataFrame = {
     assert(newNames.length == schema.fields.length)
     val oldNames = schema.fields map { _.name }
     val aliases = (oldNames, newNames).zipped map { _ as _ }
@@ -66,11 +66,9 @@ class DataFrame(val queryExecution: QueryExecution) {
     }
   )
 
-  def subquery(name: String): DataFrame = withPlan {
+  def subquery(name: Name): DataFrame = withPlan {
     _ subquery name
   }
-
-  def subquery(name: Symbol): DataFrame = subquery(name.name)
 
   def union(that: DataFrame): DataFrame = withPlan {
     _ union that.queryExecution.logicalPlan
