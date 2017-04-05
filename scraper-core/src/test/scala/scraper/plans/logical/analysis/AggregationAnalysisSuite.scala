@@ -23,7 +23,22 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with HAVING clause referencing projected attribute") {
+  test("global aggregate, where only the HAVING clause contains an aggregate function") {
+    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+
+    checkSQLAnalysis(
+      "SELECT 1 AS out FROM t HAVING count(a) > 0",
+
+      table('t) agg (1 as 'out) filter 'count('a) > 0,
+
+      relation
+        resolvedAgg `@A: count(a)`
+        filter `@A: count(a)`.attr > (0 cast LongType)
+        select (1 as 'out)
+    )
+  }
+
+  test("aggregate with HAVING clause referencing alias of an aggregate function") {
     val `@G: a` = GroupingAlias(self.a)
     val `@A: count(b)` = AggregationAlias(count(self.b))
 

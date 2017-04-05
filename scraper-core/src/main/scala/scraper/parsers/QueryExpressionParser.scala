@@ -293,12 +293,14 @@ object QuerySpecificationParser extends LoggingParser {
     ~ fromClause.?.map { _ getOrElse SingleRowRelation }
     ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ groupByClause.?
-    ~ havingClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    ~ havingClause.?
     ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
-      case (quantify, projectList, relation, filter, maybeGroups, having, window, orderBy) =>
-        val projectOrAgg = maybeGroups map { groups =>
-          (_: LogicalPlan) groupBy groups agg projectList
+      case (quantify, projectList, relation, filter, maybeGroupBy, maybeHaving, window, orderBy) =>
+        val having = maybeHaving getOrElse identity[LogicalPlan] _
+        val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
+        val projectOrAgg = maybeGroupingKeys map { keys =>
+          (_: LogicalPlan) groupBy keys agg projectList
         } getOrElse {
           (_: LogicalPlan) select projectList
         }
