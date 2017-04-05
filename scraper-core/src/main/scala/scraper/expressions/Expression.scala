@@ -195,7 +195,7 @@ object Expression {
      * Tries to resolve this [[Expression]] using a given list of `input` [[NamedExpression]]s. This
      * method doesn't throw any exception if this [[Expression]] can't be fully resolved.
      */
-    def tryResolve(input: Seq[NamedExpression]): Expression =
+    def tryResolveUsing(input: Seq[NamedExpression]): Expression =
       resolve(expression, input, errorIfNotFound = false)
 
     private def resolve(
@@ -229,7 +229,7 @@ object Expression {
 
     import scraper.expressions.InternalNamedExpression.Purpose
 
-    def unalias(projectList: Seq[NamedExpression], purposes: Purpose*): Expression = {
+    def unaliasUsing(projectList: Seq[NamedExpression], purposes: Purpose*): Expression = {
       val rewrite = projectList.collect {
         case a: InternalAlias if purposes contains a.purpose => a.expressionID -> a.child
         case a: Alias                                        => a.expressionID -> a.child

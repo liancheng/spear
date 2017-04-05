@@ -51,7 +51,8 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Filter(condition, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenCondition = condition tryResolve agg.projectList unalias agg.projectList
+      val rewrittenCondition =
+        condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
 
       // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
       // predicates must not reference any (aliases of) window functions.
@@ -80,8 +81,8 @@ class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
     case Sort(order, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
       // Only preserves the last sort order.
       agg.copy(order = order
-        .map { _ tryResolve agg.projectList }
-        .map { _ unalias agg.projectList }
+        .map { _ tryResolveUsing agg.projectList }
+        .map { _ unaliasUsing agg.projectList }
         .map { case e: SortOrder => e })
   }
 }

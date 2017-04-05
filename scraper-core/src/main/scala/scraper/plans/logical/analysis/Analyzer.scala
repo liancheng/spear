@@ -224,7 +224,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
-        .map { _ tryResolve output }
+        .map { _ tryResolveUsing output }
         .map { case e: SortOrder => e }
 
       val unresolvedRefs = maybeResolvedOrder
