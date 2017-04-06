@@ -6,7 +6,7 @@ import scraper.{Name, Row}
 import scraper.exceptions._
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.trees.TreeNode
-import scraper.types.{DataType, VoidType}
+import scraper.types.DataType
 import scraper.utils._
 
 /**
@@ -378,13 +378,3 @@ case class UnresolvedFunction(name: Name, args: Seq[Expression], isDistinct: Boo
 
   def distinct: UnresolvedFunction = if (isDistinct) this else copy(isDistinct = true)
 }
-
-trait Statement extends Expression {
-  override def dataType: DataType = VoidType
-}
-
-object Statement {
-  def unapply(e: Expression): Boolean = e.dataType == VoidType
-}
-
-case object NoOp extends Statement with LeafExpression with UnevaluableExpression

@@ -187,12 +187,6 @@ object PrimitiveType extends AbstractDataType {
   override def toString: String = "primitive type"
 }
 
-case object VoidType extends PrimitiveType {
-  override type InternalType = Void
-
-  override def sql: String = "VOID"
-}
-
 case object NullType extends PrimitiveType {
   override type InternalType = Null
 
