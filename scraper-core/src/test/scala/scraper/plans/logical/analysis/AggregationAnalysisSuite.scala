@@ -38,6 +38,21 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
+  ignore("global aggregate, where only the ORDER BY clause contains an aggregate function") {
+    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+
+    checkSQLAnalysis(
+      "SELECT 1 AS out FROM t ORDER BY count(a)",
+
+      table('t) select (1 as 'out) orderBy 'count('a),
+
+      relation
+        resolvedAgg `@A: count(a)`
+        orderBy `@A: count(a)`.attr
+        select (1 as 'out)
+    )
+  }
+
   test("aggregate with HAVING clause referencing alias of an aggregate function") {
     val `@G: a` = GroupingAlias(self.a)
     val `@A: count(b)` = AggregationAlias(count(self.b))
