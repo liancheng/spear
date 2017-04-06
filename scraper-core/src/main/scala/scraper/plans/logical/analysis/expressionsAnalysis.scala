@@ -88,7 +88,7 @@ class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
 
     case UnresolvedFunction(name, args, isDistinct) if args forall { _.isResolved } =>
       val fnInfo = catalog.functionRegistry lookupFunction name
-      fnInfo builder args match {
+      fnInfo.builder apply args match {
         case f: AggregateFunction if isDistinct =>
           DistinctAggregateFunction(f)
 

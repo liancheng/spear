@@ -50,7 +50,7 @@ trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) 
 
   def apply(tree: Base): Base = apply(tree, batches)
 
-  def apply(tree: Base, batches: Seq[RuleBatch]): Base = batches.foldLeft(tree) { executeBatch }
+  def apply(tree: Base, batches: Seq[RuleBatch]): Base = (batches foldLeft tree) { executeBatch }
 
   private def logTransformation(transformation: String, before: Base, after: Base): Unit = {
     if (before same after) {

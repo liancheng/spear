@@ -297,13 +297,15 @@ object QuerySpecificationParser extends LoggingParser {
     ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
       case (quantify, projectList, relation, filter, maybeGroupBy, maybeHaving, window, orderBy) =>
-        val having = maybeHaving getOrElse identity[LogicalPlan] _
+        // Should do aggregation when either a group by clause or a having clause exists.
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
         val projectOrAgg = maybeGroupingKeys map { keys =>
           (_: LogicalPlan) groupBy keys agg projectList
         } getOrElse {
           (_: LogicalPlan) select projectList
         }
+
+        val having = maybeHaving getOrElse identity[LogicalPlan] _
 
         filter
           .andThen(projectOrAgg)

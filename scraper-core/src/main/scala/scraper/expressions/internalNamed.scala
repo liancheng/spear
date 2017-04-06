@@ -22,7 +22,7 @@ object InternalNamedExpression {
   }
 
   /**
-   * Marks [[InternalNamedExpression]]s that are used to wrap/reference grouping expressions.
+   * Marks [[InternalNamedExpression]]s that are used to wrap/reference grouping key expressions.
    */
   case object ForGrouping extends Purpose {
     override def name: Name = 'G
