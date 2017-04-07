@@ -164,6 +164,22 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
     case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
 
+    // Aggregate functions are not allowed in grouping keys.
+    case plan: UnresolvedAggregate if hasAggregateFunction(plan.keys) =>
+      plan.keys foreach { key =>
+        val aggs = collectAggregateFunctions(key)
+
+        if (aggs.nonEmpty) {
+          throw new IllegalAggregationException(
+            s"""Aggregate functions are not allowed in grouping keys:
+               |
+               | - aggregate function found: ${aggs.head.sqlLike}
+               | - grouping key: ${key.sqlLike}
+               |""".stripMargin
+          )
+        }
+      }
+
     // Window functions are not allowed in grouping keys or HAVING conditions.
     case plan: UnresolvedAggregate if hasWindowFunction(plan.keys ++ plan.conditions) =>
       def rejectIllegalWindowFunctions(component: String)(e: Expression) = {

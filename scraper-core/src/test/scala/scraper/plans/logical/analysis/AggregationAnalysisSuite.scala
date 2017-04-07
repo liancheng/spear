@@ -201,6 +201,14 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     }
   }
 
+  test("illegal aggregate function in grouping key") {
+    val patterns = Seq("Aggregate functions are not allowed in grouping keys")
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(table('t) groupBy 'count('a) agg 'count(*))
+    }
+  }
+
   test("illegal HAVING condition") {
     val patterns = Seq(
       "Attribute t.b",
