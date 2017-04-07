@@ -51,20 +51,10 @@ class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends Analysi
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Filter(condition, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
       // Tries to resolve and unalias all unresolved attributes using project list output.
-      val rewrittenCondition =
-        condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
-
-      // `HAVING` predicates are always evaluated before window functions, therefore `HAVING`
-      // predicates must not reference any (aliases of) window functions.
-      rewrittenCondition transformUp {
-        case _: WindowFunction | _: WindowAttribute =>
-          throw new IllegalAggregationException(
-            "Window functions are not allowed in HAVING clauses."
-          )
-      }
+      val unaliased = condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
 
       // All having conditions should be preserved.
-      agg.copy(conditions = agg.conditions :+ rewrittenCondition)
+      agg.copy(conditions = agg.conditions :+ unaliased)
   }
 }
 
@@ -134,13 +124,32 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
     case Filter(_, _: UnresolvedAggregate) =>
 
     // Waits until all adjacent sorts are absorbed.
-    case Sort(_: UnresolvedAggregate, _) =>
+    case Sort(_, _: UnresolvedAggregate) =>
 
     // Waits until project list, having condition, and sort order expressions are all resolved.
     case plan: UnresolvedAggregate if plan.expressions exists { !_.isResolved } =>
 
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
     case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
+
+    // Window functions are not allowed in grouping keys or HAVING conditions.
+    case plan: UnresolvedAggregate if hasWindowFunction(plan.keys ++ plan.conditions) =>
+      def rejectIllegalWindowFunctions(component: String)(e: Expression) = {
+        val wins = collectWindowFunctions(e)
+
+        if (wins.nonEmpty) {
+          throw new IllegalAggregationException(
+            s"""Window functions are not allowed in $component:
+               |
+               | - Window function found: ${wins.head.sqlLike}
+               | - $component: ${e.sqlLike}
+               |""".stripMargin
+          )
+        }
+      }
+
+      plan.keys foreach rejectIllegalWindowFunctions("grouping key")
+      plan.conditions foreach rejectIllegalWindowFunctions("HAVING condition")
   }
 
   private def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
@@ -210,7 +219,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
 
-      def rejectOrphanReferences(
+      def rejectIllegalAttributeReferences(
         component: String, whitelist: Seq[Attribute] = Nil
       )(e: Expression) = e.references collectFirst {
         case a: AttributeRef if !(whitelist contains a) =>
@@ -222,14 +231,14 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
           )
       }
 
-      val output = rewrittenProjectList map { _.attr }
-      wins foreach rejectOrphanReferences("window function")
-      rewrittenProjectList foreach rejectOrphanReferences("SELECT field")
+      wins foreach rejectIllegalAttributeReferences("window function")
+      rewrittenProjectList foreach rejectIllegalAttributeReferences("SELECT field")
 
       // The `HAVING` clause and the `ORDER BY` clause are allowed to reference output attributes
       // produced by the `SELECT` clause.
-      rewrittenConditions foreach rejectOrphanReferences("HAVING condition", output)
-      rewrittenOrder foreach rejectOrphanReferences("ORDER BY expression", output)
+      val output = rewrittenProjectList map { _.attr }
+      rewrittenConditions foreach rejectIllegalAttributeReferences("HAVING condition", output)
+      rewrittenOrder foreach rejectIllegalAttributeReferences("ORDER BY expression", output)
 
       child
         .resolvedGroupBy(keyAliases)

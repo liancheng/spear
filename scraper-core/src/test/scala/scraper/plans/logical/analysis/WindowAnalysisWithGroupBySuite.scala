@@ -402,8 +402,20 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     )
   }
 
+  test("illegal window function in grouping key") {
+    val patterns = Seq("Window functions are not allowed in grouping key")
+
+    checkMessage[IllegalAggregationException](patterns: _*) {
+      analyze(
+        relation
+          groupBy 'count('a).over()
+          agg 'count(*)
+      )
+    }
+  }
+
   test("illegal window function in HAVING clause") {
-    val patterns = Seq("Window functions are not allowed in HAVING clauses.")
+    val patterns = Seq("Window functions are not allowed in HAVING condition")
 
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(
@@ -420,7 +432,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("illegal window function alias referenced in HAVING clause") {
-    val patterns = Seq("Window functions are not allowed in HAVING clauses.")
+    val patterns = Seq("Window functions are not allowed in HAVING condition")
     val f0 = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
 
     checkMessage[IllegalAggregationException](patterns: _*) {
