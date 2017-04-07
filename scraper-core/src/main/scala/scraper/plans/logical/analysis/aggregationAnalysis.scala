@@ -40,40 +40,72 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * A [[Filter]] directly over an [[UnresolvedAggregate]] corresponds to a `HAVING` clause. Its
- * predicate must be resolved together with the [[UnresolvedAggregate]] because it may refer to
- * grouping keys and aggregate functions. This rule extracts the predicate expression of such a
- * [[Filter]] and merges the predicate into the [[UnresolvedAggregate]] underneath.
+ * This rule matches [[Filter filtered]] and/or [[Sort sorted]] [[UnresolvedAggregate aggregation]]
+ * and eliminates the [[Filter]], which corresponds to `HAVING` clauses, and/or [[Sort]] operators
+ * by merging the `HAVING` conditions and sort orders into the underlying [[UnresolvedAggregate]]
+ * operator.
  *
+ * This transformation is necessary because the `HAVING` conditions and sort orders may contain or
+ * reference grouping keys and/or aggregate functions that have to be resolved together with the
+ * aggregation.
+ *
+ * For example, the following SQL statement:
+ * {{{
+ *   SELECT count(x) AS c
+ *   FROM t
+ *   GROUP BY y
+ *   HAVING max(z) > 0
+ *   ORDER BY y DESC
+ * }}}
+ * can be represented by the following pseudo logical plan:
+ * {{{
+ *   Sort order=[y DESC] => [c]                                                 (1)
+ *   +- Filter condition=max(z) > 0 => [c]                                      (2)
+ *      +- UnresolvedAggregate keys=[y], projectList=[count(x) AS c] => [c]     (3)
+ *         +- Relation name=t => [x, y, z]
+ * }}}
+ * The bracketed lists after the "=>" are output attributes of the corresponding logical plan
+ * operator.
+ *
+ * Note that neither `y` referenced in (1) nor `z` referenced in (2) is an output attribute of the
+ * [[UnresolvedAggregate]] in (3). Therefore, neither the [[Sort]] nor the [[Filter]] operator can
+ * be directly resolved separately.
+ *
+ * To solve this issue, this rule rewrites the above plan into:
+ * {{{
+ *   UnresolvedAggregate keys=[y],
+ *   |                   projectList=[count(x) AS c],
+ *   |                   condition=max(z) > 0,
+ *   |                   order=[y DESC] => [c]
+ *   +- Relation name=t => [x, y, z]
+ * }}}
+ * Now, references to attributes `y` and `z` are moved into the [[UnresolvedAggregate]], and can be
+ * easily resolved by the [[ResolveReferences]] rule since they are now among the output attribute
+ * lists of the relation `t`, which lives right beneath the [[UnresolvedAggregate]] operator.
+ *
+ * @see [[UnresolvedAggregate]]
  * @see [[RewriteUnresolvedAggregates]]
  */
-class AbsorbHavingConditionsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
+class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Filter(condition, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
-      // Tries to resolve and unalias all unresolved attributes using project list output.
+      // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
+      // referenced by some HAVING condition(s).
       val unaliased = condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
 
       // All having conditions should be preserved.
       agg.copy(conditions = agg.conditions :+ unaliased)
-  }
-}
 
-/**
- * A [[Sort]] directly over an [[UnresolvedAggregate]] is special, its sort ordering expressions
- * must be resolved together with the [[UnresolvedAggregate]] since it may refer to grouping keys
- * and aggregate functions. This rule extracts sort ordering expressions of such a [[Sort]] and
- * merges them into the [[UnresolvedAggregate]] underneath.
- *
- * @see [[RewriteUnresolvedAggregates]]
- */
-class AbsorbSortsIntoAggregates(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Sort(order, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
-      // Only preserves the last sort order.
-      agg.copy(order = order
+      // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
+      // referenced by some sort order expression(s).
+      val unaliased = order
         .map { _ tryResolveUsing agg.projectList }
         .map { _ unaliasUsing agg.projectList }
-        .map { case e: SortOrder => e })
+        .map { case e: SortOrder => e }
+
+      // Only preserves the last sort order.
+      agg.copy(order = unaliased)
   }
 }
 

@@ -39,8 +39,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new RewriteDistinctAggregateFunctions(catalog),
       new RewriteDistinctsAsAggregates(catalog),
       new RewriteProjectsAsGlobalAggregates(catalog),
-      new AbsorbHavingConditionsIntoAggregates(catalog),
-      new AbsorbSortsIntoAggregates(catalog),
+      new UnifyFilteredSortedAggregates(catalog),
       new RewriteUnresolvedAggregates(catalog)
     )),
 
