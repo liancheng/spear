@@ -112,7 +112,7 @@ class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
 class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case _: DistinctAggregateFunction =>
-      throw new UnsupportedOperationException("Distinct aggregate function is not supported yet")
+      throw new UnsupportedOperationException("Distinct aggregate functions are not supported yet")
   }
 }
 
@@ -189,7 +189,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
           throw new IllegalAggregationException(
             s"""Window functions are not allowed in $component:
                |
-               | - Window function found: ${wins.head.sqlLike}
+               | - window function found: ${wins.head.sqlLike}
                | - $component: ${e.sqlLike}
                |""".stripMargin
           )

@@ -333,6 +333,8 @@ case class Subquery(alias: Name, child: LogicalPlan) extends UnaryLogicalPlan {
  *  - [[Window]]
  *  - [[Filter]]
  *  - [[Aggregate]]
+ *
+ * @see [[scraper.plans.logical.analysis.RewriteUnresolvedAggregates]]
  */
 case class UnresolvedAggregate(
   keys: Seq[Expression],
