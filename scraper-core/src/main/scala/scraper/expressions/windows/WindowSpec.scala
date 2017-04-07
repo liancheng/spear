@@ -28,14 +28,20 @@ sealed trait FrameBoundary extends UnevaluableExpression
 
 case object CurrentRow extends FrameBoundary with LeafExpression {
   override protected def template(childList: Seq[String]): String = "CURRENT ROW"
+
+  override def debugString: String = "0"
 }
 
 case object UnboundedPreceding extends FrameBoundary with LeafExpression {
   override protected def template(childList: Seq[String]): String = "UNBOUNDED PRECEDING"
+
+  override def debugString: String = "-∞"
 }
 
 case object UnboundedFollowing extends FrameBoundary with LeafExpression {
   override protected def template(childList: Seq[String]): String = "UNBOUNDED FOLLOWING"
+
+  override def debugString: String = "+∞"
 }
 
 case class Preceding(offset: Expression) extends FrameBoundary with UnaryExpression {
@@ -44,6 +50,8 @@ case class Preceding(offset: Expression) extends FrameBoundary with UnaryExpress
   override protected def typeConstraint: TypeConstraint = offset subtypeOf IntegralType
 
   override protected def template(childString: String): String = s"$childString PRECEDING"
+
+  override def debugString: String = (-offset).debugString
 }
 
 case class Following(offset: Expression) extends FrameBoundary with UnaryExpression {
@@ -52,6 +60,8 @@ case class Following(offset: Expression) extends FrameBoundary with UnaryExpress
   override protected def typeConstraint: TypeConstraint = offset subtypeOf IntegralType
 
   override protected def template(childString: String): String = s"$childString FOLLOWING"
+
+  override def debugString: String = offset.debugString
 }
 
 case class WindowFrame(
@@ -65,6 +75,9 @@ case class WindowFrame(
     val Seq(startString, endString) = childList
     s"$frameType BETWEEN $startString AND $endString"
   }
+
+  override def debugString: String =
+    s"$frameType BETWEEN [${start.debugString}, ${end.debugString}]"
 }
 
 object WindowFrame {
