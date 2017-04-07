@@ -255,17 +255,17 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrite = rewriteKeys andThen rewriteAggs andThen rewriteWins
       val restore = restoreKeys compose restoreAggs compose restoreWins
 
-      // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
-      // outside. This method aliases them using names and expression IDs of the original named
-      // expressions.
-      def rewriteNamedExpression(named: NamedExpression): NamedExpression = rewrite(named) match {
-        case e: InternalAttribute => e as named.name withID named.expressionID
-        case e: NamedExpression   => e
-      }
-
-      val rewrittenProjectList = projectList map rewriteNamedExpression
       val rewrittenConditions = conditions map rewrite
       val rewrittenOrder = order map rewrite
+      val rewrittenProjectList = projectList map { named =>
+        // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
+        // outside. This method aliases them using names and expression IDs of the original named
+        // expressions.
+        rewrite(named) match {
+          case e: InternalAttribute => e as named.name withID named.expressionID
+          case e: NamedExpression   => e
+        }
+      }
 
       def rejectIllegalAttributeReferences(
         component: String, whitelist: Seq[Attribute] = Nil
