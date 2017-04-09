@@ -8,7 +8,7 @@ import scraper.plans.logical.{let, table}
 
 class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   test("single window function") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -40,7 +40,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("single window function with non-window aggregate function") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -79,7 +79,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("multiple window functions with the same window spec") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -121,8 +121,8 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("multiple window functions with multiple window spec") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1_? = Window partitionBy 'b orderBy 'a + 1 rangeBetween (Preceding(1), Following(1))
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w1_? = Window partitionBy 'b orderBy 'a + 1 rangeBetween (-1, 1)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -198,7 +198,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("non-window aggregate function inside window aggregate function") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -231,7 +231,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("window function in ORDER BY clause") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -266,7 +266,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("reference window function alias in ORDER BY clause") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -301,8 +301,8 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("multiple window definitions") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1_? = Window partitionBy 'b orderBy 'a + 1 rangeBetween (Preceding(1), Following(1))
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w1_? = Window partitionBy 'b orderBy 'a + 1 rangeBetween (-1, 1)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -354,7 +354,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
   }
 
   test("reference to existing window definition") {
-    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     val `@G: a + 1` = GroupingAlias(a + 1)
     val `@G: b` = GroupingAlias(b)
@@ -433,7 +433,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
 
   test("illegal window function alias referenced in HAVING clause") {
     val patterns = Seq("Window functions are not allowed in HAVING condition")
-    val f0 = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val f0 = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
 
     checkMessage[IllegalAggregationException](patterns: _*) {
       analyze(

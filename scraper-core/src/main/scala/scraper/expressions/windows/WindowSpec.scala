@@ -1,8 +1,11 @@
 package scraper.expressions.windows
 
+import scala.language.implicitConversions
+
 import scraper.Name
 import scraper.exceptions.ExpressionUnresolvedException
 import scraper.expressions.{Expression, LeafExpression, SortOrder, UnaryExpression, UnevaluableExpression, UnresolvedExpression}
+import scraper.expressions.functions.lit
 import scraper.expressions.typecheck.TypeConstraint
 import scraper.types.IntegralType
 
@@ -25,6 +28,14 @@ case object RangeFrame extends WindowFrameType {
 }
 
 sealed trait FrameBoundary extends UnevaluableExpression
+
+object FrameBoundary {
+  implicit def `Int->FrameBoundary`(offset: Int): FrameBoundary = offset match {
+    case 0               => CurrentRow
+    case _ if offset < 0 => Preceding(lit(-offset))
+    case _               => Following(lit(offset))
+  }
+}
 
 case object CurrentRow extends FrameBoundary with LeafExpression {
   override protected def template(childList: Seq[String]): String = "CURRENT ROW"

@@ -7,7 +7,7 @@ import scraper.plans.logical.{let, table}
 
 class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   test("single window function") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val `@W: max(a) over w0` = WindowAlias(max(a) over (w0_? partitionBy a orderBy b))
 
     checkSQLAnalysis(
@@ -28,7 +28,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("single window function with non-window expressions") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val `@W: max(a) over w0` = WindowAlias(max(a) over (w0_? partitionBy a orderBy b))
 
     checkSQLAnalysis(
@@ -49,8 +49,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with the same window spec") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
@@ -86,8 +86,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with the same window spec and non-window expressions") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
@@ -123,11 +123,11 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with different window specs") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (Preceding(1), Following(1))
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (-1, 1)
 
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1 = Window partitionBy b orderBy a rangeBetween (Preceding(1), Following(1))
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
+    val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
@@ -163,11 +163,11 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window functions with different window specs and non-window expressions") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (Preceding(1), Following(1))
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (-1, 1)
 
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1 = Window partitionBy b orderBy a rangeBetween (Preceding(1), Following(1))
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
+    val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
@@ -203,8 +203,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("window function in ORDER BY clause") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
 
@@ -229,8 +229,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("reference window function alias in ORDER BY clause") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val win_max = `@W: max(a) over w0`.attr as 'win_max
@@ -257,8 +257,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("single window definition") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
 
@@ -283,11 +283,11 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("multiple window definitions") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (Preceding(1), Following(1))
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w1_? = Window partitionBy 'b orderBy 'a rangeBetween (-1, 1)
 
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w1 = Window partitionBy b orderBy a rangeBetween (Preceding(1), Following(1))
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
+    val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
@@ -330,8 +330,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("reference to existing window definition") {
-    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, CurrentRow)
-    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, CurrentRow)
+    val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
+    val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
     val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
     val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
