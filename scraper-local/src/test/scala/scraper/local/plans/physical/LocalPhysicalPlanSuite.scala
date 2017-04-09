@@ -156,7 +156,7 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
 
   test("cartesian join") {
     checkPhysicalPlan(
-      r1 nestedLoopJoin r2,
+      r1 cartesianJoin r2,
       Row(1, "a", 1, "a"),
       Row(1, "a", 3, "c"),
       Row(2, "b", 1, "a"),
@@ -164,12 +164,12 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
     )
 
     checkPhysicalPlan(
-      r1 nestedLoopJoin r2 on a1 === a2,
+      r1 cartesianJoin r2 on a1 === a2,
       Row(1, "a", 1, "a")
     )
 
     checkPhysicalPlan(
-      r1 nestedLoopJoin r2 on a1 > a2,
+      r1 cartesianJoin r2 on a1 > a2,
       Row(2, "b", 1, "a")
     )
   }

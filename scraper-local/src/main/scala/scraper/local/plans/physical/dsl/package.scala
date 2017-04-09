@@ -20,7 +20,7 @@ package object dsl {
 
     def orderBy(first: SortOrder, rest: SortOrder*): Sort = plan orderBy (first +: rest)
 
-    def nestedLoopJoin(that: PhysicalPlan): NestedLoopJoin = NestedLoopJoin(plan, that, None)
+    def cartesianJoin(that: PhysicalPlan): CartesianJoin = CartesianJoin(plan, that, None)
 
     def union(that: PhysicalPlan): Union = Union(plan, that)
 
