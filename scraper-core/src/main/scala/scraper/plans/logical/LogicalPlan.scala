@@ -38,6 +38,10 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     }
   }
 
+  /**
+   * [[Attribute Attributes]] in the [[referenceSet reference set]] of this operator but produced by
+   * this operator itself instead of child operator(s).
+   */
   lazy val derivedOutput: Seq[Attribute] = Nil
 
   lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
@@ -351,7 +355,9 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
 
   override lazy val output: Seq[Attribute] = keys ++ functions map { _.attr }
 
-  override lazy val derivedOutput: Seq[Attribute] = keys ++ functions map { _.attr }
+  // Aggregate functions may reference grouping key aliases, which are not produced by `child` but
+  // this operator itself.
+  override lazy val derivedOutput: Seq[Attribute] = keys map { _.attr }
 }
 
 case class Sort(order: Seq[SortOrder], child: LogicalPlan) extends UnaryLogicalPlan {
