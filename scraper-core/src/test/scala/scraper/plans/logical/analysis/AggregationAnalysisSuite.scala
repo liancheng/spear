@@ -107,7 +107,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         agg `@A: count(b)`
         filter `@G: a`.attr > 1
         orderBy `@A: count(b)`.attr.asc
-        select (`@G: a`.attr as 'a)
+        select (`@G: a`.attr as 'a withID a.expressionID)
     )
   }
 
@@ -169,7 +169,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         agg `@A: count(b)`
         filter `@G: a`.attr > 1 && (`@A: count(b)`.attr < 10L)
         orderBy `@A: count(b)`.attr.asc
-        select (`@G: a`.attr as 'a)
+        select (`@G: a`.attr as 'a withID a.expressionID)
     )
   }
 
@@ -251,13 +251,16 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     checkSQLAnalysis(
       "SELECT DISTINCT * FROM t",
 
-      table('t).select(*).distinct,
+      (table('t) select *).distinct,
 
       relation
         select (a, b)
         resolvedGroupBy (`@G: a`, `@G: b`)
         agg Nil
-        select (`@G: a`.attr as 'a, `@G: b`.attr as 'b)
+        select (
+          `@G: a`.attr as 'a withID a.expressionID,
+          `@G: b`.attr as 'b withID b.expressionID
+        )
     )
   }
 
@@ -317,7 +320,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
   private val relation = {
     catalog.registerRelation('t, LocalRelation.empty('a.int.!, 'b.string.?))
-    catalog.lookupRelation('t)
+    catalog lookupRelation 't
   }
 
   private val Seq(a: AttributeRef, b: AttributeRef) = relation.output

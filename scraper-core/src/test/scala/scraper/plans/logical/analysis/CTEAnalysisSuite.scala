@@ -3,7 +3,6 @@ package scraper.plans.logical.analysis
 import scraper._
 import scraper.exceptions.AnalysisException
 import scraper.expressions._
-import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
 
 class CTEAnalysisSuite extends AnalyzerTest {
@@ -17,15 +16,22 @@ class CTEAnalysisSuite extends AnalyzerTest {
   }
 
   test("CTE with aliases") {
+    val `t.a as x` = a of 't as 'x
+    val `t.b as y` = b of 't as 'y
+
     checkAnalyzedPlan(
       let('s, relation0 subquery 't rename ('x, 'y)) {
         table('s) select *
       },
+
       relation0
         subquery 't
-        select (a of 't as 'x, b of 't as 'y)
+        select (`t.a as x`, `t.b as y`)
         subquery 's
-        select (x of 's, y of 's)
+        select (
+          x of 's withID `t.a as x`.expressionID,
+          y of 's withID `t.b as y`.expressionID
+        )
     )
   }
 
@@ -65,6 +71,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
           table('s0) union table('s1)
         }
       },
+
       relation0 subquery 't subquery 's0 union (
         relation0.newInstance() subquery 't subquery 's1
       )
@@ -72,8 +79,9 @@ class CTEAnalysisSuite extends AnalyzerTest {
   }
 
   test("multiple CTE in SQL") {
-    val x0 = 'x.int.!
-    val x1 = x0 withID newExpressionID()
+    val `1 as x` = 1 as 'x
+    val `2 as x` = 2 as 'x
+    val (x0: AttributeRef, x1: AttributeRef) = (`1 as x`.attr, `2 as x`.attr)
 
     checkAnalyzedPlan(
       """WITH
@@ -82,8 +90,9 @@ class CTEAnalysisSuite extends AnalyzerTest {
         |SELECT *
         |FROM s0 UNION ALL SELECT * FROM s1
         |""".stripMargin,
-      values(1 as 'x) subquery 's0 select (x0 of 's0) union (
-        values(2 as 'x) subquery 's1 select (x1 of 's1)
+
+      values(`1 as x`) subquery 's0 select (x0 of 's0) union (
+        values(`2 as x`) subquery 's1 select (x1 of 's1)
       )
     )
   }
@@ -95,6 +104,7 @@ class CTEAnalysisSuite extends AnalyzerTest {
           table('s) select ('c as 'a, 'd as 'b)
         }
       },
+
       relation0 subquery 't0 subquery 's union (
         relation1 subquery 't1 subquery 's select (c of 's as 'a, d of 's as 'b)
       )

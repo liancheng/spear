@@ -14,14 +14,14 @@ class MiscAnalysisSuite extends AnalyzerTest {
   }
 
   test("self-join in SQL") {
-    val a0 = a withID newExpressionID()
-    val b0 = b withID newExpressionID()
+    val relation0 = relation.newInstance()
+    val Seq(a0: AttributeRef, b0: AttributeRef) = relation0.output
 
     checkAnalyzedPlan(
       "SELECT * FROM t JOIN t",
       relation
         subquery 't
-        join (relation.newInstance() subquery 't)
+        join (relation0 subquery 't)
         select (a of 't, b of 't, a0 of 't, b0 of 't)
     )
   }
