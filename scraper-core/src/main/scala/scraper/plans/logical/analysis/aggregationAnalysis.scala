@@ -73,10 +73,11 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
  *
  * To solve this issue, this rule rewrites the above plan into:
  * {{{
- *   UnresolvedAggregate keys=[y],
- *   |                   projectList=[count(x) AS c],
- *   |                   condition=max(z) > 0,
- *   |                   order=[y DESC] => [c]
+ *   UnresolvedAggregate keys=[$0], projectList=[$1], condition=[$2], order=[$3] => [c]
+ *   | |- $0: y
+ *   | |- $1: count(x) AS c
+ *   | |- $2: max(z) > 0
+ *   | +- $3: y DESC
  *   +- Relation name=t => [x, y, z]
  * }}}
  * Now, references to attributes `y` and `z` are moved into the [[UnresolvedAggregate]], and can be
@@ -233,9 +234,9 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewriteAggs = (_: Expression) transformUp aggRewriter transformUp {
         // Window aggregate functions should not be rewritten. Restores them here. E.g.:
         //
-        //  - SELECT max(a) OVER (PARTITION BY max(a)) FROM t GROUP BY a
+        //  - SELECT max(a) OVER (PARTITION BY max(a)), max(a) FROM t GROUP BY a
         //
-        //    The 2nd `max(a)` should be rewritten while the 1st one must be preserved.
+        //    The 2nd and 3rd `max(a)` should be rewritten while the 1st one must be preserved.
         //
         //  - SELECT max(avg(b)) OVER () FROM t GROUP BY a
         //
@@ -259,7 +260,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       val rewrittenOrder = order map rewrite
       val rewrittenProjectList = projectList map { named =>
         // When rewriting the outermost project list, no `InternalAttribute`s should be exposed
-        // outside. This method aliases them using names and expression IDs of the original named
+        // outside. Here we alias them using names and expression IDs of the original named
         // expressions.
         rewrite(named) match {
           case e: InternalAttribute => e as named.name withID named.expressionID
