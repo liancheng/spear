@@ -201,20 +201,6 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
       plan.conditions foreach rejectIllegalWindowFunctions("HAVING condition")
   }
 
-  private def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
-    if (aliases.nonEmpty) {
-      val aliasList = aliases map { alias =>
-        s"  - ${alias.child.sqlLike} -> ${alias.attr.debugString}"
-      } mkString "\n"
-
-      logDebug(
-        s"""Collected $collectionName:
-           |
-           |$aliasList
-           |""".stripMargin
-      )
-    }
-
   private val rewrite: PartialFunction[LogicalPlan, LogicalPlan] = {
     case UnresolvedAggregate(keys, projectList, conditions, order, Resolved(child)) =>
       val keyAliases = keys map { GroupingAlias(_) }
@@ -297,6 +283,20 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
         .orderByOption(rewrittenOrder)
         .select(rewrittenProjectList)
   }
+
+  private def logInternalAliases(aliases: Seq[InternalAlias], collectionName: String): Unit =
+    if (aliases.nonEmpty) {
+      val aliasList = aliases map { alias =>
+        s"  - ${alias.child.sqlLike} -> ${alias.attr.debugString}"
+      } mkString "\n"
+
+      logDebug(
+        s"""Collected $collectionName:
+           |
+           |$aliasList
+           |""".stripMargin
+      )
+    }
 
   private def rejectNestedAggregateFunction(agg: AggregateFunction): Unit = agg match {
     case DistinctAggregateFunction(child) =>
