@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 import scraper.{Name, Row}
@@ -13,6 +13,7 @@ import scraper.expressions.NamedExpression.{named, newExpressionID}
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.expressions.windows.{BasicWindowSpec, WindowSpec}
+import scraper.plans.logical.patterns.{GenericProject, Unresolved}
 import scraper.plans.QueryPlan
 import scraper.plans.logical.Window._
 import scraper.reflection.fieldSpecFor
@@ -52,6 +53,10 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     case Unresolved(_) => "?output?" :: Nil
     case _             => super.outputStrings
   }
+
+  def sql: Try[String] = Failure(new UnsupportedOperationException())
+
+  def sqlFragment: Try[String] = sql
 }
 
 trait UnresolvedLogicalPlan extends LogicalPlan {
@@ -91,6 +96,8 @@ case class UnresolvedRelation(name: Name) extends Relation with UnresolvedLogica
 
 case object SingleRowRelation extends Relation {
   override val output: Seq[Attribute] = Nil
+
+  override def sql: Try[String] = Success("")
 }
 
 case class LocalRelation(
@@ -126,6 +133,36 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
   override def expressions: Seq[Expression] = projectList
 
   override lazy val output: Seq[Attribute] = projectList map { _.attr }
+
+  override lazy val sql: Try[String] = this match {
+    case GenericProject(fields, order, condition, keys, childPlan) =>
+      for {
+        projectListSQL <- trySequence(fields map { _.sql })
+        conditionSQL <- trySequence(condition.toSeq map { _.sql })
+        orderSQL <- trySequence(order map { _.sql })
+        keysSQL <- trySequence(keys map { _.sql })
+        childSQL <- childPlan.sqlFragment
+      } yield Seq(
+        projectListSQL mkString ("SELECT ", ", ", ""),
+        childSQL,
+        if (keysSQL.isEmpty) "" else keysSQL mkString ("GROUP BY ", ", ", ""),
+        if (conditionSQL.isEmpty) "" else conditionSQL mkString ("HAVING ", "", ""),
+        if (orderSQL.isEmpty) "" else orderSQL mkString ("ORDER BY ", ", ", "")
+      ) filterNot { _.isEmpty } mkString " "
+
+    case Project(_, Subquery(alias, _: Relation)) =>
+      for (projectListSQL <- trySequence(projectList map { _.sql }))
+        yield projectListSQL mkString ("SELECT ", ", ", s" FROM $alias")
+
+    case _ =>
+      for {
+        projectListSQL <- trySequence(projectList map { _.sql })
+        childSQL <- child.sqlFragment
+      } yield Seq(
+        projectListSQL mkString ("SELECT ", ", ", ""),
+        childSQL
+      ) filterNot { _.isEmpty } mkString " "
+  }
 }
 
 /**
@@ -179,6 +216,17 @@ case class Rename(aliases: Seq[Name], child: LogicalPlan)
 
 case class Filter(condition: Expression, child: LogicalPlan) extends UnaryLogicalPlan {
   override lazy val output: Seq[Attribute] = child.output
+
+  override lazy val sql: Try[String] = child match {
+    case _: Subquery | _: Relation =>
+      for {
+        conditionSQL <- condition.sql
+        childSQL <- child.sqlFragment
+      } yield s"$childSQL WHERE $conditionSQL"
+
+    case _ =>
+      Failure(new UnsupportedOperationException())
+  }
 }
 
 case class Limit(count: Expression, child: LogicalPlan) extends UnaryLogicalPlan {
@@ -311,6 +359,21 @@ case class Subquery(alias: Name, child: LogicalPlan) extends UnaryLogicalPlan {
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
+
+  override def sql: Try[String] = child match {
+    case plan: Relation =>
+      for (fieldsSQL <- trySequence(plan.output map { _.sql }))
+        yield fieldsSQL mkString ("SELECT ", ", ", s" FROM $alias")
+
+    case plan =>
+      for (childSQL <- plan.sqlFragment)
+        yield s"($childSQL) AS $alias"
+  }
+
+  override def sqlFragment: Try[String] = child match {
+    case _: Relation => Success(s"FROM $alias")
+    case _           => sql
+  }
 }
 
 /**
@@ -348,7 +411,7 @@ case class UnresolvedAggregate(
   child: LogicalPlan
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
-case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Seq[AggregationAlias])
+case class Aggregate(keys: Seq[GroupingAlias], functions: Seq[AggregationAlias], child: LogicalPlan)
   extends UnaryLogicalPlan {
 
   override def isResolved: Boolean = super.isResolved
@@ -362,6 +425,11 @@ case class Aggregate(child: LogicalPlan, keys: Seq[GroupingAlias], functions: Se
 
 case class Sort(order: Seq[SortOrder], child: LogicalPlan) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
+
+  override def sql: Try[String] = for {
+    orderSQL <- trySequence(order map { _.sql }) map { _ mkString ", " }
+    childSQL <- child.sqlFragment
+  } yield s"$childSQL ORDER BY $orderSQL"
 }
 
 /**
@@ -535,7 +603,7 @@ object LogicalPlan {
     }
 
     class AggregateBuilder(keys: Seq[GroupingAlias]) {
-      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)
+      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(keys, functions, plan)
 
       def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
     }

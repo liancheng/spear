@@ -44,7 +44,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case Project(projectList, child) =>
         (planLater(child) select projectList) :: Nil
 
-      case Aggregate(child, keys, functions) =>
+      case Aggregate(keys, functions, child) =>
         HashAggregate(planLater(child), keys, functions) :: Nil
 
       case Filter(condition, child) =>

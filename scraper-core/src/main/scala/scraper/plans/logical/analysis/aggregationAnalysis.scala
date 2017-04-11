@@ -9,6 +9,7 @@ import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis._
 import scraper.plans.logical.analysis.WindowAnalysis._
+import scraper.plans.logical.patterns.Resolved
 import scraper.utils._
 
 /**

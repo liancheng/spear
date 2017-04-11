@@ -8,6 +8,7 @@ import scraper.expressions._
 import scraper.expressions.NamedExpression.AnonymousColumnName
 import scraper.expressions.aggregates.{AggregateFunction, Count, DistinctAggregateFunction}
 import scraper.plans.logical._
+import scraper.plans.logical.patterns.{Resolved, Unresolved}
 
 /**
  * This rule expands "`*`" appearing in `SELECT`.

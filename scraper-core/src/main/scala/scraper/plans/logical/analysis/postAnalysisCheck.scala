@@ -5,6 +5,7 @@ import scraper.exceptions.{AnalysisException, ResolutionFailureException}
 import scraper.expressions._
 import scraper.expressions.aggregates.DistinctAggregateFunction
 import scraper.plans.logical._
+import scraper.plans.logical.patterns.Unresolved
 import scraper.utils._
 
 class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {

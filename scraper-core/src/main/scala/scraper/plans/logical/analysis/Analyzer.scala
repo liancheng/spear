@@ -6,6 +6,7 @@ import scraper.expressions.{Alias, Attribute, Expression, NamedExpression, SortO
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
+import scraper.plans.logical.patterns.{Resolved, Unresolved}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
 

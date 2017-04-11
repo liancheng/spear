@@ -149,7 +149,7 @@ object Optimizer {
       case Project(projectList, child) =>
         child select (projectList map eliminateNonTopLevelAliases)
 
-      case Aggregate(child, keys, functions) =>
+      case Aggregate(keys, functions, child) =>
         child resolvedGroupBy keys agg (functions map eliminateNonTopLevelAliases)
 
       case plan =>
@@ -255,7 +255,7 @@ object Optimizer {
 
   object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Filter(condition, Aggregate(child, keys, functions)) if functions forall { _.isPure } =>
+      case Filter(condition, Aggregate(keys, functions, child)) if functions forall { _.isPure } =>
         // Predicates that don't reference any aggregate functions can be pushed down
         val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 

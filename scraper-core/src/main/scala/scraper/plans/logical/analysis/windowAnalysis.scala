@@ -7,6 +7,7 @@ import scraper.expressions.InternalAlias.buildRewriter
 import scraper.expressions.windows.{WindowFunction, WindowSpecRef}
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.WindowAnalysis._
+import scraper.plans.logical.patterns.Resolved
 import scraper.utils._
 
 /**
