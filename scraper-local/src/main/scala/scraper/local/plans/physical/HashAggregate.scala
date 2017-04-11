@@ -5,7 +5,6 @@ import scala.collection.mutable
 import scraper._
 import scraper.execution.MutableProjection
 import scraper.expressions._
-import scraper.expressions.BoundRef.bindTo
 import scraper.expressions.aggregates.AggregateFunction
 import scraper.plans.physical.{PhysicalPlan, UnaryPhysicalPlan}
 
@@ -18,12 +17,13 @@ case class HashAggregate(
 
   override def requireMaterialization: Boolean = true
 
-  private lazy val boundKeys: Seq[Expression] = keyAliases map { _.child } map bindTo(child.output)
+  private lazy val boundKeys: Seq[Expression] = keyAliases map { _.child bindTo child.output }
 
-  private lazy val aggregator: Aggregator = {
-    val boundAggs = aggAliases map { _.child } map bindTo(child.output)
-    new Aggregator(boundAggs)
-  }
+  private lazy val aggregator: Aggregator = new Aggregator(
+    aggAliases
+      .map { _.child bindTo child.output }
+      .map { case e: AggregateFunction => e }
+  )
 
   private lazy val hashMap = mutable.HashMap.empty[Row, MutableRow]
 
@@ -47,7 +47,7 @@ case class HashAggregate(
 }
 
 class Aggregator(aggs: Seq[AggregateFunction]) {
-  require(aggs.forall(_.isBound))
+  require(aggs.forall { _.isBound })
 
   def newStateBuffer(): MutableRow = {
     val buffer = new BasicMutableRow(aggs.map { _.stateAttributes.length }.sum)
@@ -91,7 +91,7 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
       case ref: AttributeRef =>
         // Binds all aggregation state attributes to corresponding fields of the target and input
         // state buffers.
-        BoundRef.bindTo(stateAttributes ++ inputStateAttributes)(ref)
+        ref bindTo stateAttributes ++ inputStateAttributes
 
       case ref: BoundRef =>
         // While updating a target state buffer using an input row, we do a mutable projection over

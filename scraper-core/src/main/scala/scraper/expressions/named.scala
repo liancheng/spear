@@ -240,18 +240,3 @@ case class BoundRef(ordinal: Int, override val dataType: DataType, override val 
 
   def shift(offset: Int): BoundRef = at(ordinal + offset)
 }
-
-object BoundRef {
-  def bindTo[E <: Expression](input: Seq[Attribute])(expression: E): E = expression.transformUp {
-    case ref: ResolvedAttribute =>
-      val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
-      if (ordinal == -1) {
-        throw new ResolutionFailureException({
-          val inputAttributes = input.map(_.nodeCaption).mkString(", ")
-          s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
-        })
-      } else {
-        BoundRef(ordinal, ref.dataType, ref.isNullable)
-      }
-  }.asInstanceOf[E]
-}

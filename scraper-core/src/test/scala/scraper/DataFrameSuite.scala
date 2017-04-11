@@ -142,7 +142,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   test("global aggregation") {
     checkLogicalPlan(
       table('t) agg count('a),
-      r1 subquery 't agg count('a)
+      r1 subquery 't groupBy Nil agg count('a)
     )
   }
 

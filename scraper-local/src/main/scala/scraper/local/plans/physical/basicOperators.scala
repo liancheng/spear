@@ -28,7 +28,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override def requireMaterialization: Boolean = true
 
-  private lazy val projection = MutableProjection(projectList map bindTo(child.output))
+  private lazy val projection = MutableProjection(projectList map { _ bindTo child.output })
 
   override def iterator: Iterator[Row] = child.iterator map projection
 }
@@ -36,7 +36,7 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  private lazy val boundCondition = bindTo(child.output)(condition)
+  private lazy val boundCondition = condition bindTo child.output
 
   override def iterator: Iterator[Row] = child.iterator filter {
     boundCondition.evaluate(_).asInstanceOf[Boolean]
@@ -95,7 +95,7 @@ case class CartesianJoin(
 
   def on(condition: Expression): CartesianJoin = copy(condition = Some(condition))
 
-  private lazy val boundCondition = condition map bindTo(output) getOrElse True
+  private lazy val boundCondition = condition map { _ bindTo output } getOrElse True
 
   private val join = new JoinedRow()
 }

@@ -567,21 +567,11 @@ object LogicalPlan {
     def groupBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
       groupBy(first +: rest)
 
-    def agg(projectList: Seq[Expression]): UnresolvedAggregate = this groupBy Nil agg projectList
-
-    def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
-
     def resolvedGroupBy(keys: Seq[GroupingAlias]): AggregateBuilder =
       new AggregateBuilder(keys)
 
     def resolvedGroupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
       resolvedGroupBy(first +: rest)
-
-    def resolvedAgg(functions: Seq[AggregationAlias]): Aggregate =
-      plan resolvedGroupBy Nil agg functions
-
-    def resolvedAgg(first: AggregationAlias, rest: AggregationAlias*): Aggregate =
-      resolvedAgg(first +: rest)
 
     def window(functions: Seq[WindowAlias]): Window = {
       val Seq(windowSpec) = functions.map { _.child.window }.distinct

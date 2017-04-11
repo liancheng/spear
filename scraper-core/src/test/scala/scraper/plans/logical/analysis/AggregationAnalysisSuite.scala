@@ -19,7 +19,10 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
       table('t) select 'count('a),
 
-      relation resolvedAgg `@A: count(a)` select (`@A: count(a)`.attr as "count(t.a)")
+      relation
+        resolvedGroupBy Nil
+        agg `@A: count(a)`
+        select (`@A: count(a)`.attr as "count(t.a)")
     )
   }
 
@@ -29,10 +32,14 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     checkSQLAnalysis(
       "SELECT 1 AS out FROM t HAVING count(a) > 0",
 
-      table('t) agg (1 as 'out) filter 'count('a) > 0,
+      table('t)
+        groupBy Nil
+        agg (1 as 'out)
+        filter 'count('a) > 0,
 
       relation
-        resolvedAgg `@A: count(a)`
+        resolvedGroupBy Nil
+        agg `@A: count(a)`
         filter `@A: count(a)`.attr > (0 cast LongType)
         select (1 as 'out)
     )
@@ -47,7 +54,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       table('t) select (1 as 'out) orderBy 'count('a),
 
       relation
-        resolvedAgg `@A: count(a)`
+        resolvedGroupBy Nil
+        agg `@A: count(a)`
         orderBy `@A: count(a)`.attr
         select (1 as 'out)
     )
@@ -240,7 +248,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(table('t) agg 'max('count('a)))
+      analyze(table('t) groupBy Nil agg 'max('count('a)))
     }
   }
 

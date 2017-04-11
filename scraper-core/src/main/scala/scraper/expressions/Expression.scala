@@ -240,6 +240,20 @@ object Expression {
           rewrite(a.expressionID)
       }
     }
+
+    def bindTo(input: Seq[Attribute]): Expression = expression transformUp {
+      case ref: ResolvedAttribute =>
+        val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
+
+        if (ordinal == -1) {
+          val inputAttributes = input.map(_.nodeCaption).mkString(", ")
+          throw new ResolutionFailureException(
+            s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
+          )
+        } else {
+          BoundRef(ordinal, ref.dataType, ref.isNullable)
+        }
+    }
   }
 }
 
