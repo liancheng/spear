@@ -26,7 +26,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("global aggregate, where only the HAVING clause contains an aggregate function") {
+  test("SQL global aggregate, where only the HAVING clause contains an aggregate function") {
     val `@A: count(a)` = AggregationAlias(count(self.a of 't))
 
     checkSQLAnalysis(
@@ -35,6 +35,22 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       table('t)
         groupBy Nil
         agg (1 as 'out)
+        filter 'count('a) > 0,
+
+      relation
+        resolvedGroupBy Nil
+        agg `@A: count(a)`
+        filter `@A: count(a)`.attr > (0 cast LongType)
+        select (1 as 'out)
+    )
+  }
+
+  ignore("global aggregate, where only the HAVING clause contains an aggregate function") {
+    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+
+    checkAnalyzedPlan(
+      table('t)
+        select (1 as 'out)
         filter 'count('a) > 0,
 
       relation
