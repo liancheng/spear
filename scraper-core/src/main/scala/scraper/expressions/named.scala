@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.{Success, Try}
 
 import scraper.{Name, Row}
-import scraper.exceptions.{ExpressionUnresolvedException, ResolutionFailureException}
+import scraper.exceptions.ExpressionUnresolvedException
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
 

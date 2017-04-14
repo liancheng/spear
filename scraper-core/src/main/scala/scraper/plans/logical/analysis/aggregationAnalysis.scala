@@ -41,16 +41,14 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
 }
 
 /**
- * This rule matches [[Filter filtered]] and/or [[Sort sorted]] [[UnresolvedAggregate aggregation]]
- * and eliminates the [[Filter]], which corresponds to `HAVING` clauses, and/or [[Sort]] operators
- * by merging the `HAVING` conditions and sort orders into the underlying [[UnresolvedAggregate]]
- * operator.
+ * This rule matches adjacent [[Filter]] and/or [[Sort]] operators above [[UnresolvedAggregate]]
+ * operators and merges the filter condition and sort order expressions into the underlying
+ * [[UnresolvedAggregate]] operator.
  *
- * This transformation is necessary because the `HAVING` conditions and sort orders may contain or
- * reference grouping keys and/or aggregate functions that have to be resolved together with the
- * aggregation.
+ * This transformation is necessary because the [[Filter]] and [[Sort]] operators may contain or
+ * reference grouping keys and/or aggregate functions that cannot be resolved directly.
  *
- * For example, the following SQL statement:
+ * For example, assuming table `t` has columns `x`, `y`, and `z`, then the following SQL statement:
  * {{{
  *   SELECT count(x) AS c
  *   FROM t
@@ -58,14 +56,14 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
  *   HAVING max(z) > 0
  *   ORDER BY y DESC
  * }}}
- * can be represented by the following pseudo logical plan:
+ * can be parsed into the following logical plan:
  * {{{
  *   Sort order=[y DESC] => [c]                                                 (1)
  *   +- Filter condition=max(z) > 0 => [c]                                      (2)
  *      +- UnresolvedAggregate keys=[y], projectList=[count(x) AS c] => [c]     (3)
  *         +- Relation name=t => [x, y, z]
  * }}}
- * The bracketed lists after the "=>" are output attributes of the corresponding logical plan
+ * The bracketed lists after the `=>` are output attributes of the corresponding logical plan
  * operator.
  *
  * Note that neither `y` referenced in (1) nor `z` referenced in (2) is an output attribute of the

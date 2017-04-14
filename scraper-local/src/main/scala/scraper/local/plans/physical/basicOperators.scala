@@ -6,7 +6,6 @@ import scraper._
 import scraper.annotations.Explain
 import scraper.execution.MutableProjection
 import scraper.expressions._
-import scraper.expressions.BoundRef._
 import scraper.expressions.Literal.True
 import scraper.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 import scraper.trees.TreeNode

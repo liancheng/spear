@@ -40,8 +40,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   }
 
   /**
-   * [[Attribute Attributes]] in the [[referenceSet reference set]] of this operator but produced by
-   * this operator itself instead of child operator(s).
+   * Input [[Attribute attributes]] that can be referenced by some expression(s) of this operator
+   * but produced by this operator itself rather than the child operator(s).
    */
   lazy val derivedOutput: Seq[Attribute] = Nil
 
@@ -377,7 +377,8 @@ case class Subquery(alias: Name, child: LogicalPlan) extends UnaryLogicalPlan {
 }
 
 /**
- * A generic unresolved aggregate operator that captures semantics of queries in the form of
+ * A generic unresolved, filtered, and ordered aggregate operator that captures semantics of queries
+ * in the form of
  * {{{
  *   SELECT <project-list>
  *   FROM <child-plan>
