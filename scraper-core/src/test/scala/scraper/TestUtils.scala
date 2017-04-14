@@ -47,19 +47,17 @@ trait TestUtils { this: FunSuite =>
     assertSideBySide(actual, expected)
 
   private def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    val distinctExpressionsWithID = plan.collectFromAllExpressions {
+    val namedExpressionsWithID = plan.collectFromAllExpressions {
       case e: NamedExpression if e.isResolved => e
       case e: Alias                           => e
       case e: InternalAlias                   => e
     }.distinct
 
-    val distinctIDs = distinctExpressionsWithID map { _.expressionID }
+    val ids = namedExpressionsWithID.map { _.expressionID }.distinct
 
-    val groupedByID = distinctExpressionsWithID.groupBy {
-      _.expressionID
-    }.toSeq sortBy {
-      // Sorts by occurrence order to ensure determinism.
-      case (expressionID, _) => distinctIDs indexOf expressionID
+    val groupedByID = namedExpressionsWithID.groupBy { _.expressionID }.toSeq sortBy {
+      // Sorts by ID occurrence order to ensure determinism.
+      case (expressionID, _) => ids indexOf expressionID
     }
 
     val rewrite = for {

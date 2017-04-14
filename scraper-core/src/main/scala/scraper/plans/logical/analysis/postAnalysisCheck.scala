@@ -9,36 +9,32 @@ import scraper.plans.logical.patterns.Unresolved
 import scraper.utils._
 
 class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = {
-    tree.transformExpressionsDown {
-      // Tries to collect a "minimum" unresolved expression.
-      case Unresolved(e) if e.children forall { _.isResolved } =>
-        throw new ResolutionFailureException(
-          s"""Failed to resolve expression ${e.sqlLike} in the analyzed logical plan:
-             |
-             |${tree.prettyTree}
-             |""".stripMargin
-        )
-    }
+  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformExpressionsDown {
+    // Tries to collect a "minimum" unresolved expression.
+    case Unresolved(e) if e.children forall { _.isResolved } =>
+      throw new ResolutionFailureException(
+        s"""Failed to resolve expression ${e.sqlLike} in the analyzed logical plan:
+           |
+           |${tree.prettyTree}
+           |""".stripMargin
+      )
   }
 }
 
 class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = {
-    tree.transformDown {
-      // Tries to collect a "minimum" unresolved logical plan node.
-      case Unresolved(plan) if plan.children forall { _.isResolved } =>
-        throw new ResolutionFailureException(
-          s"""Failed to resolve the following logical plan operator
-             |
-             |${plan.prettyTree}
-             |
-             |in the analyzed plan:
-             |
-             |${tree.prettyTree}
-             |""".stripMargin
-        )
-    }
+  override def apply(tree: LogicalPlan): LogicalPlan = tree.transformDown {
+    // Tries to collect a "minimum" unresolved logical plan node.
+    case Unresolved(plan) if plan.children forall { _.isResolved } =>
+      throw new ResolutionFailureException(
+        s"""Failed to resolve the following logical plan operator
+           |
+           |${plan.prettyTree}
+           |
+           |in the analyzed plan:
+           |
+           |${tree.prettyTree}
+           |""".stripMargin
+      )
   }
 }
 
@@ -100,7 +96,7 @@ class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule
       plan
 
     case plan =>
-      val inputSet = plan.children.flatMap { _.outputSet } ++ plan.derivedOutput
+      val inputSet = plan.children.flatMap { _.outputSet } ++ plan.derivedInput
       val orphans = plan.references filterNot inputSet.contains
 
       if (orphans.nonEmpty) {

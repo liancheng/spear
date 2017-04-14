@@ -35,7 +35,7 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
  */
 class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case Resolved(Project(projectList, child)) if hasAggregateFunction(projectList) =>
+    case Resolved(Project(projectList, child)) if haveAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
   }
 }
@@ -165,7 +165,7 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
     case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
 
     // Aggregate functions are not allowed in grouping keys.
-    case plan: UnresolvedAggregate if hasAggregateFunction(plan.keys) =>
+    case plan: UnresolvedAggregate if haveAggregateFunction(plan.keys) =>
       plan.keys foreach { key =>
         val aggs = collectAggregateFunctions(key)
 
@@ -324,8 +324,11 @@ class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
 }
 
 object AggregationAnalysis {
-  def hasAggregateFunction(expressions: Seq[Expression]): Boolean =
+  def haveAggregateFunction(expressions: Seq[Expression]): Boolean =
     collectAggregateFunctions(expressions).nonEmpty
+
+  def hasAggregateFunction(expression: Expression): Boolean =
+    collectAggregateFunctions(expression).nonEmpty
 
   /**
    * Collects all non-window aggregate functions from the given `expressions`.
