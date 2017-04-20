@@ -30,5 +30,6 @@ trait QueryExecutor {
    */
   def plan(plan: LogicalPlan): PhysicalPlan
 
-  def execute(context: Context, plan: LogicalPlan): QueryExecution
+  def execute(context: Context, plan: LogicalPlan): QueryExecution =
+    new QueryExecution(context, plan)
 }

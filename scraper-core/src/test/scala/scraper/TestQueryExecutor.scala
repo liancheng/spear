@@ -3,7 +3,6 @@ package scraper
 import org.mockito.Mockito._
 
 import scraper.parsers.QueryExpressionParser.queryExpression
-import scraper.plans.QueryExecution
 import scraper.plans.logical.{LogicalPlan, Optimizer}
 import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.physical.PhysicalPlan
@@ -19,9 +18,6 @@ class TestQueryExecutor extends QueryExecutor {
 
   override def plan(plan: LogicalPlan): PhysicalPlan =
     when(mock(classOf[PhysicalPlan]).iterator).thenReturn(Iterator.empty).getMock[PhysicalPlan]
-
-  override def execute(context: Context, plan: LogicalPlan): QueryExecution =
-    new QueryExecution(context, plan)
 
   private val analyzer = new Analyzer(catalog)
 

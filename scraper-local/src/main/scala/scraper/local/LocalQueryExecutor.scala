@@ -5,7 +5,7 @@ import scraper.local.plans.physical
 import scraper.local.plans.physical.HashAggregate
 import scraper.local.plans.physical.dsl._
 import scraper.parsers.QueryExpressionParser.queryExpression
-import scraper.plans.{QueryExecution, QueryPlanner}
+import scraper.plans.QueryPlanner
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.Analyzer
 import scraper.plans.physical.{NotImplemented, PhysicalPlan}
@@ -20,9 +20,6 @@ class LocalQueryExecutor extends QueryExecutor {
   override def optimize(plan: LogicalPlan): LogicalPlan = optimizer apply plan
 
   override def plan(plan: LogicalPlan): PhysicalPlan = planner apply plan
-
-  override def execute(context: Context, plan: LogicalPlan): QueryExecution =
-    new QueryExecution(context, plan)
 
   private val analyzer = new Analyzer(catalog)
 
