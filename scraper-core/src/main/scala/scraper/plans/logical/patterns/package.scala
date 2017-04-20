@@ -48,7 +48,7 @@ package object patterns {
           a.child
         ))
 
-      case p @ Project(_, WindowSeq(windowFunctions, s @ Sort(_, a: Aggregate))) =>
+      case p @ Project(_, s @ Sort(_, WindowSeq(windowFunctions, a: Aggregate))) =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
         Some((
           p.projectList map restore,
@@ -58,7 +58,7 @@ package object patterns {
           a.child
         ))
 
-      case p @ Project(_, f @ Filter(_, WindowSeq(windowFunctions, s @ Sort(_, a: Aggregate)))) =>
+      case p @ Project(_, s @ Sort(_, WindowSeq(windowFunctions, f @ Filter(_, a: Aggregate)))) =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
         Some((
           p.projectList map restore,
