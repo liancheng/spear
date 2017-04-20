@@ -47,7 +47,7 @@ package object logical {
   } yield (tails foldLeft head) { _ join _ }
 
   def genRelationFactor(input: Seq[LogicalPlan])(implicit settings: Settings): Gen[LogicalPlan] = {
-    val genBottomPlans = Gen.oneOf(input :+ SingleRowRelation)
+    val genBottomPlans = Gen.oneOf(input :+ SingleRowRelation())
 
     Gen.sized {
       case size if size < 2 =>

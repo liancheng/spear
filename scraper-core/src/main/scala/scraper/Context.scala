@@ -15,7 +15,7 @@ class Context(val queryExecutor: QueryExecutor) {
     }
   )
 
-  private lazy val values: DataFrame = new DataFrame(SingleRowRelation, this)
+  private lazy val values: DataFrame = new DataFrame(SingleRowRelation(), this)
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 

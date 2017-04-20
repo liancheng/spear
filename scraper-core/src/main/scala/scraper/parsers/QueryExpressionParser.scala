@@ -290,7 +290,7 @@ object QuerySpecificationParser extends LoggingParser {
     SELECT
     ~ setQuantifier.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ selectList
-    ~ fromClause.?.map { _ getOrElse SingleRowRelation }
+    ~ fromClause.?.map { _ getOrElse SingleRowRelation() }
     ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ groupByClause.?
     ~ havingClause.?

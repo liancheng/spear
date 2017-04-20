@@ -183,7 +183,7 @@ object Optimizer {
    */
   object MergeFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Filter(outer, Filter(inner, plan)) => plan filter { inner && outer }
+      case Filter(outer, Filter(inner, plan)) => plan filter inner && outer
     }
   }
 

@@ -7,7 +7,7 @@ import scraper.expressions.windows.{WindowSpec, WindowSpecRef}
 package object logical {
   def table(name: Name): UnresolvedRelation = UnresolvedRelation(name)
 
-  def values(expressions: Seq[Expression]): Project = SingleRowRelation select expressions
+  def values(expressions: Seq[Expression]): Project = SingleRowRelation() select expressions
 
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 

@@ -62,7 +62,7 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case Subquery(_, child) =>
         planLater(child) :: Nil
 
-      case SingleRowRelation =>
+      case _: SingleRowRelation =>
         scraper.plans.physical.SingleRowRelation :: Nil
 
       case left Union right =>

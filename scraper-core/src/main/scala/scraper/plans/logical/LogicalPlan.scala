@@ -21,6 +21,8 @@ import scraper.trees.TreeNode
 import scraper.types.{DataType, IntType, StructType}
 import scraper.utils._
 
+case class LogicalPlanMetadata()
+
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def isResolved: Boolean = expressions.forall { _.isResolved } && isDeduplicated
 
@@ -94,7 +96,9 @@ trait MultiInstanceRelation extends Relation {
 
 case class UnresolvedRelation(name: Name) extends Relation with UnresolvedLogicalPlan
 
-case object SingleRowRelation extends Relation {
+case class SingleRowRelation(metadata: LogicalPlanMetadata = LogicalPlanMetadata())
+  extends Relation {
+
   override val output: Seq[Attribute] = Nil
 
   override def sql: Try[String] = Success("")
