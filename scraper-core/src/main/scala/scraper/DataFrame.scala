@@ -2,7 +2,6 @@ package scraper
 
 import java.io.PrintStream
 
-import scraper.exceptions.ResolutionFailureException
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.QueryExecution
@@ -16,12 +15,6 @@ class DataFrame(val queryExecution: QueryExecution) {
   def context: Context = queryExecution.context
 
   lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
-
-  def apply(column: Name): Attribute = queryExecution.analyzedPlan.output find {
-    _.name == column
-  } getOrElse {
-    throw new ResolutionFailureException(s"Failed to resolve column name $column")
-  }
 
   def rename(newNames: Name*): DataFrame = {
     assert(newNames.length == schema.fields.length)
