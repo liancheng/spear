@@ -15,7 +15,7 @@ import scraper.utils._
  */
 class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case Resolved(Project(projectList, child)) if hasWindowFunction(projectList) =>
+    case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
       val winAliases = collectWindowFunctions(projectList) map { WindowAlias(_) }
       val rewrittenProjectList = projectList map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases select rewrittenProjectList
@@ -29,7 +29,7 @@ class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule
   override def apply(tree: LogicalPlan): LogicalPlan =
     tree collectFirst preConditionViolation map { _ => tree } getOrElse {
       tree transformDown {
-        case Resolved(Sort(order, child)) if hasWindowFunction(order) =>
+        case Resolved(child Sort order) if hasWindowFunction(order) =>
           val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
           val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
           child windows winAliases orderBy rewrittenOrder select child.output

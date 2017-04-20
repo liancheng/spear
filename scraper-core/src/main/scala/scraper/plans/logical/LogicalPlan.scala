@@ -140,7 +140,7 @@ case class Distinct(child: LogicalPlan)(val metadata: LogicalPlanMetadata = Logi
   override def output: Seq[Attribute] = child.output
 }
 
-case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)(
+case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
@@ -166,7 +166,7 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)(
         if (orderSQL.isEmpty) "" else orderSQL mkString ("ORDER BY ", ", ", "")
       ) filterNot { _.isEmpty } mkString " "
 
-    case Project(_, Subquery(alias, _: Relation)) =>
+    case Subquery(alias, _: Relation) Project _ =>
       for (projectListSQL <- trySequence(projectList map { _.sql }))
         yield projectListSQL mkString ("SELECT ", ", ", s" FROM $alias")
 
@@ -227,11 +227,11 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)(
  * @see [[With]]
  * @see [[scraper.plans.logical.analysis.RewriteRenamesToProjects RewriteRenamesToProjects]]
  */
-case class Rename(aliases: Seq[Name], child: LogicalPlan)(
+case class Rename(child: LogicalPlan, aliases: Seq[Name])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
-case class Filter(condition: Expression, child: LogicalPlan)(
+case class Filter(child: LogicalPlan, condition: Expression)(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
@@ -249,7 +249,7 @@ case class Filter(condition: Expression, child: LogicalPlan)(
   }
 }
 
-case class Limit(count: Expression, child: LogicalPlan)(
+case class Limit(child: LogicalPlan, count: Expression)(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
@@ -364,10 +364,10 @@ case object FullOuter extends JoinType {
 }
 
 case class Join(
-  joinType: JoinType,
-  condition: Option[Expression],
   left: LogicalPlan,
-  right: LogicalPlan
+  right: LogicalPlan,
+  joinType: JoinType,
+  condition: Option[Expression]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends BinaryLogicalPlan {
@@ -389,7 +389,7 @@ case class Join(
     predicates reduceOption And map on getOrElse this
 }
 
-case class Subquery(alias: Name, child: LogicalPlan)(
+case class Subquery(child: LogicalPlan, alias: Name)(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
@@ -443,19 +443,19 @@ case class Subquery(alias: Name, child: LogicalPlan)(
  * @see [[scraper.plans.logical.analysis.RewriteUnresolvedAggregates]]
  */
 case class UnresolvedAggregate(
+  child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
   conditions: Seq[Expression] = Nil,
-  order: Seq[SortOrder] = Nil,
-  child: LogicalPlan
+  order: Seq[SortOrder] = Nil
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
 
 case class Aggregate(
+  child: LogicalPlan,
   keys: Seq[GroupingAlias],
-  functions: Seq[AggregationAlias],
-  child: LogicalPlan
+  functions: Seq[AggregationAlias]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
@@ -469,7 +469,7 @@ case class Aggregate(
   override lazy val derivedInput: Seq[Attribute] = keys map { _.attr }
 }
 
-case class Sort(order: Seq[SortOrder], child: LogicalPlan)(
+case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
@@ -501,10 +501,10 @@ case class Sort(order: Seq[SortOrder], child: LogicalPlan)(
  * }}}
  */
 case class With(
+  child: LogicalPlan,
   name: Name,
   @Explain(hidden = true, nestedTree = true) query: LogicalPlan,
-  aliases: Option[Seq[Name]],
-  child: LogicalPlan
+  aliases: Option[Seq[Name]]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
@@ -520,10 +520,10 @@ case class WindowDef(child: LogicalPlan, name: Name, windowSpec: WindowSpec)(
 }
 
 case class Window(
+  child: LogicalPlan,
   functions: Seq[WindowAlias],
   partitionSpec: Seq[Expression] = Nil,
-  orderSpec: Seq[SortOrder] = Nil,
-  child: LogicalPlan
+  orderSpec: Seq[SortOrder] = Nil
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
@@ -563,34 +563,34 @@ object Window {
     // Builds one `Window` operator builder function for each group.
     windowAliasGroups map {
       case (BasicWindowSpec(partitionSpec, orderSpec, _), aliases) =>
-        Window(aliases, partitionSpec, orderSpec, _: LogicalPlan)()
+        Window(_: LogicalPlan, aliases, partitionSpec, orderSpec)()
     }
   }
 }
 
 object LogicalPlan {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
-    def select(projectList: Seq[Expression]): Project = Project(projectList map named, plan)()
+    def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)()
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
-    def rename(aliases: Seq[Name]): Rename = Rename(aliases, plan)()
+    def rename(aliases: Seq[Name]): Rename = Rename(plan, aliases)()
 
     def rename(first: Name, rest: Name*): Rename = rename(first +: rest)
 
-    def filter(condition: Expression): Filter = Filter(condition, plan)()
+    def filter(condition: Expression): Filter = Filter(plan, condition)()
 
     def filterOption(predicates: Seq[Expression]): LogicalPlan =
       predicates reduceOption And map filter getOrElse plan
 
-    def limit(n: Expression): Limit = Limit(n, plan)()
+    def limit(n: Expression): Limit = Limit(plan, n)()
 
     def limit(n: Int): Limit = this limit lit(n)
 
-    def orderBy(order: Seq[Expression]): Sort = Sort(order map {
+    def orderBy(order: Seq[Expression]): Sort = Sort(plan, order map {
       case e: SortOrder => e
       case e            => e.asc
-    }, plan)()
+    })()
 
     def orderBy(first: Expression, rest: Expression*): Sort = this orderBy (first +: rest)
 
@@ -599,17 +599,17 @@ object LogicalPlan {
 
     def distinct: Distinct = Distinct(plan)()
 
-    def subquery(name: Name): Subquery = Subquery(name, plan)()
+    def subquery(name: Name): Subquery = Subquery(plan, name)()
 
-    def join(that: LogicalPlan, joinType: JoinType): Join = Join(joinType, None, plan, that)()
+    def join(that: LogicalPlan, joinType: JoinType): Join = Join(plan, that, joinType, None)()
 
-    def join(that: LogicalPlan): Join = Join(Inner, None, plan, that)()
+    def join(that: LogicalPlan): Join = join(that, Inner)
 
-    def leftJoin(that: LogicalPlan): Join = Join(LeftOuter, None, plan, that)()
+    def leftJoin(that: LogicalPlan): Join = join(that, LeftOuter)
 
-    def rightJoin(that: LogicalPlan): Join = Join(RightOuter, None, plan, that)()
+    def rightJoin(that: LogicalPlan): Join = join(that, RightOuter)
 
-    def outerJoin(that: LogicalPlan): Join = Join(FullOuter, None, plan, that)()
+    def outerJoin(that: LogicalPlan): Join = join(that, FullOuter)
 
     def union(that: LogicalPlan): Union = Union(plan, that)()
 
@@ -631,7 +631,7 @@ object LogicalPlan {
 
     def window(functions: Seq[WindowAlias]): Window = {
       val Seq(windowSpec) = functions.map { _.child.window }.distinct
-      Window(functions, windowSpec.partitionSpec, windowSpec.orderSpec, plan)()
+      Window(plan, functions, windowSpec.partitionSpec, windowSpec.orderSpec)()
     }
 
     def window(first: WindowAlias, rest: WindowAlias*): Window = window(first +: rest)
@@ -643,13 +643,13 @@ object LogicalPlan {
 
     class UnresolvedAggregateBuilder(keys: Seq[Expression]) {
       def agg(projectList: Seq[Expression]): UnresolvedAggregate =
-        UnresolvedAggregate(keys, projectList map named, Nil, Nil, plan)()
+        UnresolvedAggregate(plan, keys, projectList map named, Nil, Nil)()
 
       def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
     }
 
     class AggregateBuilder(keys: Seq[GroupingAlias]) {
-      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(keys, functions, plan)()
+      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)()
 
       def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
     }

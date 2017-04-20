@@ -34,36 +34,36 @@ package object patterns {
     // format: ON
 
     def unapply(tree: LogicalPlan): Option[ResultType] = tree match {
-      case p @ Project(_, WindowSeq(windowFunctions, a: Aggregate)) =>
+      case (a: Aggregate) WindowSeq windowFunctions Project output =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
-        Some((p.projectList map restore, Nil, None, a.keys map { _.child }, a.child))
+        Some((output map restore, Nil, None, a.keys map { _.child }, a.child))
 
-      case p @ Project(_, WindowSeq(windowFunctions, f @ Filter(_, a: Aggregate))) =>
+      case (a: Aggregate) Filter condition WindowSeq windowFunctions Project output =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
         Some((
-          p.projectList map restore,
+          output map restore,
           Nil,
-          Some(restore(f.condition)),
+          Some(restore(condition)),
           a.keys map { _.child },
           a.child
         ))
 
-      case p @ Project(_, s @ Sort(_, WindowSeq(windowFunctions, a: Aggregate))) =>
+      case (a: Aggregate) WindowSeq windowFunctions Sort order Project output =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
         Some((
-          p.projectList map restore,
-          s.order map restore,
+          output map restore,
+          order map restore,
           None,
           a.keys map { _.child },
           a.child
         ))
 
-      case p @ Project(_, s @ Sort(_, WindowSeq(windowFunctions, f @ Filter(_, a: Aggregate)))) =>
+      case (a: Aggregate) Filter condition WindowSeq windowFunctions Sort order Project output =>
         val restore = restoreInternalAttributes(a.keys, a.functions, windowFunctions)
         Some((
-          p.projectList map restore,
-          s.order map restore,
-          Some(restore(f.condition)),
+          output map restore,
+          order map restore,
+          Some(restore(condition)),
           a.keys map { _.child },
           a.child
         ))
@@ -82,12 +82,12 @@ package object patterns {
   }
 
   object WindowSeq {
-    def unapply(tree: LogicalPlan): Option[(Seq[WindowAlias], LogicalPlan)] = tree match {
-      case plan @ Window(_, _, _, WindowSeq(functions, child)) =>
-        Some((plan.functions ++ functions, child))
+    def unapply(tree: LogicalPlan): Option[(LogicalPlan, Seq[WindowAlias])] = tree match {
+      case plan @ Window(_, _, _, WindowSeq(child, functions)) =>
+        Some((child, plan.functions ++ functions))
 
       case plan =>
-        Some((Nil, plan))
+        Some((plan, Nil))
     }
   }
 }

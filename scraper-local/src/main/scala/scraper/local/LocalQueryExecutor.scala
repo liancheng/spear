@@ -38,28 +38,28 @@ class LocalQueryPlanner extends QueryPlanner[LogicalPlan, PhysicalPlan] {
       case relation @ LocalRelation(data, _) =>
         physical.LocalRelation(data, relation.output) :: Nil
 
-      case Project(projectList, child) =>
+      case child Project projectList =>
         (planLater(child) select projectList) :: Nil
 
-      case Aggregate(keys, functions, child) =>
+      case Aggregate(child, keys, functions) =>
         HashAggregate(planLater(child), keys, functions) :: Nil
 
-      case Filter(condition, child) =>
+      case child Filter condition =>
         (planLater(child) filter condition) :: Nil
 
-      case Limit(n, child) =>
+      case child Limit n =>
         (planLater(child) limit n) :: Nil
 
-      case Join(Inner, Some(condition), left, right) =>
+      case Join(left, right, Inner, Some(condition)) =>
         (planLater(left) cartesianJoin planLater(right) on condition) :: Nil
 
-      case Join(Inner, _, left, right) =>
+      case Join(left, right, Inner, _) =>
         (planLater(left) cartesianJoin planLater(right)) :: Nil
 
-      case Sort(order, child) =>
+      case child Sort order =>
         (planLater(child) orderBy order) :: Nil
 
-      case Subquery(_, child) =>
+      case child Subquery _ =>
         planLater(child) :: Nil
 
       case _: SingleRowRelation =>

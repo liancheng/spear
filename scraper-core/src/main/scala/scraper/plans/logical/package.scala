@@ -12,7 +12,7 @@ package object logical {
   def values(first: Expression, rest: Expression*): Project = values(first +: rest)
 
   def let(name: Name, plan: LogicalPlan)(body: => LogicalPlan): With = {
-    With(name, plan, None, body)()
+    With(body, name, plan, None)()
   }
 
   def let(name: Name, windowSpec: WindowSpec)(body: => LogicalPlan): WindowDef =

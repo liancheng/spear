@@ -15,7 +15,7 @@ import scraper.plans.logical.patterns.{Resolved, Unresolved}
  */
 class ExpandStars(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case Unresolved(Project(projectList, Resolved(child))) =>
+    case Unresolved(Resolved(child) Project projectList) =>
       child select (projectList flatMap {
         case Star(qualifier) => expand(qualifier, child.output)
         case e               => Seq(e)
