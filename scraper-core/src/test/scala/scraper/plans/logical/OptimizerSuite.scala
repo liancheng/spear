@@ -55,7 +55,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
   test("optimizer should reject unresolved logical plan") {
     intercept[LogicalPlanUnresolvedException] {
-      (new Optimizer)(UnresolvedRelation('t))
+      (new Optimizer)(UnresolvedRelation('t)())
     }
   }
 
@@ -162,7 +162,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
     checkPlan(
       optimizer(relation filter Literal.False),
-      LocalRelation(Nil, relation.output)
+      LocalRelation.empty(relation.output)
     )
   }
 

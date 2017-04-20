@@ -193,7 +193,7 @@ object Optimizer {
   object EliminateConstantFilters extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case Filter(True, plan)  => plan
-      case Filter(False, plan) => LocalRelation(Nil, plan.output)
+      case Filter(False, plan) => LocalRelation.empty(plan.output)
     }
   }
 

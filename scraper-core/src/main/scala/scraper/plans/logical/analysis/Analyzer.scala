@@ -145,12 +145,19 @@ class RewriteRenamesToProjects(val catalog: Catalog) extends AnalysisRule {
  */
 class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case plan if plan.children.forall(_.isResolved) && !plan.isDeduplicated =>
+    case plan if plan.children.forall { _.isResolved } && !plan.isDeduplicated =>
       plan match {
-        case node: Join      => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Union     => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Intersect => node.copy(right = deduplicateRight(node.left, node.right))
-        case node: Except    => node.copy(right = deduplicateRight(node.left, node.right))
+        case node: Join =>
+          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
+
+        case node: Union =>
+          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
+
+        case node: Intersect =>
+          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
+
+        case node: Except =>
+          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
       }
   }
 
@@ -182,7 +189,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
         plan -> plan.copy(projectList = projectList map {
           case a: Alias => a withID newExpressionID()
           case e        => e
-        })
+        })(plan.metadata)
     } map {
       case (oldPlan, newPlan) => rewriteExpressionIDs(oldPlan, newPlan)
     } getOrElse right
@@ -232,7 +239,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
         .filterNot { _.isResolved }
 
       if (unresolvedRefs.isEmpty) {
-        sort.copy(order = maybeResolvedOrder)
+        sort.copy(order = maybeResolvedOrder)(sort.metadata)
       } else {
         child
           .select((projectList ++ unresolvedRefs).distinct)

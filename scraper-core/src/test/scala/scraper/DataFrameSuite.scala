@@ -4,7 +4,6 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 import org.scalatest.BeforeAndAfterAll
 
-import scraper.exceptions.ResolutionFailureException
 import scraper.expressions._
 import scraper.expressions.functions._
 import scraper.plans.logical.{LocalRelation, LogicalPlan}
@@ -15,22 +14,13 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   import context._
 
-  private val r1 = LocalRelation(Nil, 'a.int.! :: 'b.string.? :: Nil)
+  private val r1 = LocalRelation.empty('a.int.!, 'b.string.?)
 
-  private val r2 = LocalRelation(Nil, 'a.int.! :: 'b.string.? :: Nil)
+  private val r2 = LocalRelation.empty('a.int.!, 'b.string.?)
 
   override protected def beforeAll(): Unit = {
     context.queryExecutor.catalog.registerRelation('t, r1)
     context.queryExecutor.catalog.registerRelation('s, r2)
-  }
-
-  test("column") {
-    val df = range(10)
-    assert(df('id) == df.queryExecution.analyzedPlan.output.head)
-
-    intercept[ResolutionFailureException] {
-      df('bad)
-    }
   }
 
   test("context") {

@@ -36,6 +36,6 @@ class Context(val queryExecutor: QueryExecutor) {
   def range(begin: Long, end: Long, step: Long): DataFrame = {
     val rows = begin until end by step map { Row apply _ }
     val output = StructType('id -> LongType.!).toAttributes
-    new DataFrame(LocalRelation(rows, output), this)
+    new DataFrame(LocalRelation(rows, output)(), this)
   }
 }

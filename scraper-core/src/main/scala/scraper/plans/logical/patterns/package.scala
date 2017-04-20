@@ -22,7 +22,7 @@ package object patterns {
       Some(expression) filter { _.isResolved }
   }
 
-  object GenericProject {
+  object ResolvedAggregate {
     // format: OFF
     type ResultType = (
       Seq[Expression],      // Project list

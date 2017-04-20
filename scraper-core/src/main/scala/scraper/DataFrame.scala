@@ -33,10 +33,10 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
-  def distinct: DataFrame = withPlan { Distinct }
+  def distinct: DataFrame = withPlan { Distinct(_)() }
 
   def crossJoin(right: DataFrame): DataFrame = withPlan {
-    Join(Inner, None, _, right.queryExecution.logicalPlan)
+    _ join (right.queryExecution.logicalPlan, Inner)
   }
 
   def join(right: DataFrame): JoinedData = new JoinedData(this, right, Inner)
@@ -48,15 +48,13 @@ class DataFrame(val queryExecution: QueryExecution) {
   def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
 
   def orderBy(order: Seq[SortOrder]): DataFrame = withPlan {
-    Sort(order, _)
+    _ orderBy order
   }
 
   def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
 
   def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(
-    first +: rest map {
-      SortOrder(_, Ascending, isNullLarger = true)
-    }
+    first +: rest map { _.asc.nullsLarger }
   )
 
   def subquery(name: Name): DataFrame = withPlan {
@@ -205,7 +203,7 @@ class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   def on(condition: Expression): DataFrame = {
     val leftPlan = left.queryExecution.logicalPlan
     val rightPlan = right.queryExecution.logicalPlan
-    val join = Join(joinType, Some(condition), leftPlan, rightPlan)
+    val join = leftPlan join (rightPlan, joinType) on condition
     new DataFrame(join, left.context)
   }
 }

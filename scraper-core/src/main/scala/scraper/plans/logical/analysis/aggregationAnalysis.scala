@@ -94,7 +94,7 @@ class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
       val unaliased = condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
 
       // All having conditions should be preserved.
-      agg.copy(conditions = agg.conditions :+ unaliased)
+      agg.copy(conditions = agg.conditions :+ unaliased)(agg.metadata)
 
     case Sort(order, agg: UnresolvedAggregate) if agg.projectList forall { _.isResolved } =>
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
@@ -105,7 +105,7 @@ class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
         .map { case e: SortOrder => e }
 
       // Only preserves the last sort order.
-      agg.copy(order = unaliased)
+      agg.copy(order = unaliased)(agg.metadata)
   }
 }
 

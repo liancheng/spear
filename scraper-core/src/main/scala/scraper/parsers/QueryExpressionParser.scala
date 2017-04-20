@@ -74,13 +74,13 @@ object JoinedTableParser extends LoggingParser {
     ~ P(tableReference)
     ~ joinSpecification.? map {
       case (lhs, maybeType, rhs, maybeCondition) =>
-        Join(maybeType getOrElse Inner, maybeCondition, lhs, rhs)
+        lhs join (rhs, maybeType getOrElse Inner) onOption maybeCondition.toSeq
     } opaque "qualified-join"
   )
 
   private val crossJoin: P[LogicalPlan] =
     (P(tableFactor) | P(tableReference)) ~ CROSS ~ JOIN ~ tableFactor map {
-      case (lhs, rhs) => Join(Inner, None, lhs, rhs)
+      case (lhs, rhs) => lhs join (rhs, Inner)
     } opaque "cross-join"
 
   val joinedTable: P[LogicalPlan] = crossJoin | qualifiedJoin opaque "joined-table"
@@ -199,7 +199,7 @@ object WindowClauseParser extends LoggingParser {
 
   private val windowDefinition: P[LogicalPlan => WindowDef] =
     windowName ~ AS ~ windowSpecification map {
-      case (name, spec) => WindowDef(_: LogicalPlan, name, spec)
+      case (name, spec) => let(name, spec)(_: LogicalPlan)
     } opaque "window-definition"
 
   private val windowDefinitionList: P[LogicalPlan => WindowDef] =
@@ -354,13 +354,19 @@ object QueryExpressionParser extends LoggingParser {
     opaque "query-primary"
   )
 
-  private val queryTerm: P[LogicalPlan] =
-    queryPrimary chain (INTERSECT attach Intersect) opaque "query-term"
+  private val queryTerm: P[LogicalPlan] = {
+    val intersect = (_: LogicalPlan) intersect (_: LogicalPlan)
+    queryPrimary chain (INTERSECT attach intersect) opaque "query-term"
+  }
 
-  private lazy val queryExpressionBody: P[LogicalPlan] =
+  private lazy val queryExpressionBody: P[LogicalPlan] = {
+    val union = (_: LogicalPlan) union (_: LogicalPlan)
+    val except = (_: LogicalPlan) except (_: LogicalPlan)
+
     queryTerm chain (
-      (UNION ~ ALL.? attach Union) | (EXCEPT attach Except)
+      (UNION ~ ALL.? attach union) | (EXCEPT attach except)
     ) opaque "query-expression-body"
+  }
 
   @ExtendedSQLSyntax
   private val limitClause: P[LogicalPlan => LogicalPlan] = (
