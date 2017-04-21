@@ -309,16 +309,15 @@ object QuerySpecificationParser extends LoggingParser {
 
         val having = maybeHaving getOrElse identity[LogicalPlan] _
 
-        filter
-          .andThen(projectOrAgg)
-          .andThen(quantify)
-          .andThen(having)
-          .andThen(window)
-          .andThen(orderBy)
+        orderBy
+          .compose(window)
+          .compose(having)
+          .compose(quantify)
+          .compose(projectOrAgg)
+          .compose(filter)
           .apply(relation)
     }
-    opaque "query-specification"
-  )
+  ) opaque "query-specification"
 }
 
 // SQL06 section 7.13
