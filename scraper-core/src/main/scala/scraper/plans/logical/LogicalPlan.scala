@@ -26,6 +26,9 @@ case class LogicalPlanMetadata()
 trait LogicalPlan extends QueryPlan[LogicalPlan] {
   def metadata: LogicalPlanMetadata
 
+  def withMetadata(metadata: LogicalPlanMetadata): LogicalPlan =
+    super.makeCopy(productIterator.toSeq.map { case arg: AnyRef => arg } :+ metadata)
+
   def isResolved: Boolean = expressions.forall { _.isResolved } && isDeduplicated
 
   lazy val isDeduplicated: Boolean = children.forall { _.isResolved } && (
