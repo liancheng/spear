@@ -23,5 +23,6 @@ trait ParserImplicits[+T] {
     }
   }
 
+  /** Replaces the original semantics value with a new `value`. */
   def attach[U](value: => U): P[U] = self map { _ => value }
 }
