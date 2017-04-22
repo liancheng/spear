@@ -3,8 +3,6 @@ package scraper.parsers
 trait ParserImplicits[+T] {
   import fastparse.all._
 
-  "a" ~ "b"
-
   val self: Parser[T]
 
   /** Captures the 1st character of the text parsed by `parser` as a `Char`. */
