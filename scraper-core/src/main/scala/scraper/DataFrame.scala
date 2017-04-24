@@ -9,6 +9,9 @@ import scraper.plans.logical._
 import scraper.types.StructType
 
 class DataFrame(val queryExecution: QueryExecution) {
+  // Analyzes the query plan eagerly to provide early error detection.
+  queryExecution.analyzedPlan
+
   def this(logicalPlan: LogicalPlan, context: Context) =
     this(context.queryExecutor.execute(context, logicalPlan))
 
@@ -122,7 +125,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     show(Some(rowCount), truncate, out)
 
   private[scraper] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
-    new DataFrame(f(queryExecution.logicalPlan), context)
+    new DataFrame(f(queryExecution.analyzedPlan), context)
 
   def show(rowCount: Option[Int], truncate: Boolean, out: PrintStream): Unit =
     out.println(tabulate(rowCount, truncate))

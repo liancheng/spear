@@ -6,6 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 
 import scraper.expressions._
 import scraper.expressions.functions._
+import scraper.plans.logical
 import scraper.plans.logical.{LocalRelation, LogicalPlan}
 import scraper.types.{IntType, StringType, StructType}
 
@@ -25,7 +26,6 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("context") {
     assert(range(10).context eq context)
-
   }
 
   test("inferred local data") {
@@ -60,9 +60,11 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   }
 
   test("filter") {
+    val Seq(a: AttributeRef, _) = r1.output
+
     checkLogicalPlan(
       table('t) filter 'a > 3 filter 'b.isNotNull,
-      r1 subquery 't filter 'a > 3 filter 'b.isNotNull
+      r1 subquery 't filter (a of 't) > 3 filter 'b.isNotNull
     )
   }
 
@@ -145,8 +147,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("group by with having condition") {
     checkLogicalPlan(
-      table('t) groupBy 'a agg count('b) filter 'a > 3,
-      r1 subquery 't groupBy 'a agg count('b) filter 'a > 3
+      sql("SELECT count(b) FROM t GROUP BY a HAVING a > 3"),
+      logical.table('t) groupBy 'a agg 'count('b) filter 'a > 3
     )
   }
 
@@ -165,15 +167,15 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   test("explain") {
     val out = new PrintStream(new ByteArrayOutputStream())
     // These only check that no exceptions are thrown during analysis, optimization, and planning.
-    table('t).explain(extended = false, out = out)
-    table('t).explain(extended = true, out = out)
+    table('t) explain (extended = false, out = out)
+    table('t) explain (extended = true, out = out)
   }
 
   test("show") {
     val out = new PrintStream(new ByteArrayOutputStream())
     // These only check that no exceptions are thrown during analysis, optimization, planning and
     // query execution.
-    table('t).show(out = out)
+    table('t) show (out = out)
   }
 
   test("showSchema") {
