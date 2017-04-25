@@ -230,7 +230,7 @@ object QuerySpecificationParser extends LoggingParser {
 
   private val derivedColumn: P[NamedExpression] = (
     (valueExpression ~ asClause).map { case (e, a) => e as a }
-    | valueExpression.map { NamedExpression.named }
+    | valueExpression.map { NamedExpression.apply }
     opaque "derived-column"
   )
 

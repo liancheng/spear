@@ -35,3 +35,10 @@ case class SortOrder(child: Expression, direction: SortDirection, isNullLarger: 
   override protected def template(childString: String): String =
     s"$childString $direction NULLS ${if (isNullsFirst) "FIRST" else "LAST"}"
 }
+
+object SortOrder {
+  def apply(expression: Expression): SortOrder = expression match {
+    case e: SortOrder => e
+    case e            => e.asc
+  }
+}

@@ -50,15 +50,11 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
 
-  def orderBy(order: Seq[SortOrder]): DataFrame = withPlan {
-    _ orderBy order
+  def orderBy(order: Seq[Expression]): DataFrame = withPlan {
+    _ orderBy (order map SortOrder.apply)
   }
 
-  def orderBy(first: SortOrder, rest: SortOrder*): DataFrame = orderBy(first +: rest)
-
-  def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(
-    first +: rest map { _.asc.nullsLarger }
-  )
+  def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(first +: rest)
 
   def subquery(name: Name): DataFrame = withPlan {
     _ subquery name
@@ -76,7 +72,8 @@ class DataFrame(val queryExecution: QueryExecution) {
     _ except that.queryExecution.logicalPlan
   }
 
-  def groupBy(keys: Seq[Expression]): GroupedData = new GroupedData(this, keys)
+  def groupBy(keys: Seq[Expression]): GroupedData =
+    GroupedData(queryExecution.analyzedPlan, keys, Nil, Nil, context)
 
   def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
 
@@ -211,10 +208,26 @@ class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   }
 }
 
-class GroupedData(df: DataFrame, keys: Seq[Expression]) {
-  def agg(projectList: Seq[Expression]): DataFrame = df.withPlan {
-    _ groupBy keys agg projectList
-  }
+case class GroupedData(
+  child: LogicalPlan,
+  keys: Seq[Expression],
+  conditions: Seq[Expression],
+  order: Seq[Expression],
+  context: Context
+) {
+  def having(conditions: Seq[Expression]): GroupedData = copy(
+    conditions = this.conditions ++ conditions
+  )
+
+  def having(first: Expression, rest: Expression*): GroupedData = having(first +: rest)
+
+  def orderBy(order: Seq[Expression]): GroupedData = copy(order = order)
+
+  def orderBy(first: Expression, rest: Expression*): GroupedData = orderBy(first +: rest)
+
+  def agg(projectList: Seq[Expression]): DataFrame = new DataFrame(
+    child groupBy keys having conditions orderBy order agg projectList, context
+  )
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }

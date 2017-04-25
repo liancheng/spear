@@ -9,7 +9,7 @@ import scraper.annotations.Explain
 import scraper.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import scraper.expressions._
 import scraper.expressions.Cast.widestTypeOf
-import scraper.expressions.NamedExpression.{named, newExpressionID}
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.expressions.windows.{BasicWindowSpec, WindowSpec}
@@ -573,7 +573,8 @@ object Window {
 
 object LogicalPlan {
   implicit class LogicalPlanDSL(plan: LogicalPlan) {
-    def select(projectList: Seq[Expression]): Project = Project(plan, projectList map named)()
+    def select(projectList: Seq[Expression]): Project =
+      Project(plan, projectList map NamedExpression.apply)()
 
     def select(first: Expression, rest: Expression*): Project = select(first +: rest)
 
@@ -590,10 +591,7 @@ object LogicalPlan {
 
     def limit(n: Int): Limit = this limit lit(n)
 
-    def orderBy(order: Seq[Expression]): Sort = Sort(plan, order map {
-      case e: SortOrder => e
-      case e            => e.asc
-    })()
+    def orderBy(order: Seq[Expression]): Sort = Sort(plan, order map SortOrder.apply)()
 
     def orderBy(first: Expression, rest: Expression*): Sort = this orderBy (first +: rest)
 
@@ -621,13 +619,12 @@ object LogicalPlan {
     def except(that: LogicalPlan): Except = Except(plan, that)()
 
     def groupBy(keys: Seq[Expression]): UnresolvedAggregateBuilder =
-      new UnresolvedAggregateBuilder(keys)
+      UnresolvedAggregateBuilder(plan, keys, Nil, Nil)
 
     def groupBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
       groupBy(first +: rest)
 
-    def resolvedGroupBy(keys: Seq[GroupingAlias]): AggregateBuilder =
-      new AggregateBuilder(keys)
+    def resolvedGroupBy(keys: Seq[GroupingAlias]): AggregateBuilder = new AggregateBuilder(keys)
 
     def resolvedGroupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
       resolvedGroupBy(first +: rest)
@@ -644,9 +641,27 @@ object LogicalPlan {
     def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
       stackWindowsOption(plan, functions)
 
-    class UnresolvedAggregateBuilder(keys: Seq[Expression]) {
-      def agg(projectList: Seq[Expression]): UnresolvedAggregate =
-        UnresolvedAggregate(plan, keys, projectList map named, Nil, Nil)()
+    case class UnresolvedAggregateBuilder(
+      child: LogicalPlan,
+      keys: Seq[Expression],
+      conditions: Seq[Expression],
+      order: Seq[Expression]
+    ) {
+
+      def having(conditions: Seq[Expression]): UnresolvedAggregateBuilder =
+        copy(conditions = this.conditions ++ conditions)
+
+      def having(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+        having(first +: rest)
+
+      def orderBy(order: Seq[Expression]): UnresolvedAggregateBuilder = copy(order = order)
+
+      def orderBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+        orderBy(first +: rest)
+
+      def agg(projectList: Seq[Expression]): UnresolvedAggregate = UnresolvedAggregate(
+        child, keys, projectList map NamedExpression.apply, conditions, order map SortOrder.apply
+      )()
 
       def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
     }

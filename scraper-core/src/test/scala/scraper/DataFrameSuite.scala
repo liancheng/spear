@@ -6,7 +6,6 @@ import org.scalatest.BeforeAndAfterAll
 
 import scraper.expressions._
 import scraper.expressions.functions._
-import scraper.plans.logical
 import scraper.plans.logical.{LocalRelation, LogicalPlan}
 import scraper.types.{IntType, StringType, StructType}
 
@@ -147,8 +146,49 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
   test("group by with having condition") {
     checkLogicalPlan(
-      sql("SELECT count(b) FROM t GROUP BY a HAVING a > 3"),
-      logical.table('t) groupBy 'a agg 'count('b) filter 'a > 3
+      table('t) groupBy 'a having 'a > 3 agg 'count('b),
+      r1 subquery 't groupBy 'a having 'a > 3 agg 'count('b)
+    )
+  }
+
+  test("group by with multiple having conditions") {
+    checkLogicalPlan(
+      table('t) groupBy 'a having 'a > 3 having 'a < 10 agg 'count('b),
+      r1 subquery 't groupBy 'a having 'a > 3 having 'a < 10 agg 'count('b)
+    )
+  }
+
+  test("group by with order by expression") {
+    checkLogicalPlan(
+      table('t) groupBy 'a orderBy 'max('b) agg 'count('b),
+      r1 subquery 't groupBy 'a orderBy 'max('b) agg 'count('b)
+    )
+  }
+
+  test("group by with multiple order by expressions") {
+    checkLogicalPlan(
+      table('t) groupBy 'a orderBy 'a % 10 orderBy 'max('b) agg 'count('b),
+      r1 subquery 't groupBy 'a orderBy 'max('b) agg 'count('b)
+    )
+  }
+
+  test("group by with alternating having conditions and order by expressions") {
+    checkLogicalPlan(
+      table('t)
+        groupBy 'a
+        having 'a > 3
+        orderBy 'a % 10
+        having 'a < 10
+        orderBy 'max('b)
+        agg 'count('b),
+
+      r1
+        subquery 't
+        groupBy 'a
+        having 'a > 3
+        having 'a < 10
+        orderBy 'max('b)
+        agg 'count('b)
     )
   }
 

@@ -36,7 +36,7 @@ object NamedExpression {
 
   val AnonymousColumnName: String = "?column?"
 
-  def named(child: Expression): NamedExpression = child match {
+  def apply(child: Expression): NamedExpression = child match {
     case e: NamedExpression => e
     case _                  => UnresolvedAlias(child)
   }
