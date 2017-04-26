@@ -106,6 +106,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           agg aggCountB
           filter groupA > 3
       ),
+
       relation
         filter groupA > 3
         resolvedGroupBy groupA
@@ -119,6 +120,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           agg aggCountB
           filter aggCountB > 0
       ),
+
       relation
         resolvedGroupBy groupA
         agg aggCountB
@@ -132,6 +134,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           agg aggCountB
           filter groupA > 3 && aggCountB > 0
       ),
+
       relation
         filter groupA > 3
         resolvedGroupBy groupA
@@ -177,12 +180,12 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
           join (relation subquery 'y)
           filter $"x.a" === $"y.a" && $"x.a" > 0 && $"y.b".isNotNull
       ),
+
       relation
         subquery 'x
         filter (a of 'x) > 0
-        join (
-          newRelation subquery 'y filter (newB of 'y).isNotNull
-        ) on ((a of 'x) === (newA of 'y))
+        join (newRelation subquery 'y filter (newB of 'y).isNotNull)
+        on (a of 'x) === (newA of 'y)
     )
   }
 

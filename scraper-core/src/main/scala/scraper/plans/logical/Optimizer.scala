@@ -212,44 +212,28 @@ object Optimizer {
    */
   object PushFilterThroughJoin extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-      case Join(left, right, Inner, joinCondition) Filter filterCondition =>
-        val (leftPredicates, rightPredicates, commonPredicates) =
-          partitionByReferencedBranches(splitConjunction(toCNF(filterCondition)), left, right)
+      case Join(lhs, rhs, Inner, joinCondition) Filter filterCondition =>
+        val filterPredicates = splitConjunction(toCNF(filterCondition))
 
-        if (leftPredicates.nonEmpty) {
-          logDebug {
-            val leftList = leftPredicates map { _.sqlLike } mkString ("[", ", ", "]")
-            s"Pushing predicates $leftList through left join branch"
-          }
+        val (lhsPushDown, rest) = filterPredicates partition {
+          _.referenceSet subsetOfByID lhs.outputSet
         }
 
-        if (rightPredicates.nonEmpty) {
-          logDebug {
-            val rightList = rightPredicates map { _.sqlLike } mkString ("[", ", ", "]")
-            s"Pushing predicates $rightList through right join branch"
-          }
+        val (rhsPushDown, stayUp) = rest partition {
+          _.referenceSet subsetOfByID rhs.outputSet
         }
 
-        left
-          .filterOption(leftPredicates)
-          .join(right.filterOption(rightPredicates))
-          .onOption(commonPredicates ++ joinCondition)
-    }
+        if (lhsPushDown.nonEmpty) {
+          val lhsList = lhsPushDown map { _.sqlLike } mkString ("[", ", ", "]")
+          logDebug(s"Pushing predicates $lhsList through left join branch")
+        }
 
-    private def partitionByReferencedBranches(
-      predicates: Seq[Expression],
-      left: LogicalPlan,
-      right: LogicalPlan
-    ): (Seq[Expression], Seq[Expression], Seq[Expression]) = {
-      val (leftPredicates, rest) = predicates partition {
-        _.referenceSet subsetOfByID left.outputSet
-      }
+        if (rhsPushDown.nonEmpty) {
+          val rhsList = rhsPushDown map { _.sqlLike } mkString ("[", ", ", "]")
+          logDebug(s"Pushing predicates $rhsList through right join branch")
+        }
 
-      val (rightPredicates, commonPredicates) = rest partition {
-        _.referenceSet subsetOfByID right.outputSet
-      }
-
-      (leftPredicates, rightPredicates, commonPredicates)
+        lhs filter lhsPushDown join (rhs filter rhsPushDown) on stayUp ++ joinCondition
     }
   }
 
@@ -268,11 +252,7 @@ object Optimizer {
 
         val unaliasedPushDown = pushDown map { _ unaliasUsing (keys, ForGrouping) }
 
-        child
-          .filterOption(unaliasedPushDown)
-          .resolvedGroupBy(keys)
-          .agg(functions)
-          .filterOption(stayUp)
+        child filter unaliasedPushDown resolvedGroupBy keys agg functions filter stayUp
     }
 
     private def containsAggregation(expression: Expression): Boolean = expression.collectFirst {

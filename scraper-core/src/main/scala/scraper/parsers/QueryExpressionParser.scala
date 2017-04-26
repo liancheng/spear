@@ -74,7 +74,7 @@ object JoinedTableParser extends LoggingParser {
     ~ P(tableReference)
     ~ joinSpecification.? map {
       case (lhs, maybeType, rhs, maybeCondition) =>
-        lhs join (rhs, maybeType getOrElse Inner) onOption maybeCondition.toSeq
+        lhs join (rhs, maybeType getOrElse Inner) on maybeCondition.toSeq
     } opaque "qualified-join"
   )
 
@@ -189,7 +189,7 @@ object WindowClauseParser extends LoggingParser {
 
   private val refinedWindowSpecification: P[WindowSpec] =
     existingWindowName.map { WindowSpecRef(_) } ~ windowFrameClause.? map {
-      case (ref, frame) => ref betweenOption frame
+      case (ref, frame) => ref between frame
     } opaque "refined-window-specification"
 
   val windowSpecification: P[WindowSpec] = (

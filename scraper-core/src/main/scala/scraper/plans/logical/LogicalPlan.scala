@@ -388,8 +388,7 @@ case class Join(
    * Returns a new [[Join]] operator with a join condition formed by combining all given
    * `predicates`. If `predicates` is empty, simply returns this [[Join]] operator untouched.
    */
-  def onOption(predicates: Seq[Expression]): Join =
-    predicates reduceOption And map on getOrElse this
+  def on(predicates: Seq[Expression]): Join = predicates reduceOption And map on getOrElse this
 }
 
 case class Subquery(child: LogicalPlan, alias: Name)(
@@ -539,17 +538,8 @@ object Window {
    * Given a logical `plan` and a list of zero or more window functions, stacks zero or more
    * [[Window]] operators over `plan`.
    */
-  def stackWindowsOption(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
+  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
     windowBuilders(windowAliases) reduceOption { _ andThen _ } map { _ apply plan } getOrElse plan
-
-  /**
-   * Given a logical `plan` and a list of one or more window functions, stacks one or more
-   * [[Window]] operators over `plan`.
-   */
-  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): Window = {
-    assert(windowAliases.nonEmpty)
-    windowBuilders(windowAliases) reduce { _ andThen _ } apply plan
-  }
 
   private def windowBuilders(windowAliases: Seq[WindowAlias]): Seq[LogicalPlan => Window] = {
     // Finds out all distinct window specs.
@@ -584,19 +574,17 @@ object LogicalPlan {
 
     def filter(condition: Expression): Filter = Filter(plan, condition)()
 
-    def filterOption(predicates: Seq[Expression]): LogicalPlan =
+    def filter(predicates: Seq[Expression]): LogicalPlan =
       predicates reduceOption And map filter getOrElse plan
 
     def limit(n: Expression): Limit = Limit(plan, n)()
 
     def limit(n: Int): Limit = this limit lit(n)
 
-    def orderBy(order: Seq[Expression]): Sort = Sort(plan, order map SortOrder.apply)()
+    def orderBy(order: Seq[Expression]): LogicalPlan =
+      if (order.isEmpty) plan else Sort(plan, order map SortOrder.apply)()
 
-    def orderBy(first: Expression, rest: Expression*): Sort = this orderBy (first +: rest)
-
-    def orderByOption(order: Seq[Expression]): LogicalPlan =
-      if (order.nonEmpty) orderBy(order) else plan
+    def orderBy(first: Expression, rest: Expression*): LogicalPlan = this orderBy (first +: rest)
 
     def distinct: Distinct = Distinct(plan)()
 
@@ -636,10 +624,7 @@ object LogicalPlan {
 
     def window(first: WindowAlias, rest: WindowAlias*): Window = window(first +: rest)
 
-    def windows(functions: Seq[WindowAlias]): LogicalPlan = stackWindowsOption(plan, functions)
-
-    def windowsOption(functions: Seq[WindowAlias]): LogicalPlan =
-      stackWindowsOption(plan, functions)
+    def windows(functions: Seq[WindowAlias]): LogicalPlan = stackWindows(plan, functions)
 
     case class UnresolvedAggregateBuilder(
       child: LogicalPlan,
@@ -647,7 +632,6 @@ object LogicalPlan {
       conditions: Seq[Expression],
       order: Seq[Expression]
     ) {
-
       def having(conditions: Seq[Expression]): UnresolvedAggregateBuilder =
         copy(conditions = this.conditions ++ conditions)
 

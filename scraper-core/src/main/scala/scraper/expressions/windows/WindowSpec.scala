@@ -118,7 +118,7 @@ trait WindowSpec extends UnevaluableExpression {
 
   def between(windowFrame: WindowFrame): WindowSpec
 
-  def betweenOption(frame: Option[WindowFrame]): WindowSpec
+  def between(frame: Option[WindowFrame]): WindowSpec
 
   def rowsBetween(start: FrameBoundary, end: FrameBoundary): WindowSpec =
     between(WindowFrame.rowsBetween(start, end))
@@ -148,7 +148,7 @@ case class BasicWindowSpec(
 
   def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
 
-  def betweenOption(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
+  def between(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
 
   override protected def template(childList: Seq[String]): String = {
     val (partitions, tail) = childList splitAt partitionSpec.length
@@ -176,7 +176,7 @@ case class WindowSpecRef(name: Name, windowFrame: Option[WindowFrame] = None)
 
   override def between(frame: WindowFrame): WindowSpec = copy(windowFrame = Some(frame))
 
-  override def betweenOption(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
+  override def between(frame: Option[WindowFrame]): WindowSpec = copy(windowFrame = frame)
 
   override protected def template(childList: Seq[String]): String =
     name +: childList mkString ("(", " ", ")")

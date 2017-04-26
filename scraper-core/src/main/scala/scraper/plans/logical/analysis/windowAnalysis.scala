@@ -55,7 +55,7 @@ class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
                |""".oneLine
           )
 
-          windowSpec betweenOption (windowSpec.windowFrame orElse maybeFrame)
+          windowSpec between (windowSpec.windowFrame orElse maybeFrame)
       }
   }
 }
