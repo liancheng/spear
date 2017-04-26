@@ -22,7 +22,7 @@ import scraper.utils._
  *   SELECT a, b FROM t GROUP BY a, b
  * }}}
  */
-class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
+class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Distinct(Resolved(child)) =>
       child groupBy child.output agg child.output
@@ -33,7 +33,7 @@ class RewriteDistinctsAsAggregates(val catalog: Catalog) extends AnalysisRule {
  * This rule converts a [[Project]] containing aggregate functions into a global aggregate, i.e. an
  * [[UnresolvedAggregate]] without any grouping keys.
  */
-class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRule {
+class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if haveAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
@@ -80,13 +80,13 @@ class RewriteProjectsAsGlobalAggregates(val catalog: Catalog) extends AnalysisRu
  *   +- Relation name=t => [x, y, z]
  * }}}
  * Now, references to attributes `y` and `z` are moved into the [[UnresolvedAggregate]], and can be
- * easily resolved by the [[ResolveReferences]] rule since they are now among the output attribute
+ * easily resolved by the [[ResolveReference]] rule since they are now among the output attribute
  * lists of the relation `t`, which lives right beneath the [[UnresolvedAggregate]] operator.
  *
  * @see [[UnresolvedAggregate]]
- * @see [[RewriteUnresolvedAggregates]]
+ * @see [[RewriteUnresolvedAggregate]]
  */
-class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
+class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
@@ -109,7 +109,7 @@ class UnifyFilteredSortedAggregates(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
+class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case _: DistinctAggregateFunction =>
       throw new UnsupportedOperationException("Distinct aggregate functions are not supported yet")
@@ -141,7 +141,7 @@ class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRu
  *                        +- <child plan>
  * }}}
  */
-class RewriteUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
+class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
     tree collectFirst preConditionViolations map { _ => tree } getOrElse {

@@ -8,7 +8,7 @@ import scraper.plans.logical._
 import scraper.plans.logical.patterns.Unresolved
 import scraper.utils._
 
-class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
+class RejectUnresolvedExpression(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree.transformExpressionsDown {
     // Tries to collect a "minimum" unresolved expression.
     case Unresolved(e) if e.children forall { _.isResolved } =>
@@ -21,7 +21,7 @@ class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
+class RejectUnresolvedPlan(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree.transformDown {
     // Tries to collect a "minimum" unresolved logical plan node.
     case Unresolved(plan) if plan.children forall { _.isResolved } =>
@@ -38,7 +38,7 @@ class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRule {
+class RejectTopLevelInternalAttribute(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     val internal = tree.output.collect { case e: InternalNamedExpression => e }
 
@@ -63,7 +63,7 @@ class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRul
   }
 }
 
-class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
+class RejectDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     val distinctAggs = tree collectFromAllExpressions {
       case agg: DistinctAggregateFunction => agg
@@ -90,7 +90,7 @@ class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRul
   }
 }
 
-class RejectOrphanAttributeReferences(val catalog: Catalog) extends AnalysisRule {
+class RejectOrphanAttributeReference(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan: LeafLogicalPlan =>
       plan

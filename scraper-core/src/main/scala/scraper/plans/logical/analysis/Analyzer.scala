@@ -21,39 +21,39 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     )),
 
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
-      new ResolveRelations(catalog),
-      new RewriteRenamesToProjects(catalog),
-      new ResolveSortReferences(catalog),
+      new ResolveRelation(catalog),
+      new RewriteRenameToProject(catalog),
+      new ResolveSortReference(catalog),
       new DeduplicateReferences(catalog),
 
       // Rules that help resolving expressions
-      new ExpandStars(catalog),
-      new ResolveReferences(catalog),
-      new ResolveFunctions(catalog),
-      new ResolveAliases(catalog),
+      new ExpandStar(catalog),
+      new ResolveReference(catalog),
+      new ResolveFunction(catalog),
+      new ResolveAlias(catalog),
 
       // Rules that help resolving window functions
-      new ExtractWindowFunctionsFromProjects(catalog),
-      new ExtractWindowFunctionsFromSorts(catalog),
+      new ExtractWindowFunctionsFromProject(catalog),
+      new ExtractWindowFunctionsFromSort(catalog),
 
       // Rules that help resolving aggregations
-      new RewriteDistinctAggregateFunctions(catalog),
-      new RewriteDistinctsAsAggregates(catalog),
-      new RewriteProjectsAsGlobalAggregates(catalog),
-      new UnifyFilteredSortedAggregates(catalog),
-      new RewriteUnresolvedAggregates(catalog)
+      new RewriteDistinctAggregateFunction(catalog),
+      new RewriteDistinctToAggregate(catalog),
+      new RewriteProjectToGlobalAggregate(catalog),
+      new UnifyFilteredSortedAggregate(catalog),
+      new RewriteUnresolvedAggregate(catalog)
     )),
 
     RuleBatch("Type check", Once, Seq(
-      new EnforceTypeConstraints(catalog)
+      new EnforceTypeConstraint(catalog)
     )),
 
     RuleBatch("Post-analysis check", Once, Seq(
-      new RejectUnresolvedExpressions(catalog),
-      new RejectUnresolvedPlans(catalog),
-      new RejectTopLevelInternalAttributes(catalog),
-      new RejectDistinctAggregateFunctions(catalog),
-      new RejectOrphanAttributeReferences(catalog)
+      new RejectUnresolvedExpression(catalog),
+      new RejectUnresolvedPlan(catalog),
+      new RejectTopLevelInternalAttribute(catalog),
+      new RejectDistinctAggregateFunction(catalog),
+      new RejectOrphanAttributeReference(catalog)
     ))
   )
 
@@ -104,7 +104,7 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
 /**
  * This rule resolves unresolved relations by looking up the table name from the `catalog`.
  */
-class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
+class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
   }
@@ -113,7 +113,7 @@ class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
 /**
  * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolve CTE queries.
  */
-class RewriteRenamesToProjects(val catalog: Catalog) extends AnalysisRule {
+class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child) Rename aliases Subquery subqueryName =>
       if (child.output.length >= aliases.length) {
@@ -220,7 +220,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
  *         +- Relation name=t, output=[a]
  * }}}
  */
-class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
+class ResolveSortReference(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores `Sort`s over global aggregations. They are handled separately by other aggregation
     // analysis rules.
@@ -256,7 +256,7 @@ class ResolveSortReferences(val catalog: Catalog) extends AnalysisRule {
  * @throws scraper.exceptions.AnalysisException If some resolved logical query plan operator
  *         doesn't type check.
  */
-class EnforceTypeConstraints(val catalog: Catalog) extends AnalysisRule {
+class EnforceTypeConstraint(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(plan) => plan.strictlyTyped.get
   }

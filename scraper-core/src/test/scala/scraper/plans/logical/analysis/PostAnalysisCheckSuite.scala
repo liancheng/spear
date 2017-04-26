@@ -8,7 +8,7 @@ import scraper.plans.logical.LocalRelation
 
 class PostAnalysisCheckSuite extends AnalyzerTest {
   test("post-analysis check - reject unresolved expressions") {
-    val rule = new RejectUnresolvedExpressions(catalog)
+    val rule = new RejectUnresolvedExpression(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation select 'a)
@@ -16,7 +16,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject unresolved plans") {
-    val rule = new RejectUnresolvedPlans(catalog)
+    val rule = new RejectUnresolvedPlan(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation groupBy Nil agg (1 as 'a))
@@ -24,7 +24,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject top-level `InternalAttribute`s") {
-    val rule = new RejectTopLevelInternalAttributes(catalog)
+    val rule = new RejectTopLevelInternalAttribute(catalog)
 
     intercept[ResolutionFailureException] {
       rule(LocalRelation.empty(GroupingAlias('a.int.!).attr))
@@ -32,7 +32,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject distinct aggregate functions") {
-    val rule = new RejectDistinctAggregateFunctions(catalog)
+    val rule = new RejectDistinctAggregateFunction(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation select distinct(count(a)))
@@ -40,7 +40,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject orphan attribute references") {
-    val rule = new RejectOrphanAttributeReferences(catalog)
+    val rule = new RejectOrphanAttributeReference(catalog)
 
     intercept[AnalysisException] {
       rule(relation select 'c.int.!)

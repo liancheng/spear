@@ -228,7 +228,7 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])(
  *        of output columns of `child`.
  *
  * @see [[With]]
- * @see [[scraper.plans.logical.analysis.RewriteRenamesToProjects RewriteRenamesToProjects]]
+ * @see [[scraper.plans.logical.analysis.RewriteRenameToProject RewriteRenamesToProjects]]
  */
 case class Rename(child: LogicalPlan, aliases: Seq[Name])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
@@ -443,7 +443,7 @@ case class Subquery(child: LogicalPlan, alias: Name)(
  *  - [[Filter]]
  *  - [[Aggregate]]
  *
- * @see [[scraper.plans.logical.analysis.RewriteUnresolvedAggregates]]
+ * @see [[scraper.plans.logical.analysis.RewriteUnresolvedAggregate]]
  */
 case class UnresolvedAggregate(
   child: LogicalPlan,

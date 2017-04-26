@@ -13,7 +13,7 @@ import scraper.plans.logical.patterns.{Resolved, Unresolved}
 /**
  * This rule expands "`*`" appearing in `SELECT`.
  */
-class ExpandStars(val catalog: Catalog) extends AnalysisRule {
+class ExpandStar(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(Resolved(child) Project projectList) =>
       child select (projectList flatMap {
@@ -38,7 +38,7 @@ class ExpandStars(val catalog: Catalog) extends AnalysisRule {
  * @throws scraper.exceptions.ResolutionFailureException If no candidate or multiple ambiguous
  *         candidate input attributes can be found.
  */
-class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
+class ResolveReference(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
       val input = plan.children flatMap { _.output }
@@ -62,7 +62,7 @@ class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
  * This rule converts [[scraper.expressions.UnresolvedAlias unresolved aliases]] into proper
  * [[scraper.expressions.Alias aliases]].
  */
-class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
+class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case UnresolvedAlias(Resolved(child: Expression)) =>
       child as Name.caseSensitive(child.sql getOrElse AnonymousColumnName)
@@ -73,7 +73,7 @@ class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
  * This rule resolves [[scraper.expressions.UnresolvedFunction unresolved functions]] by looking
  * up function names from the [[Catalog]].
  */
-class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
+class ResolveFunction(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
     case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>
       Count(1)

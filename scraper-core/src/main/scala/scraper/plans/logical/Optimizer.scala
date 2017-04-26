@@ -12,23 +12,23 @@ import scraper.trees.RulesExecutor.FixedPoint
 class Optimizer extends RulesExecutor[LogicalPlan] {
   override def batches: Seq[RuleBatch] = Seq(
     RuleBatch("Optimizations", FixedPoint.Unlimited, Seq(
-      FoldConstants,
-      FoldLogicalPredicates,
-      EliminateConstantFilters,
       CNFConversion,
+      FoldConstant,
+      FoldLogicalPredicate,
+      EliminateConstantFilter,
+      EliminateRedundantAlias,
+      EliminateRedundantCast,
 
-      ReduceAliases,
-      ReduceCasts,
+      FoldNegation,
+      EliminateSubquery,
+      EliminateRedundantLimits,
       MergeFilters,
-      ReduceLimits,
-      ReduceNegations,
       MergeProjects,
-      EliminateSubqueries,
 
-      PushFiltersThroughProjects,
-      PushFiltersThroughJoins,
-      PushFiltersThroughAggregates,
-      PushProjectsThroughLimits
+      PushFilterThroughProject,
+      PushFilterThroughJoin,
+      PushFilterThroughAggregate,
+      PushProjectThroughLimit
     ))
   )
 
@@ -52,7 +52,7 @@ object Optimizer {
   /**
    * This rule finds all foldable expressions and evaluates them into literals.
    */
-  object FoldConstants extends Rule[LogicalPlan] {
+  object FoldConstant extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case e if e.isFoldable => Literal(e.evaluated, e.dataType)
     }
@@ -61,7 +61,7 @@ object Optimizer {
   /**
    * This rule simplifies logical predicates containing `TRUE` and/or `FALSE`.
    */
-  object FoldLogicalPredicates extends Rule[LogicalPlan] {
+  object FoldLogicalPredicate extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case True || _          => True
       case _ || True          => True
@@ -83,7 +83,7 @@ object Optimizer {
   /**
    * This rule reduces unnecessary `Not` operators.
    */
-  object ReduceNegations extends Rule[LogicalPlan] {
+  object FoldNegation extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case !(True)               => False
       case !(False)              => True
@@ -117,7 +117,7 @@ object Optimizer {
    * This rule reduces unnecessary casts. For example, implicit casts introduced by the analyzer may
    * produce redundant casts.
    */
-  object ReduceCasts extends Rule[LogicalPlan] {
+  object EliminateRedundantCast extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
       case e Cast t if e.dataType == t                  => e
       case e Cast _ Cast t if e.dataType isCastableTo t => e cast t
@@ -144,7 +144,7 @@ object Optimizer {
   /**
    * This rule reduces unnecessary aliases.
    */
-  object ReduceAliases extends Rule[LogicalPlan] {
+  object EliminateRedundantAlias extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Project projectList =>
         child select (projectList map eliminateNonTopLevelAliases)
@@ -190,7 +190,7 @@ object Optimizer {
   /**
    * This rule eliminates `Filter` operators with constant predicates.
    */
-  object EliminateConstantFilters extends Rule[LogicalPlan] {
+  object EliminateConstantFilter extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Filter True  => plan
       case plan Filter False => LocalRelation.empty(plan.output)
@@ -200,7 +200,7 @@ object Optimizer {
   /**
    * This rule pushes Filter operators beneath `Project` operators.
    */
-  object PushFiltersThroughProjects extends Rule[LogicalPlan] {
+  object PushFilterThroughProject extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Project projectList Filter condition if projectList forall { _.isPure } =>
         plan filter (condition unaliasUsing projectList) select projectList
@@ -210,7 +210,7 @@ object Optimizer {
   /**
    * This rule pushes `Filter` operators beneath `Join` operators whenever possible.
    */
-  object PushFiltersThroughJoins extends Rule[LogicalPlan] {
+  object PushFilterThroughJoin extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case Join(left, right, Inner, joinCondition) Filter filterCondition =>
         val (leftPredicates, rightPredicates, commonPredicates) =
@@ -253,7 +253,7 @@ object Optimizer {
     }
   }
 
-  object PushFiltersThroughAggregates extends Rule[LogicalPlan] {
+  object PushFilterThroughAggregate extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case Aggregate(child, keys, functions) Filter condition if functions forall { _.isPure } =>
         // Predicates that don't reference any aggregate functions can be pushed down
@@ -280,14 +280,14 @@ object Optimizer {
     }.nonEmpty
   }
 
-  object PushProjectsThroughLimits extends Rule[LogicalPlan] {
+  object PushProjectThroughLimit extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Project projectList if projectList.length < plan.output.length =>
         plan select projectList limit n
     }
   }
 
-  object ReduceLimits extends Rule[LogicalPlan] {
+  object EliminateRedundantLimits extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case plan Limit n Limit m => plan limit Least(n, m)
     }
@@ -297,7 +297,7 @@ object Optimizer {
    * This rule eliminates all `Subquery` operators, since they are only useful for providing scoping
    * information during analysis phase.
    */
-  object EliminateSubqueries extends Rule[LogicalPlan] {
+  object EliminateSubquery extends Rule[LogicalPlan] {
     override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
       case child Subquery _ => child
     } transformAllExpressionsDown {

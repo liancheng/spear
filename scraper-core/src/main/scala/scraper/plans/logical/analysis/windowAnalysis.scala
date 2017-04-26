@@ -13,7 +13,7 @@ import scraper.utils._
 /**
  * This rule extracts window functions inside projections into separate `Window` operators.
  */
-class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisRule {
+class ExtractWindowFunctionsFromProject(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
       val winAliases = collectWindowFunctions(projectList) map { WindowAlias(_) }
@@ -25,7 +25,7 @@ class ExtractWindowFunctionsFromProjects(val catalog: Catalog) extends AnalysisR
 /**
  * This rule extracts window functions inside `ORDER BY` clauses into separate `Window` operators.
  */
-class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule {
+class ExtractWindowFunctionsFromSort(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     tree collectFirst preConditionViolation map { _ => tree } getOrElse {
       tree transformDown {
