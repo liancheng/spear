@@ -56,8 +56,11 @@ trait TestUtils { this: FunSuite =>
     val ids = namedExpressionsWithID.map { _.expressionID }.distinct
 
     val groupedByID = namedExpressionsWithID.groupBy { _.expressionID }.toSeq sortBy {
-      // Sorts by ID occurrence order to ensure determinism.
-      case (expressionID, _) => ids indexOf expressionID
+      // Sorts by reverse ID occurrence order to ensure that:
+      //
+      //  1. The normalized plan tree is always deterministic, and
+      //  2. Expression IDs appearing in leaf plan nodes are minimum.
+      case (expressionID, _) => -(ids indexOf expressionID)
     }
 
     val rewrite = for {
