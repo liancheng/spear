@@ -154,7 +154,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   test("group by with multiple having conditions") {
     checkLogicalPlan(
       table('t) groupBy 'a having 'a > 3 having 'a < 10 agg 'count('b),
-      r1 subquery 't groupBy 'a having 'a > 3 having 'a < 10 agg 'count('b)
+      r1 subquery 't groupBy 'a having Seq('a > 3, 'a < 10) agg 'count('b)
     )
   }
 
@@ -185,8 +185,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
       r1
         subquery 't
         groupBy 'a
-        having 'a > 3
-        having 'a < 10
+        having Seq('a > 3, 'a < 10)
         orderBy 'max('b)
         agg 'count('b)
     )
