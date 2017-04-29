@@ -94,7 +94,7 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
   // shadow outer CTE relations with the same names.
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case With(child, name, query, maybeAliases) =>
-      child transformDown {
+      child transformUp {
         case UnresolvedRelation(`name`) =>
           (maybeAliases fold query) { query rename _ } subquery name
       }
@@ -114,7 +114,7 @@ class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
  * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolve CTE queries.
  */
 class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child) Rename aliases Subquery subqueryName =>
       if (child.output.length >= aliases.length) {
         val aliasCount = aliases.length
@@ -144,8 +144,14 @@ class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
  * }}}
  */
 class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case plan if plan.children.forall { _.isResolved } && !plan.isDeduplicated =>
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+    case plan if plan.children.length < 2 =>
+      plan
+
+    case plan if plan.children.exists { !_.isResolved } =>
+      plan
+
+    case plan if !plan.isDeduplicated =>
       plan match {
         case node: Join =>
           node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)

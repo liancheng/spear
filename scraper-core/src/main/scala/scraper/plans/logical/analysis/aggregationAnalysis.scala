@@ -23,7 +23,7 @@ import scraper.utils._
  * }}}
  */
 class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Distinct(Resolved(child)) =>
       child groupBy child.output agg child.output
   }
@@ -34,7 +34,7 @@ class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
  * [[UnresolvedAggregate]] without any grouping keys.
  */
 class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child Project projectList) if haveAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
   }
@@ -87,7 +87,7 @@ class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule
  * @see [[RewriteUnresolvedAggregate]]
  */
 class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
       // referenced by some HAVING condition(s).
@@ -145,7 +145,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
     // Only executes this rule when all the pre-conditions hold.
     tree collectFirst preConditionViolations map { _ => tree } getOrElse {
-      tree transformDown rewrite
+      tree transformUp rewrite
     }
 
   // This partial function performs as a guard, who ensures all the pre-conditions of this analysis
