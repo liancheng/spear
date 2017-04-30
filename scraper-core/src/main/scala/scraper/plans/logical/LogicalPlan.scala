@@ -448,8 +448,8 @@ case class UnresolvedAggregate(
   child: LogicalPlan,
   keys: Seq[Expression],
   projectList: Seq[NamedExpression],
-  conditions: Seq[Expression] = Nil,
-  order: Seq[SortOrder] = Nil
+  conditions: Seq[Expression],
+  order: Seq[SortOrder]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan
