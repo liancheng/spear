@@ -5,7 +5,7 @@ import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.AggregationAnalysis.haveAggregateFunction
+import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.plans.logical.patterns.{Resolved, Unresolved}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
@@ -230,7 +230,7 @@ class ResolveSortReference(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Ignores `Sort`s over global aggregations. They are handled separately by other aggregation
     // analysis rules.
-    case plan @ Resolved(Sort(_ Project projectList, _)) if haveAggregateFunction(projectList) =>
+    case plan @ Resolved(Sort(_ Project projectList, _)) if hasAggregateFunction(projectList) =>
       plan
 
     case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
