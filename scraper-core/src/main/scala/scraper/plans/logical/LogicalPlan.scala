@@ -582,9 +582,15 @@ object LogicalPlan {
     def limit(n: Int): Limit = this limit lit(n)
 
     def orderBy(order: Seq[Expression]): LogicalPlan =
+      if (order.isEmpty) plan else UnresolvedSort(plan, order map SortOrder.apply)()
+
+    def orderBy(first: Expression, rest: Expression*): LogicalPlan =
+      this orderBy (first +: rest)
+
+    def sort(order: Seq[Expression]): LogicalPlan =
       if (order.isEmpty) plan else Sort(plan, order map SortOrder.apply)()
 
-    def orderBy(first: Expression, rest: Expression*): LogicalPlan = this orderBy (first +: rest)
+    def sort(first: Expression, rest: Expression*): LogicalPlan = this sort (first +: rest)
 
     def distinct: Distinct = Distinct(plan)()
 
@@ -606,16 +612,12 @@ object LogicalPlan {
 
     def except(that: LogicalPlan): Except = Except(plan, that)()
 
-    def `GROUP BY`(keys: Seq[Expression]): UnresolvedAggregateBuilder =
-      UnresolvedAggregateBuilder(plan, keys, Nil, Nil)
+    def groupBy(keys: Seq[Expression]): GroupedPlan = GroupedPlan(plan, keys, Nil, Nil)
 
-    def `GROUP BY`(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
-      `GROUP BY`(first +: rest)
+    def groupBy(first: Expression, rest: Expression*): GroupedPlan = groupBy(first +: rest)
 
-    def groupBy(keys: Seq[GroupingAlias]): AggregateBuilder = new AggregateBuilder(keys)
-
-    def groupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
-      groupBy(first +: rest)
+    def aggregate(keys: Seq[GroupingAlias], functions: Seq[AggregationAlias]): Aggregate =
+      Aggregate(plan, keys, functions)()
 
     def window(functions: Seq[WindowAlias]): Window = {
       val Seq(windowSpec) = functions.map { _.child.window }.distinct
@@ -626,21 +628,27 @@ object LogicalPlan {
 
     def windows(functions: Seq[WindowAlias]): LogicalPlan = stackWindows(plan, functions)
 
-    case class UnresolvedAggregateBuilder(
+    case class GroupedPlan(
       child: LogicalPlan,
       keys: Seq[Expression],
       conditions: Seq[Expression],
       order: Seq[Expression]
     ) {
-      def having(conditions: Seq[Expression]): UnresolvedAggregateBuilder =
+      def having(conditions: Seq[Expression]): GroupedPlan =
         copy(conditions = this.conditions ++ conditions)
 
-      def having(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+      def having(maybeCondition: Option[Expression]): GroupedPlan =
+        copy(conditions = this.conditions ++ maybeCondition.toSeq)
+
+      def having(first: Expression, rest: Expression*): GroupedPlan =
         having(first +: rest)
 
-      def orderBy(order: Seq[Expression]): UnresolvedAggregateBuilder = copy(order = order)
+      def orderBy(order: Seq[Expression]): GroupedPlan = copy(order = order)
 
-      def orderBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+      def orderBy(maybeOrder: Option[Seq[Expression]]): GroupedPlan =
+        maybeOrder map orderBy getOrElse this
+
+      def orderBy(first: Expression, rest: Expression*): GroupedPlan =
         orderBy(first +: rest)
 
       def agg(projectList: Seq[Expression]): UnresolvedAggregate = UnresolvedAggregate(
@@ -648,12 +656,6 @@ object LogicalPlan {
       )()
 
       def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
-    }
-
-    class AggregateBuilder(keys: Seq[GroupingAlias]) {
-      def agg(functions: Seq[AggregationAlias]): Aggregate = Aggregate(plan, keys, functions)()
-
-      def agg(first: AggregationAlias, rest: AggregationAlias*): Aggregate = agg(first +: rest)
     }
   }
 }

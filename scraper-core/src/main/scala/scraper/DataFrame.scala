@@ -51,7 +51,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
 
   def orderBy(order: Seq[Expression]): DataFrame = withPlan {
-    _ orderBy (order map SortOrder.apply)
+    _ sort (order map SortOrder.apply)
   }
 
   def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(first +: rest)
@@ -226,7 +226,7 @@ case class GroupedData(
   def orderBy(first: Expression, rest: Expression*): GroupedData = orderBy(first +: rest)
 
   def agg(projectList: Seq[Expression]): DataFrame = new DataFrame(
-    child `GROUP BY` keys having conditions orderBy order agg projectList, context
+    child groupBy keys having conditions orderBy order agg projectList, context
   )
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)

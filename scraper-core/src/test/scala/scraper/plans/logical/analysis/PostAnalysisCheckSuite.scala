@@ -19,7 +19,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     val rule = new RejectUnresolvedPlan(catalog)
 
     intercept[ResolutionFailureException] {
-      rule(relation `GROUP BY` Nil agg (1 as 'a))
+      rule(relation groupBy Nil agg (1 as 'a))
     }
   }
 

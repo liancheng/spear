@@ -113,17 +113,17 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "SELECT count(a) FROM t0 GROUP BY b",
-    table('t0) `GROUP BY` 'b agg 'count('a)
+    table('t0) groupBy 'b agg 'count('a)
   )
 
   testQueryParsing(
     "SELECT count(a) FROM t0 GROUP BY b HAVING count(b) > 0",
-    table('t0) `GROUP BY` 'b agg 'count('a) filter 'count('b) > 0
+    table('t0) groupBy 'b agg 'count('a) filter 'count('b) > 0
   )
 
   testQueryParsing(
     "SELECT count(a) FROM t0 GROUP BY b ORDER BY count(b) ASC NULLS FIRST",
-    table('t0) `GROUP BY` 'b agg 'count('a) orderBy 'count('b).asc.nullsFirst
+    table('t0) groupBy 'b agg 'count('a) orderBy 'count('b).asc.nullsFirst
   )
 
   testQueryParsing(

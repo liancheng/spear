@@ -102,43 +102,37 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     checkPlan(
       optimizer(
         relation
-          groupBy groupA
-          agg aggCountB
+          aggregate (groupA :: Nil, aggCountB :: Nil)
           filter groupA > 3
       ),
 
       relation
         filter groupA > 3
-        groupBy groupA
-        agg aggCountB
+        aggregate (groupA :: Nil, aggCountB :: Nil)
     )
 
     checkPlan(
       optimizer(
         relation
-          groupBy groupA
-          agg aggCountB
+          aggregate (groupA :: Nil, aggCountB :: Nil)
           filter aggCountB > 0
       ),
 
       relation
-        groupBy groupA
-        agg aggCountB
+        aggregate (groupA :: Nil, aggCountB :: Nil)
         filter aggCountB > 0
     )
 
     checkPlan(
       optimizer(
         relation
-          groupBy groupA
-          agg aggCountB
+          aggregate (groupA :: Nil, aggCountB :: Nil)
           filter groupA > 3 && aggCountB > 0
       ),
 
       relation
         filter groupA > 3
-        groupBy groupA
-        agg aggCountB
+        aggregate (groupA :: Nil, aggCountB :: Nil)
         filter aggCountB > 0
     )
   }

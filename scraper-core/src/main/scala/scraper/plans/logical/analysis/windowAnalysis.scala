@@ -32,7 +32,7 @@ class ExtractWindowFunctionsFromSort(val catalog: Catalog) extends AnalysisRule 
         case Resolved(child Sort order) if hasWindowFunction(order) =>
           val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
           val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
-          child windows winAliases orderBy rewrittenOrder select child.output
+          child windows winAliases sort rewrittenOrder select child.output
       }
     }
 

@@ -249,7 +249,7 @@ class ResolveSortReference(val catalog: Catalog) extends AnalysisRule {
       } else {
         child
           .select((projectList ++ unresolvedRefs).distinct)
-          .orderBy(maybeResolvedOrder)
+          .sort(maybeResolvedOrder)
           .select(output)
       }
   }
