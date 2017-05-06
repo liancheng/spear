@@ -2,22 +2,28 @@ package scraper
 
 import scraper.Name.quote
 
-class Name(private val impl: Name.CaseSensitivityAware) {
+class Name(private val impl: Name.CaseSensitivityAware, private val namespace: String = "") {
   def isCaseSensitive: Boolean = impl.isCaseSensitive
 
   def casePreserving: String = impl.casePreserving
 
-  override def toString: String =
-    if (isCaseSensitive) quote(casePreserving) else casePreserving
+  def withNamespace(namespace: String): Name = new Name(impl, namespace)
+
+  override def toString: String = {
+    val suffix = if (namespace.isEmpty) "" else s"@$namespace"
+    (if (isCaseSensitive) quote(casePreserving) else casePreserving) + suffix
+  }
 
   override def hashCode(): Int = casePreserving.toUpperCase.hashCode
 
   override def equals(other: Any): Boolean = other match {
     case that: Name if this.isCaseSensitive || that.isCaseSensitive =>
-      this.casePreserving == that.casePreserving
+      this.namespace == that.namespace &&
+        this.casePreserving == that.casePreserving
 
     case that: Name =>
-      (this.casePreserving compareToIgnoreCase that.casePreserving) == 0
+      this.namespace == that.namespace &&
+        (this.casePreserving compareToIgnoreCase that.casePreserving) == 0
 
     case _ =>
       false

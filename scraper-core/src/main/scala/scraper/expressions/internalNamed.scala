@@ -1,6 +1,6 @@
 package scraper.expressions
 
-import scraper.Name
+import scraper._
 import scraper.expressions.InternalNamedExpression._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.aggregates.AggregateFunction
@@ -18,34 +18,36 @@ object InternalNamedExpression {
    * Indicates the purpose of a [[InternalNamedExpression]].
    */
   sealed trait Purpose {
-    def name: Name
+    def namespace: String
+
+    def name: Name = i"" withNamespace namespace
   }
 
   /**
    * Marks [[InternalNamedExpression]]s that are used to wrap/reference grouping key expressions.
    */
   case object ForGrouping extends Purpose {
-    override def name: Name = 'G
+    override def namespace: String = "G"
   }
 
   /**
    * Marks [[InternalNamedExpression]]s that are used to wrap/reference aggregate functions.
    */
   case object ForAggregation extends Purpose {
-    override def name: Name = 'A
+    override def namespace: String = "A"
   }
 
   /**
    * Marks [[InternalNamedExpression]]s that are used to wrap/reference window functions.
    */
   case object ForWindow extends Purpose {
-    override def name: Name = 'W
+    override def namespace: String = "W"
   }
 }
 
 trait InternalAlias extends UnaryExpression with InternalNamedExpression {
   override def debugString: String =
-    s"(${child.debugString} AS @${name.toString}#${expressionID.id})"
+    s"(${child.debugString} AS ${name.toString}#${expressionID.id})"
 
   override def dataType: DataType = child.dataType
 
@@ -67,10 +69,7 @@ object InternalAlias {
 trait InternalAttribute extends LeafExpression
   with ResolvedAttribute
   with UnevaluableExpression
-  with InternalNamedExpression {
-
-  override def debugString: String = "@" + super.debugString
-}
+  with InternalNamedExpression
 
 case class GroupingAlias(
   child: Expression,
