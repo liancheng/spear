@@ -226,7 +226,7 @@ case class GroupedData(
   def orderBy(first: Expression, rest: Expression*): GroupedData = orderBy(first +: rest)
 
   def agg(projectList: Seq[Expression]): DataFrame = new DataFrame(
-    child groupBy keys having conditions orderBy order agg projectList, context
+    child `GROUP BY` keys having conditions orderBy order agg projectList, context
   )
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)

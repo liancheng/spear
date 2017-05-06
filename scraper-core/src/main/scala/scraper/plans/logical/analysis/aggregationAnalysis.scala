@@ -25,7 +25,7 @@ import scraper.utils._
 class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Distinct(Resolved(child)) =>
-      child groupBy child.output agg child.output
+      child `GROUP BY` child.output agg child.output
   }
 }
 
@@ -36,7 +36,7 @@ class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
 class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child Project projectList) if hasAggregateFunction(projectList) =>
-      child groupBy Nil agg projectList
+      child `GROUP BY` Nil agg projectList
   }
 }
 
@@ -275,7 +275,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
       rewrittenOrder foreach rejectIllegalAttributeReferences("ORDER BY expression", output)
 
       child
-        .resolvedGroupBy(keyAliases)
+        .groupBy(keyAliases)
         .agg(aggAliases)
         .filter(rewrittenConditions)
         .windows(winAliases)

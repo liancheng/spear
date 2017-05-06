@@ -300,7 +300,7 @@ object QuerySpecificationParser extends LoggingParser {
         // Should do aggregation when either a GROUP BY clause or a HAVING clause exists.
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
         val projectOrAgg = maybeGroupingKeys map { keys =>
-          (_: LogicalPlan) groupBy keys agg projectList
+          (_: LogicalPlan) `GROUP BY` keys agg projectList
         } getOrElse {
           // NOTE: Global aggregations (e.g. SELECT count(*) FROM t) are also parsed as projections
           // here. We'll resolve this case during analysis phase.

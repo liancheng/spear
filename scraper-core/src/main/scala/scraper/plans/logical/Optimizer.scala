@@ -150,7 +150,7 @@ object Optimizer {
         child select (projectList map eliminateNonTopLevelAliases)
 
       case Aggregate(child, keys, functions) =>
-        child resolvedGroupBy keys agg (functions map eliminateNonTopLevelAliases)
+        child groupBy keys agg (functions map eliminateNonTopLevelAliases)
 
       case plan =>
         plan transformExpressionsUp { case a: Alias => a.child }
@@ -252,7 +252,7 @@ object Optimizer {
 
         val unaliasedPushDown = pushDown map { _ unaliasUsing (keys, ForGrouping) }
 
-        child filter unaliasedPushDown resolvedGroupBy keys agg functions filter stayUp
+        child filter unaliasedPushDown groupBy keys agg functions filter stayUp
     }
 
     private def containsAggregation(expression: Expression): Boolean = expression.collectFirst {

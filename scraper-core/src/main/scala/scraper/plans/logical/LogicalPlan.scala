@@ -606,16 +606,16 @@ object LogicalPlan {
 
     def except(that: LogicalPlan): Except = Except(plan, that)()
 
-    def groupBy(keys: Seq[Expression]): UnresolvedAggregateBuilder =
+    def `GROUP BY`(keys: Seq[Expression]): UnresolvedAggregateBuilder =
       UnresolvedAggregateBuilder(plan, keys, Nil, Nil)
 
-    def groupBy(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+    def `GROUP BY`(first: Expression, rest: Expression*): UnresolvedAggregateBuilder =
+      `GROUP BY`(first +: rest)
+
+    def groupBy(keys: Seq[GroupingAlias]): AggregateBuilder = new AggregateBuilder(keys)
+
+    def groupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
       groupBy(first +: rest)
-
-    def resolvedGroupBy(keys: Seq[GroupingAlias]): AggregateBuilder = new AggregateBuilder(keys)
-
-    def resolvedGroupBy(first: GroupingAlias, rest: GroupingAlias*): AggregateBuilder =
-      resolvedGroupBy(first +: rest)
 
     def window(functions: Seq[WindowAlias]): Window = {
       val Seq(windowSpec) = functions.map { _.child.window }.distinct
