@@ -23,7 +23,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
     RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
       new ResolveRelation(catalog),
       new RewriteRenameToProject(catalog),
-      new ResolveSortReference(catalog),
+      new RewriteUnresolvedSort(catalog),
       new DeduplicateReferences(catalog),
 
       // Rules that help resolving expressions
@@ -226,7 +226,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
  *         +- Relation name=t, output=[a]
  * }}}
  */
-class ResolveSortReference(val catalog: Catalog) extends AnalysisRule {
+class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case child UnresolvedSort order =>
       child sort order
