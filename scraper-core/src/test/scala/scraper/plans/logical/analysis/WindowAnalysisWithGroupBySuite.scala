@@ -252,7 +252,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       table('t)
         groupBy ('a + 1, 'b)
         agg ('a + 1 as 'key)
-        sort ('count('a + 1) over w0_?),
+        orderBy ('count('a + 1) over w0_?),
 
       relation
         aggregate (`@G: a + 1` :: `@G: b` :: Nil, Nil)
@@ -286,7 +286,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       table('t)
         groupBy ('a + 1, 'b)
         agg ('count('a + 1) over w0_? as 'win_count)
-        sort 'win_count,
+        orderBy 'win_count,
 
       relation
         aggregate (`@G: a + 1` :: `@G: b` :: Nil, Nil)

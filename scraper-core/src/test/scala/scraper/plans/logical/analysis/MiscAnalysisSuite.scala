@@ -49,7 +49,7 @@ class MiscAnalysisSuite extends AnalyzerTest {
   test("order by columns not appearing in project list") {
     checkAnalyzedPlan(
       relation select 'b orderBy (('a + 1).asc, 'b.desc),
-      relation select (b, a) orderBy ((a + 1).asc, b.desc) select b
+      relation select (b, a) sort ((a + 1).asc, b.desc) select b
     )
   }
 
@@ -59,7 +59,7 @@ class MiscAnalysisSuite extends AnalyzerTest {
       relation
         subquery 't
         select (b of 't, a of 't)
-        orderBy (((a of 't) + 1).asc, (b of 't).desc)
+        sort (((a of 't) + 1).asc, (b of 't).desc)
         select (b of 't)
     )
   }

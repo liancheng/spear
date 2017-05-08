@@ -471,6 +471,10 @@ case class Aggregate(
   override lazy val derivedInput: Seq[Attribute] = keys map { _.attr }
 }
 
+case class UnresolvedSort(child: LogicalPlan, order: Seq[SortOrder])(
+  val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+
 case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {

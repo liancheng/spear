@@ -218,7 +218,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
         |)
         |""".stripMargin,
 
-      table('t) select * sort ('max('a) over w0_?),
+      table('t) select * orderBy ('max('a) over w0_?),
 
       relation
         select (a, b)
@@ -247,7 +247,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
       table('t)
         .select('max('a) over w0_? as 'win_max)
-        .sort('win_max),
+        .orderBy('win_max),
 
       relation
         .window(`@W: max(a) over w0`)

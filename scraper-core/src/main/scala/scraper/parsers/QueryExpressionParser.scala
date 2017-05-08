@@ -297,23 +297,21 @@ object QuerySpecificationParser extends LoggingParser {
     ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
       case (quantify, projectList, relation, filter, maybeGroupBy, maybeHaving, window, orderBy) =>
-        // Should do aggregation when either a GROUP BY clause or a HAVING clause exists.
+        val having = maybeHaving getOrElse identity[LogicalPlan] _
+
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
-        val projectOrAgg = maybeGroupingKeys map { keys =>
-          (_: LogicalPlan) `GROUP BY` keys agg projectList
+
+        val select = maybeGroupingKeys map { keys =>
+          (_: LogicalPlan) groupBy keys agg projectList
         } getOrElse {
-          // NOTE: Global aggregations (e.g. SELECT count(*) FROM t) are also parsed as projections
-          // here. We'll resolve this case during analysis phase.
           (_: LogicalPlan) select projectList
         }
-
-        val having = maybeHaving getOrElse identity[LogicalPlan] _
 
         orderBy
           .compose(window)
           .compose(having)
           .compose(quantify)
-          .compose(projectOrAgg)
+          .compose(select)
           .compose(filter)
           .apply(relation)
     }

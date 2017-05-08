@@ -73,25 +73,6 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("aggregate with HAVING clause referencing alias of an aggregate function") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
-
-    checkSQLAnalysis(
-      "SELECT count(b) AS c FROM t GROUP BY a HAVING c > 1",
-
-      table('t)
-        groupBy 'a
-        agg ('count('b) as 'c)
-        filter 'c > 1,
-
-      relation
-        aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
-        filter `@A: count(b)`.attr > (1 cast LongType)
-        select (`@A: count(b)`.attr as 'c)
-    )
-  }
-
   test("aggregate with ORDER BY clause referencing projected attribute") {
     val `@G: a` = GroupingAlias(self.a)
     val `@A: count(b)` = AggregationAlias(count(self.b))
@@ -118,7 +99,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     checkSQLAnalysis(
       "SELECT a FROM t GROUP BY a HAVING a > 1 ORDER BY count(b) ASC",
 
-      table('t) groupBy 'a agg 'a filter 'a > 1 sort 'count('b).asc,
+      table('t) groupBy 'a agg 'a filter 'a > 1 orderBy 'count('b).asc,
 
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
