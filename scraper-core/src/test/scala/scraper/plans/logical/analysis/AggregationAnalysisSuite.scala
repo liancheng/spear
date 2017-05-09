@@ -43,21 +43,6 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  ignore("global aggregate, where only the HAVING clause contains an aggregate function") {
-    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
-
-    checkAnalyzedPlan(
-      table('t)
-        select (1 as 'out)
-        filter 'count('a) > 0,
-
-      relation
-        aggregate (Nil, `@A: count(a)` :: Nil)
-        filter `@A: count(a)`.attr > (0 cast LongType)
-        select (1 as 'out)
-    )
-  }
-
   ignore("global aggregate, where only the ORDER BY clause contains an aggregate function") {
     val `@A: count(a)` = AggregationAlias(count(self.a of 't))
 
