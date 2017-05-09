@@ -205,6 +205,7 @@ object Expression {
         val candidates = input.map { _.attr }.distinct.collect {
           case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
           case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
+          case a: InternalAttribute if a.name == name                        => a
         }
 
         candidates match {

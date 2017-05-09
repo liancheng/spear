@@ -43,6 +43,10 @@ object InternalNamedExpression {
   case object ForWindow extends Purpose {
     override def namespace: String = "W"
   }
+
+  case object ForSortOrder extends Purpose {
+    override def namespace: String = "S"
+  }
 }
 
 trait InternalAlias extends UnaryExpression with InternalNamedExpression {
@@ -130,6 +134,34 @@ case class WindowAttribute(
   override val expressionID: ExpressionID
 ) extends InternalAttribute {
   override val purpose: Purpose = ForWindow
+
+  override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
+}
+
+case class SortOrderAlias(
+  child: Expression,
+  alias: Name,
+  override val expressionID: ExpressionID = newExpressionID()
+) extends InternalAlias {
+  override def purpose: Purpose = ForSortOrder
+
+  override def name: Name = alias withNamespace purpose.namespace
+
+  override def attr: InternalAttribute =
+    SortOrderAttribute(dataType, isNullable, expressionID, alias)
+
+  override def withID(id: ExpressionID): SortOrderAlias = copy(expressionID = id)
+}
+
+case class SortOrderAttribute(
+  override val dataType: DataType,
+  override val isNullable: Boolean,
+  override val expressionID: ExpressionID,
+  alias: Name
+) extends InternalAttribute {
+  override val purpose: Purpose = ForSortOrder
+
+  override def name: Name = alias withNamespace purpose.namespace
 
   override def withID(id: ExpressionID): Attribute = copy(expressionID = id)
 }

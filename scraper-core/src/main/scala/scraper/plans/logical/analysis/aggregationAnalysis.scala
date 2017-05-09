@@ -5,6 +5,7 @@ import scraper.exceptions.IllegalAggregationException
 import scraper.expressions._
 import scraper.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
 import scraper.expressions.InternalAlias.{buildRestorer, buildRewriter}
+import scraper.expressions.InternalNamedExpression.ForSortOrder
 import scraper.expressions.windows.WindowFunction
 import scraper.plans.logical._
 import scraper.plans.logical.analysis.AggregationAnalysis._
@@ -101,7 +102,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
       // referenced by some sort order expression(s).
       val unaliased = order
         .map { _ tryResolveUsing agg.projectList }
-        .map { _ unaliasUsing agg.projectList }
+        .map { _ unaliasUsing (agg.projectList, ForSortOrder) }
         .map { case e: SortOrder => e }
 
       // Only preserves the last sort order.

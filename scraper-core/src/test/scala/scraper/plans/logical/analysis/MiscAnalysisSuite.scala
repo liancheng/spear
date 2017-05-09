@@ -47,19 +47,32 @@ class MiscAnalysisSuite extends AnalyzerTest {
   }
 
   test("order by columns not appearing in project list") {
+    val `@S: a + 1` = SortOrderAlias(a + 1, "order0")
+    val `@S: a * 2` = SortOrderAlias(a * 2, "order1")
+
     checkAnalyzedPlan(
-      relation select 'b orderBy (('a + 1).asc, 'b.desc),
-      relation select (b, a) sort ((a + 1).asc, b.desc) select b
+      relation
+        select 'b
+        orderBy (('a + 1).asc, ('a * 2).desc, 'b.desc),
+
+      relation
+        select (b, `@S: a + 1`, `@S: a * 2`)
+        sort (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, b.desc)
+        select b
     )
   }
 
   test("order by columns not appearing in project list in SQL") {
+    val `@S: a + 1` = SortOrderAlias((a of 't) + 1, "order0")
+    val `@S: a * 2` = SortOrderAlias((a of 't) * 2, "order1")
+
     checkAnalyzedPlan(
-      "SELECT b FROM t ORDER BY a + 1 ASC, b DESC",
+      "SELECT b FROM t ORDER BY a + 1 ASC, a * 2 DESC, b DESC",
+
       relation
         subquery 't
-        select (b of 't, a of 't)
-        sort (((a of 't) + 1).asc, (b of 't).desc)
+        select (b of 't, `@S: a + 1`, `@S: a * 2`)
+        sort (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, (b of 't).desc)
         select (b of 't)
     )
   }

@@ -25,7 +25,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  test("SQL global aggregate, where only the HAVING clause contains an aggregate function") {
+  test("global aggregate, where only the HAVING clause contains an aggregate function") {
     val `@A: count(a)` = AggregationAlias(count(self.a of 't))
 
     checkSQLAnalysis(
@@ -43,17 +43,37 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
   }
 
-  ignore("global aggregate, where only the ORDER BY clause contains an aggregate function") {
+  test("global aggregate, where only the ORDER BY clause contains an aggregate function") {
     val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+    val `@S: count(a)` = SortOrderAlias(`@A: count(a)`.attr, "order0")
+    val `1 AS out` = 1 as 'out
 
     checkSQLAnalysis(
       "SELECT 1 AS out FROM t ORDER BY count(a)",
 
-      table('t) select (1 as 'out) sort 'count('a),
+      table('t) select (1 as 'out) orderBy 'count('a),
 
       relation
         aggregate (Nil, `@A: count(a)` :: Nil)
-        sort `@A: count(a)`.attr
+        sort `@A: count(a)`.attr.asc
+        select (`1 AS out`, `@S: count(a)`)
+        select `1 AS out`.attr
+    )
+  }
+
+  test("global aggregate, where only the ORDER BY and HAVING clauses contain aggregate functions") {
+    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+    val `@A: max(a)` = AggregationAlias(max(self.a of 't))
+
+    checkSQLAnalysis(
+      "SELECT 1 AS out FROM t HAVING max(a) > 0 ORDER BY count(a)",
+
+      table('t) groupBy Nil agg (1 as 'out) filter 'max('a) > 0 orderBy 'count('a),
+
+      relation
+        aggregate (Nil, Seq(`@A: max(a)`, `@A: count(a)`))
+        filter `@A: max(a)`.attr > 0
+        sort `@A: count(a)`.attr.asc
         select (1 as 'out)
     )
   }

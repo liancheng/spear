@@ -5,7 +5,6 @@ import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
-import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.plans.logical.patterns.{Resolved, Unresolved}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
@@ -228,33 +227,40 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
  */
 class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case child UnresolvedSort order =>
-      child sort order
-
-    // Ignores `Sort`s over global aggregations. They are handled separately by other aggregation
-    // analysis rules.
-    case plan @ Resolved(Sort(_ Project projectList, _)) if hasAggregateFunction(projectList) =>
+    case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
       plan
 
-    case Unresolved(sort @ Sort(Resolved(child Project projectList), order)) =>
+    case plan @ Resolved(child Project projectList) UnresolvedSort order =>
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
         .map { _ tryResolveUsing output }
         .map { case e: SortOrder => e }
 
-      val unresolvedRefs = maybeResolvedOrder
-        .flatMap { _.references }
-        .filterNot { _.isResolved }
+      val unresolvedOrder = maybeResolvedOrder.filterNot { _.isResolved }
 
-      if (unresolvedRefs.isEmpty) {
-        sort.copy(order = maybeResolvedOrder)(sort.metadata)
+      if (unresolvedOrder.isEmpty) {
+        child select projectList sort maybeResolvedOrder
       } else {
+        val pushDown = unresolvedOrder
+          .map { _.child }
+          .map { _ unaliasUsing projectList }
+          .zipWithIndex
+          .map { case (e, index) => SortOrderAlias(e, s"order$index") }
+
+        val rewrite = pushDown.map {
+          e => e.child -> (e.name: Expression)
+        }.toMap
+
         child
-          .select((projectList ++ unresolvedRefs).distinct)
-          .sort(maybeResolvedOrder)
+          .select(projectList ++ pushDown)
+          .sort(maybeResolvedOrder map { _ transformUp rewrite })
           .select(output)
+          .withMetadata(plan.metadata)
       }
+
+    case child UnresolvedSort order =>
+      child sort order
   }
 }
 

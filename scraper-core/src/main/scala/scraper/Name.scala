@@ -23,7 +23,7 @@ class Name(private val impl: Name.CaseSensitivityAware, private val namespace: S
 
     case that: Name =>
       this.namespace == that.namespace &&
-        (this.casePreserving compareToIgnoreCase that.casePreserving) == 0
+        this.casePreserving.compareToIgnoreCase(that.casePreserving) == 0
 
     case _ =>
       false
