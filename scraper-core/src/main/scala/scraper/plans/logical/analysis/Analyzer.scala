@@ -143,11 +143,11 @@ class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
  * }}}
  */
 class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def rewrite(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan if plan.children.length < 2 =>
       plan
 
-    case plan if plan.children.exists { !_.isResolved } =>
+    case plan if plan.children exists { !_.isResolved } =>
       plan
 
     case plan if !plan.isDeduplicated =>
@@ -166,7 +166,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
       }
   }
 
-  def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
+  private def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
     val conflictingAttributes = left.outputSet intersectByID right.outputSet
 
     def hasDuplicates(attributes: Set[Attribute]): Boolean =
@@ -205,6 +205,8 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
+ * TODO Update outdated comment below.
+ *
  * This rule allows an `ORDER BY` clause to reference columns that are output of the `FROM` clause
  * but absent from the `SELECT` clause. E.g., for the following query:
  * {{{

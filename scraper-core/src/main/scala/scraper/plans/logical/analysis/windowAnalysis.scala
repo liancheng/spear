@@ -26,17 +26,14 @@ class ExtractWindowFunctionsFromProject(val catalog: Catalog) extends AnalysisRu
  * This rule extracts window functions inside `ORDER BY` clauses into separate `Window` operators.
  */
 class ExtractWindowFunctionsFromSort(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan =
-    tree collectFirst preConditionViolation map { _ => tree } getOrElse {
-      tree transformDown {
-        case Resolved(child Sort order) if hasWindowFunction(order) =>
-          val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
-          val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
-          child windows winAliases sort rewrittenOrder select child.output
-      }
-    }
+  override def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case Resolved(child Sort order) if hasWindowFunction(order) =>
+      val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
+      val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
+      child windows winAliases sort rewrittenOrder select child.output
+  }
 
-  private val preConditionViolation: PartialFunction[LogicalPlan, Unit] = {
+  override protected val skip: PartialFunction[LogicalPlan, Unit] = {
     case _: UnresolvedAggregate =>
   }
 }
