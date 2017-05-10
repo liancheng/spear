@@ -144,53 +144,6 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
     )
   }
 
-  test("group by with having condition") {
-    checkLogicalPlan(
-      table('t) groupBy 'a having 'a > 3 agg 'count('b),
-      r1 subquery 't groupBy 'a having 'a > 3 agg 'count('b)
-    )
-  }
-
-  test("group by with multiple having conditions") {
-    checkLogicalPlan(
-      table('t) groupBy 'a having 'a > 3 having 'a < 10 agg 'count('b),
-      r1 subquery 't groupBy 'a having Seq('a > 3, 'a < 10) agg 'count('b)
-    )
-  }
-
-  test("group by with order by expression") {
-    checkLogicalPlan(
-      table('t) groupBy 'a orderBy 'max('b) agg 'count('b),
-      r1 subquery 't groupBy 'a orderBy 'max('b) agg 'count('b)
-    )
-  }
-
-  test("group by with multiple order by expressions") {
-    checkLogicalPlan(
-      table('t) groupBy 'a orderBy 'a % 10 orderBy 'max('b) agg 'count('b),
-      r1 subquery 't groupBy 'a orderBy 'max('b) agg 'count('b)
-    )
-  }
-
-  test("group by with alternating having conditions and order by expressions") {
-    checkLogicalPlan(
-      table('t)
-        groupBy 'a
-        having 'a > 3
-        orderBy 'a % 10
-        having 'a < 10
-        orderBy 'max('b)
-        agg 'count('b),
-
-      r1
-        subquery 't
-        groupBy 'a
-        having Seq('a > 3, 'a < 10)
-        orderBy 'max('b)
-        agg 'count('b)
-    )
-  }
-
   test("asTable") {
     withTable('reverse) {
       val df = table('t) orderBy 'a.desc

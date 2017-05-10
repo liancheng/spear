@@ -72,8 +72,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     _ except that.queryExecution.logicalPlan
   }
 
-  def groupBy(keys: Seq[Expression]): GroupedData =
-    GroupedData(queryExecution.analyzedPlan, keys, Nil, Nil, context)
+  def groupBy(keys: Seq[Expression]): GroupedData = GroupedData(this, keys)
 
   def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
 
@@ -208,26 +207,10 @@ class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   }
 }
 
-case class GroupedData(
-  child: LogicalPlan,
-  keys: Seq[Expression],
-  conditions: Seq[Expression],
-  order: Seq[Expression],
-  context: Context
-) {
-  def having(conditions: Seq[Expression]): GroupedData = copy(
-    conditions = this.conditions ++ conditions
-  )
-
-  def having(first: Expression, rest: Expression*): GroupedData = having(first +: rest)
-
-  def orderBy(order: Seq[Expression]): GroupedData = copy(order = order)
-
-  def orderBy(first: Expression, rest: Expression*): GroupedData = orderBy(first +: rest)
-
-  def agg(projectList: Seq[Expression]): DataFrame = new DataFrame(
-    child groupBy keys having conditions orderBy order agg projectList, context
-  )
+case class GroupedData(child: DataFrame, keys: Seq[Expression]) {
+  def agg(projectList: Seq[Expression]): DataFrame = child.withPlan {
+    _ groupBy keys agg projectList
+  }
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 }
