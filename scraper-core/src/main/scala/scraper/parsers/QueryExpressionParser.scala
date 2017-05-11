@@ -280,11 +280,12 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "having-clause"
   )
 
-  private val orderByClause: P[LogicalPlan => LogicalPlan] = (
-    ORDER ~ BY ~ sortSpecificationList
-    map { sortOrders => (_: LogicalPlan) orderBy sortOrders }
-    opaque "order-by-clause"
-  )
+  private val orderByClause: P[LogicalPlan => LogicalPlan] =
+    ORDER ~ BY ~ sortSpecificationList map { sortOrders =>
+      // Note that `orderBy` builds an `UnresolvedSort` plan node, which is dedicated for
+      // representing SQL `ORDER BY` clauses.
+      (_: LogicalPlan) orderBy sortOrders
+    } opaque "order-by-clause"
 
   val querySpecification: P[LogicalPlan] = (
     SELECT
@@ -296,7 +297,7 @@ object QuerySpecificationParser extends LoggingParser {
     ~ havingClause.?
     ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
-      case (quantify, projectList, relation, filter, maybeGroupBy, maybeHaving, window, orderBy) =>
+      case (distinct, projectList, relation, where, maybeGroupBy, maybeHaving, window, orderBy) =>
         val having = maybeHaving getOrElse identity[LogicalPlan] _
 
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
@@ -310,9 +311,9 @@ object QuerySpecificationParser extends LoggingParser {
         orderBy
           .compose(window)
           .compose(having)
-          .compose(quantify)
+          .compose(distinct)
           .compose(select)
-          .compose(filter)
+          .compose(where)
           .apply(relation)
     }
   ) opaque "query-specification"

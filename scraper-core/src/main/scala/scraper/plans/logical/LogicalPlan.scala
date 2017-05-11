@@ -471,6 +471,15 @@ case class Aggregate(
   override lazy val derivedInput: Seq[Attribute] = keys map { _.attr }
 }
 
+/**
+ * An unresolved logical plan node dedicated for representing SQL `ORDER BY` clauses. SQL `ORDER BY`
+ * clauses are always parsed as [[UnresolvedSort]] nodes. The reason why a special logical plan node
+ * is necessary is that sort order expressions in a SQL `ORDER BY` clause may reference columns from
+ * both the `SELECT` clause and the `FROM` clause, which contradicts with our logical plan contract
+ * and requires special handling during the analysis phase.
+ *
+ * @see [[scraper.plans.logical.analysis.RewriteUnresolvedSort]]
+ */
 case class UnresolvedSort(child: LogicalPlan, order: Seq[SortOrder])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan with UnresolvedLogicalPlan

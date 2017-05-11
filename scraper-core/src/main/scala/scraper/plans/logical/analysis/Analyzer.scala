@@ -205,26 +205,53 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * TODO Update outdated comment below.
- *
- * This rule allows an `ORDER BY` clause to reference columns that are output of the `FROM` clause
- * but absent from the `SELECT` clause. E.g., for the following query:
+ * This rule allows an `ORDER BY` clause to reference columns from bothe the `FROM` clause and the
+ * the `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, for the
+ * following query:
  * {{{
- *   SELECT a + 1 FROM t ORDER BY a
+ *   SELECT a + 1 AS x FROM t ORDER BY a
  * }}}
  * The parsed logical plan is something like:
  * {{{
- *   Sort order=[a]
- *   +- Project projectList=[a + 1]
+ *   UnresolvedSort order=[a]
+ *   +- Project projectList=[a + 1 AS x]
  *      +- Relation name=t, output=[a]
  * }}}
  * This plan tree is invalid because attribute `a` referenced by `Sort` isn't an output attribute of
  * `Project`. This rule rewrites it into:
  * {{{
- *   Project projectList=[a + 1]
- *   +- Sort order=[a]
- *      +- Project projectList=[a + 1, a]
- *         +- Relation name=t, output=[a]
+ *   Project projectList=[x] => [x]
+ *   +- Sort order=[a] => [x, a]
+ *      +- Project projectList=[a + 1 AS x, a] => [x, a]
+ *         +- Relation name=t => [a]
+ * }}}
+ * Another more convoluted example is about global aggregate:
+ * {{{
+ *   SELECT 1 AS x FROM t ORDER BY count(a)
+ * }}}
+ * The aggregate function call `count(a)` in the `ORDER BY` clause makes this query into a global
+ * aggregation, but we've no idea about that during parsing phase since the parser doesn't know
+ * whether `count(a)` is an aggregate function or not. Therefore, it's parsed into a simple
+ * projection:
+ * {{{
+ *   UnresolvedSort order=[count(a)] => ???
+ *   +- Project projectList=[1 AS x] => [x]
+ *      +- Relation name=t => [a]
+ * }}}
+ * Then this rule rewrites it into:
+ * {{{
+ *   Project projectList=[x] => [x]
+ *   +- Sort order=[order0] => [x, order0]
+ *      +- Project projectList=[1 AS x, count(a) AS order0] => [x, order0]
+ *         +- Relation name=t => [a]
+ * }}}
+ * Now the `count(a)` function call can be successfully resolved and later the projection can be
+ * rewritten into a global projection by the [[RewriteProjectToGlobalAggregate]] analysis rule:
+ * {{{
+ *   Project projectList=[x] => ???
+ *   +- Sort order=[order0] => ???
+ *      +- UnresolvedAggregate projectList=[1 AS x, count(a) AS order0] => ???
+ *         +- Relation name=t => [a]
  * }}}
  */
 class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
