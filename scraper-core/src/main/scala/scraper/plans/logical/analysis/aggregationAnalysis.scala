@@ -73,11 +73,11 @@ class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule
  *
  * To solve this issue, this rule rewrites the above plan into:
  * {{{
- *   UnresolvedAggregate keys=[$0], projectList=[$1], condition=[$2], order=[$3] => [c]
- *   | |- $0: y
- *   | |- $1: count(x) AS c
- *   | |- $2: max(z) > 0
- *   | +- $3: y DESC
+ *   UnresolvedAggregate keys=[\$0], projectList=[\$1], condition=[\$2], order=[\$3] => [c]
+ *   | |- \$0: y
+ *   | |- \$1: count(x) AS c
+ *   | |- \$2: max(z) > 0
+ *   | +- \$3: y DESC
  *   +- Relation name=t => [x, y, z]
  * }}}
  * Now, references to attributes `y` and `z` are moved into the [[UnresolvedAggregate]], and can be

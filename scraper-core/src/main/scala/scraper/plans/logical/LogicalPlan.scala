@@ -47,8 +47,8 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   }
 
   /**
-   * Input [[Attribute attributes]] that can be referenced by some expression(s) of this operator
-   * but produced by this operator itself rather than the child operator(s).
+   * Input attributes that can be referenced by some expression(s) of this operator but produced by
+   * this operator itself rather than the child operator(s).
    */
   lazy val derivedInput: Seq[Attribute] = Nil
 
@@ -597,8 +597,7 @@ object LogicalPlan {
     def orderBy(order: Seq[Expression]): LogicalPlan =
       if (order.isEmpty) plan else UnresolvedSort(plan, order map SortOrder.apply)()
 
-    def orderBy(first: Expression, rest: Expression*): LogicalPlan =
-      this orderBy (first +: rest)
+    def orderBy(first: Expression, rest: Expression*): LogicalPlan = this orderBy (first +: rest)
 
     def sort(order: Seq[Expression]): LogicalPlan =
       if (order.isEmpty) plan else Sort(plan, order map SortOrder.apply)()
