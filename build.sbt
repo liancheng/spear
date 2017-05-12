@@ -1,5 +1,4 @@
 import Dependencies._
-import NativePackagerHelper._
 
 lazy val repl = taskKey[Unit]("Runs the Scraper REPL.")
 
@@ -37,13 +36,13 @@ lazy val `scraper-examples` = project
   .settings(commonSettings ++ runtimeConfSettings)
 
 lazy val javaPackagingSettings = {
-  val confDirectory = baseDirectory(_.getParentFile / "conf")
+  import NativePackagerHelper._
 
   Seq(
     // Adds the "conf" directory into the package.
-    mappings in Universal ++= directory(confDirectory.value),
-    // Adds the "conf" directory to runtime classpath.
-    scriptClasspath in Universal += confDirectory.value.toString
+    mappings in Universal ++= directory(baseDirectory(_.getParentFile / "conf").value),
+    // Adds the "conf" directory to runtime classpath (relative to "$app_home/../lib").
+    scriptClasspath += "../conf"
   )
 }
 
