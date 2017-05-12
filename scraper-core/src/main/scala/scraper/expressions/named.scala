@@ -60,8 +60,6 @@ case class Alias(
 ) extends NamedExpression with UnaryExpression {
   override lazy val isFoldable: Boolean = false
 
-  override protected lazy val strictDataType: DataType = child.dataType
-
   override def evaluate(input: Row): Any = child evaluate input
 
   override lazy val attr: Attribute = if (child.isResolved) {
@@ -79,6 +77,8 @@ case class Alias(
   }
 
   override def withID(id: ExpressionID): Alias = copy(expressionID = id)
+
+  override protected lazy val strictDataType: DataType = child.dataType
 }
 
 /**
@@ -213,24 +213,19 @@ case class AttributeRef(
   def of(qualifier: Name): AttributeRef = qualifiedBy(Some(qualifier))
 }
 
-case class BoundRef(ordinal: Int, override val dataType: DataType, override val isNullable: Boolean)
-  extends NamedExpression with LeafExpression with NonSQLExpression {
-
-  override val name: Name = s"input[$ordinal]"
+case class BoundRef(
+  ordinal: Int,
+  override val dataType: DataType,
+  override val isNullable: Boolean
+) extends LeafExpression with NonSQLExpression {
 
   override lazy val isBound: Boolean = true
-
-  override def attr: Attribute = throw new UnsupportedOperationException
-
-  override def expressionID: ExpressionID = throw new UnsupportedOperationException
-
-  override def withID(id: ExpressionID): NamedExpression = this
 
   override def evaluate(input: Row): Any = input(ordinal)
 
   override def debugString: String = {
     val nullable = if (isNullable) "?" else "!"
-    s"$name:${dataType.sql}$nullable"
+    s"output[$ordinal]:${dataType.sql}$nullable"
   }
 
   /**
