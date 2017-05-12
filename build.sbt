@@ -1,14 +1,18 @@
 import Dependencies._
+import NativePackagerHelper._
 
 lazy val repl = taskKey[Unit]("Runs the Scraper REPL.")
 
 lazy val scraper = project
   .in(file("."))
   .aggregate(`scraper-core`, `scraper-examples`, `scraper-local`, `scraper-repl`)
-  .settings(repl := (run in `scraper-repl` in Compile toTask "").value)
+  .settings(
+    // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
+    repl := (run in `scraper-repl` in Compile toTask "").value
+  )
 
 lazy val `scraper-core` = project
-  .enablePlugins(sbtPlugins: _*)
+  .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= fastparse ++ typesafeConfig ++ logging ++ scala,
@@ -17,24 +21,33 @@ lazy val `scraper-core` = project
 
 lazy val `scraper-local` = project
   .dependsOn(`scraper-core` % "compile->compile;test->test")
-  .enablePlugins(sbtPlugins: _*)
+  .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
 
 lazy val `scraper-repl` = project
   .dependsOn(`scraper-core` % "compile->compile;test->test")
   .dependsOn(`scraper-local` % "compile->compile;test->test;compile->test")
-  .enablePlugins(sbtPlugins: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
+  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
+  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
   .settings(libraryDependencies ++= ammonite)
 
 lazy val `scraper-examples` = project
   .dependsOn(`scraper-core`, `scraper-local`)
-  .enablePlugins(sbtPlugins: _*)
+  .enablePlugins(commonPlugins: _*)
   .settings(commonSettings ++ runtimeConfSettings)
 
-lazy val sbtPlugins = Seq(
-  // For packaging
-  JavaAppPackaging,
+lazy val javaPackagingSettings = {
+  val confDirectory = baseDirectory(_.getParentFile / "conf")
+
+  Seq(
+    // Adds the "conf" directory into the package.
+    mappings in Universal ++= directory(confDirectory.value),
+    // Adds the "conf" directory to runtime classpath.
+    scriptClasspath in Universal += confDirectory.value.toString
+  )
+}
+
+lazy val commonPlugins = Seq(
   // For Scala code formatting
   SbtScalariform,
   // For Scala test coverage reporting
