@@ -65,8 +65,8 @@ lazy val commonSettings = {
   )
 
   val commonTestSettings = Seq(
+    // Does not fork a new JVM process to run the tests.
     fork := false,
-    parallelExecution in Test := false,
     // Shows duration and full exception stack trace
     testOptions in Test += Tests.Argument("-oDF")
   )
