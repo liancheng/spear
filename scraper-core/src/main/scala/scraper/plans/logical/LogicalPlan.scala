@@ -1,7 +1,7 @@
 package scraper.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 import scraper.{Name, Row}
@@ -13,7 +13,7 @@ import scraper.expressions.NamedExpression.newExpressionID
 import scraper.expressions.functions._
 import scraper.expressions.typecheck.Foldable
 import scraper.expressions.windows.{BasicWindowSpec, WindowSpec}
-import scraper.plans.logical.patterns.{ResolvedAggregate, Unresolved}
+import scraper.plans.logical.patterns.Unresolved
 import scraper.plans.QueryPlan
 import scraper.plans.logical.Window._
 import scraper.reflection.fieldSpecFor
@@ -61,10 +61,6 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
     case _             => super.outputStrings
   }
 
-  def sql: Try[String] = Failure(new UnsupportedOperationException())
-
-  def sqlFragment: Try[String] = sql
-
   override protected def makeCopy(args: Seq[AnyRef]): LogicalPlan =
     super.makeCopy(args :+ metadata)
 }
@@ -109,8 +105,6 @@ case class SingleRowRelation(metadata: LogicalPlanMetadata = LogicalPlanMetadata
   extends Relation {
 
   override val output: Seq[Attribute] = Nil
-
-  override def sql: Try[String] = Success("")
 }
 
 case class LocalRelation(
@@ -152,36 +146,6 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])(
   override def expressions: Seq[Expression] = projectList
 
   override lazy val output: Seq[Attribute] = projectList map { _.attr }
-
-  override lazy val sql: Try[String] = this match {
-    case ResolvedAggregate(fields, order, condition, keys, childPlan) =>
-      for {
-        projectListSQL <- trySequence(fields map { _.sql })
-        conditionSQL <- trySequence(condition.toSeq map { _.sql })
-        orderSQL <- trySequence(order map { _.sql })
-        keysSQL <- trySequence(keys map { _.sql })
-        childSQL <- childPlan.sqlFragment
-      } yield Seq(
-        projectListSQL mkString ("SELECT ", ", ", ""),
-        childSQL,
-        if (keysSQL.isEmpty) "" else keysSQL mkString ("GROUP BY ", ", ", ""),
-        if (conditionSQL.isEmpty) "" else conditionSQL mkString ("HAVING ", "", ""),
-        if (orderSQL.isEmpty) "" else orderSQL mkString ("ORDER BY ", ", ", "")
-      ) filterNot { _.isEmpty } mkString " "
-
-    case Subquery(alias, _: Relation) Project _ =>
-      for (projectListSQL <- trySequence(projectList map { _.sql }))
-        yield projectListSQL mkString ("SELECT ", ", ", s" FROM $alias")
-
-    case _ =>
-      for {
-        projectListSQL <- trySequence(projectList map { _.sql })
-        childSQL <- child.sqlFragment
-      } yield Seq(
-        projectListSQL mkString ("SELECT ", ", ", ""),
-        childSQL
-      ) filterNot { _.isEmpty } mkString " "
-  }
 }
 
 /**
@@ -239,17 +203,6 @@ case class Filter(child: LogicalPlan, condition: Expression)(
 ) extends UnaryLogicalPlan {
 
   override lazy val output: Seq[Attribute] = child.output
-
-  override lazy val sql: Try[String] = child match {
-    case _: Subquery | _: Relation =>
-      for {
-        conditionSQL <- condition.sql
-        childSQL <- child.sqlFragment
-      } yield s"$childSQL WHERE $conditionSQL"
-
-    case _ =>
-      Failure(new UnsupportedOperationException())
-  }
 }
 
 case class Limit(child: LogicalPlan, count: Expression)(
@@ -399,21 +352,6 @@ case class Subquery(child: LogicalPlan, alias: Name)(
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
-
-  override def sql: Try[String] = child match {
-    case plan: Relation =>
-      for (fieldsSQL <- trySequence(plan.output map { _.sql }))
-        yield fieldsSQL mkString ("SELECT ", ", ", s" FROM $alias")
-
-    case plan =>
-      for (childSQL <- plan.sqlFragment)
-        yield s"($childSQL) AS $alias"
-  }
-
-  override def sqlFragment: Try[String] = child match {
-    case _: Relation => Success(s"FROM $alias")
-    case _           => sql
-  }
 }
 
 /**
@@ -489,11 +427,6 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
 ) extends UnaryLogicalPlan {
 
   override def output: Seq[Attribute] = child.output
-
-  override def sql: Try[String] = for {
-    orderSQL <- trySequence(order map { _.sql }) map { _ mkString ", " }
-    childSQL <- child.sqlFragment
-  } yield s"$childSQL ORDER BY $orderSQL"
 }
 
 /**
