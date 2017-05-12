@@ -32,8 +32,8 @@ lazy val `scraper-repl` = project
 
 lazy val `scraper-examples` = project
   .dependsOn(`scraper-core`, `scraper-local`)
-  .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
+  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
+  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
 
 lazy val javaPackagingSettings = {
   import NativePackagerHelper._
