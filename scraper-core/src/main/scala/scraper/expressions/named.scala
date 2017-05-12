@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.{Success, Try}
 
 import scraper.{Name, Row}
-import scraper.exceptions.ExpressionUnresolvedException
+import scraper.exceptions.{ExpressionUnresolvedException, NameUnresolvedException}
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.types._
 
@@ -14,18 +14,14 @@ case class ExpressionID(id: Long)
 trait NamedExpression extends Expression {
   def name: Name
 
-  def expressionID: ExpressionID
+  def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
 
   def attr: Attribute
 
-  def withID(id: ExpressionID): NamedExpression
+  def withID(id: ExpressionID): NamedExpression = throw new ExpressionUnresolvedException(this)
 }
 
-trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression {
-  override def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
-
-  override def withID(id: ExpressionID): UnresolvedNamedExpression = this
-}
+trait UnresolvedNamedExpression extends UnresolvedExpression with NamedExpression
 
 object NamedExpression {
   private val currentID = new AtomicLong(0L)
@@ -43,7 +39,7 @@ object NamedExpression {
 }
 
 case class Star(qualifier: Option[Name]) extends LeafExpression with UnresolvedNamedExpression {
-  override def name: Name = throw new ExpressionUnresolvedException(this)
+  override def name: Name = throw new NameUnresolvedException(this)
 
   override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
@@ -94,7 +90,7 @@ case class UnresolvedAlias private (child: Expression)
   with UnresolvedNamedExpression
   with UnevaluableExpression {
 
-  override def name: Name = throw new ExpressionUnresolvedException(this)
+  override def name: Name = throw new NameUnresolvedException(this)
 
   override def attr: Attribute = throw new ExpressionUnresolvedException(this)
 
@@ -108,7 +104,9 @@ trait Attribute extends NamedExpression with LeafExpression {
 
   override def attr: Attribute = this
 
-  def withID(id: ExpressionID): Attribute
+  override def withID(id: ExpressionID): Attribute = super.withID(id) match {
+    case e: Attribute => e
+  }
 
   def nullable(nullability: Boolean): Attribute = this
 
@@ -120,10 +118,10 @@ trait Attribute extends NamedExpression with LeafExpression {
 case class UnresolvedAttribute(name: Name, qualifier: Option[Name] = None)
   extends Attribute with UnresolvedNamedExpression {
 
-  override protected def template(childList: Seq[String]): String =
-    (qualifier.map(_.toString).toSeq :+ name.toString) mkString "."
+  override def withID(id: ExpressionID): Attribute = throw new ExpressionUnresolvedException(this)
 
-  override def withID(id: ExpressionID): UnresolvedAttribute = this
+  override protected def template(childList: Seq[String]): String =
+    (qualifier.map { _.toString }.toSeq :+ name.toString) mkString "."
 
   def qualifiedBy(qualifier: Option[Name]): UnresolvedAttribute = copy(qualifier = qualifier)
 

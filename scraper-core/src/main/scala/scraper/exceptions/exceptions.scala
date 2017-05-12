@@ -32,6 +32,14 @@ class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
   def this(expression: Expression) = this(expression, null)
 }
 
+class NameUnresolvedException(expression: Expression, cause: Throwable)
+  extends AnalysisException(
+    s"The name of expression ${expression.nodeCaption} is unresolved", cause
+  ) {
+
+  def this(expression: Expression) = this(expression, null)
+}
+
 class ExpressionNotBoundException(expression: Expression, cause: Throwable)
   extends AnalysisException(s"Expression ${expression.nodeCaption} is not bound", cause) {
 
