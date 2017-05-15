@@ -4,7 +4,7 @@ lazy val repl = taskKey[Unit]("Runs the Scraper REPL.")
 
 lazy val scraper = project
   .in(file("."))
-  .aggregate(`scraper-core`, `scraper-examples`, `scraper-local`, `scraper-repl`)
+  .aggregate(`scraper-core`, `scraper-docs`, `scraper-examples`, `scraper-local`, `scraper-repl`)
   .settings(
     // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
     repl := (run in `scraper-repl` in Compile toTask "").value
@@ -34,6 +34,11 @@ lazy val `scraper-examples` = project
   .dependsOn(`scraper-core`, `scraper-local`)
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
   .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
+
+lazy val `scraper-docs` = project
+  .dependsOn(`scraper-core`, `scraper-local`)
+  .enablePlugins(commonPlugins :+ SphinxPlugin: _*)
+  .settings(commonSettings ++ runtimeConfSettings)
 
 lazy val javaPackagingSettings = {
   import NativePackagerHelper._
