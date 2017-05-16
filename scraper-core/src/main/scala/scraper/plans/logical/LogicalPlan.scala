@@ -410,11 +410,13 @@ case class Aggregate(
 }
 
 /**
- * An unresolved logical plan node dedicated for representing SQL `ORDER BY` clauses. SQL `ORDER BY`
- * clauses are always parsed as [[UnresolvedSort]] nodes. The reason why a special logical plan node
- * is necessary is that sort order expressions in a SQL `ORDER BY` clause may reference columns from
- * both the `SELECT` clause and the `FROM` clause, which contradicts with our logical plan contract
- * and requires special handling during the analysis phase.
+ * An unresolved logical plan node dedicated for representing SQL `ORDER BY` clauses. The reason why
+ * a special logical plan node is necessary is that sort order expressions in a SQL `ORDER BY`
+ * clause may reference columns from both the `SELECT` clause and the `FROM` clause. On the other
+ * hand, one contract that is enforced by the analysis phase is that a logical plan node is only
+ * allowed to reference output attributes of the plan node right beneath it. Parsing SQL `ORDER BY`
+ * clauses into [[UnresolvedSort]] nodes provides an opportunity for the analyzer to fix this
+ * violation while rewriting them into [[Sort]] plan nodes.
  *
  * @see [[scraper.plans.logical.analysis.RewriteUnresolvedSort]]
  */
