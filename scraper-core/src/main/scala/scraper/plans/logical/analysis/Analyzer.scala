@@ -5,6 +5,7 @@ import scraper.exceptions.AnalysisException
 import scraper.expressions._
 import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
+import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.plans.logical.patterns.{Resolved, Unresolved}
 import scraper.trees.{Rule, RulesExecutor}
 import scraper.trees.RulesExecutor.{FixedPoint, Once}
@@ -259,19 +260,33 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
     case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
       plan
 
-    case plan @ Resolved(child Project projectList) UnresolvedSort order =>
+    case plan @ (child Project projectList UnresolvedSort order) =>
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
         .map { _ tryResolveUsing output }
         .map { case e: SortOrder => e }
 
-      val unresolvedOrder = maybeResolvedOrder.filterNot { _.isResolved }
+      val unevaluableOrder = maybeResolvedOrder.filter { order =>
+        // `SortOrder`s are unevaluable if they contain either unresolved expressions or aggregate
+        // functions. Note that aggregate function calls like `count(1)` are actually resolved
+        // expressions, but still, they are not evaluable within an `ORDER BY` clause. The following
+        // predicate handles both of the following two global aggregation queries:
+        //
+        //  - SELECT 1 AS x FROM t ORDER BY count(a)
+        //
+        //    `count(a)` references `a`, which is from the `FROM` clause.
+        //
+        //  - SELECT 1 AS x FROM t ORDER BY count(1)
+        //
+        //    `count(1)` references no attributes.
+        !order.isResolved || hasAggregateFunction(order)
+      }
 
-      if (unresolvedOrder.isEmpty) {
-        child select projectList sort maybeResolvedOrder
+      if (unevaluableOrder.isEmpty) {
+        child select projectList sort maybeResolvedOrder withMetadata plan.metadata
       } else {
-        val pushDown = unresolvedOrder
+        val pushDown = unevaluableOrder
           .map { _.child }
           .map { _ unaliasUsing projectList }
           .zipWithIndex
