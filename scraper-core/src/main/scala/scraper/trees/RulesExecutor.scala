@@ -5,14 +5,7 @@ import scala.annotation.tailrec
 import scraper.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
 import scraper.utils.{sideBySide, Logging}
 
-trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
-  override def apply(tree: Base): Base =
-    tree collectFirst skip map { _ => tree } getOrElse rewrite(tree)
-
-  protected val skip: PartialFunction[Base, Unit] = PartialFunction.empty[Base, Unit]
-
-  protected def rewrite(tree: Base): Base = tree
-}
+trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging
 
 trait RulesExecutor[Base <: TreeNode[Base]] extends Logging with (Base => Base) {
   case class RuleBatch(

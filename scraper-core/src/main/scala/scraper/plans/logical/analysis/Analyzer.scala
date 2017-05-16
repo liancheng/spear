@@ -144,7 +144,7 @@ class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
  * }}}
  */
 class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
-  override def rewrite(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan if plan.children.length < 2 =>
       plan
 

@@ -143,10 +143,13 @@ class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRul
  * }}}
  */
 class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan =
+    tree collectFirst skip map { _ => tree } getOrElse { tree transformUp rewriter }
+
   // This partial function performs as a guard, who ensures all the pre-conditions of this analysis
   // rule. We should skip this rule by returning the original query plan whenever the plan tree
   // contains any of the following patterns.
-  override protected val skip: PartialFunction[LogicalPlan, Unit] = {
+  private val skip: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all adjacent having conditions are absorbed.
     case (_: UnresolvedAggregate) Filter _ =>
 
@@ -194,8 +197,6 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
       plan.keys foreach rejectIllegalWindowFunctions("grouping key")
       plan.conditions foreach rejectIllegalWindowFunctions("HAVING condition")
   }
-
-  override protected def rewrite(tree: LogicalPlan): LogicalPlan = tree transformUp rewriter
 
   private val rewriter: PartialFunction[LogicalPlan, LogicalPlan] = {
     case UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
