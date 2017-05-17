@@ -69,6 +69,8 @@ lazy val commonSettings = {
   )
 
   val commonTestSettings = Seq(
+    // Disables parallel test execution to ensure logging order.
+    parallelExecution in Test := false,
     // Does not fork a new JVM process to run the tests.
     fork := false,
     // Shows duration and full exception stack trace
