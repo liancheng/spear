@@ -432,7 +432,7 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
 }
 
 /**
- * A logical plan operator used to implement CTE. Note that one [[With]] operator only holds a
+ * A logical plan operator used for implementing CTE. Note that one [[With]] operator only holds a
  * single CTE relation. Queries involving multiple CTE relations are represented by nested [[With]]
  * operators. E.g., the following query
  * {{{

@@ -62,22 +62,22 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate - the ORDER BY clause contains a count(1)") {
-      val `@A: count(1)` = AggregationAlias(count(1))
-      val `@S: count(1)` = SortOrderAlias(`@A: count(1)`.attr, "order0")
-      val `1 AS out` = 1 as 'out
+    val `@A: count(1)` = AggregationAlias(count(1))
+    val `@S: count(1)` = SortOrderAlias(`@A: count(1)`.attr, "order0")
+    val `1 AS out` = 1 as 'out
 
-      checkSQLAnalysis(
-        "SELECT 1 AS out FROM t ORDER BY count(1)",
+    checkSQLAnalysis(
+      "SELECT 1 AS out FROM t ORDER BY count(1)",
 
-        table('t) select (1 as 'out) orderBy 'count(1),
+      table('t) select (1 as 'out) orderBy 'count(1),
 
-        relation
-          aggregate (Nil, `@A: count(1)` :: Nil)
-          sort `@A: count(1)`.attr.asc
-          select (`1 AS out`, `@S: count(1)`)
-          select `1 AS out`.attr
-      )
-    }
+      relation
+        aggregate (Nil, `@A: count(1)` :: Nil)
+        sort `@A: count(1)`.attr.asc
+        select (`1 AS out`, `@S: count(1)`)
+        select `1 AS out`.attr
+    )
+  }
 
   test("global aggregate - only the ORDER BY and HAVING clauses contain aggregate functions") {
     val `@A: count(a)` = AggregationAlias(count(self.a of 't))

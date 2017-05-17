@@ -3,6 +3,7 @@ package scraper.plans.logical.analysis
 import scraper._
 import scraper.exceptions.AnalysisException
 import scraper.expressions._
+import scraper.expressions.NamedExpression.newExpressionID
 import scraper.plans.logical._
 
 class CTEAnalysisSuite extends AnalyzerTest {
@@ -81,33 +82,89 @@ class CTEAnalysisSuite extends AnalyzerTest {
   test("multiple CTE in SQL") {
     val `1 as x` = 1 as 'x
     val `2 as x` = 2 as 'x
-    val (x0: AttributeRef, x1: AttributeRef) = (`1 as x`.attr, `2 as x`.attr)
+    val (lhsX: AttributeRef, rhsX: AttributeRef) = (`1 as x`.attr, `2 as x`.attr)
 
     checkAnalyzedPlan(
       """WITH
         |  s0 AS (SELECT 1 AS x),
         |  s1 AS (SELECT 2 AS x)
-        |SELECT *
-        |FROM s0 UNION ALL SELECT * FROM s1
+        |SELECT * FROM s0 UNION ALL SELECT * FROM s1
         |""".stripMargin,
 
-      values(`1 as x`) subquery 's0 select (x0 of 's0) union (
-        values(`2 as x`) subquery 's1 select (x1 of 's1)
+      values(`1 as x`) subquery 's0 select (lhsX of 's0) union (
+        values(`2 as x`) subquery 's1 select (rhsX of 's1)
       )
+    )
+  }
+
+  test("multiple CTE in SQL, one referencing another") {
+    val `lhs: 1 as x` = 1 as 'x
+    val `rhs: 1 as x` = `lhs: 1 as x` withID newExpressionID()
+    val (lhsX: AttributeRef, rhsX: AttributeRef) = (`lhs: 1 as x`.attr, `rhs: 1 as x`.attr)
+
+    checkAnalyzedPlan(
+      """WITH
+        |  s0 AS (SELECT 1 AS x),
+        |  s1 AS (SELECT * FROM s0)
+        |SELECT * FROM s0 UNION ALL SELECT * FROM s1
+        |""".stripMargin,
+
+      values(`lhs: 1 as x`)
+        subquery 's0
+        select (lhsX of 's0)
+        union (
+          values(`rhs: 1 as x`)
+          subquery 's0
+          select (rhsX of 's0)
+          subquery 's1
+          select (rhsX of 's1)
+        )
     )
   }
 
   test("nested CTE") {
     checkAnalyzedPlan(
       let('s, relation0 subquery 't0) {
-        table('s) union let('s, relation1 subquery 't1) {
-          table('s) select ('c as 'a, 'd as 'b)
+        table('s) union {
+          let('s, relation1 subquery 't1) {
+            table('s) select ('c as 'a, 'd as 'b)
+          }
         }
       },
 
-      relation0 subquery 't0 subquery 's union (
+      relation0 subquery 't0 subquery 's union {
         relation1 subquery 't1 subquery 's select (c of 's as 'a, d of 's as 'b)
-      )
+      }
+    )
+  }
+
+  test("nested CTE in SQL, one referencing another") {
+    val `1 as a` = 1 as 'a
+    val a = 'a.int.! withID `1 as a`.expressionID
+
+    val `a + 1 as b` = (a of 's0) + 1 as 'b
+    val b = 'b.int.! withID `a + 1 as b`.expressionID
+
+    val `b + 2 as c` = (b of 's0) + 2 as 'c
+    val c = 'c.int.! withID `b + 2 as c`.expressionID
+
+    val `c + 3 as d` = (c of 'sub) + 3 as 'd
+
+    checkAnalyzedPlan(
+      """WITH s0 AS (SELECT 1 AS a)
+        |SELECT c + 3 AS d FROM (
+        |  WITH s0 AS (SELECT a + 1 AS b FROM s0)
+        |  SELECT b + 2 AS c FROM s0
+        |) sub
+        |""".stripMargin,
+
+      values(`1 as a`)
+        subquery 's0
+        select `a + 1 as b`
+        subquery 's0
+        select `b + 2 as c`
+        subquery 'sub
+        select `c + 3 as d`
     )
   }
 

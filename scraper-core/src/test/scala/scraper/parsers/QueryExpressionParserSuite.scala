@@ -127,6 +127,26 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
   )
 
   testQueryParsing(
+    "SELECT 1 FROM t0 ORDER BY count(1)",
+    table('t0) select 1 orderBy 'count(1)
+  )
+
+  testQueryParsing(
+    "SELECT 1 FROM t0 ORDER BY count(a)",
+    table('t0) select 1 orderBy 'count('a)
+  )
+
+  testQueryParsing(
+    "SELECT 1 FROM t0 HAVING count(1) > 1",
+    table('t0) groupBy Nil agg 1 filter 'count(1) > 1
+  )
+
+  testQueryParsing(
+    "SELECT 1 FROM t0 HAVING count(a) > 1",
+    table('t0) groupBy Nil agg 1 filter 'count('a) > 1
+  )
+
+  testQueryParsing(
     "SELECT count(DISTINCT a) FROM t0",
     table('t0) select 'count('a).distinct
   )
@@ -202,8 +222,8 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   testQueryParsing(
     "WITH c0 AS (SELECT 1), c1 AS (SELECT 2) SELECT * FROM c0 UNION ALL SELECT * FROM c1",
-    let('c1, values(2)) {
-      let('c0, values(1)) {
+    let('c0, values(1)) {
+      let('c1, values(2)) {
         table('c0) select * union (table('c1) select *)
       }
     }

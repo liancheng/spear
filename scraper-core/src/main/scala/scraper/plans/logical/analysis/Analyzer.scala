@@ -151,20 +151,8 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
     case plan if plan.children exists { !_.isResolved } =>
       plan
 
-    case plan if !plan.isDeduplicated =>
-      plan match {
-        case node: Join =>
-          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
-
-        case node: Union =>
-          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
-
-        case node: Intersect =>
-          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
-
-        case node: Except =>
-          node.copy(right = deduplicateRight(node.left, node.right))(node.metadata)
-      }
+    case plan: BinaryLogicalPlan if !plan.isDeduplicated =>
+      plan.withChildren(plan.left :: deduplicateRight(plan.left, plan.right) :: Nil)
   }
 
   private def deduplicateRight(left: LogicalPlan, right: LogicalPlan): LogicalPlan = {
@@ -175,29 +163,36 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
     def rewriteExpressionIDs(oldPlan: LogicalPlan, newPlan: LogicalPlan): LogicalPlan = {
       val rewrite = {
-        val oldOutput = oldPlan.output map { a => a: Expression }
-        val newOutput = newPlan.output map { a => a: Expression }
-        (oldOutput zip newOutput).toMap
+        val oldIDs = oldPlan.output.map { _.expressionID }
+        val newIDs = newPlan.output.map { _.expressionID }
+        (oldIDs zip newIDs).toMap
       }
 
       right transformDown {
         case plan if plan == oldPlan => newPlan
-      } transformAllExpressionsDown rewrite
+      } transformAllExpressionsDown {
+        case a: AttributeRef => a withID rewrite.getOrElse(a.expressionID, a.expressionID)
+      }
     }
 
-    right collectFirst {
+    val maybeDuplicated = right collectFirst {
       // Handles relations that introduce ambiguous attributes
       case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
         plan -> plan.newInstance()
 
       // Handles projections that introduce ambiguous aliases
       case plan @ Project(_, projectList) if hasDuplicates(collectAliases(projectList)) =>
-        plan -> plan.copy(projectList = projectList map {
+        val newProjectList = projectList map {
           case a: Alias => a withID newExpressionID()
           case e        => e
-        })(plan.metadata)
-    } map {
-      case (oldPlan, newPlan) => rewriteExpressionIDs(oldPlan, newPlan)
+        }
+
+        plan -> plan.copy(projectList = newProjectList)(plan.metadata)
+    }
+
+    maybeDuplicated map {
+      case (oldPlan, newPlan) =>
+        rewriteExpressionIDs(oldPlan, newPlan)
     } getOrElse right
   }
 
@@ -206,7 +201,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule allows an `ORDER BY` clause to reference columns from bothe the `FROM` clause and the
+ * This rule allows an `ORDER BY` clause to reference columns from both the `FROM` clause and the
  * the `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, for the
  * following query:
  * {{{

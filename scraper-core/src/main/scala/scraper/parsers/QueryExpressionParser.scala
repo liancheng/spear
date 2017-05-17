@@ -338,7 +338,7 @@ object QueryExpressionParser extends LoggingParser {
 
   private val withList: P[LogicalPlan => LogicalPlan] = (
     withListElement rep (min = 1, sep = ",")
-    map { _ reduce { _ andThen _ } }
+    map { _ reduce { _ compose _ } }
     opaque "with-list"
   )
 
