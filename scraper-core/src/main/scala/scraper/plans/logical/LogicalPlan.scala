@@ -101,9 +101,9 @@ trait MultiInstanceRelation extends Relation {
 case class UnresolvedRelation(name: Name)(val metadata: LogicalPlanMetadata = LogicalPlanMetadata())
   extends Relation with UnresolvedLogicalPlan
 
-case class SingleRowRelation(metadata: LogicalPlanMetadata = LogicalPlanMetadata())
-  extends Relation {
-
+case class SingleRowRelation(
+  @Explain(hidden = true) metadata: LogicalPlanMetadata = LogicalPlanMetadata()
+) extends Relation {
   override val output: Seq[Attribute] = Nil
 }
 
