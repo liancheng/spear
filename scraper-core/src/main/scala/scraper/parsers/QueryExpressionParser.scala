@@ -31,7 +31,7 @@ object TableReferenceParser extends LoggingParser {
     tableSubquery opaque "derived-table"
 
   private val tablePrimary: P[LogicalPlan] = (
-    tableOrQueryName ~ correlationClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    tableOrQueryName ~ correlationClause.?.map { _.orIdentity }
     | derivedTable ~ correlationClause
     map { case (name, f) => f(name) }
     opaque "table-primary"
@@ -200,7 +200,7 @@ object WindowClauseParser extends LoggingParser {
 
   private val windowDefinition: P[LogicalPlan => WindowDef] =
     windowName ~ AS ~ windowSpecification map {
-      case (name, spec) => let(name, spec)(_: LogicalPlan)
+      case (name, spec) => let(name, spec) _
     } opaque "window-definition"
 
   private val windowDefinitionList: P[LogicalPlan => WindowDef] =
@@ -208,7 +208,7 @@ object WindowClauseParser extends LoggingParser {
       _ reduce { _ compose _ }
     } opaque "window-definition-list"
 
-  val windowClause: P[LogicalPlan => WindowDef] =
+  val windowClause: P[LogicalPlan => LogicalPlan] =
     WINDOW ~ windowDefinitionList opaque "window-clause"
 }
 
@@ -290,18 +290,15 @@ object QuerySpecificationParser extends LoggingParser {
 
   val querySpecification: P[LogicalPlan] = (
     SELECT
-    ~ setQuantifier.?.map { _ getOrElse identity[LogicalPlan] _ }
+    ~ setQuantifier.?.map { _.orIdentity }
     ~ selectList
     ~ fromClause.?.map { _ getOrElse SingleRowRelation() }
-    ~ whereClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    ~ whereClause.?.map { _.orIdentity }
     ~ groupByClause.?
     ~ havingClause.?
-    ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
-    ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
-      case (distinct, projectList, relation, where, maybeGroupBy, maybeHaving, window, orderBy) =>
+    ~ windowClause.?.map { _.orIdentity }
+    ~ orderByClause.?.map { _.orIdentity } map {
       case (distinct, projectList, from, where, maybeGroupBy, maybeHaving, window, orderBy) =>
-        val having = maybeHaving getOrElse identity[LogicalPlan] _
-
         // Parses queries containing GROUP BY, HAVING, or both as aggregations. If a HAVING clause
         // exists without a GROUP BY clause, the grouping key list should be empty (i.e., global
         // aggregation).
@@ -322,6 +319,8 @@ object QuerySpecificationParser extends LoggingParser {
           // will rewrite these queries into global aggregations during the analysis phase, though.
           (_: LogicalPlan) select projectList
         }
+
+        val having = maybeHaving.orIdentity
 
         orderBy
           .compose(window)
@@ -397,9 +396,9 @@ object QueryExpressionParser extends LoggingParser {
   )
 
   lazy val queryExpression: P[LogicalPlan] = (
-    withClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    withClause.?.map { _.orIdentity }
     ~ queryExpressionBody
-    ~ limitClause.?.map { _ getOrElse identity[LogicalPlan] _ }
+    ~ limitClause.?.map { _.orIdentity }
     map { case (cte, query, limit) => limit andThen cte apply query }
     opaque "query-expression"
   )

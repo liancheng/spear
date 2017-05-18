@@ -15,4 +15,8 @@ package object parsers {
 
   implicit def `String->ParserImplicits`(literal: String): ParserImplicits[Unit] =
     new ParserImplicits[Unit] { override val self: Parser[Unit] = P(literal) }
+
+  implicit class OrIdentity[A](maybeTransform: Option[A => A]) {
+    def orIdentity: A => A = maybeTransform getOrElse identity[A] _
+  }
 }

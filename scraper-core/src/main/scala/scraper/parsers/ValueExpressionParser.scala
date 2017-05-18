@@ -391,7 +391,7 @@ object BooleanValueExpressionParser extends LoggingParser {
       case (None, _)       => Not
     }
   }.? map {
-    _ getOrElse identity[Expression] _
+    _.orIdentity
   } opaque "boolean-test-suffix"
 
   private val booleanTest: P[Expression] =
