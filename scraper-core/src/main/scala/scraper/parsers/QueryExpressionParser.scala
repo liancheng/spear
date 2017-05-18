@@ -299,13 +299,27 @@ object QuerySpecificationParser extends LoggingParser {
     ~ windowClause.?.map { _ getOrElse identity[LogicalPlan] _ }
     ~ orderByClause.?.map { _ getOrElse identity[LogicalPlan] _ } map {
       case (distinct, projectList, relation, where, maybeGroupBy, maybeHaving, window, orderBy) =>
+      case (distinct, projectList, from, where, maybeGroupBy, maybeHaving, window, orderBy) =>
         val having = maybeHaving getOrElse identity[LogicalPlan] _
 
+        // Parses queries containing GROUP BY, HAVING, or both as aggregations. If a HAVING clause
+        // exists without a GROUP BY clause, the grouping key list should be empty (i.e., global
+        // aggregation).
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
 
         val select = maybeGroupingKeys map { keys =>
           (_: LogicalPlan) groupBy keys agg projectList
         } getOrElse {
+          // Queries with neither HAVING nor GROUP BY are always parsed as simple projections.
+          // However, some of them may actually be global aggregations. E.g.:
+          //
+          //  - SELECT count(*) FROM t
+          //  - SELECT count(count(*)) OVER () FROM t
+          //  - SELECT 1 FROM t ORDER BY count(*)
+          //  - SELECT 1 FROM t ORDER BY count(count(*)) OVER ()
+          //
+          // This is because we cannot recognize aggregate functions during the parsing phase. We
+          // will rewrite these queries into global aggregations during the analysis phase, though.
           (_: LogicalPlan) select projectList
         }
 
@@ -315,7 +329,7 @@ object QuerySpecificationParser extends LoggingParser {
           .compose(distinct)
           .compose(select)
           .compose(where)
-          .apply(relation)
+          .apply(from)
     }
   ) opaque "query-specification"
 }
