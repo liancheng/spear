@@ -4,6 +4,7 @@ import fastparse.all._
 
 import scraper.Name
 import scraper.annotations.ExtendedSQLSyntax
+import scraper.exceptions.AnalysisException
 import scraper.expressions.{*, Expression, NamedExpression, SortOrder}
 import scraper.expressions.windows._
 import scraper.plans.logical._
@@ -330,17 +331,25 @@ object QueryExpressionParser extends LoggingParser {
 
   private val withColumnList: P[Seq[Name]] = columnNameList opaque "with-column-list"
 
-  private val withListElement: P[LogicalPlan => LogicalPlan] =
+  private val withListElement: P[(Name, LogicalPlan => LogicalPlan)] =
     queryName ~ ("(" ~ withColumnList ~ ")").? ~ AS ~ "(" ~ P(queryExpression) ~ ")" map {
-      case (name, Some(columns), query) => let(name, query rename columns)(_: LogicalPlan)
-      case (name, None, query)          => let(name, query)(_: LogicalPlan)
+      case (name, Some(columns), query) => name -> let(name, query rename columns) _
+      case (name, None, query)          => name -> let(name, query) _
     } opaque "with-list-element"
 
-  private val withList: P[LogicalPlan => LogicalPlan] = (
-    withListElement rep (min = 1, sep = ",")
-    map { _ reduce { _ compose _ } }
-    opaque "with-list"
-  )
+  private def checkDuplicatedNames(names: Seq[Name]): Unit = names groupBy identity foreach {
+    case (name, group) if group.length > 1 =>
+      throw new AnalysisException(s"WITH query name $name specified more than once")
+
+    case _ =>
+  }
+
+  private val withList: P[LogicalPlan => LogicalPlan] =
+    withListElement rep (min = 1, sep = ",") map { pairs =>
+      val (names, builders) = pairs.unzip
+      checkDuplicatedNames(names)
+      builders reduce { _ compose _ }
+    } opaque "with-list"
 
   private val withClause: P[LogicalPlan => LogicalPlan] = WITH ~ withList opaque "with-clause"
 
