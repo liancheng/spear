@@ -6,34 +6,40 @@ import scraper.expressions._
 import scraper.expressions.InternalAlias.buildRewriter
 import scraper.expressions.windows.{WindowFunction, WindowSpecRef}
 import scraper.plans.logical._
+import scraper.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import scraper.plans.logical.analysis.WindowAnalysis._
 import scraper.plans.logical.patterns.Resolved
 import scraper.utils._
 
 /**
- * This rule extracts window functions inside projections into separate `Window` operators.
+ * This rule extracts window functions from `SELECT` and `ORDER BY` clauses and moves them into
+ * separate `Window` operators.
  */
-class ExtractWindowFunctionsFromProject(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
+  override def apply(tree: LogicalPlan): LogicalPlan =
+    tree collectFirst skip map { _ => tree } getOrElse rewrite(tree)
+
+  private def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case Resolved(child Sort order) if hasWindowFunction(order) =>
+      val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
+      val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
+      child windows winAliases sort rewrittenOrder select child.output
+
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
       val winAliases = collectWindowFunctions(projectList) map { WindowAlias(_) }
       val rewrittenProjectList = projectList map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases select rewrittenProjectList
   }
-}
 
-/**
- * This rule extracts window functions inside `ORDER BY` clauses into separate `Window` operators.
- */
-class ExtractWindowFunctionsFromSort(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case plan: UnresolvedAggregate =>
-      plan
+  private val skip: PartialFunction[LogicalPlan, Unit] = {
+    // Waits until all aggregations are resolved.
+    case _: UnresolvedAggregate =>
 
-    case Resolved(child Sort order) if hasWindowFunction(order) =>
-      val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
-      val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
-      child windows winAliases sort rewrittenOrder select child.output
+    // Waits until all SQL `ORDER BY` clauses are resolved.
+    case _: UnresolvedSort =>
+
+    // Waits until all global aggregations are resolved.
+    case Resolved(_ Project projectList) if hasAggregateFunction(projectList) =>
   }
 }
 

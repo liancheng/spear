@@ -368,4 +368,40 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
       )
     )
   }
+
+  test("window aggregate function containing non-window aggregate function in SELECT") {
+    val `@A: count(1)` = AggregationAlias(count(1))
+    val `@W: count(count(1)) over ()` = WindowAlias(count(`@A: count(1)`.attr) over ())
+
+    checkSQLAnalysis(
+      "SELECT count(count(*)) OVER () AS c FROM t",
+
+      table('t) select ('count('count(*)) over () as 'c),
+
+      relation
+        aggregate (Nil, `@A: count(1)` :: Nil)
+        window `@W: count(count(1)) over ()`
+        select (`@W: count(count(1)) over ()`.attr as 'c)
+    )
+  }
+
+  test("window aggregate function containing non-window aggregate function in ORDER BY") {
+    val `@A: count(1)` = AggregationAlias(count(1))
+    val `@W: count(count(1)) over ()` = WindowAlias(count(`@A: count(1)`.attr) over ())
+    val order0 = SortOrderAlias(`@W: count(count(1)) over ()`.attr, "order0")
+    val `1 as c` = 1 as 'c
+
+    checkSQLAnalysis(
+      "SELECT 1 AS c FROM t ORDER BY count(count(*)) OVER ()",
+
+      table('t) select (1 as 'c) orderBy ('count('count(*)) over ()),
+
+      relation
+        aggregate (Nil, `@A: count(1)` :: Nil)
+        window `@W: count(count(1)) over ()`
+        sort `@W: count(count(1)) over ()`.attr
+        select (`1 as c`, order0)
+        select `1 as c`.attr
+    )
+  }
 }

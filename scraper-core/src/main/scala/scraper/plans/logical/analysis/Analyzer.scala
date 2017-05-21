@@ -33,8 +33,7 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new ResolveAlias(catalog),
 
       // Rules that help resolving window functions
-      new ExtractWindowFunctionsFromProject(catalog),
-      new ExtractWindowFunctionsFromSort(catalog),
+      new ExtractWindowFunctions(catalog),
 
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunction(catalog),
