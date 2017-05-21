@@ -7,9 +7,9 @@ object Dependencies {
   )
 
   object Versions {
-    val ammonite = "0.7.8"
+    val ammonite = "0.9.0"
     val config = "1.2.1"
-    val fastparse = "0.4.1"
+    val fastparse = "0.4.3"
     val log4j = "1.2.16"
     val mockito = "2.1.0-beta.120"
     val scala = "2.11.8"
@@ -18,9 +18,7 @@ object Dependencies {
     val scalaXml = "1.0.4"
     val slf4j = "1.6.4"
 
-    val jline = "2.12.1"
-    val protobuf = "2.5.0"
-    val sourcecode = "0.1.2"
+    val sourcecode = "0.1.3"
   }
 
   val ammonite = Seq(
@@ -31,20 +29,12 @@ object Dependencies {
     "com.lihaoyi" %% "fastparse" % Versions.fastparse
   )
 
-  val jline = Seq(
-    "jline" % "jline" % Versions.jline
-  )
-
   val log4j = Seq(
     "log4j" % "log4j" % Versions.log4j
   )
 
   val mockito = Seq(
     "org.mockito" % "mockito-core" % Versions.mockito % "test"
-  )
-
-  val protobuf = Seq(
-    "com.google.protobuf" % "protobuf-java" % Versions.protobuf
   )
 
   val scala = Seq(
@@ -79,5 +69,5 @@ object Dependencies {
 
   val logging: Seq[ModuleID] = log4j ++ slf4j
 
-  val overrides: Set[ModuleID] = (jline ++ protobuf ++ scala ++ sourcecode).toSet
+  val overrides: Set[ModuleID] = (scala ++ sourcecode).toSet
 }
