@@ -4,11 +4,11 @@
 
 ![Codecov.io][codecov-history]
 
-[travis-ci-badge]: https://travis-ci.org/liancheng/scraper.svg?branch=master
-[travis-ci]: https://travis-ci.org/liancheng/scraper
-[codecov-badge]: https://codecov.io/github/liancheng/scraper/coverage.svg?branch=master
-[codecov]: https://codecov.io/github/liancheng/scraper?branch=master
-[codecov-history]: https://codecov.io/github/liancheng/scraper/branch.svg?branch=master
+[travis-ci-badge]: https://travis-ci.org/liancheng/spear.svg?branch=master
+[travis-ci]: https://travis-ci.org/liancheng/spear
+[codecov-badge]: https://codecov.io/github/liancheng/spear/coverage.svg?branch=master
+[codecov]: https://codecov.io/github/liancheng/spear?branch=master
+[codecov-history]: https://codecov.io/github/liancheng/spear/branch.svg?branch=master
 
 This project is a sandbox and playground of mine for experimenting ideas and potential improvements to Spark SQL. It consists of:
 
@@ -17,11 +17,11 @@ This project is a sandbox and playground of mine for experimenting ideas and pot
 - A query optimizer that optimizes resolved query plans into equivalent but more performant ones
 - A query planner that turns (optimized) logical plans into executable physical plans
 
-Currently Scraper only works with local Scala collections.
+Currently Spear only works with local Scala collections.
 
 # Build
 
-Building Scraper is as easy as:
+Building Spear is as easy as:
 
 ```
 $ ./build/sbt package
@@ -29,10 +29,10 @@ $ ./build/sbt package
 
 # Run the REPL
 
-Scraper has an Ammonite-based REPL for interactive experiments. To start it:
+Spear has an Ammonite-based REPL for interactive experiments. To start it:
 
 ```
-$ ./build/sbt scraper-repl/run
+$ ./build/sbt spear-repl/run
 ```
 
 Let's create a simple DataFrame of numbers:

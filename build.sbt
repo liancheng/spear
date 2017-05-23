@@ -1,16 +1,16 @@
 import Dependencies._
 
-lazy val repl = taskKey[Unit]("Runs the Scraper REPL.")
+lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
 
-lazy val scraper = project
+lazy val spear = project
   .in(file("."))
-  .aggregate(`scraper-core`, `scraper-docs`, `scraper-examples`, `scraper-local`, `scraper-repl`)
+  .aggregate(`spear-core`, `spear-docs`, `spear-examples`, `spear-local`, `spear-repl`)
   .settings(
     // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
-    repl := (run in `scraper-repl` in Compile toTask "").value
+    repl := (run in `spear-repl` in Compile toTask "").value
   )
 
-lazy val `scraper-core` = project
+lazy val `spear-core` = project
   .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
   .settings(
@@ -18,25 +18,25 @@ lazy val `scraper-core` = project
     libraryDependencies ++= Dependencies.testing
   )
 
-lazy val `scraper-local` = project
-  .dependsOn(`scraper-core` % "compile->compile;test->test")
+lazy val `spear-local` = project
+  .dependsOn(`spear-core` % "compile->compile;test->test")
   .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
 
-lazy val `scraper-repl` = project
-  .dependsOn(`scraper-core` % "compile->compile;test->test")
-  .dependsOn(`scraper-local` % "compile->compile;test->test;compile->test")
+lazy val `spear-repl` = project
+  .dependsOn(`spear-core` % "compile->compile;test->test")
+  .dependsOn(`spear-local` % "compile->compile;test->test;compile->test")
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
   .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
   .settings(libraryDependencies ++= ammonite)
 
-lazy val `scraper-examples` = project
-  .dependsOn(`scraper-core`, `scraper-local`)
+lazy val `spear-examples` = project
+  .dependsOn(`spear-core`, `spear-local`)
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
   .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
 
-lazy val `scraper-docs` = project
-  .dependsOn(`scraper-core`, `scraper-local`)
+lazy val `spear-docs` = project
+  .dependsOn(`spear-core`, `spear-local`)
   .enablePlugins(commonPlugins :+ SphinxPlugin: _*)
   .settings(commonSettings ++ runtimeConfSettings)
 
@@ -60,7 +60,7 @@ lazy val commonPlugins = Seq(
 
 lazy val commonSettings = {
   val basicSettings = Seq(
-    organization := "scraper",
+    organization := "spear",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := Versions.scala,
     scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
