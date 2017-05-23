@@ -201,7 +201,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
 /**
  * This rule allows an `ORDER BY` clause to reference columns from both the `FROM` clause and the
- * the `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, for the
+ * `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, for the
  * following query:
  * {{{
  *   SELECT a + 1 AS x FROM t ORDER BY a
@@ -254,41 +254,31 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
     case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
       plan
 
-    case plan @ (child Project projectList UnresolvedSort order) =>
+    case plan @ child Project projectList UnresolvedSort order =>
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
         .map { _ tryResolveUsing output }
         .map { case e: SortOrder => e }
 
+      // Finds out all unevaluable `SortOrder`s containing either unresolved expressions or
+      // aggregate functions (no matter resolved or not, since aggregate functions cannot be
+      // evaluated by a `Sort` operator).
       val unevaluableOrder = maybeResolvedOrder.filter { order =>
-        // `SortOrder`s are unevaluable if they contain either unresolved expressions or aggregate
-        // functions. Note that aggregate function calls like `count(1)` are actually resolved
-        // expressions, but still, they are not evaluable within an `ORDER BY` clause. The following
-        // predicate handles both of the following two global aggregation queries:
-        //
-        //  - SELECT 1 AS x FROM t ORDER BY count(a)
-        //
-        //    `count(a)` references `a`, which is from the `FROM` clause.
-        //
-        //  - SELECT 1 AS x FROM t ORDER BY count(1)
-        //
-        //    `count(1)` references no attributes.
         !order.isResolved || hasAggregateFunction(order)
       }
 
       if (unevaluableOrder.isEmpty) {
         child select projectList sort maybeResolvedOrder withMetadata plan.metadata
       } else {
+        // Pushes down unevaluable `SortOrder`s by adding an intermediate projection.
         val pushDown = unevaluableOrder
           .map { _.child }
           .map { _ unaliasUsing projectList }
           .zipWithIndex
           .map { case (e, index) => SortOrderAlias(e, s"order$index") }
 
-        val rewrite = pushDown.map {
-          e => e.child -> (e.name: Expression)
-        }.toMap
+        val rewrite = pushDown.map { e => e.child -> (e.name: Expression) }.toMap
 
         child
           .select(projectList ++ pushDown)

@@ -271,13 +271,13 @@ object QuerySpecificationParser extends LoggingParser {
 
   private val whereClause: P[LogicalPlan => LogicalPlan] = (
     WHERE ~ searchCondition
-    map { cond => (_: LogicalPlan) filter cond }
+    map { condition => (_: LogicalPlan) filter condition }
     opaque "where-clause"
   )
 
   private val havingClause: P[LogicalPlan => LogicalPlan] = (
     HAVING ~ searchCondition
-    map { cond => (_: LogicalPlan) filter cond }
+    map { condition => (_: LogicalPlan) filter condition }
     opaque "having-clause"
   )
 
@@ -308,7 +308,8 @@ object QuerySpecificationParser extends LoggingParser {
           (_: LogicalPlan) groupBy keys agg projectList
         } getOrElse {
           // Queries with neither HAVING nor GROUP BY are always parsed as simple projections.
-          // However, some of them may actually be global aggregations. E.g.:
+          // However, some of them may actually be global aggregations due to aggregate functions
+          // appeared in `SELECT` and/or `ORDER BY` clauses. E.g.:
           //
           //  - SELECT count(*) FROM t
           //  - SELECT count(count(*)) OVER () FROM t
