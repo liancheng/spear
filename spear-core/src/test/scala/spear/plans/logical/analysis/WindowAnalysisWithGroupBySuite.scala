@@ -425,20 +425,6 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
     }
   }
 
-  test("illegal window function alias referenced in HAVING clause") {
-    val patterns = Seq("Window functions are not allowed in HAVING condition")
-    val f0 = Window partitionBy 'a + 1 orderBy 'b rowsBetween (UnboundedPreceding, 0)
-
-    checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(
-        relation
-          groupBy 'a + 1
-          agg ('count('a + 1) over f0 as 'win_count)
-          filter 'win_count > 1
-      )
-    }
-  }
-
   test("illegal attribute reference in window function in SELECT clause") {
     val patterns = Seq(
       "Attribute t.a",

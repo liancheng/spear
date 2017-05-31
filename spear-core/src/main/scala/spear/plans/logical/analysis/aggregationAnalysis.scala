@@ -90,12 +90,8 @@ class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule
 class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
-      // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
-      // referenced by some HAVING condition(s).
-      val unaliased = condition tryResolveUsing agg.projectList unaliasUsing agg.projectList
-
       // All having conditions should be preserved.
-      agg.copy(conditions = agg.conditions :+ unaliased)(agg.metadata)
+      agg.copy(conditions = agg.conditions :+ condition)(agg.metadata)
 
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall { _.isResolved } =>
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
