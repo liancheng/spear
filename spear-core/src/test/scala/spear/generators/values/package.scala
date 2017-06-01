@@ -50,7 +50,7 @@ package object values {
 
   def genValueForArrayType(dataType: ArrayType)(implicit settings: Settings): Gen[Seq[_]] = {
     val genElement = if (dataType.isElementNullable) {
-      Gen.option(genValueForDataType(dataType)(settings)) map (_.orNull)
+      Gen.option(genValueForDataType(dataType)(settings)) map { _.orNull }
     } else {
       genValueForDataType(dataType)(settings)
     }
@@ -65,7 +65,11 @@ package object values {
     val genKey = genValueForDataType(dataType.keyType)(settings)
     val genValue = {
       val genNonNullValue = genValueForDataType(dataType)(settings)
-      if (dataType.isValueNullable) Gen.option(genNonNullValue) map (_.orNull) else genNonNullValue
+      if (dataType.isValueNullable) {
+        Gen.option(genNonNullValue) map { _.orNull }
+      } else {
+        genNonNullValue
+      }
     }
 
     for {
@@ -79,7 +83,7 @@ package object values {
     val genFields = Gen.sequence(dataType.fields map {
       case StructField(_, fieldType, nullable) =>
         val genNonNullField = genValueForDataType(fieldType)(settings)
-        if (nullable) Gen.option(genNonNullField) map (_.orNull) else genNonNullField
+        if (nullable) Gen.option(genNonNullField) map { _.orNull } else genNonNullField
     })
 
     for (fields <- genFields) yield Row.fromSeq(fields.asScala)

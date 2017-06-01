@@ -38,7 +38,7 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
     if (planOrdered) {
       assert(plan.iterator.toSeq == expectedRows.toSeq)
     } else {
-      val sort = Sort(_: PhysicalPlan, plan.output map (_.asc))
+      val sort = Sort(_: PhysicalPlan, plan.output map { _.asc })
       val actual = sort(plan).iterator.toSeq
       val expected = sort(LocalRelation(expectedRows.toIterable, plan.output)).iterator.toSeq
       assert(actual == expected)

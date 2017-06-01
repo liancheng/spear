@@ -54,7 +54,7 @@ object IdentifierParser {
     ("\"\"" | (!"\"" ~~ AnyChar)).char opaque "delimiter-identifier-part"
 
   private val delimitedIdentifierBody: P[String] =
-    delimitedIdentifierPart.repX map (_.mkString) opaque "delimited-identifier-body"
+    delimitedIdentifierPart.repX map { _.mkString } opaque "delimited-identifier-body"
 
   // SQL06 section 5.2
   val delimitedIdentifier: P[Name] = (
@@ -69,14 +69,14 @@ object IdentifierParser {
     delimitedIdentifierPart opaque "unicode-identifier-part"
 
   private val unicodeDelimiterBody: P[String] =
-    unicodeIdentifierPart repX 1 map (_.mkString) opaque "unicode-delimiter-body"
+    unicodeIdentifierPart repX 1 map { _.mkString } opaque "unicode-delimiter-body"
 
   private val unicodeEscapeCharacter: P0 =
     !(hexit | "+" | "'" | "\"" | whitespace) ~~ AnyChar opaque "unicode-escape-character"
 
   val unicodeEscapeSpecifier: P[Char] = (
     (UESCAPE ~ ("'" ~~ unicodeEscapeCharacter.char ~~ "'")).?
-    map (_ getOrElse '\\')
+    map { _ getOrElse '\\' }
     opaque "unicode-escape-specifier"
   )
 
@@ -108,7 +108,7 @@ object IdentifierParser {
     val unicodeDelimiterBody = (
       unicodeEscapeValue | delimitedIdentifierPart
       repX 1
-      map (_.mkString)
+      map { _.mkString }
       opaque "unicode-delimiter-body"
     )
 
@@ -117,7 +117,7 @@ object IdentifierParser {
 
   private val unicodeDelimitedIdentifier: P[Name] = (
     ("U&" ~~ "\"").~/ ~~ unicodeDelimiterBody ~~ "\"" ~ unicodeEscapeSpecifier
-    map (parseUnicodeRepresentations _).tupled
+    map { parseUnicodeRepresentations _ }.tupled
     map Name.caseSensitive
     opaque "unicode-delimited-identifier"
   )

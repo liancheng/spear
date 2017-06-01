@@ -193,11 +193,11 @@ package object expressions extends Logging {
   }
 
   implicit lazy val shrinkByte: Shrink[Byte] = Shrink { n =>
-    shrink(n.toInt) map (_.toByte)
+    shrink(n.toInt) map { _.toByte }
   }
 
   implicit lazy val shrinkShort: Shrink[Short] = Shrink { n =>
-    shrink(n.toInt) map (_.toShort)
+    shrink(n.toInt) map { _.toShort }
   }
 
   implicit lazy val shrinkLong: Shrink[Long] = {
@@ -208,8 +208,8 @@ package object expressions extends Logging {
 
     Shrink { n =>
       if (n == 0) Empty else {
-        val ns = integralHalves(n / 2) map (n - _)
-        0 #:: interleave(ns, ns map (-1 * _))
+        val ns = integralHalves(n / 2) map { n - _ }
+        0 #:: interleave(ns, ns map { -1 * _ })
       }
     }
   }
@@ -227,8 +227,8 @@ package object expressions extends Logging {
 
     Shrink { n =>
       val f = implicitly[Fractional[T]]
-      val ns = fractionalHalves(f.div(n, f.fromInt(2))) map (f.minus(n, _))
-      f.zero #:: interleave(ns, ns map (f.times(_, f.fromInt(-1))))
+      val ns = fractionalHalves(f.div(n, f.fromInt(2))) map { f.minus(n, _) }
+      f.zero #:: interleave(ns, ns map { f.times(_, f.fromInt(-1)) })
     }
   }
 
@@ -239,13 +239,13 @@ package object expressions extends Logging {
   }
 
   lazy val shrinkLiteral: Shrink[Literal] = Shrink {
-    case lit @ Literal(value: Byte, _)   => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Short, _)  => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Int, _)    => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Long, _)   => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Float, _)  => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: Double, _) => shrink(value) map (v => lit.copy(value = v))
-    case lit @ Literal(value: String, _) => shrink(value) map (v => lit.copy(value = v))
+    case lit @ Literal(value: Byte, _)   => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: Short, _)  => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: Int, _)    => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: Long, _)   => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: Float, _)  => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: Double, _) => shrink(value) map { v => lit.copy(value = v) }
+    case lit @ Literal(value: String, _) => shrink(value) map { v => lit.copy(value = v) }
     case _                               => Empty
   }
 

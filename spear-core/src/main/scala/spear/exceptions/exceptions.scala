@@ -57,7 +57,7 @@ class TypeCheckException(message: String, cause: Throwable)
 
   def this(expression: Expression, cause: Throwable) =
     this({
-      val causeMessage = Option(cause) map (". " + _.getMessage) getOrElse ""
+      val causeMessage = Option(cause) map { ". " + _.getMessage } getOrElse ""
       s"""Expression ${expression.sqlLike} doesn't pass type check$causeMessage
          |${expression.prettyTree}
          |""".stripMargin

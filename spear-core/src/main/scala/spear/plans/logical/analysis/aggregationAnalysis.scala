@@ -225,7 +225,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
       }
 
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
-      val wins = collectWindowFunctions(projectList ++ order map (rewriteKeys andThen rewriteAggs))
+      val wins = collectWindowFunctions(projectList ++ order map rewriteKeys.andThen(rewriteAggs))
       val winAliases = wins map { WindowAlias(_) }
       logInternalAliases(winAliases, "window functions")
 

@@ -7,7 +7,7 @@ trait Projection extends (Row => Row) with (() => Row)
 
 object Projection {
   def apply(expressions: Seq[Expression]): Projection = new Projection {
-    override def apply(input: Row): Row = Row.fromSeq(expressions map (_ evaluate input))
+    override def apply(input: Row): Row = Row.fromSeq(expressions map { _ evaluate input })
 
     override def apply(): Row = apply(null)
   }

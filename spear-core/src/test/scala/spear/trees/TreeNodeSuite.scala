@@ -22,7 +22,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
         for {
           width <- Gen choose (1, size - 1)
           childrenSizes <- genRandomPartitions(size - 1, width)
-          children <- Gen sequence (childrenSizes map (Gen.resize(_, genNode)))
+          children <- Gen sequence (childrenSizes map { Gen.resize(_, genNode) })
         } yield Node(1, children.asScala)
     }
   }
@@ -129,7 +129,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
   }
 
   test("withChildren") {
-    val children = (0 until 3) map (Node(_, Nil))
+    val children = (0 until 3) map { Node(_, Nil) }
     val node = Node(3, children)
     assert(node.withChildren(children) == node)
   }

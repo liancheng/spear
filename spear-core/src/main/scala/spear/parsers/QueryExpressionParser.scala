@@ -309,7 +309,7 @@ object QuerySpecificationParser extends LoggingParser {
         } getOrElse {
           // Queries with neither HAVING nor GROUP BY are always parsed as simple projections.
           // However, some of them may actually be global aggregations due to aggregate functions
-          // appeared in `SELECT` and/or `ORDER BY` clauses. E.g.:
+          // appearing in `SELECT` and/or `ORDER BY` clauses. E.g.:
           //
           //  - SELECT count(*) FROM t
           //  - SELECT count(count(*)) OVER () FROM t

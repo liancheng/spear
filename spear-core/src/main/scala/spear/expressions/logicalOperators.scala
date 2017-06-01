@@ -92,7 +92,7 @@ case class CaseWhen(
   override protected def template(childList: Seq[String]): String = {
     val (tests, rest) = childList splitAt conditions.length
     val (values, alternativeString) = rest splitAt conditions.length
-    val elsePart = alternativeString.headOption map (" ELSE " + _) getOrElse ""
+    val elsePart = alternativeString.headOption map { " ELSE " + _ } getOrElse ""
     val cases = (tests, values).zipped map { "WHEN " + _ + " THEN " + _ } mkString " "
     s"CASE $cases$elsePart END"
   }

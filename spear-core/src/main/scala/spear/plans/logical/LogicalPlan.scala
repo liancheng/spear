@@ -253,7 +253,7 @@ trait SetOperator extends BinaryLogicalPlan {
 
     for {
       widenedTypes <- trySequence(branches.map { _.schema.fieldTypes }.transpose map widestTypeOf)
-    } yield branches map (align(_, widenedTypes))
+    } yield branches map { align(_, widenedTypes) }
   }
 
   override lazy val strictlyTyped: Try[LogicalPlan] = for {

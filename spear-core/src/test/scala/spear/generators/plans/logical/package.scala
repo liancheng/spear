@@ -77,7 +77,7 @@ package object logical {
       genExpression(plan.output)
     ))
 
-    projectList = (expressions, aliases).zipped map (_ as _)
+    projectList = (expressions, aliases).zipped map { _ as _ }
   } yield plan select projectList
 
   def genWhereClause(plan: LogicalPlan)(implicit settings: Settings): Gen[LogicalPlan] =

@@ -29,7 +29,7 @@ case class NotEq(left: Expression, right: Expression) extends BinaryComparison {
 case class NullSafeEq(left: Expression, right: Expression) extends BinaryComparison {
   override def isNullable: Boolean = false
 
-  override def evaluate(input: Row): Any = children map (_ evaluate input) match {
+  override def evaluate(input: Row): Any = children map { _ evaluate input } match {
     case Seq(null, null) => true
     case Seq(null, _)    => false
     case Seq(_, null)    => false

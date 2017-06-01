@@ -15,7 +15,7 @@ package object generators {
 
   def chance[T](gs: (Double, Gen[T])*): Gen[T] = {
     val (chances, gens) = gs.unzip
-    val frequencies = chances map (_ * 100) map (_.toInt)
+    val frequencies = chances map { _ * 100 } map { _.toInt }
     Gen.frequency(frequencies zip gens: _*)
   }
 

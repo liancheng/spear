@@ -150,7 +150,7 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
 
   private def testAutoAliasing(expression: Expression, expectedAlias: Name): Unit = {
     test(s"auto-alias resolution - ${expression.sqlLike} AS ${expectedAlias.toString}") {
-      val Seq(actualAlias) = analyze(relation subquery 't select expression).output map (_.name)
+      val Seq(actualAlias) = analyze(relation subquery 't select expression).output map { _.name }
       assert(actualAlias == expectedAlias)
     }
   }

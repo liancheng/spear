@@ -101,9 +101,9 @@ class RejectOrphanAttributeReference(val catalog: Catalog) extends AnalysisRule 
 
       if (orphans.nonEmpty) {
         val message =
-          s"""Orphan attribute references ${orphans map (_.sqlLike) mkString ("[", ", ", "]")} found
-             |in the following logical plan operator. They are neither output of child operators nor
-             |derived by the problematic operator itself.
+          s"""Orphan attribute references ${orphans map { _.sqlLike } mkString ("[", ", ", "]")}
+             |found in the following logical plan operator. They are neither output of child
+             |operators nor derived by the problematic operator itself.
              |""".oneLine
 
         throw new AnalysisException(

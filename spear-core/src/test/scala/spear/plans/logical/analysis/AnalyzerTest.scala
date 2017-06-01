@@ -62,7 +62,7 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
       fail(
         s"""Failed to find all of the following regex patterns in the error message:
            |
-           |${patterns map ("  - " + _) mkString "\n"}
+           |${patterns map { "  - " + _ } mkString "\n"}
            |
            |Full error message:
            |
