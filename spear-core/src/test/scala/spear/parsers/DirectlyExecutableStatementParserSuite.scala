@@ -5,10 +5,10 @@ import fastparse.core.Logger
 import spear.{LoggingFunSuite, TestUtils}
 import spear.expressions._
 import spear.expressions.windows.{CurrentRow, UnboundedPreceding, Window, WindowFrame}
-import spear.parsers.DirectSQLStatementParser.directSQLStatement
+import spear.parsers.DirectlyExecutableStatementParser.directlyExecutableStatement
 import spear.plans.logical.{let, table, values, LogicalPlan}
 
-class DirectSQLStatementParserSuite extends LoggingFunSuite with TestUtils {
+class DirectlyExecutableStatementParserSuite extends LoggingFunSuite with TestUtils {
   import fastparse.all._
 
   testQueryParsing(
@@ -94,6 +94,16 @@ class DirectSQLStatementParserSuite extends LoggingFunSuite with TestUtils {
   testQueryParsing(
     "SELECT 1 AS a UNION ALL SELECT 2 AS a",
     values(1 as 'a) union values(2 as 'a)
+  )
+
+  testQueryParsing(
+    "(SELECT 1 AS a ORDER BY a) UNION ALL (SELECT 2 AS a ORDER BY a)",
+    values(1 as 'a) orderBy 'a union (values(2 as 'a) orderBy 'a)
+  )
+
+  testQueryParsing(
+    "(SELECT 1 AS a ORDER BY a LIMIT 1) UNION ALL (SELECT 2 AS a ORDER BY a LIMIT 1)",
+    values(1 as 'a) orderBy 'a limit 1 union (values(2 as 'a) orderBy 'a limit 1)
   )
 
   testQueryParsing(
@@ -278,6 +288,6 @@ class DirectSQLStatementParserSuite extends LoggingFunSuite with TestUtils {
 
   private def parse(input: String): LogicalPlan = {
     implicit val parserLogger = Logger(logInfo(_))
-    (Start ~ directSQLStatement.log() ~ End parse input.trim).get.value
+    (Start ~ directlyExecutableStatement.log() ~ End parse input.trim).get.value
   }
 }

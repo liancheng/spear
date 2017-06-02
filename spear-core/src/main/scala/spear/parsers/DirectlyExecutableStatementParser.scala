@@ -4,12 +4,7 @@ import fastparse.all._
 
 import spear.plans.logical.LogicalPlan
 
-object DirectSQLStatementParser extends LoggingParser {
-  import DirectlyExecutableStatementParser._
-
-  val directSQLStatement: P[LogicalPlan] = directlyExecutableStatement opaque "direct-SQL-statement"
-}
-
+// SQL06 section 22.1
 object DirectlyExecutableStatementParser extends LoggingParser {
   import OrderByClauseParser._
   import QueryExpressionParser._

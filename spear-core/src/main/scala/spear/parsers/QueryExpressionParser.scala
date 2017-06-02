@@ -219,6 +219,8 @@ object QuerySpecificationParser extends LoggingParser {
   import IdentifierParser._
   import KeywordParser._
   import NameParser._
+  import NumericParser._
+  import OrderByClauseParser._
   import SearchConditionParser._
   import TableReferenceParser._
   import ValueExpressionParser._
@@ -280,6 +282,14 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "having-clause"
   )
 
+  @ExtendedSQLSyntax
+  private val limitClause: P[LogicalPlan => LogicalPlan] = (
+    LIMIT ~ unsignedInteger filter { _.isValidInt }
+    map { n => (_: LogicalPlan) limit n.toInt }
+    opaque "limit-clause"
+  )
+
+  @ExtendedSQLSyntax
   val querySpecification: P[LogicalPlan] = (
     SELECT
     ~ setQuantifier.?.map { _.orIdentity }
@@ -288,15 +298,17 @@ object QuerySpecificationParser extends LoggingParser {
     ~ whereClause.?.map { _.orIdentity }
     ~ groupByClause.?
     ~ havingClause.?
-    ~ windowClause.?.map { _.orIdentity } map {
-      case (distinct, projectList, from, where, maybeGroupBy, maybeHaving, window) =>
+    ~ windowClause.?.map { _.orIdentity }
+    ~ orderByClause.?.map { _.orIdentity }
+    ~ limitClause.?.map { _.orIdentity } map {
+      case (distinct, output, from, where, maybeGroupBy, maybeHaving, window, orderBy, limit) =>
         // Parses queries containing GROUP BY, HAVING, or both as aggregations. If a HAVING clause
         // exists without a GROUP BY clause, the grouping key list should be empty (i.e., global
         // aggregation).
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
 
         val select = maybeGroupingKeys map { keys =>
-          (_: LogicalPlan) groupBy keys agg projectList
+          (_: LogicalPlan) groupBy keys agg output
         } getOrElse {
           // Queries with neither HAVING nor GROUP BY are always parsed as simple projections.
           // However, some of them may actually be global aggregations due to aggregate functions
@@ -309,12 +321,14 @@ object QuerySpecificationParser extends LoggingParser {
           //
           // This is because we cannot recognize aggregate functions during the parsing phase. We
           // will rewrite these queries into global aggregations during the analysis phase, though.
-          (_: LogicalPlan) select projectList
+          (_: LogicalPlan) select output
         }
 
         val having = maybeHaving.orIdentity
 
-        window
+        limit
+          .compose(orderBy)
+          .compose(window)
           .compose(having)
           .compose(distinct)
           .compose(select)
@@ -328,7 +342,6 @@ object QuerySpecificationParser extends LoggingParser {
 object QueryExpressionParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
-  import NumericParser._
   import QuerySpecificationParser._
   import TableReferenceParser._
   import WhitespaceApi._
@@ -379,20 +392,9 @@ object QueryExpressionParser extends LoggingParser {
     ) opaque "query-expression-body"
   }
 
-  @ExtendedSQLSyntax
-  private val limitClause: P[LogicalPlan => LogicalPlan] = (
-    LIMIT ~ unsignedInteger filter { _.isValidInt }
-    map { n => (_: LogicalPlan) limit n.toInt }
-    opaque "limit-clause"
-  )
-
-  lazy val queryExpression: P[LogicalPlan] = (
-    withClause.?.map { _.orIdentity }
-    ~ queryExpressionBody
-    ~ limitClause.?.map { _.orIdentity }
-    map { case (cte, query, limit) => limit andThen cte apply query }
-    opaque "query-expression"
-  )
+  lazy val queryExpression: P[LogicalPlan] = withClause.? ~ queryExpressionBody map {
+    case (cte, query) => cte.orIdentity apply query
+  } opaque "query-expression"
 }
 
 // SQL06 section 7.15
