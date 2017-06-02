@@ -3,7 +3,7 @@ package spear.plans.logical.analysis
 import org.scalatest.BeforeAndAfterAll
 
 import spear.{InMemoryCatalog, LoggingFunSuite, TestUtils}
-import spear.parsers.QueryExpressionParser.queryExpression
+import spear.parsers.DirectSQLStatementParser.directSQLStatement
 import spear.plans.logical.LogicalPlan
 
 abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
@@ -74,6 +74,6 @@ abstract class AnalyzerTest extends LoggingFunSuite with TestUtils with BeforeAn
 
   private def parse(sql: String): LogicalPlan = {
     import fastparse.all._
-    (queryExpression ~ End).parse(sql).get.value
+    (Start ~ directSQLStatement ~ End).parse(sql).get.value
   }
 }

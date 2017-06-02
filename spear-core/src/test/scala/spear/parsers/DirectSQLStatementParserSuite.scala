@@ -5,10 +5,10 @@ import fastparse.core.Logger
 import spear.{LoggingFunSuite, TestUtils}
 import spear.expressions._
 import spear.expressions.windows.{CurrentRow, UnboundedPreceding, Window, WindowFrame}
-import spear.parsers.QueryExpressionParser.queryExpression
+import spear.parsers.DirectSQLStatementParser.directSQLStatement
 import spear.plans.logical.{let, table, values, LogicalPlan}
 
-class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
+class DirectSQLStatementParserSuite extends LoggingFunSuite with TestUtils {
   import fastparse.all._
 
   testQueryParsing(
@@ -278,6 +278,6 @@ class QueryExpressionParserSuite extends LoggingFunSuite with TestUtils {
 
   private def parse(input: String): LogicalPlan = {
     implicit val parserLogger = Logger(logInfo(_))
-    (Start ~ queryExpression.log() ~ End parse input.trim).get.value
+    (Start ~ directSQLStatement.log() ~ End parse input.trim).get.value
   }
 }

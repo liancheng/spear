@@ -4,7 +4,7 @@ import spear._
 import spear.local.plans.physical
 import spear.local.plans.physical.HashAggregate
 import spear.local.plans.physical.dsl._
-import spear.parsers.QueryExpressionParser.queryExpression
+import spear.parsers.DirectSQLStatementParser.directSQLStatement
 import spear.plans.QueryPlanner
 import spear.plans.logical._
 import spear.plans.logical.analysis.Analyzer
@@ -13,7 +13,7 @@ import spear.plans.physical.{NotImplemented, PhysicalPlan}
 class LocalQueryExecutor extends QueryExecutor {
   override val catalog: Catalog = new InMemoryCatalog
 
-  override def parse(query: String): LogicalPlan = queryExpression.parse(query).get.value
+  override def parse(query: String): LogicalPlan = directSQLStatement.parse(query).get.value
 
   override def analyze(plan: LogicalPlan): LogicalPlan = analyzer apply plan
 

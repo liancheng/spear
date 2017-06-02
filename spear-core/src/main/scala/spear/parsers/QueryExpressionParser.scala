@@ -220,7 +220,6 @@ object QuerySpecificationParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
   import SearchConditionParser._
-  import SortSpecificationListParser._
   import TableReferenceParser._
   import ValueExpressionParser._
   import WhitespaceApi._
@@ -281,13 +280,6 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "having-clause"
   )
 
-  private val orderByClause: P[LogicalPlan => LogicalPlan] =
-    ORDER ~ BY ~ sortSpecificationList map { sortOrders =>
-      // Note that `orderBy` builds an `UnresolvedSort` plan node, which is dedicated for
-      // representing SQL `ORDER BY` clauses.
-      (_: LogicalPlan) orderBy sortOrders
-    } opaque "order-by-clause"
-
   val querySpecification: P[LogicalPlan] = (
     SELECT
     ~ setQuantifier.?.map { _.orIdentity }
@@ -296,9 +288,8 @@ object QuerySpecificationParser extends LoggingParser {
     ~ whereClause.?.map { _.orIdentity }
     ~ groupByClause.?
     ~ havingClause.?
-    ~ windowClause.?.map { _.orIdentity }
-    ~ orderByClause.?.map { _.orIdentity } map {
-      case (distinct, projectList, from, where, maybeGroupBy, maybeHaving, window, orderBy) =>
+    ~ windowClause.?.map { _.orIdentity } map {
+      case (distinct, projectList, from, where, maybeGroupBy, maybeHaving, window) =>
         // Parses queries containing GROUP BY, HAVING, or both as aggregations. If a HAVING clause
         // exists without a GROUP BY clause, the grouping key list should be empty (i.e., global
         // aggregation).
@@ -323,8 +314,7 @@ object QuerySpecificationParser extends LoggingParser {
 
         val having = maybeHaving.orIdentity
 
-        orderBy
-          .compose(window)
+        window
           .compose(having)
           .compose(distinct)
           .compose(select)
@@ -413,6 +403,19 @@ object SubqueryParser extends LoggingParser {
   private val subquery: P[LogicalPlan] = "(" ~ P(queryExpression) ~ ")" opaque "subquery"
 
   val tableSubquery: P[LogicalPlan] = subquery opaque "table-subquery"
+}
+
+object OrderByClauseParser extends LoggingParser {
+  import KeywordParser._
+  import SortSpecificationListParser._
+  import WhitespaceApi._
+
+  val orderByClause: P[LogicalPlan => LogicalPlan] =
+    ORDER ~ BY ~ sortSpecificationList map { sortOrders =>
+      // Note that `orderBy` builds an `UnresolvedSort` plan node, which is dedicated for
+      // representing SQL `ORDER BY` clauses.
+      (_: LogicalPlan) orderBy sortOrders
+    } opaque "order-by-clause"
 }
 
 object SortSpecificationListParser extends LoggingParser {
