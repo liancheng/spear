@@ -24,8 +24,8 @@ import spear.reflection.constructorParams
  * @define trees [[spear.trees.TreeNode trees]]
  * @define node [[spear.trees.TreeNode tree node]]
  * @define nodes [[spear.trees.TreeNode tree nodes]]
- * @define topDown Traverses this $tree top-down
- * @define bottomUp Traverses this $tree bottom-up
+ * @define topDown Traverses this $tree in pre-order
+ * @define bottomUp Traverses this $tree in post-order
  * @define transform transforms this $tree by applying a partial function that both accepts and
  *         returns a $tree to $nodes on which this function is defined.
  * @define transformChildren transforms child $nodes of this $tree by applying a partial function
@@ -110,10 +110,10 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   /**
-   * Builds a sequence by applying a partial function to all $nodes in this $tree on which the
-   * function is defined.
+   * $topDown and builds a sequence by applying a partial function to all $nodes in this $tree on
+   * which the function is defined.
    */
-  def collect[T](f: PartialFunction[Base, T]): Seq[T] = {
+  def collectDown[T](f: PartialFunction[Base, T]): Seq[T] = {
     val buffer = mutable.Buffer.empty[T]
 
     transformDown {
@@ -126,10 +126,26 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   }
 
   /**
-   * Finds the first $node on which the given partial function is defined and applies the partial
-   * function to it.
+   * $bottomUp and builds a sequence by applying a partial function to all $nodes in this $tree on
+   * which the function is defined.
    */
-  def collectFirst[T](f: PartialFunction[Base, T]): Option[T] = {
+  def collectUp[T](f: PartialFunction[Base, T]): Seq[T] = {
+    val buffer = mutable.Buffer.empty[T]
+
+    transformUp {
+      case node if f.isDefinedAt(node) =>
+        buffer += f(node)
+        node
+    }
+
+    buffer
+  }
+
+  /**
+   * $topDown and finds the first $node on which the given partial function is defined and applies
+   * the partial function to it.
+   */
+  def collectFirstDown[T](f: PartialFunction[Base, T]): Option[T] = {
     transformDown {
       case node if f.isDefinedAt(node) =>
         return Some(f(node))

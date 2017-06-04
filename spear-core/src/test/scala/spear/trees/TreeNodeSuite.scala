@@ -63,9 +63,9 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("collect") {
     check { tree: Node =>
-      val even = tree collect { case n if n.children.size % 2 == 0 => n }
-      val odd = tree collect { case n if n.children.size % 2 == 1 => n }
-      val nodes = tree collect { case n => n }
+      val even = tree collectDown { case n if n.children.size % 2 == 0 => n }
+      val odd = tree collectDown { case n if n.children.size % 2 == 1 => n }
+      val nodes = tree collectDown { case n => n }
 
       all(
         "all nodes should be collected" |:
@@ -112,7 +112,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
   test("size") {
     check { tree: Node =>
-      tree.size == (tree collect { case n => n.value }).sum
+      tree.size == (tree collectDown { case n => n.value }).sum
     }
   }
 

@@ -107,9 +107,14 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
 }
 
 class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
-    case _: DistinctAggregateFunction =>
-      throw new UnsupportedOperationException("Distinct aggregate functions are not supported yet")
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case node =>
+      node transformExpressionsDown {
+        case _: DistinctAggregateFunction =>
+          throw new UnsupportedOperationException(
+            "Distinct aggregate functions are not supported yet"
+          )
+      }
   }
 }
 
@@ -140,7 +145,7 @@ class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRul
  */
 class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
-    tree collectFirst skip map { _ => tree } getOrElse { tree transformUp rewriter }
+    tree collectFirstDown skip map { _ => tree } getOrElse { tree transformUp rewriter }
 
   // This partial function plays the role of a guard that ensures all the pre-conditions of this
   // analysis rule. We should skip this rule by returning the original query plan whenever the plan
@@ -298,7 +303,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
 
     case e =>
       e.children foreach {
-        _ collectFirst {
+        _ collectFirstDown {
           case _: AggregateFunction =>
             throw new IllegalAggregationException(
               "Aggregate function can't be nested within another aggregate function: " + e.sqlLike
@@ -311,7 +316,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
     expressions exists hasDistinctAggregateFunction
 
   private def hasDistinctAggregateFunction(expression: Expression): Boolean =
-    eliminateWindowFunctions(expression).collectFirst {
+    eliminateWindowFunctions(expression).collectFirstDown {
       case _: DistinctAggregateFunction =>
     }.nonEmpty
 }
@@ -333,11 +338,11 @@ object AggregationAnalysis {
    * Collects all non-window aggregate functions from the given `expression`.
    */
   def collectAggregateFunctions(expression: Expression): Seq[AggregateFunction] = {
-    val collectDistinctAggs = (_: Expression) collect {
+    val collectDistinctAggs = (_: Expression) collectDown {
       case e: DistinctAggregateFunction => e: AggregateFunction
     }
 
-    val collectAggs = (_: Expression) collect {
+    val collectAggs = (_: Expression) collectDown {
       case e: AggregateFunction => e
     }
 

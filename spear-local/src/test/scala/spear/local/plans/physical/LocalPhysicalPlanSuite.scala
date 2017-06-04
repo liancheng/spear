@@ -33,7 +33,7 @@ class LocalPhysicalPlanSuite extends LoggingFunSuite with TestUtils {
   )
 
   def checkPhysicalPlan(plan: PhysicalPlan, expectedRows: Traversable[Row]): Unit = {
-    val planOrdered = plan.collectFirst { case _: Sort => }.nonEmpty
+    val planOrdered = plan.collectFirstDown { case _: Sort => }.nonEmpty
 
     if (planOrdered) {
       assert(plan.iterator.toSeq == expectedRows.toSeq)

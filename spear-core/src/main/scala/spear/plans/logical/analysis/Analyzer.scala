@@ -169,12 +169,15 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
       right transformDown {
         case plan if plan == oldPlan => newPlan
-      } transformAllExpressionsDown {
-        case a: AttributeRef => a withID rewrite.getOrElse(a.expressionID, a.expressionID)
+      } transformDown {
+        case node =>
+          node transformExpressionsDown {
+            case a: AttributeRef => a withID rewrite.getOrElse(a.expressionID, a.expressionID)
+          }
       }
     }
 
-    val maybeDuplicated = right collectFirst {
+    val maybeDuplicated = right collectFirstDown {
       // Handles relations that introduce ambiguous attributes
       case plan: MultiInstanceRelation if hasDuplicates(plan.outputSet) =>
         plan -> plan.newInstance()

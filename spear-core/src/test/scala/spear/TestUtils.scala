@@ -46,33 +46,8 @@ trait TestUtils { this: FunSuite =>
   def checkTree[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
     assertSideBySide(actual, expected)
 
-  private def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
-    val namedExpressionsWithID = plan.collectFromAllExpressions {
-      case e: NamedExpression if e.isResolved => e
-      case e: Alias                           => e
-      case e: InternalAlias                   => e
-    }.distinct
-
-    val ids = namedExpressionsWithID.map { _.expressionID }.distinct
-
-    val groupedByID = namedExpressionsWithID.groupBy { _.expressionID }.toSeq sortBy {
-      // Sorts by reverse ID occurrence order to ensure that:
-      //
-      //  1. The normalized plan tree is always deterministic, and
-      //  2. Expression IDs appearing in leaf plan nodes are minimum.
-      case (expressionID, _) => -(ids indexOf expressionID)
-    }
-
-    val rewrite = for {
-      ((_, namedExpressions), index) <- groupedByID.zipWithIndex.toMap
-      named <- namedExpressions
-    } yield (named: Expression) -> (named withID ExpressionID(index))
-
-    plan transformAllExpressionsDown rewrite
-  }
-
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
-    checkTree(normalizeExpressionIDs(actual), normalizeExpressionIDs(expected))
+    checkTree(QueryPlan.normalizeExpressionIDs(actual), QueryPlan.normalizeExpressionIDs(expected))
 
   def checkDataFrame(actual: DataFrame, expected: DataFrame): Unit =
     checkDataFrame(actual, expected.toSeq)

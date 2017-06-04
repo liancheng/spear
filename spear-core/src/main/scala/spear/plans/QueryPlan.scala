@@ -3,7 +3,7 @@ package spear.plans
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-import spear.expressions.{Attribute, Expression, ExpressionID}
+import spear.expressions.{Alias, Attribute, Expression, ExpressionID, InternalAlias, NamedExpression}
 import spear.trees.TreeNode
 import spear.types.StructType
 
@@ -27,20 +27,15 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     case _                         => Nil
   }.toSeq
 
-  def transformAllExpressionsDown(rule: Rule): Plan = transformDown {
-    case plan: QueryPlan[_] =>
-      plan.transformExpressionsDown(rule).asInstanceOf[Plan]
-  }
-
   def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)
 
   def transformExpressionsUp(rule: Rule): Plan = transformExpressions(rule, _ transformUp _)
 
-  def collectFromAllExpressions[T](rule: PartialFunction[Expression, T]): Seq[T] = {
+  def collectFromExpressionsDown[T](rule: PartialFunction[Expression, T]): Seq[T] = {
     val builder = ArrayBuffer.newBuilder[T]
 
-    transformAllExpressionsDown {
-      case e if rule isDefinedAt e =>
+    transformExpressionsDown {
+      case e: Expression if rule isDefinedAt e =>
         builder += rule(e)
         e
     }
@@ -48,13 +43,16 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     builder.result()
   }
 
-  def collectFirstFromAllExpressions[T](rule: PartialFunction[Expression, T]): Option[T] = {
-    transformAllExpressionsDown {
-      case e if rule isDefinedAt e =>
-        return Some(rule(e))
+  def collectFromExpressionsUp[T](rule: PartialFunction[Expression, T]): Seq[T] = {
+    val builder = ArrayBuffer.newBuilder[T]
+
+    transformExpressionsUp {
+      case e: Expression if rule isDefinedAt e =>
+        builder += rule(e)
+        e
     }
 
-    None
+    builder.result()
   }
 
   override def nodeCaption: String = {
@@ -119,5 +117,33 @@ object QueryPlan {
     override def children: Seq[ExpressionNode] = Nil
 
     override def nodeCaption: String = s"$$$index: ${expression.debugString}"
+  }
+
+  def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {
+    // Traverses the plan tree in post-order and collects all `NamedExpression`s with an ID.
+    val namedExpressionsWithID = plan.collectUp {
+      case node =>
+        node collectFromExpressionsUp {
+          case e: NamedExpression if e.isResolved => e
+          case e: Alias                           => e
+          case e: InternalAlias                   => e
+        }
+    }.flatten.distinct
+
+    val ids = namedExpressionsWithID.map { _.expressionID }.distinct
+
+    val groupedByID = namedExpressionsWithID.groupBy { _.expressionID }.toSeq sortBy {
+      // Sorts by ID occurrence order to ensure determinism.
+      case (expressionID, _) => ids indexOf expressionID
+    }
+
+    val rewrite = for {
+      ((_, namedExpressions), index) <- groupedByID.zipWithIndex.toMap
+      named <- namedExpressions
+    } yield (named: Expression) -> (named withID ExpressionID(index))
+
+    plan transformDown {
+      case node => node transformExpressionsDown rewrite
+    }
   }
 }

@@ -63,9 +63,12 @@ class ResolveReference(val catalog: Catalog) extends AnalysisRule {
  * [[spear.expressions.Alias aliases]].
  */
 class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
-    case UnresolvedAlias(Resolved(child: Expression)) =>
-      child as Name.caseSensitive(child.sql getOrElse AnonymousColumnName)
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case node =>
+      node transformExpressionsDown {
+        case UnresolvedAlias(Resolved(child: Expression)) =>
+          child as Name.caseSensitive(child.sql getOrElse AnonymousColumnName)
+      }
   }
 }
 
@@ -74,32 +77,33 @@ class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
  * up function names from the [[Catalog]].
  */
 class ResolveFunction(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformAllExpressionsDown {
-    case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>
-      Count(1)
+  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    case node =>
+      node transformExpressionsDown {
+        case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>
+          Count(1)
 
-    case Count(_: Star) =>
-      Count(1)
+        case Count(_: Star) =>
+          Count(1)
 
-    case UnresolvedFunction(_, Seq(_: Star), true) =>
-      throw new AnalysisException("DISTINCT cannot be used together with star")
+        case UnresolvedFunction(_, Seq(_: Star), true) =>
+          throw new AnalysisException("DISTINCT cannot be used together with star")
 
-    case UnresolvedFunction(_, Seq(_: Star), _) =>
-      throw new AnalysisException("Only function \"count\" may have star as argument")
+        case UnresolvedFunction(_, Seq(_: Star), _) =>
+          throw new AnalysisException("Only function \"count\" may have star as argument")
 
-    case UnresolvedFunction(name, args, isDistinct) if args forall { _.isResolved } =>
-      val fnInfo = catalog.functionRegistry lookupFunction name
-      fnInfo.builder apply args match {
-        case f: AggregateFunction if isDistinct =>
-          DistinctAggregateFunction(f)
+        case UnresolvedFunction(name, args, isDistinct) if args forall { _.isResolved } =>
+          val fnInfo = catalog.functionRegistry lookupFunction name
+          fnInfo.builder apply args match {
+            case f: AggregateFunction if isDistinct =>
+              DistinctAggregateFunction(f)
 
-        case _ if isDistinct =>
-          throw new AnalysisException(
-            s"Cannot decorate function $name with DISTINCT since it is not an aggregate function"
-          )
+            case _ if isDistinct =>
+              throw new AnalysisException(s"Cannot apply DISTINCT to non-aggregate function $name")
 
-        case f =>
-          f
+            case f =>
+              f
+          }
       }
   }
 }

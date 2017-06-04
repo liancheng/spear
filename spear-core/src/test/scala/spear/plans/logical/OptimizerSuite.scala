@@ -65,8 +65,8 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     check(
       forAll { predicate: Expression =>
         val optimizedPlan = optimizer(relation filter predicate)
-        val conditions = optimizedPlan.collect { case f: Filter => f.condition }
-        conditions flatMap splitConjunction forall (_.collect { case _: And => }.isEmpty)
+        val conditions = optimizedPlan.collectDown { case f: Filter => f.condition }
+        conditions flatMap splitConjunction forall (_.collectDown { case _: And => }.isEmpty)
       },
 
       // CNF conversion may potentially expand the predicate significantly and slows down the test
@@ -80,7 +80,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
     check { (p1: Expression, p2: Expression) =>
       val optimized = optimizer(relation filter p1 filter p2)
-      val Seq(condition) = optimized.collect { case f: Filter => f.condition }
+      val Seq(condition) = optimized.collectDown { case f: Filter => f.condition }
       condition == (p1 && p2)
     }
   }
@@ -90,8 +90,8 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
     check { p: Expression =>
       val optimized = optimizer(relation filter p)
-      val Seq(condition) = optimized.collect { case f: Filter => f.condition }
-      condition.collectFirst { case _: Not => }.isEmpty
+      val Seq(condition) = optimized.collectDown { case f: Filter => f.condition }
+      condition.collectFirstDown { case _: Not => }.isEmpty
     }
   }
 

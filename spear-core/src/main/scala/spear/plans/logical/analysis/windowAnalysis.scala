@@ -17,7 +17,7 @@ import spear.utils._
  */
 class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan =
-    tree collectFirst skip map { _ => tree } getOrElse rewrite(tree)
+    tree collectFirstDown skip map { _ => tree } getOrElse rewrite(tree)
 
   private def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Sort order) if hasWindowFunction(order) =>
@@ -46,18 +46,21 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
 class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case WindowDef(child, name, windowSpec) =>
-      child transformAllExpressionsDown {
-        case WindowSpecRef(`name`, maybeFrame) =>
-          for {
-            existingFrame <- windowSpec.windowFrame
-            newFrame <- maybeFrame
-          } throw new WindowAnalysisException(
-            s"""Cannot decorate window $name with frame $newFrame
-               |because it already has frame $existingFrame
-               |""".oneLine
-          )
+      child transformDown {
+        case node =>
+          node transformExpressionsDown {
+            case WindowSpecRef(`name`, maybeFrame) =>
+              for {
+                existingFrame <- windowSpec.windowFrame
+                newFrame <- maybeFrame
+              } throw new WindowAnalysisException(
+                s"""Cannot decorate window $name with frame $newFrame
+                   |because it already has frame $existingFrame
+                   |""".oneLine
+              )
 
-          windowSpec between (windowSpec.windowFrame orElse maybeFrame)
+              windowSpec between (windowSpec.windowFrame orElse maybeFrame)
+          }
       }
   }
 }
@@ -76,8 +79,8 @@ object WindowAnalysis {
    * Collects all distinct window functions from `expression`.
    */
   def collectWindowFunctions(expression: Expression): Seq[WindowFunction] =
-    expression.collect { case e: WindowFunction => e }.distinct
+    expression.collectDown { case e: WindowFunction => e }.distinct
 
   private def hasWindowFunction(expression: Expression): Boolean =
-    expression.collectFirst { case _: WindowFunction => }.nonEmpty
+    expression.collectFirstDown { case _: WindowFunction => }.nonEmpty
 }

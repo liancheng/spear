@@ -69,7 +69,7 @@ class ExpressionAnalysisSuite extends AnalyzerTest {
 
   interceptFunctionResolution[AnalysisException](
     'coalesce('a.int.!).distinct,
-    "Cannot decorate function coalesce with DISTINCT since it is not an aggregate function"
+    "Cannot apply DISTINCT to non-aggregate function coalesce"
   )
 
   test("resolve references") {
