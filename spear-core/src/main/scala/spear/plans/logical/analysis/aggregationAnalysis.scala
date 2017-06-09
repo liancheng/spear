@@ -252,26 +252,25 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
         }
       }
 
-      def rejectIllegalAttributeReferences(
-        component: String, whitelist: Seq[Attribute] = Nil
-      )(e: Expression) = e.references collectFirst {
-        case a: AttributeRef if !(whitelist contains a) =>
-          val keyList = keys map { _.sqlLike } mkString ("[", ", ", "]")
-          throw new IllegalAggregationException(
-            s"""Attribute ${a.sqlLike} in $component ${restore(e).sqlLike} is neither referenced
-               |by a non-window aggregate function nor a grouping key among $keyList
-               |""".oneLine
-          )
-      }
+      def rejectIllegalRefs(component: String, whitelist: Seq[Attribute] = Nil)(e: Expression) =
+        e.references collectFirst {
+          case a: AttributeRef if !(whitelist contains a) =>
+            val keyList = keys map { _.sqlLike } mkString ("[", ", ", "]")
+            throw new IllegalAggregationException(
+              s"""Attribute ${a.sqlLike} in $component ${restore(e).sqlLike} is neither referenced
+                 |by a non-window aggregate function nor a grouping key among $keyList
+                 |""".oneLine
+            )
+        }
 
-      wins foreach rejectIllegalAttributeReferences("window function")
-      rewrittenProjectList foreach rejectIllegalAttributeReferences("SELECT field")
+      wins foreach rejectIllegalRefs("window function")
+      rewrittenProjectList foreach rejectIllegalRefs("SELECT field")
 
       // The `HAVING` clause and the `ORDER BY` clause are allowed to reference output attributes
       // produced by the `SELECT` clause.
       val output = rewrittenProjectList map { _.attr }
-      rewrittenConditions foreach rejectIllegalAttributeReferences("HAVING condition", output)
-      rewrittenOrder foreach rejectIllegalAttributeReferences("ORDER BY expression", output)
+      rewrittenConditions foreach rejectIllegalRefs("HAVING condition", output)
+      rewrittenOrder foreach rejectIllegalRefs("ORDER BY expression", output)
 
       child
         .aggregate(keyAliases, aggAliases)
