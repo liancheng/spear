@@ -40,7 +40,7 @@ class RejectUnresolvedPlan(val catalog: Catalog) extends AnalysisRule {
 
 class RejectTopLevelInternalAttribute(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = {
-    val internal = tree.output.collect { case e: InternalNamedExpression => e }
+    val internal = tree.output.collect { case e: NamedExpression if e.namespace.nonEmpty => e }
 
     if (internal.nonEmpty) {
       val internalList = internal map { _.sqlLike } mkString ("[", ", ", "]")

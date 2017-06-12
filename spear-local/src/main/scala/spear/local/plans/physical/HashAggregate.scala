@@ -10,8 +10,8 @@ import spear.plans.physical.{PhysicalPlan, UnaryPhysicalPlan}
 
 case class HashAggregate(
   child: PhysicalPlan,
-  keyAliases: Seq[GroupingAlias],
-  aggAliases: Seq[AggregationAlias]
+  keyAliases: Seq[GroupingKeyAlias],
+  aggAliases: Seq[AggregateFunctionAlias]
 ) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = (keyAliases ++ aggAliases) map { _.attr }
 

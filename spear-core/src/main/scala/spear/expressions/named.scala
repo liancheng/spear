@@ -14,6 +14,8 @@ case class ExpressionID(id: Long)
 trait NamedExpression extends Expression {
   def name: Name
 
+  def namespace: String = name.namespace
+
   def expressionID: ExpressionID = throw new ExpressionUnresolvedException(this)
 
   def attr: Attribute

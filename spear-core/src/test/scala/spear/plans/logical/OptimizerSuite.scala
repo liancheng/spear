@@ -96,8 +96,8 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(PushFilterThroughAggregate, FixedPoint.Unlimited, needsAnalyzer = false) { optimizer =>
-    val groupA = GroupingAlias(a)
-    val aggCountB = AggregationAlias(count(b))
+    val groupA = GroupingKeyAlias(a)
+    val aggCountB = AggregateFunctionAlias(count(b))
 
     checkPlan(
       optimizer(

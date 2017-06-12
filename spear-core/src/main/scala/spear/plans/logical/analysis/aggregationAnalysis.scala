@@ -4,8 +4,7 @@ import spear._
 import spear.exceptions.IllegalAggregationException
 import spear.expressions._
 import spear.expressions.aggregates.{AggregateFunction, DistinctAggregateFunction}
-import spear.expressions.InternalAlias.{buildRestorer, buildRewriter}
-import spear.expressions.InternalNamedExpression.ForSortOrder
+import spear.expressions.InternalAlias._
 import spear.expressions.windows.WindowFunction
 import spear.plans.logical._
 import spear.plans.logical.analysis.AggregationAnalysis._
@@ -98,7 +97,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
       // referenced by some sort order expression(s).
       val unaliased = order
         .map { _ tryResolveUsing agg.projectList }
-        .map { _ unaliasUsing (agg.projectList, ForSortOrder) }
+        .map { _ unaliasUsing (agg.projectList, SortOrderNamespace) }
         .map { case e: SortOrder => e }
 
       // Only preserves the last sort order.
@@ -201,7 +200,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
 
   private val rewriter: PartialFunction[LogicalPlan, LogicalPlan] = {
     case UnresolvedAggregate(Resolved(child), keys, projectList, conditions, order) =>
-      val keyAliases = keys map { GroupingAlias(_) }
+      val keyAliases = keys map { GroupingKeyAlias(_) }
       logInternalAliases(keyAliases, "grouping keys")
 
       val rewriteKeys = (_: Expression) transformUp buildRewriter(keyAliases)
@@ -210,7 +209,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
       val aggs = collectAggregateFunctions(projectList ++ conditions ++ order map rewriteKeys)
       aggs foreach rejectNestedAggregateFunction
 
-      val aggAliases = aggs map { AggregationAlias(_) }
+      val aggAliases = aggs map { AggregateFunctionAlias(_) }
       logInternalAliases(aggAliases, "aggregate functions")
 
       val aggRewriter = buildRewriter(aggAliases)
@@ -231,7 +230,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
 
       // Note: window functions may appear in both SELECT and ORDER BY clauses.
       val wins = collectWindowFunctions(projectList ++ order map rewriteKeys.andThen(rewriteAggs))
-      val winAliases = wins map { WindowAlias(_) }
+      val winAliases = wins map { WindowFunctionAlias(_) }
       logInternalAliases(winAliases, "window functions")
 
       val rewriteWins = (_: Expression) transformUp buildRewriter(winAliases)
@@ -247,14 +246,14 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
         // outside. Here we alias them using names and expression IDs of the original named
         // expressions.
         rewrite(named) match {
-          case e: InternalAttribute => e as named.name withID named.expressionID
-          case e: NamedExpression   => e
+          case e: AttributeRef if e.namespace.nonEmpty => e as named.name withID named.expressionID
+          case e: NamedExpression                      => e
         }
       }
 
       def rejectIllegalRefs(component: String, whitelist: Seq[Attribute] = Nil)(e: Expression) =
         e.references collectFirst {
-          case a: AttributeRef if !(whitelist contains a) =>
+          case a: AttributeRef if a.namespace.isEmpty && !(whitelist contains a) =>
             val keyList = keys map { _.sqlLike } mkString ("[", ", ", "]")
             throw new IllegalAggregationException(
               s"""Attribute ${a.sqlLike} in $component ${restore(e).sqlLike} is neither referenced
@@ -346,7 +345,7 @@ object AggregationAnalysis {
     }
 
     val eliminateDistinctAggs = (_: Expression) transformDown {
-      case e: DistinctAggregateFunction => AggregationAlias(e).attr
+      case e: DistinctAggregateFunction => AggregateFunctionAlias(e).attr
     }
 
     // Finds out all window functions within the given expression and collects all *non-window*
@@ -376,6 +375,6 @@ object AggregationAnalysis {
   }
 
   def eliminateWindowFunctions(expression: Expression): Expression = expression transformDown {
-    case e: WindowFunction => WindowAlias(e).attr
+    case e: WindowFunction => WindowFunctionAlias(e).attr
   }
 }

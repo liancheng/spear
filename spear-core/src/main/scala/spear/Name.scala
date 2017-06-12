@@ -2,7 +2,7 @@ package spear
 
 import spear.Name.quote
 
-class Name(private val impl: Name.CaseSensitivityAware, private val namespace: String = "") {
+class Name(private val impl: Name.CaseSensitivityAware, val namespace: String = "") {
   def isCaseSensitive: Boolean = impl.isCaseSensitive
 
   def casePreserving: String = impl.casePreserving

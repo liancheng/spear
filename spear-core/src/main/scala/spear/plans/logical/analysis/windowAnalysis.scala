@@ -21,12 +21,12 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
 
   private def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Resolved(child Sort order) if hasWindowFunction(order) =>
-      val winAliases = collectWindowFunctions(order) map { WindowAlias(_) }
+      val winAliases = collectWindowFunctions(order) map { WindowFunctionAlias(_) }
       val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases sort rewrittenOrder select child.output
 
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
-      val winAliases = collectWindowFunctions(projectList) map { WindowAlias(_) }
+      val winAliases = collectWindowFunctions(projectList) map { WindowFunctionAlias(_) }
       val rewrittenProjectList = projectList map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases select rewrittenProjectList
   }

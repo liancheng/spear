@@ -12,7 +12,7 @@ import spear.types.{IntType, LongType}
 
 class AggregationAnalysisSuite extends AnalyzerTest { self =>
   test("global aggregate") {
-    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+    val `@A: count(a)` = AggregateFunctionAlias(count(self.a of 't))
 
     checkSQLAnalysis(
       "SELECT count(a) FROM t",
@@ -26,7 +26,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate - only the HAVING clause contains an aggregate function") {
-    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+    val `@A: count(a)` = AggregateFunctionAlias(count(self.a of 't))
 
     checkSQLAnalysis(
       "SELECT 1 AS out FROM t HAVING count(a) > 0",
@@ -44,7 +44,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate - only the ORDER BY clause contains an aggregate function") {
-    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
+    val `@A: count(a)` = AggregateFunctionAlias(count(self.a of 't))
     val `@S: count(a)` = SortOrderAlias(`@A: count(a)`.attr, "order0")
     val `1 AS out` = 1 as 'out
 
@@ -62,7 +62,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate - the ORDER BY clause contains a count(1)") {
-    val `@A: count(1)` = AggregationAlias(count(1))
+    val `@A: count(1)` = AggregateFunctionAlias(count(1))
     val `@S: count(1)` = SortOrderAlias(`@A: count(1)`.attr, "order0")
     val `1 AS out` = 1 as 'out
 
@@ -80,8 +80,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("global aggregate - only the ORDER BY and HAVING clauses contain aggregate functions") {
-    val `@A: count(a)` = AggregationAlias(count(self.a of 't))
-    val `@A: max(a)` = AggregationAlias(max(self.a of 't))
+    val `@A: count(a)` = AggregateFunctionAlias(count(self.a of 't))
+    val `@A: max(a)` = AggregateFunctionAlias(max(self.a of 't))
 
     checkSQLAnalysis(
       "SELECT 1 AS out FROM t HAVING max(a) > 0 ORDER BY count(a)",
@@ -97,8 +97,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with ORDER BY clause referencing projected attribute") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(b)` = AggregateFunctionAlias(count(self.b))
 
     checkSQLAnalysis(
       "SELECT count(b) AS c FROM t GROUP BY a ORDER BY c DESC",
@@ -116,8 +116,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with both HAVING and ORDER BY clauses") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(b)` = AggregateFunctionAlias(count(self.b))
 
     checkSQLAnalysis(
       "SELECT a FROM t GROUP BY a HAVING a > 1 ORDER BY count(b) ASC",
@@ -133,8 +133,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple ORDER BY clauses") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(b)` = AggregateFunctionAlias(count(self.b))
 
     checkAnalyzedPlan(
       table('t)
@@ -152,8 +152,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple HAVING conditions") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(b)` = AggregateFunctionAlias(count(self.b))
 
     checkAnalyzedPlan(
       table('t)
@@ -171,8 +171,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with multiple alternating HAVING and ORDER BY clauses") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(b)` = AggregationAlias(count(self.b))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(b)` = AggregateFunctionAlias(count(self.b))
 
     checkAnalyzedPlan(
       table('t)
@@ -192,8 +192,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("aggregate with count(*)") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@A: count(1)` = AggregationAlias(count(1))
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@A: count(1)` = AggregateFunctionAlias(count(1))
 
     checkSQLAnalysis(
       "SELECT count(*) FROM t GROUP BY a",
@@ -262,8 +262,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
   }
 
   test("distinct") {
-    val `@G: a` = GroupingAlias(self.a)
-    val `@G: b` = GroupingAlias(self.b)
+    val `@G: a` = GroupingKeyAlias(self.a)
+    val `@G: b` = GroupingKeyAlias(self.b)
 
     checkSQLAnalysis(
       "SELECT DISTINCT * FROM t",

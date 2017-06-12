@@ -1,6 +1,7 @@
 package spear.plans.logical.analysis
 
 import spear._
+import spear.Name.caseInsensitive
 import spear.exceptions.AnalysisException
 import spear.expressions._
 import spear.expressions.NamedExpression.newExpressionID
@@ -266,7 +267,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
 
       // Finds out all unevaluable `SortOrder`s containing either unresolved expressions or
       // aggregate functions (no matter resolved or not, since aggregate functions cannot be
-      // evaluated by a `Sort` operator).
+      // evaluated as part of a `Sort` operator).
       val unevaluableOrder = maybeResolvedOrder.filter { order =>
         !order.isResolved || hasAggregateFunction(order)
       }
@@ -279,7 +280,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
           .map { _.child }
           .map { _ unaliasUsing projectList }
           .zipWithIndex
-          .map { case (e, index) => SortOrderAlias(e, s"order$index") }
+          .map { case (e, index) => SortOrderAlias(e, caseInsensitive(s"order$index")) }
 
         val rewrite = pushDown.map { e => e.child -> (e.name: Expression) }.toMap
 
@@ -300,7 +301,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
  * into strictly-typed form.
  *
  * @throws spear.exceptions.AnalysisException If some resolved logical query plan operator
- *                                            doesn't type check.
+ *         doesn't type check.
  */
 class EnforceTypeConstraint(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {

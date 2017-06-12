@@ -1,6 +1,6 @@
 package spear.plans.logical
 
-import spear.expressions.{AggregationAlias, Expression, GroupingAlias, WindowAlias}
+import spear.expressions.{AggregateFunctionAlias, Expression, GroupingKeyAlias, WindowFunctionAlias}
 import spear.expressions.InternalAlias.buildRestorer
 
 package object patterns {
@@ -70,9 +70,9 @@ package object patterns {
     }
 
     def restoreInternalAttributes(
-      keys: Seq[GroupingAlias],
-      aggs: Seq[AggregationAlias],
-      wins: Seq[WindowAlias]
+      keys: Seq[GroupingKeyAlias],
+      aggs: Seq[AggregateFunctionAlias],
+      wins: Seq[WindowFunctionAlias]
     ): Expression => Expression = {
       val restoreKeys = (_: Expression) transformUp buildRestorer(keys)
       val restoreAggs = (_: Expression) transformUp buildRestorer(aggs)
@@ -82,7 +82,7 @@ package object patterns {
   }
 
   object WindowSeq {
-    def unapply(tree: LogicalPlan): Option[(LogicalPlan, Seq[WindowAlias])] = tree match {
+    def unapply(tree: LogicalPlan): Option[(LogicalPlan, Seq[WindowFunctionAlias])] = tree match {
       case plan @ Window(_, _, _, WindowSeq(child, functions)) =>
         Some((child, plan.functions ++ functions))
 

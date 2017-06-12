@@ -205,7 +205,6 @@ object Expression {
         val candidates = input.map { _.attr }.distinct.collect {
           case a: AttributeRef if a.name == name && qualifier == a.qualifier => a
           case a: AttributeRef if a.name == name && qualifier.isEmpty        => a
-          case a: InternalAttribute if a.name == name                        => a
         }
 
         candidates match {
@@ -228,12 +227,10 @@ object Expression {
         }
     }
 
-    import spear.expressions.InternalNamedExpression.Purpose
-
-    def unaliasUsing(projectList: Seq[NamedExpression], purposes: Purpose*): Expression = {
+    def unaliasUsing(projectList: Seq[NamedExpression], namespaces: String*): Expression = {
       val rewrite = projectList.collect {
-        case a: InternalAlias if purposes contains a.purpose => a.expressionID -> a.child
-        case a: Alias                                        => a.expressionID -> a.child
+        case a: InternalAlias if namespaces contains a.namespace => a.expressionID -> a.child
+        case a: Alias => a.expressionID -> a.child
       }.toMap
 
       expression transformUp {

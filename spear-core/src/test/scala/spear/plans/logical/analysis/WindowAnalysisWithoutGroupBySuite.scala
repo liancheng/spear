@@ -8,7 +8,7 @@ import spear.plans.logical.{let, table}
 class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   test("single window function") {
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
-    val `@W: max(a) over w0` = WindowAlias(max(a) over (w0_? partitionBy a orderBy b))
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over (w0_? partitionBy a orderBy b))
 
     checkSQLAnalysis(
       """SELECT max(a) OVER (
@@ -29,7 +29,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
 
   test("single window function with non-window expressions") {
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
-    val `@W: max(a) over w0` = WindowAlias(max(a) over (w0_? partitionBy a orderBy b))
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over (w0_? partitionBy a orderBy b))
 
     checkSQLAnalysis(
       """SELECT a + max(a) OVER (
@@ -52,8 +52,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w0` = WindowFunctionAlias(count(b) over w0)
 
     checkSQLAnalysis(
       """SELECT
@@ -89,8 +89,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w0` = WindowFunctionAlias(count(b) over w0)
 
     checkSQLAnalysis(
       """SELECT
@@ -129,8 +129,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
     val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w1` = WindowFunctionAlias(count(b) over w1)
 
     checkSQLAnalysis(
       """SELECT
@@ -169,8 +169,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
     val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w1` = WindowFunctionAlias(count(b) over w1)
 
     checkSQLAnalysis(
       """SELECT
@@ -206,7 +206,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
 
     checkSQLAnalysis(
       """SELECT *
@@ -232,7 +232,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
     val win_max = `@W: max(a) over w0`.attr as 'win_max
 
     checkSQLAnalysis(
@@ -260,7 +260,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
 
     checkSQLAnalysis(
       """SELECT max(a) OVER w0 AS win_max
@@ -289,8 +289,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
     val w1 = Window partitionBy b orderBy a rangeBetween (-1, 1)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w1` = WindowAlias(count(b) over w1)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w1` = WindowFunctionAlias(count(b) over w1)
 
     checkSQLAnalysis(
       """SELECT
@@ -333,8 +333,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
     val w0_? = Window partitionBy 'a orderBy 'b rowsBetween (UnboundedPreceding, 0)
     val w0 = Window partitionBy a orderBy b rowsBetween (UnboundedPreceding, 0)
 
-    val `@W: max(a) over w0` = WindowAlias(max(a) over w0)
-    val `@W: count(b) over w0` = WindowAlias(count(b) over w0)
+    val `@W: max(a) over w0` = WindowFunctionAlias(max(a) over w0)
+    val `@W: count(b) over w0` = WindowFunctionAlias(count(b) over w0)
 
     checkSQLAnalysis(
       """SELECT
@@ -370,8 +370,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("window aggregate function containing non-window aggregate function in SELECT") {
-    val `@A: count(1)` = AggregationAlias(count(1))
-    val `@W: count(count(1)) over ()` = WindowAlias(count(`@A: count(1)`.attr) over ())
+    val `@A: count(1)` = AggregateFunctionAlias(count(1))
+    val `@W: count(count(1)) over ()` = WindowFunctionAlias(count(`@A: count(1)`.attr) over ())
 
     checkSQLAnalysis(
       "SELECT count(count(*)) OVER () AS c FROM t",
@@ -386,8 +386,8 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
   }
 
   test("window aggregate function containing non-window aggregate function in ORDER BY") {
-    val `@A: count(1)` = AggregationAlias(count(1))
-    val `@W: count(count(1)) over ()` = WindowAlias(count(`@A: count(1)`.attr) over ())
+    val `@A: count(1)` = AggregateFunctionAlias(count(1))
+    val `@W: count(count(1)) over ()` = WindowFunctionAlias(count(`@A: count(1)`.attr) over ())
     val order0 = SortOrderAlias(`@W: count(count(1)) over ()`.attr, "order0")
     val `1 as c` = 1 as 'c
 

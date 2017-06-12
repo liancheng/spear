@@ -2,7 +2,7 @@ package spear.plans.logical
 
 import spear.exceptions.LogicalPlanUnresolvedException
 import spear.expressions._
-import spear.expressions.InternalNamedExpression.{ForAggregation, ForGrouping}
+import spear.expressions.InternalAlias.GroupingKeyNamespace
 import spear.expressions.Literal.{False, True}
 import spear.expressions.Predicate.{splitConjunction, toCNF}
 import spear.plans.logical.Optimizer._
@@ -262,14 +262,13 @@ object Optimizer {
           })
         }
 
-        val unaliasedPushDown = pushDown map { _ unaliasUsing (keys, ForGrouping) }
+        val unaliasedPushDown = pushDown map { _ unaliasUsing (keys, GroupingKeyNamespace) }
 
         child filter unaliasedPushDown aggregate (keys, functions) filter stayUp
     }
 
-    private def containsAggregation(expression: Expression): Boolean = expression.collectFirstDown {
-      case e: InternalNamedExpression if e.purpose == ForAggregation =>
-    }.nonEmpty
+    private def containsAggregation(expression: Expression): Boolean =
+      expression.collectFirstDown { case _: AggregateFunctionAlias => }.nonEmpty
   }
 
   object PushProjectThroughLimit extends Rule[LogicalPlan] {

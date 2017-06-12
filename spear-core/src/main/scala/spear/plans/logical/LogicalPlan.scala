@@ -393,8 +393,8 @@ case class UnresolvedAggregate(
 
 case class Aggregate(
   child: LogicalPlan,
-  keys: Seq[GroupingAlias],
-  functions: Seq[AggregationAlias]
+  keys: Seq[GroupingKeyAlias],
+  functions: Seq[AggregateFunctionAlias]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
@@ -470,7 +470,7 @@ case class WindowDef(child: LogicalPlan, name: Name, windowSpec: WindowSpec)(
 
 case class Window(
   child: LogicalPlan,
-  functions: Seq[WindowAlias],
+  functions: Seq[WindowFunctionAlias],
   partitionSpec: Seq[Expression] = Nil,
   orderSpec: Seq[SortOrder] = Nil
 )(
@@ -485,10 +485,12 @@ object Window {
    * Given a logical `plan` and a list of zero or more window functions, stacks zero or more
    * [[Window]] operators over `plan`.
    */
-  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowAlias]): LogicalPlan =
+  def stackWindows(plan: LogicalPlan, windowAliases: Seq[WindowFunctionAlias]): LogicalPlan =
     windowBuilders(windowAliases) reduceOption { _ andThen _ } map { _ apply plan } getOrElse plan
 
-  private def windowBuilders(windowAliases: Seq[WindowAlias]): Seq[LogicalPlan => Window] = {
+  private def windowBuilders(
+    windowAliases: Seq[WindowFunctionAlias]
+  ): Seq[LogicalPlan => Window] = {
     // Finds out all distinct window specs.
     val windowSpecs = windowAliases.map { _.child.window }.distinct
 
@@ -562,17 +564,20 @@ object LogicalPlan {
 
     def groupBy(first: Expression, rest: Expression*): GroupedPlan = groupBy(first +: rest)
 
-    def aggregate(keys: Seq[GroupingAlias], functions: Seq[AggregationAlias]): Aggregate =
-      Aggregate(plan, keys, functions)()
+    def aggregate(
+      keys: Seq[GroupingKeyAlias],
+      functions: Seq[AggregateFunctionAlias]
+    ): Aggregate = Aggregate(plan, keys, functions)()
 
-    def window(functions: Seq[WindowAlias]): Window = {
+    def window(functions: Seq[WindowFunctionAlias]): Window = {
       val Seq(windowSpec) = functions.map { _.child.window }.distinct
       Window(plan, functions, windowSpec.partitionSpec, windowSpec.orderSpec)()
     }
 
-    def window(first: WindowAlias, rest: WindowAlias*): Window = window(first +: rest)
+    def window(first: WindowFunctionAlias, rest: WindowFunctionAlias*): Window =
+      window(first +: rest)
 
-    def windows(functions: Seq[WindowAlias]): LogicalPlan = stackWindows(plan, functions)
+    def windows(functions: Seq[WindowFunctionAlias]): LogicalPlan = stackWindows(plan, functions)
 
     case class GroupedPlan(child: LogicalPlan, keys: Seq[Expression]) {
       def agg(projectList: Seq[Expression]): UnresolvedAggregate =

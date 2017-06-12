@@ -27,7 +27,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
     val rule = new RejectTopLevelInternalAttribute(catalog)
 
     intercept[ResolutionFailureException] {
-      rule(LocalRelation.empty(GroupingAlias('a.int.!).attr))
+      rule(LocalRelation.empty(GroupingKeyAlias('a.int.!).attr))
     }
   }
 
