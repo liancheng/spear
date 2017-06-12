@@ -3,8 +3,8 @@ package spear.exceptions
 import spear.Name
 import spear.expressions.Expression
 import spear.plans.logical.LogicalPlan
+import spear.trees.utils._
 import spear.types.{AbstractDataType, DataType}
-import spear.utils._
 
 class ParsingException(message: String) extends RuntimeException(message)
 

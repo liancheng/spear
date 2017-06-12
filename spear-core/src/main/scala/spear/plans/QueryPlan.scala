@@ -1,6 +1,5 @@
 package spear.plans
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import spear.expressions.{Alias, Attribute, Expression, ExpressionID, InternalAlias, NamedExpression}
@@ -65,19 +64,6 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
    * Returns string representations of each output attribute of this query plan.
    */
   protected def outputStrings: Seq[String] = output map { _.debugString }
-
-  override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
-    case (e, index) => QueryPlan.ExpressionNode(index, e)
-  } ++ super.nestedTrees
-
-  override protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val remainingExpressions = mutable.Stack(expressions.indices: _*)
-
-    super.explainParams({
-      case _: Expression => s"$$${remainingExpressions.pop()}"
-      case other         => other.toString
-    })
-  }
 
   private type Rule = PartialFunction[Expression, Expression]
 

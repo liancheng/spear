@@ -10,7 +10,7 @@ import spear.plans.logical._
 import spear.plans.logical.analysis.AggregationAnalysis._
 import spear.plans.logical.analysis.WindowAnalysis._
 import spear.plans.logical.patterns.Resolved
-import spear.utils._
+import spear.trees.utils._
 
 /**
  * This rule rewrites a distinct projection into aggregations. E.g., it transforms SQL query

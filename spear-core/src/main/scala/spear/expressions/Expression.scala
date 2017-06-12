@@ -6,6 +6,7 @@ import spear.{Name, Row}
 import spear.exceptions._
 import spear.expressions.typecheck.TypeConstraint
 import spear.trees.TreeNode
+import spear.trees.utils._
 import spear.types.DataType
 import spear.utils._
 

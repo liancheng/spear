@@ -8,11 +8,6 @@ import spear.config.Settings.Key
 import spear.exceptions.SettingsValidationException
 
 package object generators {
-  def genRandomPartitions(sum: Int, partitionNum: Int): Gen[Seq[Int]] = for {
-    ns <- Gen pick (partitionNum - 1, 1 until sum)
-    sorted = ns.sorted
-  } yield (0 +: sorted, sorted :+ sum).zipped.map(_ - _)
-
   def chance[T](gs: (Double, Gen[T])*): Gen[T] = {
     val (chances, gens) = gs.unzip
     val frequencies = chances map { _ * 100 } map { _.toInt }

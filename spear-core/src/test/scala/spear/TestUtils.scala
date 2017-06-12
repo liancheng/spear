@@ -3,49 +3,14 @@ package spear
 import scala.util.control.NonFatal
 
 import org.scalatest.FunSuite
-
 import spear.expressions._
 import spear.plans.QueryPlan
 import spear.plans.logical.LogicalPlan
-import spear.trees.TreeNode
+import spear.trees.{TreeNode, TreeTest}
+import spear.trees.utils._
 import spear.types.DataType
-import spear.utils._
 
-trait TestUtils { this: FunSuite =>
-  def assertSideBySide(actual: String, expected: String): Unit = {
-    if (expected != actual) {
-      fail(sideBySide(
-        s"""Actual
-           |$expected
-           |""".stripMargin,
-
-        s"""Expected
-           |$actual
-           |""".stripMargin,
-
-        withHeader = true
-      ))
-    }
-  }
-
-  def assertSideBySide[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
-    if (actual != expected) {
-      fail(sideBySide(
-        s"""Actual
-           |${actual.prettyTree}
-           |""".stripMargin,
-
-        s"""Expected
-           |${expected.prettyTree}
-           |""".stripMargin,
-
-        withHeader = true
-      ))
-    }
-
-  def checkTree[T <: TreeNode[T]](actual: TreeNode[T], expected: TreeNode[T]): Unit =
-    assertSideBySide(actual, expected)
-
+trait TestUtils extends TreeTest { this: FunSuite =>
   def checkPlan[Plan <: QueryPlan[Plan]](actual: Plan, expected: Plan): Unit =
     checkTree(QueryPlan.normalizeExpressionIDs(actual), QueryPlan.normalizeExpressionIDs(expected))
 

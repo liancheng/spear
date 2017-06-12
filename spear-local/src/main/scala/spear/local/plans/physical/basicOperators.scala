@@ -3,21 +3,17 @@ package spear.local.plans.physical
 import scala.collection.mutable.ArrayBuffer
 
 import spear._
-import spear.annotations.Explain
 import spear.execution.MutableProjection
 import spear.expressions._
 import spear.expressions.Literal.True
 import spear.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
-import spear.trees.TreeNode
 
 case class LocalRelation(
-  @Explain(hidden = true) data: Iterable[Row],
-  @Explain(hidden = true) override val output: Seq[Attribute]
+  data: Iterable[Row],
+  override val output: Seq[Attribute]
 ) extends LeafPhysicalPlan {
 
   override def iterator: Iterator[Row] = data.iterator
-
-  override protected def nestedTrees: Seq[TreeNode[_]] = Nil
 }
 
 case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])

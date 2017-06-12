@@ -6,7 +6,7 @@ import spear.expressions._
 import spear.expressions.aggregates.DistinctAggregateFunction
 import spear.plans.logical._
 import spear.plans.logical.patterns.Unresolved
-import spear.utils._
+import spear.trees.utils._
 
 class RejectUnresolvedExpression(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree.transformExpressionsDown {

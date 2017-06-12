@@ -4,19 +4,32 @@ lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
 
 lazy val spear = project
   .in(file("."))
-  .aggregate(`spear-core`, `spear-docs`, `spear-examples`, `spear-local`, `spear-repl`)
+  .aggregate(
+    `spear-core`,
+    `spear-docs`,
+    `spear-examples`,
+    `spear-local`,
+    `spear-repl`,
+    `spear-tree`
+  )
   .settings(
     // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
     repl := (run in `spear-repl` in Compile toTask "").value
   )
 
-lazy val `spear-core` = project
+lazy val `spear-tree` = project
   .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= fastparse ++ typesafeConfig ++ logging ++ scala,
+    libraryDependencies ++= logging ++ scala,
     libraryDependencies ++= Dependencies.testing
   )
+
+lazy val `spear-core` = project
+  .dependsOn(`spear-tree` % "compile->compile;test->test")
+  .enablePlugins(commonPlugins: _*)
+  .settings(commonSettings)
+  .settings(libraryDependencies ++= fastparse ++ typesafeConfig)
 
 lazy val `spear-local` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")

@@ -3,6 +3,7 @@ package spear
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.definitions._
 
+import spear.trees.TreeNode
 import spear.types._
 
 package object reflection {
@@ -33,7 +34,7 @@ package object reflection {
     case t if t <:< weakTypeOf[Product] =>
       val formalTypeArgs = t.typeSymbol.asClass.typeParams
       val TypeRef(_, _, actualTypeArgs) = t
-      val params = constructorParams(t)
+      val params = TreeNode.constructorParams(t)
       StructType(params.map { param =>
         val paramType = param.typeSignature.substituteTypes(formalTypeArgs, actualTypeArgs)
         val FieldSpec(dataType, nullable) = fieldSpecFor(paramType)
@@ -61,28 +62,5 @@ package object reflection {
     case t if t <:< FloatTpe   => FloatType.!
     case t if t <:< DoubleTpe  => DoubleType.!
     case t if t <:< NullTpe    => NullType.?
-  }
-
-  def constructorParams(clazz: Class[_]): List[Symbol] = {
-    val selfType = runtimeMirror(clazz.getClassLoader).staticClass(clazz.getName).selfType
-    constructorParams(selfType)
-  }
-
-  def constructorParams(tpe: Type): List[Symbol] = {
-    val constructorSymbol = tpe.member(termNames.CONSTRUCTOR)
-
-    val constructor = if (constructorSymbol.isMethod && constructorSymbol.asMethod.isPublic) {
-      // The type has only one public constructor
-      constructorSymbol.asMethod
-    } else {
-      // The type has multiple constructors. Let's pick the primary one.
-      constructorSymbol.asTerm.alternatives.find { symbol =>
-        symbol.isMethod && symbol.asMethod.isPrimaryConstructor && symbol.asMethod.isPublic
-      }.map { _.asMethod } getOrElse {
-        throw ScalaReflectionException(s"Type $tpe doesn't have a public primary constructor")
-      }
-    }
-
-    constructor.paramLists.flatten
   }
 }

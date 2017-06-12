@@ -10,11 +10,15 @@ import org.scalacheck.Prop.{all, BooleanOperators}
 import org.scalacheck.util.Pretty
 import org.scalatest.prop.Checkers
 
-import spear.{LoggingFunSuite, TestUtils}
-import spear.generators.genRandomPartitions
+import spear.LoggingFunSuite
 import spear.trees.TreeNodeSuite.Node
 
-class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
+class TreeNodeSuite extends LoggingFunSuite with TreeTest with Checkers {
+  def genRandomPartitions(sum: Int, partitionNum: Int): Gen[Seq[Int]] = for {
+    ns <- Gen.pick(partitionNum - 1, 1 until sum)
+    sorted = ns.sorted
+  } yield (0 +: sorted, sorted :+ sum).zipped.map { _ - _ }
+
   def genNode: Gen[Node] = Gen.parameterized { param =>
     param.size match {
       case size if size < 2 => Node(1, Nil)

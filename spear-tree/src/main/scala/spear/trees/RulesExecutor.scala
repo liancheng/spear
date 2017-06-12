@@ -3,7 +3,8 @@ package spear.trees
 import scala.annotation.tailrec
 
 import spear.trees.RulesExecutor.{EndCondition, FixedPoint, Once}
-import spear.utils.{sideBySide, Logging}
+import spear.trees.utils.sideBySide
+import spear.utils.Logging
 
 trait Rule[Base <: TreeNode[Base]] extends (Base => Base) with Logging
 

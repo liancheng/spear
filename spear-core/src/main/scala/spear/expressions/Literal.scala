@@ -3,8 +3,8 @@ package spear.expressions
 import scala.util.Try
 
 import spear.Row
+import spear.expressions.Literal.quote
 import spear.types._
-import spear.utils.quote
 
 case class Literal(value: Any, override val dataType: DataType) extends LeafExpression {
   override def isNullable: Boolean = value == null
@@ -51,4 +51,6 @@ object Literal {
       )
     }
   }
+
+  def quote(string: String): String = "'" + string.replace("\\", "\\\\").replace("'", "\\'") + "'"
 }

@@ -9,7 +9,7 @@ import spear.plans.logical._
 import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.analysis.WindowAnalysis._
 import spear.plans.logical.patterns.Resolved
-import spear.utils._
+import spear.trees.utils._
 
 /**
  * This rule extracts window functions from `SELECT` and `ORDER BY` clauses and moves them into

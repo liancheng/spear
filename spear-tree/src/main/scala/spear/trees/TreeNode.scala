@@ -1,9 +1,7 @@
 package spear.trees
 
 import scala.collection.{mutable, Traversable}
-
-import spear.annotations.Explain
-import spear.reflection.constructorParams
+import scala.reflect.runtime.universe._
 
 /**
  * Base trait of simple tree structures that supports recursive transformations. Concrete $tree
@@ -203,34 +201,20 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
   }
 
-  protected def nestedTrees: Seq[TreeNode[_]] = {
-    val nestedTreeMarks = constructorParamExplainAnnotations map { _ exists { _.nestedTree() } }
-    productIterator.toSeq zip nestedTreeMarks collect { case (tree: TreeNode[_], true) => tree }
-  }
-
   /**
    * String pairs representing constructor parameters of this $tree. Parameters annotated with
    * `Explain(hidden = true)` are not included here.
    */
   protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val argNames: List[String] = constructorParams(getClass) map { _.name.toString }
-    val annotations = constructorParamExplainAnnotations
+    val argNames: List[String] = TreeNode.constructorParams(getClass) map { _.name.toString }
 
-    (argNames, productIterator.toSeq, annotations).zipped.map {
-      case (_, _, maybeAnnotated) if maybeAnnotated exists { _.hidden() } =>
-        None
-
-      case (name, value, _) =>
+    (argNames, productIterator.toSeq).zipped.map {
+      case (name, value) =>
         explainParamValue(value, show) map { name -> _ }
     }.flatten
   }
 
   private type Rule = PartialFunction[Base, Base]
-
-  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
-    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
-      _ collectFirst { case a: Explain => a }
-    }
 
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
     val newChildren = children map { next(_, rule) }
@@ -263,24 +247,12 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     builder ++= nodeCaption
     builder ++= "\n"
 
-    buildNestedTree(depth, lastChildren, builder)
-
     if (children.nonEmpty) {
       children.init foreach { _ buildPrettyTree (depth + 1, lastChildren :+ false, builder) }
       children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
     }
 
     builder
-  }
-
-  private def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = if (nestedTrees.nonEmpty) {
-    nestedTrees.init.foreach {
-      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
-    }
-
-    nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
   }
 
   private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
@@ -308,5 +280,30 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     case arg =>
       Some(show(arg))
+  }
+}
+
+object TreeNode {
+  def constructorParams(clazz: Class[_]): List[Symbol] = {
+    val selfType = runtimeMirror(clazz.getClassLoader).staticClass(clazz.getName).selfType
+    constructorParams(selfType)
+  }
+
+  def constructorParams(tpe: Type): List[Symbol] = {
+    val constructorSymbol = tpe.member(termNames.CONSTRUCTOR)
+
+    val constructor = if (constructorSymbol.isMethod && constructorSymbol.asMethod.isPublic) {
+      // The type has only one public constructor
+      constructorSymbol.asMethod
+    } else {
+      // The type has multiple constructors. Let's pick the primary one.
+      constructorSymbol.asTerm.alternatives.find { symbol =>
+        symbol.isMethod && symbol.asMethod.isPrimaryConstructor && symbol.asMethod.isPublic
+      }.map { _.asMethod } getOrElse {
+        throw ScalaReflectionException(s"Type $tpe doesn't have a public primary constructor")
+      }
+    }
+
+    constructor.paramLists.flatten
   }
 }

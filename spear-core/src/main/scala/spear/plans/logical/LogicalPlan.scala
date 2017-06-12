@@ -5,7 +5,6 @@ import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 import spear.{Name, Row}
-import spear.annotations.Explain
 import spear.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import spear.expressions._
 import spear.expressions.Cast.widestTypeOf
@@ -17,7 +16,7 @@ import spear.plans.logical.patterns.Unresolved
 import spear.plans.QueryPlan
 import spear.plans.logical.Window._
 import spear.reflection.fieldSpecFor
-import spear.trees.TreeNode
+import spear.trees.utils._
 import spear.types.{DataType, IntType, StructType}
 import spear.utils._
 
@@ -102,21 +101,19 @@ case class UnresolvedRelation(name: Name)(val metadata: LogicalPlanMetadata = Lo
   extends Relation with UnresolvedLogicalPlan
 
 case class SingleRowRelation(
-  @Explain(hidden = true) metadata: LogicalPlanMetadata = LogicalPlanMetadata()
+  metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends Relation {
   override val output: Seq[Attribute] = Nil
 }
 
 case class LocalRelation(
-  @Explain(hidden = true) data: Iterable[Row],
-  @Explain(hidden = true) output: Seq[Attribute]
+  data: Iterable[Row],
+  output: Seq[Attribute]
 )(val metadata: LogicalPlanMetadata = LogicalPlanMetadata())
   extends MultiInstanceRelation {
 
   override def newInstance(): LogicalPlan =
     copy(output = output map { _ withID newExpressionID() })(metadata)
-
-  override protected def nestedTrees: Seq[TreeNode[_]] = Nil
 }
 
 object LocalRelation {
@@ -452,7 +449,7 @@ case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
 case class With(
   child: LogicalPlan,
   name: Name,
-  @Explain(hidden = true, nestedTree = true) query: LogicalPlan,
+  query: LogicalPlan,
   aliases: Option[Seq[Name]]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
