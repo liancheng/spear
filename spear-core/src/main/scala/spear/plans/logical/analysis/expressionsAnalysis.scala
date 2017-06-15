@@ -36,7 +36,7 @@ class ExpandStar(val catalog: Catalog) extends AnalysisRule {
  * children.
  *
  * @throws spear.exceptions.ResolutionFailureException If no candidate or multiple ambiguous
- *                                                     candidate input attributes can be found.
+ *         candidate input attributes can be found.
  */
 class ResolveReference(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {

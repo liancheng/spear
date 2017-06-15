@@ -27,9 +27,17 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     case _                         => Nil
   }.toSeq
 
-  def transformExpressionsDown(rule: Rule): Plan = transformExpressions(rule, _ transformDown _)
+  def transformExpressionsDown(rule: ExpressionRule): Plan = withExpressions {
+    expressions map {
+      _ transformDown rule
+    }
+  }
 
-  def transformExpressionsUp(rule: Rule): Plan = transformExpressions(rule, _ transformUp _)
+  def transformExpressionsUp(rule: ExpressionRule): Plan = withExpressions {
+    expressions map {
+      _ transformUp rule
+    }
+  }
 
   def collectFromExpressionsDown[T](rule: PartialFunction[Expression, T]): Seq[T] = {
     val builder = ArrayBuffer.newBuilder[T]
@@ -73,40 +81,48 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
   override protected def explainParams(show: Any => String): Seq[(String, String)] = {
     val remainingExpressions = mutable.Stack(expressions.indices: _*)
 
-    super.explainParams({
+    super.explainParams {
       case _: Expression => s"$$${remainingExpressions.pop()}"
       case other         => other.toString
-    })
+    }
   }
 
-  private type Rule = PartialFunction[Expression, Expression]
+  private type ExpressionRule = PartialFunction[Expression, Expression]
 
-  private def transformExpressions(rule: Rule, next: (Expression, Rule) => Expression): Plan = {
-    def applyRule(e: Expression): (Expression, Boolean) = {
-      val transformed = next(e, rule)
-      if (e same transformed) e -> false else transformed -> true
+  protected def withExpressions(newExpressions: Seq[Expression]): Plan = {
+    assert(newExpressions.length == expressions.length)
+
+    val remainingNewExpressions = newExpressions.toBuffer
+    var changed = false
+
+    def popAndCompare(e: Expression): Expression = {
+      val newExpression = remainingNewExpressions.head
+      remainingNewExpressions.remove(0)
+      changed = changed || !(newExpression same e)
+      newExpression
     }
 
-    val (newArgs, argsChanged) = productIterator.map {
+    val newArgs = productIterator.map {
       case e: Expression =>
-        applyRule(e)
+        popAndCompare(e)
 
       case Some(e: Expression) =>
-        val (ruleApplied, changed) = applyRule(e)
-        Some(ruleApplied) -> changed
+        Some(popAndCompare(e))
 
       case arg: Traversable[_] =>
-        val (newElements, elementsChanged) = arg.map {
-          case e: Expression => applyRule(e)
-          case e             => e -> false
-        }.unzip
-        newElements -> elementsChanged.exists { _ == true }
+        arg.map {
+          case e: Expression => popAndCompare(e)
+          case other         => other
+        }.toSeq
 
       case arg: AnyRef =>
-        arg -> false
-    }.toSeq.unzip
+        arg
 
-    if (argsChanged contains true) makeCopy(newArgs) else this
+      case null =>
+        null
+    }.toArray
+
+    if (changed) makeCopy(newArgs) else this
   }
 }
 

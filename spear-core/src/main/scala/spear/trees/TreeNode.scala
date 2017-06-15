@@ -74,29 +74,24 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val remainingNewChildren = newChildren.toBuffer
     var changed = false
 
+    def popAndCompare(child: Any): Base = {
+      val newChild = remainingNewChildren.head
+      remainingNewChildren.remove(0)
+      changed = changed || !(newChild same child.asInstanceOf[Base])
+      newChild
+    }
+
     val newArgs = productIterator.map {
       case arg: TreeNode[_] if children contains arg =>
-        val newChild = remainingNewChildren.head
-        remainingNewChildren.remove(0)
-        changed = changed || !(newChild same arg.asInstanceOf[Base])
-        newChild
+        popAndCompare(arg)
 
       case Some(arg) if children contains arg =>
-        val newChild = remainingNewChildren.head
-        remainingNewChildren.remove(0)
-        changed = changed || !(newChild same arg.asInstanceOf[Base])
-        Some(newChild)
+        Some(popAndCompare(arg))
 
       case arg: Traversable[_] =>
         arg.map {
-          case child: Any if children contains child =>
-            val newChild = remainingNewChildren.head
-            remainingNewChildren.remove(0)
-            changed = changed || !(newChild same child.asInstanceOf[Base])
-            newChild
-
-          case element =>
-            element
+          case child: Any if children contains child => popAndCompare(child)
+          case element                               => element
         }
 
       case arg: AnyRef =>
