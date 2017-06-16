@@ -99,12 +99,18 @@ trait MultiInstanceRelation extends Relation {
 }
 
 case class UnresolvedRelation(name: Name)(val metadata: LogicalPlanMetadata = LogicalPlanMetadata())
-  extends Relation with UnresolvedLogicalPlan
+  extends Relation with UnresolvedLogicalPlan {
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
+}
 
 case class SingleRowRelation(
   @Explain(hidden = true) metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends Relation {
+
   override val output: Seq[Attribute] = Nil
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 case class LocalRelation(
@@ -117,6 +123,10 @@ case class LocalRelation(
     copy(output = output map { _ withID newExpressionID() })(metadata)
 
   override protected def nestedTrees: Seq[TreeNode[_]] = Nil
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = copy(
+    output = newExpressions.toArray map { case e: Attribute => e }
+  )(metadata)
 }
 
 object LocalRelation {
@@ -135,17 +145,21 @@ case class Distinct(child: LogicalPlan)(val metadata: LogicalPlanMetadata = Logi
   extends UnaryLogicalPlan {
 
   override def output: Seq[Attribute] = child.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
-  assert(projectList.nonEmpty, "Project should have at least one expression")
-
   override def expressions: Seq[Expression] = projectList
 
   override lazy val output: Seq[Attribute] = projectList map { _.attr }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = copy(
+    projectList = newExpressions.toArray map { case e: NamedExpression => e }
+  )(metadata)
 }
 
 /**
@@ -195,13 +209,21 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression])(
  */
 case class Rename(child: LogicalPlan, aliases: Seq[Name])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
-) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan {
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
+}
 
 case class Filter(child: LogicalPlan, condition: Expression)(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
   override lazy val output: Seq[Attribute] = child.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val Seq(newCondition) = newExpressions
+    copy(condition = newCondition)(metadata)
+  }
 }
 
 case class Limit(child: LogicalPlan, count: Expression)(
@@ -215,6 +237,11 @@ case class Limit(child: LogicalPlan, count: Expression)(
       new TypeCheckException("Limit must be a constant integer")
     )
   } yield copy(count = n)(metadata)
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val Seq(newCount) = newExpressions
+    copy(count = newCount)(metadata)
+  }
 }
 
 trait SetOperator extends BinaryLogicalPlan {
@@ -266,7 +293,7 @@ trait SetOperator extends BinaryLogicalPlan {
     rhs <- right.strictlyTyped
 
     alignedBranches <- alignBranches(lhs :: rhs :: Nil)
-  } yield makeCopy(alignedBranches)
+  } yield withChildren(alignedBranches)
 }
 
 case class Union(left: LogicalPlan, right: LogicalPlan)(
@@ -278,6 +305,8 @@ case class Union(left: LogicalPlan, right: LogicalPlan)(
       case (a1, a2) =>
         a1.nullable(a1.isNullable || a2.isNullable)
     }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 case class Intersect(left: LogicalPlan, right: LogicalPlan)(
@@ -289,6 +318,8 @@ case class Intersect(left: LogicalPlan, right: LogicalPlan)(
       case (a1, a2) =>
         a1.nullable(a1.isNullable && a2.isNullable)
     }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 case class Except(left: LogicalPlan, right: LogicalPlan)(
@@ -296,6 +327,8 @@ case class Except(left: LogicalPlan, right: LogicalPlan)(
 ) extends SetOperator {
 
   override lazy val output: Seq[Attribute] = left.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 sealed trait JoinType {
@@ -341,6 +374,9 @@ case class Join(
    * `predicates`. If `predicates` is empty, simply returns this [[Join]] operator untouched.
    */
   def on(predicates: Seq[Expression]): Join = predicates reduceOption And map on getOrElse this
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan =
+    copy(condition = newExpressions.headOption)(metadata)
 }
 
 case class Subquery(child: LogicalPlan, alias: Name)(
@@ -351,6 +387,8 @@ case class Subquery(child: LogicalPlan, alias: Name)(
     case a: AttributeRef => a.copy(qualifier = Some(alias))
     case a: Attribute    => a
   }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 /**
@@ -389,7 +427,21 @@ case class UnresolvedAggregate(
   order: Seq[SortOrder]
 )(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
-) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan {
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val (newKeys, rest0) = newExpressions splitAt keys.length
+    val (newProjectList, rest1) = rest0 splitAt projectList.length
+    val (newConditions, newOrder) = rest1 splitAt conditions.length
+
+    copy(
+      keys = newKeys,
+      projectList = newProjectList.toArray map { case e: NamedExpression => e },
+      conditions = newConditions,
+      order = newOrder.toArray map { case e: SortOrder => e }
+    )(metadata)
+  }
+}
 
 case class Aggregate(
   child: LogicalPlan,
@@ -406,6 +458,15 @@ case class Aggregate(
   // Aggregate functions may reference grouping key aliases, which are not produced by `child` but
   // this operator itself.
   override lazy val derivedInput: Seq[Attribute] = keys map { _.attr }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val (newKeys, newFunctions) = newExpressions splitAt keys.length
+
+    copy(
+      keys = newKeys.toArray map { case e: GroupingKeyAlias => e },
+      functions = newFunctions.toArray map { case e: AggregateFunctionAlias => e }
+    )(metadata)
+  }
 }
 
 /**
@@ -421,13 +482,22 @@ case class Aggregate(
  */
 case class UnresolvedSort(child: LogicalPlan, order: Seq[SortOrder])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
-) extends UnaryLogicalPlan with UnresolvedLogicalPlan
+) extends UnaryLogicalPlan with UnresolvedLogicalPlan {
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = copy(
+    order = newExpressions.toArray map { case e: SortOrder => e }
+  )(metadata)
+}
 
 case class Sort(child: LogicalPlan, order: Seq[SortOrder])(
   val metadata: LogicalPlanMetadata = LogicalPlanMetadata()
 ) extends UnaryLogicalPlan {
 
   override def output: Seq[Attribute] = child.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = copy(
+    order = newExpressions.toArray map { case e: SortOrder => e }
+  )(metadata)
 }
 
 /**
@@ -459,6 +529,8 @@ case class With(
 ) extends UnaryLogicalPlan {
 
   override def output: Seq[Attribute] = child.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = this
 }
 
 case class WindowDef(child: LogicalPlan, name: Name, windowSpec: WindowSpec)(
@@ -466,6 +538,11 @@ case class WindowDef(child: LogicalPlan, name: Name, windowSpec: WindowSpec)(
 ) extends UnaryLogicalPlan {
 
   override def output: Seq[Attribute] = child.output
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val Seq(newWindowSpec: WindowSpec) = newExpressions
+    copy(windowSpec = newWindowSpec)(metadata)
+  }
 }
 
 case class Window(
@@ -478,6 +555,17 @@ case class Window(
 ) extends UnaryLogicalPlan {
 
   override lazy val output: Seq[Attribute] = child.output ++ functions map { _.attr }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): LogicalPlan = {
+    val (newFunctions, rest) = newExpressions splitAt functions.length
+    val (newPartitionSpec, newOrderSpec) = rest splitAt partitionSpec.length
+
+    copy(
+      functions = newFunctions.toArray map { case e: WindowFunctionAlias => e },
+      partitionSpec = newPartitionSpec,
+      orderSpec = newOrderSpec.toArray map { case e: SortOrder => e }
+    )(metadata)
+  }
 }
 
 object Window {

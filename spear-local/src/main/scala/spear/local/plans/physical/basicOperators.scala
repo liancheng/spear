@@ -18,6 +18,10 @@ case class LocalRelation(
   override def iterator: Iterator[Row] = data.iterator
 
   override protected def nestedTrees: Seq[TreeNode[_]] = Nil
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = copy(
+    output = newExpressions.toArray map { case e: Attribute => e }
+  )
 }
 
 case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
@@ -27,25 +31,39 @@ case class Project(child: PhysicalPlan, projectList: Seq[NamedExpression])
 
   override def requireMaterialization: Boolean = true
 
-  private lazy val projection = MutableProjection(projectList map { _ bindTo child.output })
-
   override def iterator: Iterator[Row] = child.iterator map projection
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = copy(
+    projectList = newExpressions.toArray map { case e: NamedExpression => e }
+  )
+
+  private lazy val projection = MutableProjection(projectList map { _ bindTo child.output })
 }
 
 case class Filter(child: PhysicalPlan, condition: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  private lazy val boundCondition = condition bindTo child.output
-
   override def iterator: Iterator[Row] = child.iterator filter {
     boundCondition.evaluate(_).asInstanceOf[Boolean]
   }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = {
+    val Seq(newCondition) = newExpressions
+    copy(condition = newCondition)
+  }
+
+  private lazy val boundCondition = condition bindTo child.output
 }
 
-case class Limit(child: PhysicalPlan, limit: Expression) extends UnaryPhysicalPlan {
+case class Limit(child: PhysicalPlan, count: Expression) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
 
-  override def iterator: Iterator[Row] = child.iterator take limit.evaluated.asInstanceOf[Int]
+  override def iterator: Iterator[Row] = child.iterator take count.evaluated.asInstanceOf[Int]
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = {
+    val Seq(newCount) = newExpressions
+    copy(count = newCount)
+  }
 }
 
 case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
@@ -56,6 +74,8 @@ case class Union(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysical
     }
 
   override def iterator: Iterator[Row] = left.iterator ++ right.iterator
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = this
 }
 
 case class Intersect(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
@@ -67,12 +87,16 @@ case class Intersect(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhys
 
   override def iterator: Iterator[Row] =
     (left.iterator.toSeq intersect right.iterator.toSeq).iterator
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = this
 }
 
 case class Except(left: PhysicalPlan, right: PhysicalPlan) extends BinaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = left.output
 
   override def iterator: Iterator[Row] = (left.iterator.toSeq diff right.iterator.toSeq).iterator
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = this
 }
 
 case class CartesianJoin(
@@ -80,9 +104,6 @@ case class CartesianJoin(
   right: PhysicalPlan,
   condition: Option[Expression]
 ) extends BinaryPhysicalPlan {
-  def evaluateBoundCondition(input: Row): Boolean =
-    boundCondition evaluate input match { case result: Boolean => result }
-
   override def output: Seq[Attribute] = left.output ++ right.output
 
   override def iterator: Iterator[Row] = for {
@@ -94,19 +115,30 @@ case class CartesianJoin(
 
   def on(condition: Expression): CartesianJoin = copy(condition = Some(condition))
 
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = copy(
+    condition = newExpressions.headOption
+  )
+
   private lazy val boundCondition = condition map { _ bindTo output } getOrElse True
 
   private val join = new JoinedRow()
+
+  private def evaluateBoundCondition(input: Row): Boolean =
+    boundCondition evaluate input match { case result: Boolean => result }
 }
 
 case class Sort(child: PhysicalPlan, order: Seq[SortOrder]) extends UnaryPhysicalPlan {
   override lazy val output: Seq[Attribute] = child.output
-
-  private lazy val rowOrdering = new RowOrdering(order, child.output)
 
   override def iterator: Iterator[Row] = {
     val buffer = ArrayBuffer.empty[Row]
     child.iterator foreach { buffer += _.copy() }
     buffer.sorted(rowOrdering).iterator
   }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = copy(
+    order = newExpressions.toArray map { case e: SortOrder => e }
+  )
+
+  private lazy val rowOrdering = new RowOrdering(order, child.output)
 }

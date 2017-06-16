@@ -89,41 +89,7 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
   private type ExpressionRule = PartialFunction[Expression, Expression]
 
-  protected def withExpressions(newExpressions: Seq[Expression]): Plan = {
-    assert(newExpressions.length == expressions.length)
-
-    val remainingNewExpressions = newExpressions.toBuffer
-    var changed = false
-
-    def popAndCompare(e: Expression): Expression = {
-      val newExpression = remainingNewExpressions.head
-      remainingNewExpressions.remove(0)
-      changed = changed || !(newExpression same e)
-      newExpression
-    }
-
-    val newArgs = productIterator.map {
-      case e: Expression =>
-        popAndCompare(e)
-
-      case Some(e: Expression) =>
-        Some(popAndCompare(e))
-
-      case arg: Traversable[_] =>
-        arg.map {
-          case e: Expression => popAndCompare(e)
-          case other         => other
-        }.toSeq
-
-      case arg: AnyRef =>
-        arg
-
-      case null =>
-        null
-    }.toArray
-
-    if (changed) makeCopy(newArgs) else this
-  }
+  protected def withExpressions(newExpressions: Seq[Expression]): Plan
 }
 
 object QueryPlan {

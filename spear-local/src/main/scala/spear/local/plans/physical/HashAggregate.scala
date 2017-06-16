@@ -44,6 +44,15 @@ case class HashAggregate(
         join(groupingRow, resultBuffer)
     }
   }
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = {
+    val (newKeyAliases, newAggAliases) = newExpressions splitAt keyAliases.length
+
+    copy(
+      keyAliases = newKeyAliases.toArray map { case e: GroupingKeyAlias => e },
+      aggAliases = newAggAliases.toArray map { case e: AggregateFunctionAlias => e }
+    )
+  }
 }
 
 class Aggregator(aggs: Seq[AggregateFunction]) {

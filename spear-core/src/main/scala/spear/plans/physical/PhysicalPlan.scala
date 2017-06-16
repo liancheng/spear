@@ -33,6 +33,8 @@ case object SingleRowRelation extends LeafPhysicalPlan {
   override def iterator: Iterator[Row] = Iterator single Row.empty
 
   override val output: Seq[Attribute] = Nil
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = this
 }
 
 case class NotImplemented(
@@ -45,4 +47,6 @@ case class NotImplemented(
   override def iterator: Iterator[Row] = throw new UnsupportedOperationException(
     s"$logicalPlanName is not implemented yet"
   )
+
+  override protected def withExpressions(newExpressions: Seq[Expression]): PhysicalPlan = this
 }
