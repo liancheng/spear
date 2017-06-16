@@ -253,13 +253,24 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     val corner = "\u2570"
     val bar = "\u2574"
 
+    val captionLines = caption split "\n"
+
     if (depth > 0) {
-      lastChildren.init foreach (isLast => builder ++= (if (isLast) "  " else s"$pipe "))
+      lastChildren.init foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
       builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    builder ++= caption
+    builder ++= captionLines.head
     builder ++= "\n"
+
+    captionLines.tail foreach { line =>
+      if (depth > 0) {
+        lastChildren foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+      }
+
+      builder ++= line
+      builder ++= "\n"
+    }
 
     buildNestedTree(depth, lastChildren, builder)
 
