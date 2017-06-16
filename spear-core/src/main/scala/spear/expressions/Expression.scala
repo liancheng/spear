@@ -244,7 +244,7 @@ object Expression {
         val ordinal = input.indexWhere(_.expressionID == ref.expressionID)
 
         if (ordinal == -1) {
-          val inputAttributes = input.map(_.nodeCaption).mkString(", ")
+          val inputAttributes = input.map(_.caption).mkString(", ")
           throw new ResolutionFailureException(
             s"Failed to bind attribute reference $ref to any input attributes: $inputAttributes"
           )
@@ -298,7 +298,7 @@ trait NonSQLExpression extends Expression {
 trait LeafExpression extends Expression {
   override def children: Seq[Expression] = Seq.empty
 
-  override def nodeCaption: String = debugString
+  override def caption: String = debugString
 
   override def sqlLike: String = sql getOrElse debugString
 }

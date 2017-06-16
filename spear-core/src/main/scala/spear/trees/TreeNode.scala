@@ -180,7 +180,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    *
    * @see [[prettyTree]]
    */
-  def nodeCaption: String = {
+  def caption: String = {
     val pairs = explainParams(_.toString).map { _.productIterator mkString "=" }
     Seq(nodeName, pairs mkString ", ") filter { _.nonEmpty } mkString " "
   }
@@ -191,8 +191,11 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   protected def makeCopy(args: Seq[AnyRef]): Base = {
     val constructors = this.getClass.getConstructors filter { _.getParameterTypes.nonEmpty }
     assert(constructors.nonEmpty, s"No valid constructor for ${getClass.getSimpleName}")
-    val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
-    try defaultConstructor.newInstance(args: _*).asInstanceOf[Base] catch {
+
+    try {
+      val defaultConstructor = constructors.maxBy(_.getParameterTypes.length)
+      defaultConstructor.newInstance(args: _*).asInstanceOf[Base]
+    } catch {
       case cause: IllegalArgumentException =>
         throw new IllegalArgumentException(s"Failed to instantiate ${getClass.getName}", cause)
     }
@@ -255,7 +258,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
       builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
     }
 
-    builder ++= nodeCaption
+    builder ++= caption
     builder ++= "\n"
 
     buildNestedTree(depth, lastChildren, builder)

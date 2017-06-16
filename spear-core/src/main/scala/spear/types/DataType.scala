@@ -104,32 +104,32 @@ object DataType {
   case class PrimitiveTypeNode(dataType: DataType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = Nil
 
-    override def nodeCaption: String = dataType.simpleName
+    override def caption: String = dataType.simpleName
   }
 
   case class StructFieldNode(field: StructField) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = field.dataType.children
 
-    override def nodeCaption: String =
+    override def caption: String =
       s"${field.name}: ${fieldSpecString(field.dataType, field.isNullable)}"
   }
 
   case class StructTypeNode(dataType: StructType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = dataType.fields map StructFieldNode
 
-    override def nodeCaption: String = dataType.simpleName
+    override def caption: String = dataType.simpleName
   }
 
   case class KeyTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.keyType.children
 
-    override def nodeCaption: String = s"key: ${mapType.keyType.simpleName}"
+    override def caption: String = s"key: ${mapType.keyType.simpleName}"
   }
 
   case class ValueTypeNode(mapType: MapType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = mapType.valueType.children
 
-    override def nodeCaption: String =
+    override def caption: String =
       s"value: ${fieldSpecString(mapType.valueType, mapType.isValueNullable)}"
   }
 
@@ -138,20 +138,20 @@ object DataType {
       Seq(KeyTypeNode(dataType), ValueTypeNode(dataType))
     }
 
-    override def nodeCaption: String = dataType.simpleName
+    override def caption: String = dataType.simpleName
   }
 
   case class ElementTypeNode(arrayType: ArrayType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = arrayType.elementType.children
 
-    override def nodeCaption: String =
+    override def caption: String =
       s"element: ${fieldSpecString(arrayType.elementType, arrayType.isElementNullable)}"
   }
 
   case class ArrayTypeNode(dataType: ArrayType) extends DataTypeNode {
     override def children: Seq[DataTypeNode] = Seq(ElementTypeNode(dataType))
 
-    override def nodeCaption: String = dataType.simpleName
+    override def caption: String = dataType.simpleName
   }
 }
 

@@ -137,7 +137,7 @@ class TreeNodeSuite extends LoggingFunSuite with TestUtils with Checkers {
 
 object TreeNodeSuite {
   case class Node(value: Int, children: Seq[Node]) extends TreeNode[Node] {
-    override def nodeCaption: String = s"Node($value)"
+    override def caption: String = s"Node($value)"
 
     def stripLeaves: Node =
       if (children forall (!_.isLeaf)) this else copy(children = children filterNot (_.isLeaf))

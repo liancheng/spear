@@ -63,10 +63,10 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     builder.result()
   }
 
-  override def nodeCaption: String = {
+  override def caption: String = {
     val outputString = outputStrings mkString ("[", ", ", "]")
     val arrow = "\u21d2"
-    Seq(super.nodeCaption, arrow, outputString) mkString " "
+    Seq(super.caption, arrow, outputString) mkString " "
   }
 
   /**
@@ -132,7 +132,7 @@ object QueryPlan {
 
     override def children: Seq[ExpressionNode] = Nil
 
-    override def nodeCaption: String = s"$$$index: ${expression.debugString}"
+    override def caption: String = s"$$$index: ${expression.debugString}"
   }
 
   def normalizeExpressionIDs[Plan <: QueryPlan[Plan]](plan: Plan): Plan = {

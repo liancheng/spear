@@ -27,21 +27,21 @@ class AnalysisException(message: String, cause: Throwable)
 }
 
 class ExpressionUnresolvedException(expression: Expression, cause: Throwable)
-  extends AnalysisException(s"Expression ${expression.nodeCaption} is unresolved", cause) {
+  extends AnalysisException(s"Expression ${expression.caption} is unresolved", cause) {
 
   def this(expression: Expression) = this(expression, null)
 }
 
 class NameUnresolvedException(expression: Expression, cause: Throwable)
   extends AnalysisException(
-    s"The name of expression ${expression.nodeCaption} is unresolved", cause
+    s"The name of expression ${expression.caption} is unresolved", cause
   ) {
 
   def this(expression: Expression) = this(expression, null)
 }
 
 class ExpressionNotBoundException(expression: Expression, cause: Throwable)
-  extends AnalysisException(s"Expression ${expression.nodeCaption} is not bound", cause) {
+  extends AnalysisException(s"Expression ${expression.caption} is not bound", cause) {
 
   def this(expression: Expression) = this(expression, null)
 }
