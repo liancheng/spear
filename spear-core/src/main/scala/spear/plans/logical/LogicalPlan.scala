@@ -5,7 +5,6 @@ import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 import spear.{Name, Row}
-import spear.annotations.Explain
 import spear.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
 import spear.expressions._
 import spear.expressions.Cast.widestTypeOf
@@ -16,6 +15,7 @@ import spear.expressions.windows.{BasicWindowSpec, WindowSpec}
 import spear.plans.logical.patterns.Unresolved
 import spear.plans.QueryPlan
 import spear.plans.logical.Window._
+import spear.plans.logical.annotations.Explain
 import spear.reflection.fieldSpecFor
 import spear.trees.TreeNode
 import spear.types.{DataType, IntType, StructType}

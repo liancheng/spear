@@ -1,9 +1,9 @@
 package spear.plans.physical
 
 import spear._
-import spear.annotations.Explain
 import spear.expressions._
 import spear.plans.QueryPlan
+import spear.plans.logical.annotations.Explain
 
 trait PhysicalPlan extends QueryPlan[PhysicalPlan] {
   def iterator: Iterator[Row]

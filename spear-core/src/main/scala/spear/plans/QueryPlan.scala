@@ -3,8 +3,8 @@ package spear.plans
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-import spear.annotations.Explain
 import spear.expressions.{Alias, Attribute, Expression, ExpressionID, InternalAlias, NamedExpression}
+import spear.plans.logical.annotations.Explain
 import spear.reflection.constructorParams
 import spear.trees.TreeNode
 import spear.types.StructType

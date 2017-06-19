@@ -3,10 +3,10 @@ package spear.local.plans.physical
 import scala.collection.mutable.ArrayBuffer
 
 import spear._
-import spear.annotations.Explain
 import spear.execution.MutableProjection
 import spear.expressions._
 import spear.expressions.Literal.True
+import spear.plans.logical.annotations.Explain
 import spear.plans.physical.{BinaryPhysicalPlan, LeafPhysicalPlan, PhysicalPlan, UnaryPhysicalPlan}
 import spear.trees.TreeNode
 

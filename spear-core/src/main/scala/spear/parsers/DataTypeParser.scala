@@ -2,7 +2,7 @@ package spear.parsers
 
 import fastparse.all._
 
-import spear.annotations.ExtendedSQLSyntax
+import spear.parsers.annotations.ExtendedSQLSyntax
 import spear.types._
 
 object DataTypeParser extends LoggingParser {

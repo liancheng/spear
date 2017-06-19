@@ -2,11 +2,11 @@ package spear.parsers
 
 import fastparse.all._
 
-import spear.annotations.ExtendedSQLSyntax
 import spear.expressions._
 import spear.expressions.functions._
 import spear.expressions.Literal.{False, True}
 import spear.expressions.windows.{WindowFunction, WindowSpec, WindowSpecRef}
+import spear.parsers.annotations.ExtendedSQLSyntax
 import spear.plans.logical.LogicalPlan
 
 // SQL06 section 5.3

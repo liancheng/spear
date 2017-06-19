@@ -1,4 +1,4 @@
-package spear.annotations;
+package spear.plans.logical.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

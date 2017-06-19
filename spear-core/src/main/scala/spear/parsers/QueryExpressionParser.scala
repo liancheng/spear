@@ -3,10 +3,10 @@ package spear.parsers
 import fastparse.all._
 
 import spear.Name
-import spear.annotations.ExtendedSQLSyntax
 import spear.exceptions.AnalysisException
 import spear.expressions.{*, Expression, NamedExpression, SortOrder}
 import spear.expressions.windows._
+import spear.parsers.annotations.ExtendedSQLSyntax
 import spear.plans.logical._
 
 // SQL06 section 7.6
