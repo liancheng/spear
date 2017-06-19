@@ -215,30 +215,25 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
   def buildPrettyTree(
     depth: Int, youngest: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
-    val pipe = "\u2502"
-    val tee = "\u251c"
-    val corner = "\u2570"
-    val bar = "\u2574"
-
     val captionLines = caption split "\n"
 
     // Writes the first line of the caption.
     if (depth > 0) {
-      youngest.init foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
-      builder ++= (if (youngest.last) s"$corner$bar" else s"$tee$bar")
+      youngest.init foreach { isLast => builder ++= (if (isLast) "  " else s"│ ") }
+      builder ++= (if (youngest.last) s"╰╴" else s"├╴")
     }
 
     builder ++= captionLines.head
-    builder ++= "\n"
+    builder += '\n'
 
     // Writes the rest lines of the caption, if any.
     captionLines.tail foreach { line =>
       if (depth > 0) {
-        youngest foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+        youngest foreach { isLast => builder ++= (if (isLast) "  " else s"│ ") }
       }
 
       builder ++= line
-      builder ++= "\n"
+      builder += '\n'
     }
 
     // Writes child nodes, if any.
