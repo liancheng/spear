@@ -70,39 +70,5 @@ package object generators {
 
     val OnlyLogicalOperatorsInPredicate: Key[Boolean] =
       Key("spear.test.expressions.only-logical-operators-in-predicate").boolean
-
-    // -----------------------------------------
-    // Settings keys for logical plan generators
-    // -----------------------------------------
-
-    val SelectClauseChance: Key[Double] =
-      Key("spear.test.plans.chances.select-clause").double
-
-    val FromClauseChance: Key[Double] =
-      Key("spear.test.plans.chances.from-clause").double
-
-    val WhereClauseChance: Key[Double] =
-      Key("spear.test.plans.chances.where-clause").double
-
-    val LimitClauseChance: Key[Double] =
-      Key("spear.test.plans.chances.limit-clause").double
-
-    val MaxJoinNum: Key[Int] =
-      Key("spear.test.plans.max-join-num").int
-
-    val MaxProjectWidth: Key[Int] =
-      Key("spear.test.plans.max-project-width").int
-
-    val MaxLimit: Key[Int] =
-      Key("spear.test.plans.max-limit").int
-
-    val MaxExpressionSize: Key[Int] =
-      Key("spear.test.plans.max-expression-size").int
-
-    val MaxWherePredicateSize: Key[Int] =
-      Key("spear.test.plans.max-where-predicate-size").int
-
-    val MaxSelectExpressionSize: Key[Int] =
-      Key("spear.test.plans.max-select-expression-size").int
   }
 }

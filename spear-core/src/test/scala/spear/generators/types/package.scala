@@ -10,7 +10,7 @@ import spear.generators.Keys._
 import spear.types._
 
 package object types {
-  def genSubtypeOf(supertype: AbstractDataType)(
+  private def genSubtypeOf(supertype: AbstractDataType)(
     implicit
     settings: Settings
   ): Gen[DataType] = supertype match {
@@ -23,7 +23,7 @@ package object types {
     case StructType     => genStructType(settings)
   }
 
-  def genDataType(implicit settings: Settings): Gen[DataType] = Gen.sized {
+  private def genDataType(implicit settings: Settings): Gen[DataType] = Gen.sized {
     case upperBound if upperBound < 2 =>
       genPrimitiveType(settings)
 
@@ -34,9 +34,9 @@ package object types {
       )
   }
 
-  implicit val arbDataType: Arbitrary[DataType] = Arbitrary(genDataType(defaultSettings))
+  private implicit val arbDataType: Arbitrary[DataType] = Arbitrary(genDataType(defaultSettings))
 
-  def genPrimitiveType(implicit settings: Settings): Gen[PrimitiveType] =
+  private def genPrimitiveType(implicit settings: Settings): Gen[PrimitiveType] =
     genSubtypeOf(PrimitiveType, {
       if (settings(AllowNullType)) {
         Gen.oneOf(

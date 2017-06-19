@@ -3,26 +3,16 @@ package spear.generators
 import scala.collection.immutable.Stream.Empty
 
 import org.scalacheck.{Gen, Shrink}
-import org.scalacheck.Arbitrary._
 import org.scalacheck.Shrink.shrink
 
 import spear.config.Settings
 import spear.exceptions.TypeMismatchException
 import spear.expressions._
-import spear.generators.types._
 import spear.generators.values._
 import spear.types.{BooleanType, FieldSpec, NumericType, PrimitiveType}
 import spear.utils.Logging
 
 package object expressions extends Logging {
-  def genExpression(input: Seq[Expression])(implicit settings: Settings): Gen[Expression] = for {
-    dataType <- genPrimitiveType
-    nullable <- arbitrary[Boolean]
-
-    outputSpec = FieldSpec(dataType, nullable)
-    expression <- genExpression(input, outputSpec)
-  } yield expression
-
   def genExpression(input: Seq[Expression], outputSpec: FieldSpec)(
     implicit
     settings: Settings
@@ -93,8 +83,8 @@ package object expressions extends Logging {
     }
 
     Gen.sized {
-      case 1    => genLeaf
-      case size => Gen.oneOf(genLeaf, Gen.lzy(genExpression(input, outputSpec)))
+      case 1 => genLeaf
+      case _ => Gen.oneOf(genLeaf, Gen.lzy(genExpression(input, outputSpec)))
     }
   }
 
