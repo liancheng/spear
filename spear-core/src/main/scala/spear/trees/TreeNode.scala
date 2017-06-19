@@ -2,9 +2,6 @@ package spear.trees
 
 import scala.collection.{mutable, Traversable}
 
-import spear.annotations.Explain
-import spear.reflection.constructorParams
-
 /**
  * Base trait of simple tree structures that supports recursive transformations. Concrete $tree
  * classes are usually case classes with child $nodes defined as main constructor parameters:
@@ -180,10 +177,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    *
    * @see [[prettyTree]]
    */
-  def caption: String = {
-    val pairs = explainParams(_.toString).map { _.productIterator mkString "=" }
-    Seq(nodeName, pairs mkString ", ") filter { _.nonEmpty } mkString " "
-  }
+  def caption: String = nodeName
 
   /** Name of this $node. */
   def nodeName: String = getClass.getSimpleName stripSuffix "$"
@@ -201,34 +195,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     }
   }
 
-  protected def nestedTrees: Seq[TreeNode[_]] = {
-    val nestedTreeMarks = constructorParamExplainAnnotations map { _ exists { _.nestedTree() } }
-    productIterator.toSeq zip nestedTreeMarks collect { case (tree: TreeNode[_], true) => tree }
-  }
-
-  /**
-   * String pairs representing constructor parameters of this $tree. Parameters annotated with
-   * `Explain(hidden = true)` are not included here.
-   */
-  protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val argNames: List[String] = constructorParams(getClass) map { _.name.toString }
-    val annotations = constructorParamExplainAnnotations
-
-    (argNames, productIterator.toSeq, annotations).zipped.map {
-      case (_, _, maybeAnnotated) if maybeAnnotated exists { _.hidden() } =>
-        None
-
-      case (name, value, _) =>
-        explainParamValue(value, show) map { name -> _ }
-    }.flatten
-  }
-
   private type Rule = PartialFunction[Base, Base]
-
-  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
-    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
-      _ collectFirst { case a: Explain => a }
-    }
 
   private def transformChildren(rule: Rule, next: (Base, Rule) => Base): Base = {
     val newChildren = children map { next(_, rule) }
@@ -240,13 +207,13 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
    * Pretty prints this [[TreeNode]] and all of its offsprings in the form of a tree.
    *
    * @param depth Depth of the current node.  Depth of the root node is 0.
-   * @param lastChildren The `i`-th element in `lastChildren` indicates whether the direct ancestor
+   * @param youngest The `i`-th element in `youngest` indicates whether the direct ancestor
    *        of this [[TreeNode]] at depth `i + 1` is the last child of its own parent at depth `i`.
-   *        For root node, `lastChildren` is empty (`Nil`).
+   *        For root node, `youngest` is empty (`Nil`).
    * @param builder The string builder used to build the tree string.
    */
-  private def buildPrettyTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
+  def buildPrettyTree(
+    depth: Int, youngest: Seq[Boolean], builder: StringBuilder
   ): StringBuilder = {
     val pipe = "\u2502"
     val tee = "\u251c"
@@ -255,67 +222,31 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
 
     val captionLines = caption split "\n"
 
+    // Writes the first line of the caption.
     if (depth > 0) {
-      lastChildren.init foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
-      builder ++= (if (lastChildren.last) s"$corner$bar" else s"$tee$bar")
+      youngest.init foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+      builder ++= (if (youngest.last) s"$corner$bar" else s"$tee$bar")
     }
 
     builder ++= captionLines.head
     builder ++= "\n"
 
+    // Writes the rest lines of the caption, if any.
     captionLines.tail foreach { line =>
       if (depth > 0) {
-        lastChildren foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
+        youngest foreach { isLast => builder ++= (if (isLast) "  " else s"$pipe ") }
       }
 
       builder ++= line
       builder ++= "\n"
     }
 
-    buildNestedTree(depth, lastChildren, builder)
-
+    // Writes child nodes, if any.
     if (children.nonEmpty) {
-      children.init foreach { _ buildPrettyTree (depth + 1, lastChildren :+ false, builder) }
-      children.last buildPrettyTree (depth + 1, lastChildren :+ true, builder)
+      children.init foreach { _ buildPrettyTree (depth + 1, youngest :+ false, builder) }
+      children.last buildPrettyTree (depth + 1, youngest :+ true, builder)
     }
 
     builder
-  }
-
-  private def buildNestedTree(
-    depth: Int, lastChildren: Seq[Boolean], builder: StringBuilder
-  ): Unit = if (nestedTrees.nonEmpty) {
-    nestedTrees.init.foreach {
-      _.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ false, builder)
-    }
-
-    nestedTrees.last.buildPrettyTree(depth + 2, lastChildren :+ children.isEmpty :+ true, builder)
-  }
-
-  private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
-    case arg if children contains arg =>
-      // Hides child nodes since they will be printed as sub-tree nodes
-      None
-
-    case arg: Seq[_] if arg forall children.contains =>
-      // If a `Seq` contains only child nodes, hides it entirely.
-      None
-
-    case arg: Seq[_] =>
-      Some {
-        arg flatMap {
-          case e if children contains e => None
-          case e                        => Some(show(e))
-        } mkString ("[", ", ", "]")
-      }
-
-    case arg: Some[_] =>
-      arg flatMap {
-        case e: Any if children contains e => None
-        case e: Any                        => Some("Some(" + show(e) + ")")
-      }
-
-    case arg =>
-      Some(show(arg))
   }
 }

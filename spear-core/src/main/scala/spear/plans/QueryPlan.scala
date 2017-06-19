@@ -3,7 +3,9 @@ package spear.plans
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+import spear.annotations.Explain
 import spear.expressions.{Alias, Attribute, Expression, ExpressionID, InternalAlias, NamedExpression}
+import spear.reflection.constructorParams
 import spear.trees.TreeNode
 import spear.types.StructType
 
@@ -63,10 +65,76 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
     builder.result()
   }
 
+  private def explainParamValue(value: Any, show: Any => String): Option[String] = value match {
+    case arg if children contains arg =>
+      // Hides child nodes since they will be printed as sub-tree nodes
+      None
+
+    case arg: Seq[_] if arg forall children.contains =>
+      // If a `Seq` contains only child nodes, hides it entirely.
+      None
+
+    case arg: Seq[_] =>
+      Some {
+        arg flatMap {
+          case e if children contains e => None
+          case e                        => Some(show(e))
+        } mkString ("[", ", ", "]")
+      }
+
+    case arg: Some[_] =>
+      arg flatMap {
+        case e: Any if children contains e => None
+        case e: Any                        => Some("Some(" + show(e) + ")")
+      }
+
+    case arg =>
+      Some(show(arg))
+  }
+
   override def caption: String = {
-    val outputString = outputStrings mkString ("[", ", ", "]")
-    val arrow = "\u21d2"
-    Seq(super.caption, arrow, outputString) mkString " "
+    /**
+     * String pairs representing constructor parameters of this $tree. Parameters annotated with
+     * `Explain(hidden = true)` are not included here.
+     */
+    def doExplainParams(show: Any => String): Seq[(String, String)] = {
+      val argNames: List[String] = constructorParams(getClass) map { _.name.toString }
+      val annotations = constructorParamExplainAnnotations
+
+      (argNames, productIterator.toSeq, annotations).zipped.map {
+        case (_, _, maybeAnnotated) if maybeAnnotated exists { _.hidden() } =>
+          None
+
+        case (name, value, _) =>
+          explainParamValue(value, show) map { name -> _ }
+      }.flatten
+    }
+
+    def explainParams(show: Any => String): Seq[(String, String)] = {
+      val remainingExpressions = mutable.Stack(expressions.indices: _*)
+
+      doExplainParams {
+        case _: Expression => s"$$${remainingExpressions.pop()}"
+        case other         => other.toString
+      }
+    }
+
+    val builder = mutable.StringBuilder.newBuilder
+
+    builder ++= {
+      val args = explainParams(_.toString).map { _.productIterator mkString "=" } mkString ", "
+      val arrow = "\u21d2"
+      val outputString = outputStrings mkString ("[", ", ", "]")
+      Seq(nodeName, args, arrow, outputString) filter { _.nonEmpty } mkString " "
+    }
+
+    if (nestedTrees.nonEmpty) {
+      builder += '\n'
+      nestedTrees.init foreach { _.buildPrettyTree(2, children.isEmpty :: false :: Nil, builder) }
+      nestedTrees.last.buildPrettyTree(2, children.isEmpty :: true :: Nil, builder)
+    }
+
+    builder.toString()
   }
 
   /**
@@ -74,17 +142,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
    */
   protected def outputStrings: Seq[String] = output map { _.debugString }
 
-  override protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
+  protected def nestedTrees: Seq[TreeNode[_]] = expressions.zipWithIndex.map {
     case (e, index) => QueryPlan.ExpressionNode(index, e)
-  } ++ super.nestedTrees
-
-  override protected def explainParams(show: Any => String): Seq[(String, String)] = {
-    val remainingExpressions = mutable.Stack(expressions.indices: _*)
-
-    super.explainParams {
-      case _: Expression => s"$$${remainingExpressions.pop()}"
-      case other         => other.toString
-    }
+  } ++ {
+    val nestedTreeMarks = constructorParamExplainAnnotations map { _ exists { _.nestedTree() } }
+    productIterator.toSeq zip nestedTreeMarks collect { case (tree: TreeNode[_], true) => tree }
   }
 
   private type ExpressionRule = PartialFunction[Expression, Expression]
@@ -124,6 +186,11 @@ trait QueryPlan[Plan <: TreeNode[Plan]] extends TreeNode[Plan] { self: Plan =>
 
     if (changed) makeCopy(newArgs) else this
   }
+
+  private lazy val constructorParamExplainAnnotations: Seq[Option[Explain]] =
+    getClass.getDeclaredConstructors.head.getParameterAnnotations.map {
+      _ collectFirst { case a: Explain => a }
+    }
 }
 
 object QueryPlan {
