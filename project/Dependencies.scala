@@ -7,7 +7,7 @@ object Dependencies {
   )
 
   object Versions {
-    val ammonite = "0.9.0"
+    val ammonite = "0.9.9"
     val config = "1.2.1"
     val fastparse = "0.4.3"
     val log4j = "1.2.16"
