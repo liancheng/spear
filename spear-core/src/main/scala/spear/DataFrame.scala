@@ -158,37 +158,24 @@ class DataFrame(val queryExecution: QueryExecution) {
     // TODO This is slow for large datasets
     val columnWidths = rows.transpose map { _.map { _.length }.max + 2 }
 
-    val bar = "\u2500"
-    val thickBar = "\u2550"
-    val pipe = "\u2502"
-    val cross = "\u253c"
-
-    val upperLeft = "\u2552"
-    val upperRight = "\u2555"
-    val lowerLeft = "\u2558"
-    val lowerRight = "\u255b"
-
-    val leftTee = "\u251c"
-    val rightTee = "\u2524"
-    val upperTee = "\u2564"
-    val lowerTee = "\u2567"
-
-    val upper = columnWidths.map { thickBar * _ } mkString (upperLeft, upperTee, upperRight + "\n")
-    val middle = columnWidths.map { bar * _ } mkString (leftTee, cross, rightTee + "\n")
-    val lower = columnWidths.map { thickBar * _ } mkString (lowerLeft, lowerTee, lowerRight + "\n")
+    // format: OFF
+    val topBorder    = columnWidths.map { "═" * _ } mkString ("╒", "╤", "╕\n")
+    val separator    = columnWidths.map { "─" * _ } mkString ("├", "┼", "┤\n")
+    val bottomBorder = columnWidths.map { "═" * _ } mkString ("╘", "╧", "╛\n")
+    // format: ON
 
     def displayRow(row: Seq[String]): String = row zip columnWidths map {
       case (content, width) if truncate => " " * (width - content.length - 1) + content + " "
       case (content, width)             => " " + content.padTo(width - 2, ' ') + " "
-    } mkString (pipe, pipe, pipe + "\n")
+    } mkString ("│", "│", "│" + "\n")
 
     val body = rows map displayRow
 
-    builder ++= upper
+    builder ++= topBorder
     builder ++= body.head
-    builder ++= middle
+    builder ++= separator
     body.tail foreach builder.append
-    builder ++= lower
+    builder ++= bottomBorder
 
     if (hasMoreData) {
       builder ++= s"Only showing top $rowCount row(s)"
