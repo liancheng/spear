@@ -47,7 +47,7 @@ lazy val `spear-repl` = project
   .dependsOn(`spear-local` % "compile->compile;test->test;compile->test")
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
   .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
-  .settings(libraryDependencies ++= ammonite)
+  .settings(libraryDependencies ++= ammonite ++ scopt)
 
 lazy val `spear-examples` = project
   .dependsOn(`spear-core`, `spear-local`)

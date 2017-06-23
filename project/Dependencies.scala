@@ -16,6 +16,7 @@ object Dependencies {
     val scalaCheck = "1.12.5"
     val scalaTest = "2.2.5"
     val scalaXml = "1.0.4"
+    val scopt = "3.5.0"
     val slf4j = "1.6.4"
 
     val sourcecode = "0.1.3"
@@ -49,6 +50,10 @@ object Dependencies {
 
   val scalaTest = Seq(
     "org.scalatest" %% "scalatest" % Versions.scalaTest % "test"
+  )
+
+  val scopt = Seq(
+    "com.github.scopt" %% "scopt" % Versions.scopt
   )
 
   val slf4j = Seq(
