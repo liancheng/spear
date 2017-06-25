@@ -94,20 +94,20 @@ class DataFrame(val queryExecution: QueryExecution) {
   def showSchema(out: PrintStream = System.out): Unit = out.println(schema.prettyTree)
 
   def explanation(extended: Boolean = true): String = if (extended) {
-    s"""## Parsed logical plan ##
+    s"""══ Parsed logical plan ══
        |${queryExecution.logicalPlan.prettyTree}
        |
-       |## Analyzed logical plan ##
+       |══ Analyzed logical plan ══
        |${queryExecution.analyzedPlan.prettyTree}
        |
-       |## Optimized logical plan ##
+       |══ Optimized logical plan ══
        |${queryExecution.optimizedPlan.prettyTree}
        |
-       |## Physical plan ##
+       |══ Physical plan ══
        |${queryExecution.physicalPlan.prettyTree}
        |""".stripMargin
   } else {
-    s"""## Physical plan ##
+    s"""══ Physical plan ══
        |${queryExecution.physicalPlan.prettyTree}
        |""".stripMargin
   }
