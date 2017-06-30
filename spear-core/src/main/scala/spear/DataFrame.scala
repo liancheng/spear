@@ -155,8 +155,10 @@ class DataFrame(val queryExecution: QueryExecution) {
   ): String = {
     val builder = StringBuilder.newBuilder
 
-    // TODO This is slow for large datasets
-    val columnWidths = rows.transpose map { _.map { _.length }.max + 2 }
+    val columnWidths = (rows foldLeft Seq.fill(rows.length)(0)) {
+      (maxWidthsSoFar, nextRow) =>
+        (maxWidthsSoFar, nextRow map { _.length }).zipped map { _ max _ }
+    } map { _ + 2 }
 
     // format: OFF
     val topBorder    = columnWidths.map { "═" * _ } mkString ("╒", "╤", "╕\n")
