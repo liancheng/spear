@@ -6,14 +6,13 @@ import fastparse.all._
 object SeparatorParser {
   private val EoF = '\u001a'
 
-  val whitespace: P0 =
-    CharPred { ch => ch <= ' ' && ch != EoF } opaque "whitespace"
+  val whitespace: P0 = CharPred { ch => ch <= ' ' && ch != EoF } opaque "whitespace"
 
   private val comment: P0 = (
     "--" ~ (!"\n" ~ AnyChar).rep
     | "/*" ~ (!"*" ~ AnyChar).rep ~ "*/"
-  ) opaque "comment"
+    opaque "comment"
+  )
 
-  val separator: P0 =
-    comment | whitespace opaque "separator"
+  val separator: P0 = comment | whitespace opaque "separator"
 }

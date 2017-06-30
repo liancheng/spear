@@ -57,11 +57,8 @@ object IdentifierParser {
     delimitedIdentifierPart.repX map { _.mkString } opaque "delimited-identifier-body"
 
   // SQL06 section 5.2
-  val delimitedIdentifier: P[Name] = (
-    "\"" ~~ delimitedIdentifierBody ~~ "\""
-    map Name.caseSensitive
-    opaque "delimited-identifier"
-  )
+  val delimitedIdentifier: P[Name] =
+    "\"" ~~ delimitedIdentifierBody ~~ "\"" map Name.caseSensitive opaque "delimited-identifier"
 
   private val hexit: P0 = CharIn('A' to 'F', 'a' to 'f', '0' to '9') opaque "hexit"
 
@@ -90,10 +87,8 @@ object IdentifierParser {
     val unicodeCharacterEscapeValue: P[Char] =
       unicodeEscapeCharacter.repX(min = 2, max = 2).char opaque "unicode-character-escape-value"
 
-    val unicode6DigitEscapeValue: P[Char] = (
-      unicodeEscapeCharacter ~~ "+".~/ ~~ hex(6)
-      opaque "unicode-6-digit-escape-value"
-    )
+    val unicode6DigitEscapeValue: P[Char] =
+      unicodeEscapeCharacter ~~ "+".~/ ~~ hex(6) opaque "unicode-6-digit-escape-value"
 
     val unicode4DigitEscapeValue: P[Char] =
       unicodeEscapeCharacter.~/ ~~ hex(4) opaque "unicode-4-digit-escape-value"

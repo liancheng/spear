@@ -14,8 +14,7 @@ object StringParser extends LoggingParser {
   import IdentifierParser._
   import WhitespaceApi._
 
-  private val nonquoteCharacter: P[Char] =
-    !P("'") ~~ AnyChar.char opaque "nonquote-character"
+  private val nonquoteCharacter: P[Char] = !P("'") ~~ AnyChar.char opaque "nonquote-character"
 
   private val characterRepresentation: P[Char] =
     nonquoteCharacter | P("''").char opaque "character-representation"
@@ -46,22 +45,18 @@ object StringParser extends LoggingParser {
 object NumericParser extends LoggingParser {
   import WhitespaceApi._
 
-  val sign: P[Int] =
-    ("+" attach 1) | ("-" attach -1) opaque "sign"
+  val sign: P[Int] = ("+" attach 1) | ("-" attach -1) opaque "sign"
 
-  private val digit: P0 =
-    CharIn('0' to '9') opaque "digit"
+  private val digit: P0 = CharIn('0' to '9') opaque "digit"
 
-  val unsignedInteger: P[BigInt] =
-    (digit rep 1).! map { BigInt(_) } opaque "unsigned-integer"
+  val unsignedInteger: P[BigInt] = (digit rep 1).! map { BigInt(_) } opaque "unsigned-integer"
 
   private val exactNumeric: P[BigDecimal] = (
     unsignedInteger ~~ ("." ~~ unsignedInteger.?).?
     | "." ~~ unsignedInteger
   ).! map { BigDecimal(_) } opaque "exact-numeric"
 
-  private val mantissa: P[BigDecimal] =
-    exactNumeric opaque "mantissa"
+  private val mantissa: P[BigDecimal] = exactNumeric opaque "mantissa"
 
   private val signedInteger: P[BigInt] = (
     (sign.? ~ unsignedInteger).!
@@ -69,8 +64,7 @@ object NumericParser extends LoggingParser {
     opaque "signed-integer"
   )
 
-  private val exponent: P[BigInt] =
-    signedInteger opaque "exponent"
+  private val exponent: P[BigInt] = signedInteger opaque "exponent"
 
   private val approximateNumeric: P[BigDecimal] = (
     (mantissa ~ "E" ~ exponent).!
@@ -81,13 +75,10 @@ object NumericParser extends LoggingParser {
   private val unsignedNumeric: P[BigDecimal] =
     exactNumeric | approximateNumeric opaque "unsigned-numeric"
 
-  private val signedNumeric: P[BigDecimal] = (
-    sign.? ~ unsignedNumeric map {
-      case (Some(signum), unsigned) => signum * unsigned
-      case (_, unsigned)            => unsigned
-    }
-    opaque "signed-numeric"
-  )
+  private val signedNumeric: P[BigDecimal] = sign.? ~ unsignedNumeric map {
+    case (Some(signum), unsigned) => signum * unsigned
+    case (_, unsigned)            => unsigned
+  } opaque "signed-numeric"
 
   private def toLiteral(d: BigDecimal): Literal = d match {
     case _ if d.isValidInt     => Literal(d.toInt)
@@ -113,24 +104,13 @@ object LiteralParser extends LoggingParser {
   val booleanLiteral: P[Literal] =
     (TRUE attach True) | (FALSE attach False) opaque "boolean-literal"
 
-  private val generalLiteral: P[Literal] = (
-    characterStringLiteral
-    | unicodeCharacterStringLiteral
-    | booleanLiteral
-    opaque "general-literal"
-  )
+  private val generalLiteral: P[Literal] =
+    characterStringLiteral | unicodeCharacterStringLiteral | booleanLiteral opaque "general-literal"
 
-  val literal: P[Literal] = (
-    signedNumericLiteral
-    | generalLiteral
-    opaque "literal"
-  )
+  val literal: P[Literal] = signedNumericLiteral | generalLiteral opaque "literal"
 
-  val unsignedLiteral: P[Literal] = (
-    unsignedNumericLiteral
-    | generalLiteral
-    opaque "unsigned-literal"
-  )
+  val unsignedLiteral: P[Literal] =
+    unsignedNumericLiteral | generalLiteral opaque "unsigned-literal"
 }
 
 // SQL06 section 6.3
@@ -252,6 +232,7 @@ object CaseExpressionParser extends LoggingParser {
   private val whenOperand: P[Expression => Expression] = (
     P(rowValuePredicand).map { rhs => (_: Expression) === rhs }
     | P(comparisonPredicatePart2)
+    opaque "when-operand"
   )
 
   private val whenOperandList: P[Expression => Expression] = (

@@ -11,8 +11,7 @@ object DataTypeParser extends LoggingParser {
   import WhitespaceApi._
 
   @ExtendedSQLSyntax
-  private val extendedNumericType: P[DataType] =
-    TINYINT attach ByteType opaque "extended-type"
+  private val extendedNumericType: P[DataType] = TINYINT attach ByteType opaque "extended-type"
 
   private val exactNumericType: P[DataType] = (
     (BIGINT attach LongType)
@@ -30,11 +29,8 @@ object DataTypeParser extends LoggingParser {
     opaque "approximate-numeric-type"
   )
 
-  private val numericType: P[DataType] = (
-    exactNumericType
-    | approximateNumericType
-    opaque "numeric-type"
-  )
+  private val numericType: P[DataType] =
+    exactNumericType | approximateNumericType opaque "numeric-type"
 
   private val booleanType: P[DataType] = BOOLEAN attach BooleanType opaque "boolean-type"
 
@@ -65,8 +61,7 @@ object DataTypeParser extends LoggingParser {
     opaque "row-type-body"
   )
 
-  private val rowType: P[StructType] =
-    ROW ~ rowTypeBody opaque "row-type"
+  private val rowType: P[StructType] = ROW ~ rowTypeBody opaque "row-type"
 
   @ExtendedSQLSyntax
   private val structField: P[StructField] = (
@@ -100,6 +95,5 @@ object DataTypeParser extends LoggingParser {
   private val extendedNestedType: P[DataType] =
     structType | arrayType | mapType opaque "extended-nested-type"
 
-  lazy val dataType: P[DataType] =
-    predefinedType | rowType | extendedNestedType opaque "data-type"
+  lazy val dataType: P[DataType] = predefinedType | rowType | extendedNestedType opaque "data-type"
 }

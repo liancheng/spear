@@ -27,8 +27,7 @@ object TableReferenceParser extends LoggingParser {
   private val tableOrQueryName: P[LogicalPlan] =
     tableName map { _.table } map table opaque "table-or-query-name"
 
-  private val derivedTable: P[LogicalPlan] =
-    tableSubquery opaque "derived-table"
+  private val derivedTable: P[LogicalPlan] = tableSubquery opaque "derived-table"
 
   private val tablePrimary: P[LogicalPlan] = (
     tableOrQueryName ~ correlationClause.?.map { _.orIdentity }
@@ -60,14 +59,11 @@ object JoinedTableParser extends LoggingParser {
     | (FULL attach FullOuter)
   ) ~ OUTER.? opaque "outer-join-type"
 
-  private val joinType: P[JoinType] =
-    (INNER attach Inner) | outerJoinType opaque "joinType"
+  private val joinType: P[JoinType] = (INNER attach Inner) | outerJoinType opaque "joinType"
 
-  private val joinCondition: P[Expression] =
-    ON ~ searchCondition opaque "join-condition"
+  private val joinCondition: P[Expression] = ON ~ searchCondition opaque "join-condition"
 
-  private val joinSpecification: P[Expression] =
-    joinCondition opaque "join-specification"
+  private val joinSpecification: P[Expression] = joinCondition opaque "join-specification"
 
   private val qualifiedJoin: P[LogicalPlan] = (
     (P(tableFactor) | P(tableReference))
@@ -116,8 +112,7 @@ object GroupByClauseParser extends LoggingParser {
     opaque "grouping-element-list"
   )
 
-  val groupByClause: P[Seq[Expression]] =
-    GROUP ~ BY ~ groupingElementList opaque "group-by-clause"
+  val groupByClause: P[Seq[Expression]] = GROUP ~ BY ~ groupingElementList opaque "group-by-clause"
 }
 
 object WindowClauseParser extends LoggingParser {
@@ -227,8 +222,7 @@ object QuerySpecificationParser extends LoggingParser {
   import WhitespaceApi._
   import WindowClauseParser._
 
-  private val asClause: P[Name] =
-    AS.? ~ columnName opaque "as-clause"
+  private val asClause: P[Name] = AS.? ~ columnName opaque "as-clause"
 
   private val derivedColumn: P[NamedExpression] = (
     (valueExpression ~ asClause).map { case (e, a) => e as a }
@@ -236,8 +230,7 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "derived-column"
   )
 
-  private val asteriskedIdentifier: P[Name] =
-    identifier opaque "asterisked-identifier"
+  private val asteriskedIdentifier: P[Name] = identifier opaque "asterisked-identifier"
 
   private val asteriskedIdentifierChain: P[Seq[Name]] =
     asteriskedIdentifier rep (min = 1, sep = ".") opaque "asterisked-identifier-chain"
@@ -267,8 +260,7 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "table-reference-list"
   )
 
-  private val fromClause: P[LogicalPlan] =
-    FROM ~ tableReferenceList opaque "from-clause"
+  private val fromClause: P[LogicalPlan] = FROM ~ tableReferenceList opaque "from-clause"
 
   private val whereClause: P[LogicalPlan => LogicalPlan] = (
     WHERE ~ searchCondition
@@ -372,11 +364,8 @@ object QueryExpressionParser extends LoggingParser {
 
   private val simpleTable: P[LogicalPlan] = querySpecification opaque "query-specification"
 
-  private val queryPrimary: P[LogicalPlan] = (
-    "(" ~ P(queryExpressionBody) ~ ")"
-    | simpleTable
-    opaque "query-primary"
-  )
+  private val queryPrimary: P[LogicalPlan] =
+    "(" ~ P(queryExpressionBody) ~ ")" | simpleTable opaque "query-primary"
 
   private val queryTerm: P[LogicalPlan] = {
     val intersect = (_: LogicalPlan) intersect (_: LogicalPlan)
