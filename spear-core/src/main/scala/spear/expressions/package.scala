@@ -1,7 +1,6 @@
 package spear
 
 import scala.language.implicitConversions
-import scala.util.Try
 
 import spear.expressions.dsl.ExpressionDSL
 import spear.expressions.typecheck._
@@ -107,9 +106,7 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
     def foldable: TypeConstraint = Foldable(Seq(input))
 
     def literalCastableTo(dataType: DataType): TypeConstraint = new TypeConstraint {
-      override def enforced: Try[Seq[Expression]] = Try {
-        Seq((input cast dataType).evaluated of dataType)
-      }
+      override def enforced: Seq[Expression] = Seq((input cast dataType).evaluated of dataType)
     }
   }
 

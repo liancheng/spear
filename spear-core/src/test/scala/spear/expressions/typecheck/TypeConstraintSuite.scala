@@ -74,7 +74,7 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   private def check(expected: Seq[Expression])(constraint: TypeConstraint): Unit = {
-    assertResult(expected)(constraint.enforced.get)
+    assertResult(expected)(constraint.enforced)
   }
 
   private def expectExpressions(
@@ -84,6 +84,6 @@ class TypeConstraintSuite extends LoggingFunSuite {
   }
 
   private def expectException[T <: Throwable: Manifest](constraint: TypeConstraint): Unit = {
-    intercept[T](constraint.enforced.get)
+    intercept[T](constraint.enforced)
   }
 }

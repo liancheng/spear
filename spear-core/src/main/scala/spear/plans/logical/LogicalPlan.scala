@@ -210,11 +210,14 @@ case class Limit(child: LogicalPlan, count: Expression)(
 
   override lazy val output: Seq[Attribute] = child.output
 
-  override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    n :: Nil <- (count sameTypeAs IntType andAlso Foldable).enforced orElse Failure(
-      new TypeCheckException("Limit must be a constant integer")
-    )
-  } yield copy(count = n)(metadata)
+  override lazy val strictlyTyped: Try[LogicalPlan] = Try {
+    (count sameTypeAs IntType andAlso Foldable).enforced
+  } map {
+    case n :: Nil => copy(count = n)(metadata)
+  } recover {
+    case NonFatal(cause) =>
+      throw new TypeCheckException("Limit must be a constant integer", cause)
+  }
 }
 
 trait SetOperator extends BinaryLogicalPlan {

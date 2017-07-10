@@ -7,7 +7,6 @@ import spear.exceptions.TypeMismatchException
 import spear.expressions.Cast._
 import spear.expressions.Expression
 import spear.types.{AbstractDataType, DataType}
-import spear.utils.trySequence
 
 /**
  * A trait used to define and enforce type constraints over lists of expressions.
@@ -20,24 +19,21 @@ trait TypeConstraint { self =>
    * Tries to return a list of strictly-typed expressions that satisfy this [[TypeConstraint]].
    * Whenever a failure occurs, a `Failure` is returned to indicate the cause.
    */
-  def enforced: Try[Seq[Expression]]
+  def enforced: Seq[Expression]
 
   /**
    * Returns a new [[TypeConstraint]] that concatenates results of this and `that`
    * [[TypeConstraint]].
    */
   def concat(that: TypeConstraint): TypeConstraint = new TypeConstraint {
-    override def enforced: Try[Seq[Expression]] = for {
-      selfEnforced <- self.enforced
-      thatEnforced <- that.enforced
-    } yield selfEnforced ++ thatEnforced
+    override def enforced: Seq[Expression] = self.enforced ++ that.enforced
   }
 
   /**
    * Returns a new [[TypeConstraint]] that reverses the result of this [[TypeConstraint]].
    */
   def reverse: TypeConstraint = new TypeConstraint {
-    override def enforced: Try[Seq[Expression]] = self.enforced map { _.reverse }
+    override def enforced: Seq[Expression] = self.enforced.reverse
   }
 
   /**
@@ -48,7 +44,7 @@ trait TypeConstraint { self =>
    * Essentially, [[TypeConstraint]] is a monad with [[andAlso]] being the `flatMap` method.
    */
   def andAlso(next: Seq[Expression] => TypeConstraint): TypeConstraint = new TypeConstraint {
-    override def enforced: Try[Seq[Expression]] = self.enforced map next flatMap { _.enforced }
+    override def enforced: Seq[Expression] = next(self.enforced).enforced
   }
 
   /**
@@ -56,7 +52,7 @@ trait TypeConstraint { self =>
    * [[TypeConstraint]] can be [[TypeConstraint.enforced enforced]].
    */
   def orElse(that: TypeConstraint): TypeConstraint = new TypeConstraint {
-    override def enforced: Try[Seq[Expression]] = self.enforced orElse that.enforced
+    override def enforced: Seq[Expression] = Try(self.enforced) getOrElse that.enforced
   }
 }
 
@@ -65,7 +61,7 @@ trait TypeConstraint { self =>
  * form. Fails when any of the `input` expressions is not well-formed.
  */
 case class StrictlyTyped(input: Seq[Expression]) extends TypeConstraint {
-  override def enforced: Try[Seq[Expression]] = trySequence(input map { _.strictlyTyped })
+  override def enforced: Seq[Expression] = input map { _.strictlyTyped.get }
 }
 
 /**
@@ -73,9 +69,7 @@ case class StrictlyTyped(input: Seq[Expression]) extends TypeConstraint {
  * Fails when any of the `input` expressions can't be implicitly casted to the `target` data type.
  */
 case class SameTypeAs(input: Seq[Expression], target: DataType) extends TypeConstraint {
-  override def enforced: Try[Seq[Expression]] = input.anyType.enforced map {
-    _ map widenDataTypeTo(target)
-  }
+  override def enforced: Seq[Expression] = input.anyType.enforced map widenDataTypeTo(target)
 }
 
 /**
@@ -89,10 +83,13 @@ case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
 
   require(input.nonEmpty)
 
-  override def enforced: Try[Seq[Expression]] = for {
-    strictInput <- input.anyType.enforced
-    strictTypes = strictInput map { _.dataType }
-    widestType <- widestTypeOf(strictTypes) filter { _ isSubtypeOf supertype } recover {
+  override def enforced: Seq[Expression] = {
+    val strictInput = input.anyType.enforced
+    val strictTypes = strictInput map { _.dataType }
+
+    val widestType = try {
+      widestTypeOf(strictTypes).filter { _ isSubtypeOf supertype }.get
+    } catch {
       case NonFatal(cause) =>
         val violators = input filterNot { _.dataType isSubtypeOf supertype }
 
@@ -103,7 +100,9 @@ case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
           throw new TypeMismatchException(cause.getMessage, cause)
         }
     }
-  } yield strictInput map widenDataTypeTo(widestType)
+
+    strictInput map widenDataTypeTo(widestType)
+  }
 }
 
 /**
@@ -113,27 +112,29 @@ case class SameSubtypeOf(input: Seq[Expression], supertype: AbstractDataType)
 case class SameType(input: Seq[Expression]) extends TypeConstraint {
   require(input.nonEmpty)
 
-  override def enforced: Try[Seq[Expression]] = for {
-    strictInput <- input.anyType.enforced
-    widestType = widestTypeOf(strictInput map { _.dataType }) getOrElse {
+  override def enforced: Seq[Expression] = {
+    val strictInput = input.anyType.enforced
+    val strictTypes = strictInput map { _.dataType }
+
+    val widestType = widestTypeOf(strictTypes) getOrElse {
       throw new TypeMismatchException(
         s"""Cannot find a common data type for data types of all the following expressions:
            |${input map { e => s" - Expression $e of type ${e.dataType.sql}" } mkString "\n"}
            |""".stripMargin
       )
     }
-  } yield strictInput map widenDataTypeTo(widestType)
+
+    strictInput map widenDataTypeTo(widestType)
+  }
 }
 
 /**
  * A [[TypeConstraint]] that requires all the `input` expressions to be foldable constants.
  */
 case class Foldable(input: Seq[Expression]) extends TypeConstraint {
-  override def enforced: Try[Seq[Expression]] = input.anyType.enforced.map {
-    _ map {
-      case e if e.isFoldable => e
-      case e =>
-        throw new TypeMismatchException(s"Expression ${e.sqlLike} is not foldable.")
-    }
+  override def enforced: Seq[Expression] = input.anyType.enforced.map {
+    case e if e.isFoldable => e
+    case e =>
+      throw new TypeMismatchException(s"Expression ${e.sqlLike} is not foldable.")
   }
 }

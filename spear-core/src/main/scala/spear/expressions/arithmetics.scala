@@ -1,7 +1,6 @@
 package spear.expressions
 
 import scala.math.pow
-import scala.util.Try
 
 import spear.{NullSafeOrdering, Row}
 import spear.expressions.functions.lit
