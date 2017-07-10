@@ -33,24 +33,17 @@ case class Positive(child: Expression) extends UnaryArithmeticOperator {
 }
 
 trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator {
-  override protected def typeConstraint: TypeConstraint =
-    children sameSubtypeOf NumericType orElse {
-      left subtypeOf NumericType concat (right sameTypeAs StringType andAlso Foldable) andAlso {
-        case Seq(lhs @ NumericType(resultType), rhs @ StringType(_)) =>
-          new TypeConstraint {
-            override def enforced: Try[Seq[Expression]] =
-              Try { (rhs cast resultType).evaluated } map lit map { lhs :: _ :: Nil }
-          }
-      }
-    } orElse {
-      left sameTypeAs StringType andAlso Foldable concat (right subtypeOf NumericType) andAlso {
-        case Seq(lhs @ StringType(_), rhs @ NumericType(resultType)) =>
-          new TypeConstraint {
-            override def enforced: Try[Seq[Expression]] =
-              Try { (lhs cast resultType).evaluated } map lit map { _ :: rhs :: Nil }
-          }
-      }
+  override protected def typeConstraint: TypeConstraint = {
+    def bothNumeric = children sameSubtypeOf NumericType
+
+    def oneNumeric(input: Seq[Expression]) = input.head subtypeOf NumericType concat {
+      input.tail sameTypeAs StringType andAlso Foldable
+    } andAlso {
+      case Seq(n, s) => n.anyType concat (s literalCastableTo n.dataType)
     }
+
+    bothNumeric orElse oneNumeric(children) orElse oneNumeric(children.reverse).reverse
+  }
 
   override protected lazy val strictDataType: DataType = left.dataType
 }
