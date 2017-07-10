@@ -152,7 +152,7 @@ trait TestUtils { this: FunSuite =>
            |${plan.prettyTree}
            |
            |# Well-typed logical plan:
-           |${plan.strictlyTyped.get.prettyTree}
+           |${plan.strictlyTyped.prettyTree}
            |""".stripMargin
       )
     }

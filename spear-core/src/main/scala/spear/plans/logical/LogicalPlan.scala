@@ -1,7 +1,7 @@
 package spear.plans.logical
 
 import scala.reflect.runtime.universe.WeakTypeTag
-import scala.util.{Failure, Try}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 import spear.{Name, Row}
@@ -36,15 +36,11 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
   )
 
   /**
-   * Tries to return a copy of this plan node where all expressions are strictly-typed.
+   * Returns a copy of this plan node where all expressions are strictly-typed.
    *
    * @see [[spear.expressions.Expression.strictlyTyped]]
    */
-  def strictlyTyped: Try[LogicalPlan] = Try {
-    this transformExpressionsDown {
-      case e => e.strictlyTyped
-    }
-  }
+  def strictlyTyped: LogicalPlan = this transformExpressionsDown { case e => e.strictlyTyped }
 
   /**
    * Input attributes that can be referenced by some expression(s) of this operator but produced by
@@ -52,9 +48,9 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
    */
   lazy val derivedInput: Seq[Attribute] = Nil
 
-  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
+  lazy val isWellTyped: Boolean = isResolved && Try(strictlyTyped).isSuccess
 
-  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped same this)
 
   override protected def outputStrings: Seq[String] = this match {
     case Unresolved(_) => "?output?" :: Nil
@@ -70,8 +66,7 @@ trait UnresolvedLogicalPlan extends LogicalPlan {
 
   override def isResolved: Boolean = false
 
-  override def strictlyTyped: Try[LogicalPlan] =
-    Failure(new LogicalPlanUnresolvedException(this))
+  override def strictlyTyped: LogicalPlan = throw new LogicalPlanUnresolvedException(this)
 }
 
 trait LeafLogicalPlan extends LogicalPlan {
@@ -210,11 +205,10 @@ case class Limit(child: LogicalPlan, count: Expression)(
 
   override lazy val output: Seq[Attribute] = child.output
 
-  override lazy val strictlyTyped: Try[LogicalPlan] = Try {
-    (count sameTypeAs IntType andAlso Foldable).enforced
-  } map {
-    case n :: Nil => copy(count = n)(metadata)
-  } recover {
+  override lazy val strictlyTyped: LogicalPlan = try {
+    val (n :: Nil) = (count sameTypeAs IntType andAlso Foldable).enforced
+    copy(count = n)(metadata)
+  } catch {
     case NonFatal(cause) =>
       throw new TypeCheckException("Limit must be a constant integer", cause)
   }
@@ -242,7 +236,7 @@ trait SetOperator extends BinaryLogicalPlan {
       }
     )
 
-  private def alignBranches(branches: Seq[LogicalPlan]): Try[Seq[LogicalPlan]] = {
+  private def alignBranches(branches: Seq[LogicalPlan]): Seq[LogicalPlan] = {
     // Casts output attributes of a given logical plan to target data types when necessary
     def align(plan: LogicalPlan, targetTypes: Seq[DataType]): LogicalPlan =
       if (plan.schema.fieldTypes == targetTypes) {
@@ -254,22 +248,19 @@ trait SetOperator extends BinaryLogicalPlan {
         })
       }
 
-    for {
-      widenedTypes <- trySequence(branches.map { _.schema.fieldTypes }.transpose map widestTypeOf)
-    } yield branches map { align(_, widenedTypes) }
+    val widenedTypes = branches.map { _.schema.fieldTypes }.transpose map { widestTypeOf(_).get }
+
+    branches map { align(_, widenedTypes) }
   }
 
-  override lazy val strictlyTyped: Try[LogicalPlan] = for {
-    _ <- Try(checkBranchSchemata()) recover {
+  override lazy val strictlyTyped: LogicalPlan = {
+    try checkBranchSchemata() catch {
       case NonFatal(cause) =>
         throw new TypeCheckException(this, cause)
     }
 
-    lhs <- left.strictlyTyped
-    rhs <- right.strictlyTyped
-
-    alignedBranches <- alignBranches(lhs :: rhs :: Nil)
-  } yield makeCopy(alignedBranches)
+    makeCopy(alignBranches(left.strictlyTyped :: right.strictlyTyped :: Nil))
+  }
 }
 
 case class Union(left: LogicalPlan, right: LogicalPlan)(

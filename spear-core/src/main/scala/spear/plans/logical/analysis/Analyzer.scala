@@ -305,6 +305,6 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
  */
 class EnforceTypeConstraint(val catalog: Catalog) extends AnalysisRule {
   override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case Resolved(plan) => plan.strictlyTyped.get
+    case Resolved(plan) => plan.strictlyTyped
   }
 }

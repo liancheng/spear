@@ -95,12 +95,12 @@ trait Expression extends TreeNode[Expression] {
   lazy val isBound: Boolean = isResolved && children.forall { _.isBound }
 
   /**
-   * Tries to return a strictly-typed copy of this [[Expression]]. In most cases, concrete
-   * expression classes only need to override [[Expression.typeConstraint]] by combining built-in
+   * Returns a strictly-typed copy of this [[Expression]]. In most cases, concrete expression
+   * classes only need to override [[Expression.typeConstraint]] by combining built-in
    * [[spear.expressions.typecheck.TypeConstraint type constraints]], since this lazy val simply
    * delegates to [[Expression.typeConstraint]] by default.
    *
-   * To pass type checking, an [[Expression]] `e` must be either strictly-typed or well-typed:
+   * To pass type checking, an [[Expression]] e` must be either strictly-typed or well-typed:
    *
    *  1. Strictly-typed: `e` is strictly-typed iff
    *
