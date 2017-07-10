@@ -34,6 +34,13 @@ trait TypeConstraint { self =>
   }
 
   /**
+   * Returns a new [[TypeConstraint]] that reverses the result of this [[TypeConstraint]].
+   */
+  def reverse: TypeConstraint = new TypeConstraint {
+    override def enforced: Try[Seq[Expression]] = self.enforced map { _.reverse }
+  }
+
+  /**
    * Returns a new [[TypeConstraint]] that first tries to [[TypeConstraint.enforced enforce]] this
    * [[TypeConstraint]], and then pipes the result to the `next` function to build and enforce
    * another [[TypeConstraint]].
