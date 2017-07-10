@@ -42,7 +42,7 @@ trait LogicalPlan extends QueryPlan[LogicalPlan] {
    */
   def strictlyTyped: Try[LogicalPlan] = Try {
     this transformExpressionsDown {
-      case e => e.strictlyTyped.get
+      case e => e.strictlyTyped
     }
   }
 

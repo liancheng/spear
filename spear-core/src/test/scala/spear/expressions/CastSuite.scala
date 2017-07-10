@@ -16,7 +16,7 @@ import spear.types._
 class CastSuite extends LoggingFunSuite with Checkers {
   test("invalid casting") {
     intercept[TypeCastException] {
-      (lit(1) cast ArrayType(IntType)).strictlyTyped.get
+      (lit(1) cast ArrayType(IntType)).strictlyTyped
     }
   }
 

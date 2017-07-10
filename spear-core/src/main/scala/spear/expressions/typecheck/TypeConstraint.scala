@@ -61,7 +61,7 @@ trait TypeConstraint { self =>
  * form. Fails when any of the `input` expressions is not well-formed.
  */
 case class StrictlyTyped(input: Seq[Expression]) extends TypeConstraint {
-  override def enforced: Seq[Expression] = input map { _.strictlyTyped.get }
+  override def enforced: Seq[Expression] = input map { _.strictlyTyped }
 }
 
 /**

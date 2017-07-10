@@ -8,7 +8,7 @@ import spear.expressions.Cast.{buildCast, castable}
 import spear.types._
 
 case class Cast(child: Expression, override val dataType: DataType) extends UnaryExpression {
-  override lazy val strictlyTyped: Try[Expression] = child.strictlyTyped map {
+  override lazy val strictlyTyped: Expression = child.strictlyTyped match {
     case e if e.dataType == dataType         => this
     case e if castable(e.dataType, dataType) => copy(child = e)
     case e                                   => throw new TypeCastException(e.dataType, dataType)

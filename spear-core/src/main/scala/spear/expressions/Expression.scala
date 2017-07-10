@@ -42,7 +42,7 @@ trait Expression extends TreeNode[Expression] {
    * @see [[strictDataType]]
    * @see [[strictlyTyped]]
    */
-  def dataType: DataType = whenWellTyped(strictlyTyped.get.strictDataType)
+  def dataType: DataType = whenWellTyped(strictlyTyped.strictDataType)
 
   def evaluate(input: Row): Any
 
@@ -126,7 +126,8 @@ trait Expression extends TreeNode[Expression] {
    *
    * @see [[typeConstraint]]
    */
-  lazy val strictlyTyped: Try[Expression] = Try(typeConstraint.enforced) map { newChildren =>
+  lazy val strictlyTyped: Expression = {
+    val newChildren = typeConstraint.enforced
     val changed = (newChildren, children).zipped forall { _ same _ }
     if (changed) this else withChildren(newChildren)
   }
@@ -136,14 +137,14 @@ trait Expression extends TreeNode[Expression] {
    *
    * @see [[strictlyTyped]]
    */
-  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped.get same this)
+  lazy val isStrictlyTyped: Boolean = isWellTyped && (strictlyTyped same this)
 
   /**
    * Indicates whether this [[Expression]] is well-typed.
    *
    * @see [[strictlyTyped]]
    */
-  lazy val isWellTyped: Boolean = isResolved && strictlyTyped.isSuccess
+  lazy val isWellTyped: Boolean = isResolved && Try(strictlyTyped).isSuccess
 
   /**
    * Type constraint for all input expressions.
@@ -167,7 +168,7 @@ trait Expression extends TreeNode[Expression] {
    */
   @throws[TypeCheckException]("If this expression is not well-typed")
   protected def whenWellTyped[T](value: => T): T =
-    if (isWellTyped) value else throw new TypeCheckException(this, strictlyTyped.failed.get)
+    if (isWellTyped) value else throw new TypeCheckException(this, Try(strictlyTyped).failed.get)
 
   protected def whenBound[T](value: => T): T =
     if (isBound) value else throw new ExpressionNotBoundException(this)
@@ -372,8 +373,7 @@ trait UnresolvedExpression extends Expression with UnevaluableExpression with No
 
   override lazy val isNullable: Boolean = throw new ExpressionUnresolvedException(this)
 
-  override lazy val strictlyTyped: Try[Expression] =
-    Failure(new ExpressionUnresolvedException(this))
+  override lazy val strictlyTyped: Expression = throw new ExpressionUnresolvedException(this)
 
   override lazy val isResolved: Boolean = false
 }

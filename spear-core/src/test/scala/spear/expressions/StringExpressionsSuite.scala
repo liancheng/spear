@@ -11,7 +11,7 @@ class StringExpressionsSuite extends LoggingFunSuite with Checkers {
   test("concat") {
     check {
       forAll { (a: String, b: String) =>
-        concat(a, b).strictlyTyped.map(_.evaluated == a + b).get
+        concat(a, b).strictlyTyped.evaluated == a + b
       }
     }
   }
@@ -19,7 +19,7 @@ class StringExpressionsSuite extends LoggingFunSuite with Checkers {
   test("rlike") {
     check {
       forAll(Gen.alphaStr) { a: String =>
-        rlike(a, "a.*").strictlyTyped.map(_.evaluated == a.startsWith("a")).get
+        rlike(a, "a.*").strictlyTyped.evaluated == a.startsWith("a")
       }
     }
   }

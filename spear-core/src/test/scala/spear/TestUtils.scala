@@ -103,11 +103,11 @@ trait TestUtils { this: FunSuite =>
       )
     }
 
-    val actualType = e.strictlyTyped.get.dataType
+    val actualType = e.strictlyTyped.dataType
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:
-           |${e.strictlyTyped.get.prettyTree}
+           |${e.strictlyTyped.prettyTree}
            |""".stripMargin
       )
     }
@@ -122,7 +122,7 @@ trait TestUtils { this: FunSuite =>
       )
     }
 
-    val actualType = e.strictlyTyped.get.dataType
+    val actualType = e.strictlyTyped.dataType
     if (actualType != dataType) {
       fail(
         s"""Strictly typed form of ${e.debugString} has wrong data type $actualType:

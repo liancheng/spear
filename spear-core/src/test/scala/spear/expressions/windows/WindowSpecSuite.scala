@@ -3,6 +3,7 @@ package spear.expressions.windows
 import scala.util.Try
 
 import spear.LoggingFunSuite
+import spear.exceptions.TypeMismatchException
 import spear.expressions._
 import spear.types.{DoubleType, IntType, StringType}
 
@@ -52,13 +53,13 @@ class WindowSpecSuite extends LoggingFunSuite {
   }
 
   test("arbitrary expressions in window frame boundary") {
-    assert(Following('id.long + 1).strictlyTyped.isSuccess)
-    assert(Preceding('id.long + "1").strictlyTyped.isSuccess)
+    Following('id.long + 1).strictlyTyped
+    Preceding('id.long + "1").strictlyTyped
   }
 
   test("illegal window frame boundary") {
-    assert(Preceding(true).strictlyTyped.isFailure)
-    assert(Following(true).strictlyTyped.isFailure)
+    intercept[TypeMismatchException](Preceding(true).strictlyTyped)
+    intercept[TypeMismatchException](Following(true).strictlyTyped)
   }
 
   test("window spec") {
