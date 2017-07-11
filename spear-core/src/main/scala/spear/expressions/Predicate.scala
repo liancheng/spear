@@ -1,7 +1,7 @@
 package spear.expressions
 
-import spear.trees.{Rule, RulesExecutor}
-import spear.trees.RulesExecutor.FixedPoint
+import spear.trees.{Phase, Rule, Transformer}
+import spear.trees.FixedPoint
 
 object Predicate {
   private[spear] def splitConjunction(predicate: Expression): Seq[Expression] = predicate match {
@@ -9,15 +9,14 @@ object Predicate {
     case _             => predicate :: Nil
   }
 
-  private[spear] def toCNF(predicate: Expression): Expression = CNFConverter(predicate)
+  private[spear] def toCNF(predicate: Expression): Expression = cnfConverter(predicate)
 
-  private object CNFConverter extends RulesExecutor[Expression] {
-    override def batches: Seq[RuleBatch] =
-      RuleBatch("CNFConversion", FixedPoint.Unlimited, CNFConversion :: Nil) :: Nil
-  }
+  private val cnfConverter = new Transformer(
+    Phase("CNFConversion", FixedPoint, CNFConversion :: Nil)
+  )
 
   private object CNFConversion extends Rule[Expression] {
-    override def apply(tree: Expression): Expression = tree transformDown {
+    override def transform(tree: Expression): Expression = tree transformDown {
       case !(x || y)          => !x && !y
       case !(x && y)          => !x || !y
       case (x && y) || z      => (x || z) && (y || z)

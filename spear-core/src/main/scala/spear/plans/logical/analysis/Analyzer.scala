@@ -8,20 +8,32 @@ import spear.expressions.NamedExpression.newExpressionID
 import spear.plans.logical._
 import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.{Resolved, Unresolved}
-import spear.trees.{Rule, RulesExecutor}
-import spear.trees.RulesExecutor.{FixedPoint, Once}
+import spear.trees._
 
-class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
-  override def batches: Seq[RuleBatch] = Seq(
-    RuleBatch("Pre-processing", FixedPoint.Unlimited, Seq(
+class Analyzer(catalog: Catalog) extends Transformer(Analyzer.phases(catalog)) {
+  override def apply(tree: LogicalPlan): LogicalPlan = {
+    logDebug(
+      s"""Analyzing logical query plan:
+         |
+         |${tree.prettyTree}
+         |""".stripMargin
+    )
+
+    super.apply(tree)
+  }
+}
+
+object Analyzer {
+  def phases(catalog: Catalog): Seq[Phase[LogicalPlan]] = Seq(
+    Phase("Pre-processing", FixedPoint, Seq(
       new RewriteCTEsAsSubquery(catalog),
       new InlineWindowDefinitions(catalog)
     )),
 
-    RuleBatch("Pre-processing check", Once, Seq( // TODO Check for undefined window references
-    )),
+    // TODO Check for undefined window references
+    Phase("Pre-processing check", Once, Seq.empty[AnalysisRule]),
 
-    RuleBatch("Resolution", FixedPoint.Unlimited, Seq(
+    Phase("Resolution", FixedPoint, Seq(
       new ResolveRelation(catalog),
       new RewriteRenameToProject(catalog),
       new RewriteUnresolvedSort(catalog),
@@ -44,11 +56,11 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new RewriteUnresolvedAggregate(catalog)
     )),
 
-    RuleBatch("Type check", Once, Seq(
+    Phase("Type check", Once, Seq(
       new EnforceTypeConstraint(catalog)
     )),
 
-    RuleBatch("Post-analysis check", Once, Seq(
+    Phase("Post-analysis check", Once, Seq(
       new RejectUnresolvedExpression(catalog),
       new RejectUnresolvedPlan(catalog),
       new RejectTopLevelInternalAttribute(catalog),
@@ -56,16 +68,6 @@ class Analyzer(catalog: Catalog) extends RulesExecutor[LogicalPlan] {
       new RejectOrphanAttributeReference(catalog)
     ))
   )
-
-  override def apply(tree: LogicalPlan): LogicalPlan = {
-    logDebug(
-      s"""Analyzing logical query plan:
-         |
-         |${tree.prettyTree}
-         |""".stripMargin
-    )
-    super.apply(tree)
-  }
 }
 
 trait AnalysisRule extends Rule[LogicalPlan] {
@@ -92,7 +94,7 @@ trait AnalysisRule extends Rule[LogicalPlan] {
 class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case With(child, name, query, maybeAliases) =>
       child transformUp {
         case UnresolvedRelation(`name`) =>
@@ -105,7 +107,7 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
  * This rule resolves unresolved relations by looking up the table name from the `catalog`.
  */
 class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
   }
 }
@@ -114,7 +116,7 @@ class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
  * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolve CTE queries.
  */
 class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child) Rename aliases Subquery subqueryName =>
       if (child.output.length >= aliases.length) {
         val aliasCount = aliases.length
@@ -144,7 +146,7 @@ class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
  * }}}
  */
 class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan if plan.children.length < 2 =>
       plan
 
@@ -254,7 +256,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
  * }}}
  */
 class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
       plan
 
@@ -304,7 +306,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
  *         doesn't type check.
  */
 class EnforceTypeConstraint(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(plan) => plan.strictlyTyped
   }
 }

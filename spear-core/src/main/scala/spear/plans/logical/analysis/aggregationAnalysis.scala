@@ -23,7 +23,7 @@ import spear.utils._
  * }}}
  */
 class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Distinct(Resolved(child)) =>
       child groupBy child.output agg child.output
   }
@@ -34,7 +34,7 @@ class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
  * [[UnresolvedAggregate]] without any grouping keys.
  */
 class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child Project projectList) if hasAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
   }
@@ -87,7 +87,7 @@ class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule
  * @see [[RewriteUnresolvedAggregate]]
  */
 class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
       // All having conditions should be preserved.
       agg.copy(conditions = agg.conditions :+ condition)(agg.metadata)
@@ -106,7 +106,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
 }
 
 class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
         case _: DistinctAggregateFunction =>
@@ -143,7 +143,7 @@ class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRul
  * }}}
  */
 class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan =
+  override def transform(tree: LogicalPlan): LogicalPlan =
     tree collectFirstDown skip map { _ => tree } getOrElse { tree transformUp rewriter }
 
   // This partial function plays the role of a guard that ensures all the pre-conditions of this

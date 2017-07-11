@@ -14,7 +14,7 @@ import spear.plans.logical.patterns.{Resolved, Unresolved}
  * This rule expands "`*`" appearing in `SELECT`.
  */
 class ExpandStar(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(Resolved(child) Project projectList) =>
       child select (projectList flatMap {
         case Star(qualifier) => expand(qualifier, child.output)
@@ -39,7 +39,7 @@ class ExpandStar(val catalog: Catalog) extends AnalysisRule {
  *         candidate input attributes can be found.
  */
 class ResolveReference(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
       val input = plan.children flatMap { _.output }
       plan transformExpressionsDown {
@@ -63,7 +63,7 @@ class ResolveReference(val catalog: Catalog) extends AnalysisRule {
  * [[spear.expressions.Alias aliases]].
  */
 class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
         case UnresolvedAlias(Resolved(child: Expression)) =>
@@ -77,7 +77,7 @@ class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
  * up function names from the [[Catalog]].
  */
 class ResolveFunction(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformDown {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
         case UnresolvedFunction(name, Seq(_: Star), false) if name == i"count" =>

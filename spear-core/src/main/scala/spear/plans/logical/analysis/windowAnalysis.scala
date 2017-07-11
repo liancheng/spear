@@ -16,7 +16,7 @@ import spear.utils._
  * separate `Window` operators.
  */
 class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan =
+  override def transform(tree: LogicalPlan): LogicalPlan =
     tree collectFirstDown skip map { _ => tree } getOrElse rewrite(tree)
 
   private def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
@@ -44,7 +44,7 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
 }
 
 class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
-  override def apply(tree: LogicalPlan): LogicalPlan = tree transformUp {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case WindowDef(child, name, windowSpec) =>
       child transformDown {
         case node =>

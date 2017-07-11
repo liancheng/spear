@@ -14,10 +14,8 @@ import spear.expressions._
 import spear.expressions.Predicate.splitConjunction
 import spear.expressions.functions._
 import spear.generators.expressions._
-import spear.plans.logical.Optimizer._
 import spear.plans.logical.analysis.Analyzer
-import spear.trees.{Rule, RulesExecutor}
-import spear.trees.RulesExecutor.{EndCondition, FixedPoint}
+import spear.trees._
 import spear.types.{DoubleType, IntType, LongType}
 
 class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
@@ -33,17 +31,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
   private def testRule(
     rule: Rule[LogicalPlan],
-    endCondition: EndCondition,
+    convergenceTest: ConvergenceTest,
     needsAnalyzer: Boolean = true
   )(
     f: (LogicalPlan => LogicalPlan) => Unit
   ): Unit = {
     test(rule.getClass.getSimpleName stripSuffix "$") {
-      val optimizer = new RulesExecutor[LogicalPlan] {
-        override def batches: Seq[RuleBatch] = Seq(
-          RuleBatch("TestBatch", endCondition, rule :: Nil)
-        )
-      }
+      val optimizer = new Transformer(Phase("TestBatch", convergenceTest, rule :: Nil))
 
       if (needsAnalyzer) {
         f(analyzer andThen optimizer)
@@ -59,7 +53,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  testRule(CNFConversion, FixedPoint.Unlimited) { optimizer =>
+  testRule(CNFConversion, FixedPoint) { optimizer =>
     implicit val arbPredicate = Arbitrary(genLogicalPredicate(relation.output))
 
     check(
@@ -75,7 +69,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     )
   }
 
-  testRule(MergeFilters, FixedPoint.Unlimited) { optimizer =>
+  testRule(MergeFilters, FixedPoint) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
 
     check { (p1: Expression, p2: Expression) =>
@@ -85,7 +79,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  testRule(FoldNegation, FixedPoint.Unlimited) { optimizer =>
+  testRule(FoldNegation, FixedPoint) { optimizer =>
     implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
 
     check { p: Expression =>
@@ -95,7 +89,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     }
   }
 
-  testRule(PushFilterThroughAggregate, FixedPoint.Unlimited, needsAnalyzer = false) { optimizer =>
+  testRule(PushFilterThroughAggregate, FixedPoint, needsAnalyzer = false) { optimizer =>
     val groupA = GroupingKeyAlias(a)
     val aggCountB = AggregateFunctionAlias(count(b))
 
@@ -137,21 +131,21 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     )
   }
 
-  testRule(EliminateRedundantLimits, FixedPoint.Unlimited) { optimizer =>
+  testRule(EliminateRedundantLimits, FixedPoint) { optimizer =>
     checkPlan(
       optimizer(relation limit 10 limit 3),
       relation limit Least(10, 3)
     )
   }
 
-  testRule(PushProjectThroughLimit, FixedPoint.Unlimited) { optimizer =>
+  testRule(PushProjectThroughLimit, FixedPoint) { optimizer =>
     checkPlan(
       optimizer(relation limit 1 select a),
       relation select a limit 1
     )
   }
 
-  testRule(EliminateConstantFilter, FixedPoint.Unlimited) { optimizer =>
+  testRule(EliminateConstantFilter, FixedPoint) { optimizer =>
     checkPlan(
       optimizer(relation filter Literal.True),
       relation
@@ -163,7 +157,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     )
   }
 
-  testRule(PushFilterThroughJoin, FixedPoint.Unlimited) { optimizer =>
+  testRule(PushFilterThroughJoin, FixedPoint) { optimizer =>
     val newRelation = relation.newInstance()
     val Seq(newA: AttributeRef, newB: AttributeRef) = newRelation.output
 
@@ -183,7 +177,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     )
   }
 
-  testRule(EliminateRedundantCast, FixedPoint.Unlimited) { optimizer =>
+  testRule(EliminateRedundantCast, FixedPoint) { optimizer =>
     checkPlan(
       optimizer(relation select (a cast IntType as 'x)),
       relation select (a as 'x)
