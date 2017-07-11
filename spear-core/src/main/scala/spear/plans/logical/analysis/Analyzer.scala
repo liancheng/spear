@@ -10,7 +10,7 @@ import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.{Resolved, Unresolved}
 import spear.trees._
 
-class Analyzer(catalog: Catalog) extends Transformer(Analyzer.phases(catalog)) {
+class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logDebug(
       s"""Analyzing logical query plan:
@@ -24,7 +24,7 @@ class Analyzer(catalog: Catalog) extends Transformer(Analyzer.phases(catalog)) {
 }
 
 object Analyzer {
-  def phases(catalog: Catalog): Seq[Phase[LogicalPlan]] = Seq(
+  def defaultPhases(catalog: Catalog): Seq[Phase[LogicalPlan]] = Seq(
     Phase("Pre-processing", FixedPoint, Seq(
       new RewriteCTEsAsSubquery(catalog),
       new InlineWindowDefinitions(catalog)
@@ -206,20 +206,20 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule allows an `ORDER BY` clause to reference columns from both the `FROM` clause and the
- * `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, for the
- * following query:
+ * This rule allows a SQL `ORDER BY` clause to reference columns from both the `FROM` clause and the
+ * `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, the logical
+ * query plan parsed from the following SQL query
  * {{{
  *   SELECT a + 1 AS x FROM t ORDER BY a
  * }}}
- * The parsed logical plan is something like:
+ * may look like
  * {{{
  *   UnresolvedSort order=[a]
  *   +- Project projectList=[a + 1 AS x]
  *      +- Relation name=t, output=[a]
  * }}}
- * This plan tree is invalid because attribute `a` referenced by `Sort` isn't an output attribute of
- * `Project`. This rule rewrites it into:
+ * This plan tree is not yet valid because the attribute `a` referenced by `Sort` is not an output
+ * attribute of `Project`. This rule tries to resolve this issue by rewriting the above plan into
  * {{{
  *   Project projectList=[x] => [x]
  *   +- Sort order=[a] => [x, a]

@@ -8,7 +8,7 @@ import spear.expressions.Predicate.{splitConjunction, toCNF}
 import spear.trees.{Phase, Rule, Transformer}
 import spear.trees.FixedPoint
 
-class Optimizer extends Transformer(Optimizer.phases) {
+class Optimizer extends Transformer(Optimizer.defaultPhases) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     if (!tree.isResolved) {
       throw new LogicalPlanUnresolvedException(tree)
@@ -26,7 +26,7 @@ class Optimizer extends Transformer(Optimizer.phases) {
 }
 
 object Optimizer {
-  val phases: Seq[Phase[LogicalPlan]] = Seq(
+  val defaultPhases: Seq[Phase[LogicalPlan]] = Seq(
     Phase("Optimizations", FixedPoint, Seq(
       CNFConversion,
       FoldConstant,
