@@ -31,7 +31,7 @@ object Main {
       }
 
       ammonite.Main(
-        predef = predef,
+        predefCode = predef,
         storageBackend = new Storage.Folder(Path.home / ".spear"),
         welcomeBanner = Some(banner(remoteLoggingEnabled)),
         remoteLogging = remoteLoggingEnabled
