@@ -1,6 +1,6 @@
 package spear.expressions
 
-import spear.trees.{Phase, Rule, Transformer}
+import spear.trees.{MultiPhaseTransformer, Phase, Rule}
 import spear.trees.FixedPoint
 
 object Predicate {
@@ -11,7 +11,7 @@ object Predicate {
 
   private[spear] def toCNF(predicate: Expression): Expression = cnfConverter(predicate)
 
-  private val cnfConverter = new Transformer(
+  private val cnfConverter = new MultiPhaseTransformer(
     Phase("CNFConversion", FixedPoint, CNFConversion :: Nil)
   )
 

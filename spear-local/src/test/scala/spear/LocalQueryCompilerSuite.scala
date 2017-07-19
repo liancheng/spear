@@ -1,14 +1,14 @@
 package spear
 
-import spear.LocalQueryExecutorSuite.Person
+import spear.LocalQueryCompilerSuite.Person
 import spear.exceptions.TableNotFoundException
 import spear.expressions._
 import spear.expressions.functions._
-import spear.local.LocalQueryExecutor
+import spear.local.LocalQueryCompiler
 import spear.types.StringType
 
-class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
-  private implicit val context = new Context(new LocalQueryExecutor)
+class LocalQueryCompilerSuite extends LoggingFunSuite with TestUtils {
+  private implicit val context = new Context(new LocalQueryCompiler)
 
   import context._
 
@@ -74,7 +74,7 @@ class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
       Row("Alice"), Row("Chris")
     )
 
-    (people filter 'age =/= 21 select ('name, 'age)).queryExecution.analyzedPlan
+    (people filter 'age =/= 21 select ('name, 'age)).query.analyzedPlan
 
     checkDataFrame(
       sql("SELECT * FROM people"),
@@ -84,7 +84,7 @@ class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
 
   test("resolution") {
     val df = range(10) select ('id + 1 as 'x) filter 'x > 5
-    checkStrictlyTyped(df.queryExecution.analyzedPlan)
+    checkStrictlyTyped(df.query.analyzedPlan)
   }
 
   test("join") {
@@ -240,6 +240,6 @@ class LocalQueryExecutorSuite extends LoggingFunSuite with TestUtils {
   }
 }
 
-object LocalQueryExecutorSuite {
+object LocalQueryCompilerSuite {
   case class Person(name: String, age: Int)
 }

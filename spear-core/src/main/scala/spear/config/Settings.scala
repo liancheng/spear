@@ -31,6 +31,8 @@ object Settings {
   case class Key[T](name: String, get: Config => T, validator: T => Try[T] = Success(_: T)) {
     def validate(validator: T => Try[T]): Key[T] = copy(validator = validator)
 
+    def map[U](f: T => U): Key[U] = copy(get = get andThen f, validator = Success(_: U))
+
     override def toString: String = name
   }
 
@@ -43,6 +45,7 @@ object Settings {
       def long: Key[Long] = Key[Long](name, _ getLong name)
       def double: Key[Double] = Key[Double](name, _ getDouble name)
       def anyref: Key[AnyRef] = Key[AnyRef](name, _ getAnyRef name)
+      def className: Key[Class[_]] = Key[String](name, _ getString name) map { Class.forName }
 
       private def duration(config: Config, unit: TimeUnit): Long = config getDuration (name, unit)
 

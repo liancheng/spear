@@ -35,7 +35,7 @@ lazy val `spear-core` = project
   .dependsOn(`spear-trees` % "compile->compile;test->test")
   .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
-  .settings(libraryDependencies ++= fastparse ++ typesafeConfig)
+  .settings(libraryDependencies ++= fastparse ++ pureconfig ++ typesafeConfig)
 
 lazy val `spear-local` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")

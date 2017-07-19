@@ -10,7 +10,7 @@ import spear.plans.logical.{LocalRelation, LogicalPlan}
 import spear.types.{IntType, StringType, StructType}
 
 class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterAll {
-  private implicit val context = new Context(new TestQueryExecutor)
+  private implicit val context = new Context(new TestQueryCompiler)
 
   import context._
 
@@ -151,7 +151,7 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
 
       checkLogicalPlan(
         table('reverse),
-        df.queryExecution.analyzedPlan subquery 'reverse
+        df.query.analyzedPlan subquery 'reverse
       )
     }
   }
@@ -183,8 +183,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   }
 
   private def checkLogicalPlan(df: DataFrame, expected: LogicalPlan): Unit = {
-    checkPlan(df.queryExecution.logicalPlan, expected)
+    checkPlan(df.query.logicalPlan, expected)
     // Triggers analysis phase
-    df.queryExecution.analyzedPlan
+    df.query.analyzedPlan
   }
 }

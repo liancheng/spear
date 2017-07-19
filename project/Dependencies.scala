@@ -8,11 +8,12 @@ object Dependencies {
 
   object Versions {
     val ammonite = "0.9.9"
-    val config = "1.2.1"
+    val config = "1.3.1"
     val fastparse = "0.4.3"
     val log4j = "1.2.16"
     val mockito = "2.1.0-beta.120"
-    val scala = "2.11.8"
+    val pureconfig = "0.7.2"
+    val scala = "2.11.11"
     val scalaCheck = "1.12.5"
     val scalaTest = "2.2.5"
     val scalaXml = "1.0.4"
@@ -36,6 +37,10 @@ object Dependencies {
 
   val mockito = Seq(
     "org.mockito" % "mockito-core" % Versions.mockito % "test"
+  )
+
+  val pureconfig = Seq(
+    "com.github.pureconfig" %% "pureconfig" % Versions.pureconfig
   )
 
   val scala = Seq(

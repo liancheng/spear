@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 
 import spear.utils.{sideBySide, Logging}
 
-trait TreeTransformation[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
+trait Transformer[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
   protected def logTransformation(transformation: String, before: Base)(after: => Base): Base = {
     if (!before.same(after)) {
       logTrace {
@@ -30,7 +30,7 @@ trait TreeTransformation[Base <: TreeNode[Base]] extends (Base => Base) with Log
   }
 }
 
-trait Rule[Base <: TreeNode[Base]] extends TreeTransformation[Base] {
+trait Rule[Base <: TreeNode[Base]] extends Transformer[Base] {
   private val name = getClass.getSimpleName stripSuffix "$"
 
   override final def apply(tree: Base): Base = logTransformation(s"rule '$name'", tree) {
@@ -44,7 +44,7 @@ case class Phase[Base <: TreeNode[Base]](
   name: String,
   convergenceTest: ConvergenceTest,
   rules: Seq[Rule[Base]]
-) extends TreeTransformation[Base] {
+) extends Transformer[Base] {
 
   override def apply(tree: Base): Base = logTransformation(s"phase '$name'", tree) {
     applyUntilConvergent(tree)
@@ -56,12 +56,14 @@ case class Phase[Base <: TreeNode[Base]](
   }
 }
 
-class Transformer[Base <: TreeNode[Base]](phases: Seq[Phase[Base]])
-  extends TreeTransformation[Base] {
+class MultiPhaseTransformer[Base <: TreeNode[Base]](phases: Seq[Phase[Base]])
+  extends Transformer[Base] {
 
   def this(first: Phase[Base], rest: Phase[Base]*) = this(first +: rest)
 
-  def apply(before: Base): Base = phases.foldLeft(before) { (tree, phase) => phase(tree) }
+  def apply(before: Base): Base = (phases foldLeft before) {
+    (tree, phase) => phase(tree)
+  }
 }
 
 sealed trait ConvergenceTest {

@@ -4,20 +4,20 @@ import java.io.PrintStream
 
 import spear.expressions._
 import spear.expressions.functions._
-import spear.plans.QueryExecution
+import spear.plans.CompiledQuery
 import spear.plans.logical._
 import spear.types.StructType
 
-class DataFrame(val queryExecution: QueryExecution) {
+class DataFrame(val query: CompiledQuery) {
   // Analyzes the query plan eagerly to provide early error detection.
-  queryExecution.analyzedPlan
+  query.analyzedPlan
 
   def this(logicalPlan: LogicalPlan, context: Context) =
-    this(context.queryExecutor.execute(context, logicalPlan))
+    this(context.queryExecutor.compile(context, logicalPlan))
 
-  def context: Context = queryExecution.context
+  def context: Context = query.context
 
-  lazy val schema: StructType = StructType fromAttributes queryExecution.analyzedPlan.output
+  lazy val schema: StructType = StructType fromAttributes query.analyzedPlan.output
 
   def rename(newNames: Name*): DataFrame = {
     assert(newNames.length == schema.fields.length)
@@ -39,7 +39,7 @@ class DataFrame(val queryExecution: QueryExecution) {
   def distinct: DataFrame = withPlan { Distinct(_)() }
 
   def crossJoin(right: DataFrame): DataFrame = withPlan {
-    _ join (right.queryExecution.logicalPlan, Inner)
+    _ join (right.query.logicalPlan, Inner)
   }
 
   def join(right: DataFrame): JoinedData = new JoinedData(this, right, Inner)
@@ -61,15 +61,15 @@ class DataFrame(val queryExecution: QueryExecution) {
   }
 
   def union(that: DataFrame): DataFrame = withPlan {
-    _ union that.queryExecution.logicalPlan
+    _ union that.query.logicalPlan
   }
 
   def intersect(that: DataFrame): DataFrame = withPlan {
-    _ intersect that.queryExecution.logicalPlan
+    _ intersect that.query.logicalPlan
   }
 
   def except(that: DataFrame): DataFrame = withPlan {
-    _ except that.queryExecution.logicalPlan
+    _ except that.query.logicalPlan
   }
 
   def groupBy(keys: Seq[Expression]): GroupedData = GroupedData(this, keys)
@@ -80,12 +80,12 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
 
-  def iterator: Iterator[Row] = queryExecution.physicalPlan.iterator
+  def iterator: Iterator[Row] = query.physicalPlan.iterator
 
   def asTable(tableName: Name): Unit =
-    context.queryExecutor.catalog.registerRelation(tableName, queryExecution.analyzedPlan)
+    context.queryExecutor.catalog.registerRelation(tableName, query.analyzedPlan)
 
-  def toSeq: Seq[Row] = if (queryExecution.physicalPlan.requireMaterialization) {
+  def toSeq: Seq[Row] = if (query.physicalPlan.requireMaterialization) {
     iterator.map { _.copy() }.toSeq
   } else {
     iterator.toSeq
@@ -95,20 +95,20 @@ class DataFrame(val queryExecution: QueryExecution) {
 
   def explanation(extended: Boolean = true): String = if (extended) {
     s"""══ Parsed logical plan ══
-       |${queryExecution.logicalPlan.prettyTree}
+       |${query.logicalPlan.prettyTree}
        |
        |══ Analyzed logical plan ══
-       |${queryExecution.analyzedPlan.prettyTree}
+       |${query.analyzedPlan.prettyTree}
        |
        |══ Optimized logical plan ══
-       |${queryExecution.optimizedPlan.prettyTree}
+       |${query.optimizedPlan.prettyTree}
        |
        |══ Physical plan ══
-       |${queryExecution.physicalPlan.prettyTree}
+       |${query.physicalPlan.prettyTree}
        |""".stripMargin
   } else {
     s"""══ Physical plan ══
-       |${queryExecution.physicalPlan.prettyTree}
+       |${query.physicalPlan.prettyTree}
        |""".stripMargin
   }
 
@@ -121,7 +121,7 @@ class DataFrame(val queryExecution: QueryExecution) {
     show(Some(rowCount), truncate, out)
 
   private[spear] def withPlan(f: LogicalPlan => LogicalPlan): DataFrame =
-    new DataFrame(f(queryExecution.analyzedPlan), context)
+    new DataFrame(f(query.analyzedPlan), context)
 
   def show(rowCount: Option[Int], truncate: Boolean, out: PrintStream): Unit =
     out.println(tabulate(rowCount, truncate))
@@ -189,8 +189,8 @@ class DataFrame(val queryExecution: QueryExecution) {
 
 class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   def on(condition: Expression): DataFrame = {
-    val leftPlan = left.queryExecution.logicalPlan
-    val rightPlan = right.queryExecution.logicalPlan
+    val leftPlan = left.query.logicalPlan
+    val rightPlan = right.query.logicalPlan
     val join = leftPlan join (rightPlan, joinType) on condition
     new DataFrame(join, left.context)
   }

@@ -7,7 +7,7 @@ object BasicExample {
   case class Person(name: String, gender: String, age: Int)
 
   def main(args: Array[String]) {
-    val context = new Context(Settings.load())
+    val context = new Context()
 
     import context._
 

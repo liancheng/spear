@@ -57,7 +57,7 @@ trait TestUtils { this: FunSuite =>
 
   def checkDataFrame(df: DataFrame, expected: Seq[Row]): Unit = {
     val actual = try {
-      df.queryExecution.physicalPlan.iterator.toSeq
+      df.query.physicalPlan.iterator.toSeq
     } catch {
       case NonFatal(cause) =>
         fail(

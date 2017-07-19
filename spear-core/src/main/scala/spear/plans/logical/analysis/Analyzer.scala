@@ -1,7 +1,10 @@
 package spear.plans.logical.analysis
 
+import scala.util.Try
+
 import spear._
 import spear.Name.caseInsensitive
+import spear.config.Settings
 import spear.exceptions.AnalysisException
 import spear.expressions._
 import spear.expressions.NamedExpression.newExpressionID
@@ -10,7 +13,7 @@ import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.{Resolved, Unresolved}
 import spear.trees._
 
-class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
+class Analyzer(catalog: Catalog) extends MultiPhaseTransformer(Analyzer.defaultPhases(catalog)) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logDebug(
       s"""Analyzing logical query plan:
@@ -24,6 +27,14 @@ class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(cata
 }
 
 object Analyzer {
+  case class PhaseConfig(
+    name: String,
+    convergenceTest: ConvergenceTest,
+    rules: Seq[String]
+  )
+
+  case class MultiPhaseTransformerConfig(phases: Seq[PhaseConfig])
+
   def defaultPhases(catalog: Catalog): Seq[Phase[LogicalPlan]] = Seq(
     Phase("Pre-processing", FixedPoint, Seq(
       new RewriteCTEsAsSubquery(catalog),
@@ -31,7 +42,7 @@ object Analyzer {
     )),
 
     // TODO Check for undefined window references
-    Phase("Pre-processing check", Once, Seq.empty[AnalysisRule]),
+    Phase("Pre-processing check", Once, Seq.empty),
 
     Phase("Resolution", FixedPoint, Seq(
       new ResolveRelation(catalog),

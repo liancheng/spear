@@ -3,17 +3,19 @@ package spear
 import scala.collection.Iterable
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import spear.config.{QueryExecutorClass, Settings}
+import spear.config.Settings
+import spear.config.Settings.Key
 import spear.expressions.Expression
 import spear.plans.logical.{LocalRelation, SingleRowRelation}
 import spear.types.{LongType, StructType}
 
-class Context(val queryExecutor: QueryExecutor) {
-  def this(settings: Settings) = this(
-    Class.forName(settings(QueryExecutorClass)).newInstance() match {
-      case q: QueryExecutor => q
-    }
-  )
+class Context(val queryExecutor: QueryCompiler) {
+  def this(settings: Settings) = this {
+    val constructor = settings(Context.QueryExecutorClass).getConstructor(classOf[Settings])
+    constructor.newInstance(settings) match { case q: QueryCompiler => q }
+  }
+
+  def this() = this(Settings.load())
 
   private lazy val values: DataFrame = new DataFrame(SingleRowRelation(), this)
 
@@ -38,4 +40,8 @@ class Context(val queryExecutor: QueryExecutor) {
     val output = StructType('id -> LongType.!).toAttributes
     new DataFrame(LocalRelation(rows, output)(), this)
   }
+}
+
+object Context {
+  private val QueryExecutorClass: Key[Class[_]] = Key("spear.query-executor").className
 }
