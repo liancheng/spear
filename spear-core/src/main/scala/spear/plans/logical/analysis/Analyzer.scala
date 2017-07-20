@@ -10,7 +10,7 @@ import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.{Resolved, Unresolved}
 import spear.trees._
 
-class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
+class Analyzer(catalog: Catalog) extends MultiPhaseTransformer(Analyzer.defaultPhases(catalog)) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logDebug(
       s"""Analyzing logical query plan:

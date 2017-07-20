@@ -5,10 +5,10 @@ import spear.expressions._
 import spear.expressions.InternalAlias.GroupingKeyNamespace
 import spear.expressions.Literal.{False, True}
 import spear.expressions.Predicate.{splitConjunction, toCNF}
-import spear.trees.{Phase, Rule, Transformer}
+import spear.trees.{MultiPhaseTransformer, Phase, Rule}
 import spear.trees.FixedPoint
 
-class Optimizer extends Transformer(Optimizer.defaultPhases) {
+class Optimizer extends MultiPhaseTransformer(Optimizer.defaultPhases) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     if (!tree.isResolved) {
       throw new LogicalPlanUnresolvedException(tree)

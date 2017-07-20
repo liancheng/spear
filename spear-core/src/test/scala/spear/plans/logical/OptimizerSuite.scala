@@ -37,7 +37,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
     f: (LogicalPlan => LogicalPlan) => Unit
   ): Unit = {
     test(rule.getClass.getSimpleName stripSuffix "$") {
-      val optimizer = new Transformer(Phase("TestBatch", convergenceTest, rule :: Nil))
+      val optimizer = new MultiPhaseTransformer(Phase("TestBatch", convergenceTest, rule :: Nil))
 
       if (needsAnalyzer) {
         f(analyzer andThen optimizer)

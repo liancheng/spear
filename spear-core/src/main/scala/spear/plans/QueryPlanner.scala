@@ -4,9 +4,7 @@ import spear.trees.TreeNode
 import spear.utils.Logging
 
 trait QueryPlanner[Logical <: QueryPlan[Logical], Physical <: TreeNode[Physical]] extends Logging {
-  trait Strategy {
-    def apply(logicalPlan: Logical): Seq[Physical]
-  }
+  trait Strategy extends (Logical => Seq[Physical])
 
   def strategies: Seq[Strategy]
 

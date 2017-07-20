@@ -4,30 +4,12 @@ import spear._
 import spear.local.plans.physical
 import spear.local.plans.physical.HashAggregate
 import spear.local.plans.physical.dsl._
-import spear.parsers.DirectlyExecutableStatementParser.directlyExecutableStatement
 import spear.plans.QueryPlanner
 import spear.plans.logical._
-import spear.plans.logical.analysis.Analyzer
 import spear.plans.physical.{NotImplemented, PhysicalPlan}
 
-class LocalQueryExecutor extends QueryExecutor {
-  override val catalog: Catalog = new InMemoryCatalog
-
-  override def parse(query: String): LogicalPlan = {
-    import fastparse.all._
-
-    (Start ~ directlyExecutableStatement ~ End parse query).get.value
-  }
-
-  override def analyze(plan: LogicalPlan): LogicalPlan = analyzer apply plan
-
-  override def optimize(plan: LogicalPlan): LogicalPlan = optimizer apply plan
-
+class LocalQueryCompiler extends BasicQueryCompiler {
   override def plan(plan: LogicalPlan): PhysicalPlan = planner apply plan
-
-  private val analyzer = new Analyzer(catalog)
-
-  private val optimizer = new Optimizer
 
   private val planner = new LocalQueryPlanner
 }

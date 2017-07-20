@@ -8,10 +8,10 @@ import spear.expressions.Expression
 import spear.plans.logical.{LocalRelation, SingleRowRelation}
 import spear.types.{LongType, StructType}
 
-class Context(val queryExecutor: QueryExecutor) {
+class Context(val queryExecutor: QueryCompiler) {
   def this(settings: Settings) = this(
     Class.forName(settings(QueryExecutorClass)).newInstance() match {
-      case q: QueryExecutor => q
+      case q: QueryCompiler => q
     }
   )
 
