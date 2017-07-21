@@ -53,6 +53,7 @@ lazy val `spear-examples` = project
   .dependsOn(`spear-core`, `spear-local`)
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
   .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
+  .settings(libraryDependencies ++= avatica)
 
 lazy val `spear-docs` = project
   .dependsOn(`spear-core`, `spear-local`)
