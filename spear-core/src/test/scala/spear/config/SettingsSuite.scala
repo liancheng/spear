@@ -19,7 +19,7 @@ class SettingsSuite extends LoggingFunSuite {
        |$intKey = 1
        |$longKey = 2
        |$doubleKey = 3.5
-       |$anyrefKey = { some-key = "some-value" }
+       |$anyRefKey = { some-key = "some-value" }
        |$nanosKey = 1 ns
        |$microsKey = 1 us
        |$millisKey = 1 ms
@@ -39,7 +39,7 @@ class SettingsSuite extends LoggingFunSuite {
     assert(settings(intKey) == 1)
     assert(settings(longKey) == 2L)
     assert(settings(doubleKey) == 3.5D)
-    assert(settings(anyrefKey) == Map("some-key" -> "some-value").asJava)
+    assert(settings(anyRefKey) == Map("some-key" -> "some-value").asJava)
     assert(settings(nanosKey) == 1.nano)
     assert(settings(microsKey) == 1.micro)
     assert(settings(millisKey) == 1.milli)
@@ -65,7 +65,7 @@ object SettingsSuite {
 
   val doubleKey: Key[Double] = Key("double-value").double
 
-  val anyrefKey: Key[AnyRef] = Key("anyref-value").anyref
+  val anyRefKey: Key[AnyRef] = Key("anyref-value").anyRef
 
   val nanosKey: Key[Duration] = Key("nanos-value").nanos
 

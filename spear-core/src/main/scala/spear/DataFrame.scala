@@ -13,7 +13,7 @@ class DataFrame(val query: CompiledQuery) {
   query.analyzedPlan
 
   def this(logicalPlan: LogicalPlan, context: Context) =
-    this(context.queryExecutor.compile(context, logicalPlan))
+    this(context.queryCompiler.compile(context, logicalPlan))
 
   def context: Context = query.context
 
@@ -83,7 +83,7 @@ class DataFrame(val query: CompiledQuery) {
   def iterator: Iterator[Row] = query.physicalPlan.iterator
 
   def asTable(tableName: Name): Unit =
-    context.queryExecutor.catalog.registerRelation(tableName, query.analyzedPlan)
+    context.queryCompiler.catalog.registerRelation(tableName, query.analyzedPlan)
 
   def toSeq: Seq[Row] = if (query.physicalPlan.requireMaterialization) {
     iterator.map { _.copy() }.toSeq

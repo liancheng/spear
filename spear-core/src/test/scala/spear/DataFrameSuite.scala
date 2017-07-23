@@ -19,8 +19,8 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   private val r2 = LocalRelation.empty('a.int.!, 'b.string.?)
 
   override protected def beforeAll(): Unit = {
-    context.queryExecutor.catalog.registerRelation('t, r1)
-    context.queryExecutor.catalog.registerRelation('s, r2)
+    context.queryCompiler.catalog.registerRelation('t, r1)
+    context.queryCompiler.catalog.registerRelation('s, r2)
   }
 
   test("context") {

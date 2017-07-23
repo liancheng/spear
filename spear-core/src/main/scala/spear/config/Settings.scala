@@ -42,7 +42,7 @@ object Settings {
       def int: Key[Int] = Key[Int](name, _ getInt name)
       def long: Key[Long] = Key[Long](name, _ getLong name)
       def double: Key[Double] = Key[Double](name, _ getDouble name)
-      def anyref: Key[AnyRef] = Key[AnyRef](name, _ getAnyRef name)
+      def anyRef: Key[AnyRef] = Key[AnyRef](name, _ getAnyRef name)
 
       private def duration(config: Config, unit: TimeUnit): Long = config getDuration (name, unit)
 

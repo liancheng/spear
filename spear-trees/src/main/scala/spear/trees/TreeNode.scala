@@ -220,7 +220,7 @@ trait TreeNode[Base <: TreeNode[Base]] extends Product { self: Base =>
     // Writes the first line of the caption.
     if (depth > 0) {
       youngest.init foreach { isLast => builder ++= (if (isLast) "  " else s"│ ") }
-      builder ++= (if (youngest.last) s"╰╴" else s"├╴")
+      builder ++= (if (youngest.last) s"└╴" else s"├╴")
     }
 
     builder ++= captionLines.head

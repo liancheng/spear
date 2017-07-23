@@ -3,14 +3,14 @@ package spear
 import scala.collection.Iterable
 import scala.reflect.runtime.universe.WeakTypeTag
 
-import spear.config.{QueryExecutorClass, Settings}
+import spear.config.{QueryCompilerClass, Settings}
 import spear.expressions.Expression
 import spear.plans.logical.{LocalRelation, SingleRowRelation}
 import spear.types.{LongType, StructType}
 
-class Context(val queryExecutor: QueryCompiler) {
+class Context(val queryCompiler: QueryCompiler) {
   def this(settings: Settings) = this(
-    Class.forName(settings(QueryExecutorClass)).newInstance() match {
+    Class.forName(settings(QueryCompilerClass)).newInstance() match {
       case q: QueryCompiler => q
     }
   )
@@ -19,10 +19,10 @@ class Context(val queryExecutor: QueryCompiler) {
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
-  def sql(query: String): DataFrame = new DataFrame(queryExecutor.parse(query), this)
+  def sql(query: String): DataFrame = new DataFrame(queryCompiler parse query, this)
 
   def table(name: Name): DataFrame =
-    new DataFrame(queryExecutor.catalog lookupRelation name, this)
+    new DataFrame(queryCompiler.catalog lookupRelation name, this)
 
   def lift[T <: Product: WeakTypeTag](data: Iterable[T]): DataFrame =
     new DataFrame(LocalRelation(data), this)
