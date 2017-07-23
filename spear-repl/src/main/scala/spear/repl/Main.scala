@@ -1,8 +1,6 @@
 package spear.repl
 
-import scala.io.Source
-
-import ammonite.ops.Path
+import ammonite.ops.{read, Path, ResourcePath, ResourceRoot}
 import ammonite.runtime.Storage
 import scopt._
 
@@ -25,13 +23,10 @@ object Main {
     }
 
     for (Config(remoteLoggingEnabled) <- optionParser.parse(args, Config())) {
-      val predef = {
-        val stream = getClass.getClassLoader.getResourceAsStream("predef.scala")
-        Source.fromInputStream(stream, "UTF-8").mkString
-      }
+      import ResourceRoot._
 
       ammonite.Main(
-        predefCode = predef,
+        predefCode = read(ResourcePath.resource(this.getClass.getClassLoader) / "predef.scala"),
         storageBackend = new Storage.Folder(Path.home / ".spear"),
         welcomeBanner = Some(banner(remoteLoggingEnabled)),
         remoteLogging = remoteLoggingEnabled

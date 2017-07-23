@@ -3,5 +3,5 @@ package spear
 import spear.config.Settings.Key
 
 package object config {
-  val QueryExecutorClass: Key[String] = Key("spear.query-executor").string
+  val QueryCompilerClass: Key[String] = Key("spear.query-compiler").string
 }
