@@ -14,16 +14,16 @@ class IdentifierParserSuite extends LoggingFunSuite {
     (Start ~~ parser ~~ End parse input).get.value
   }
 
-  private def testSuccessfulParse[T](input: String, expected: T): Unit = {
-    test(s"parsing identifier: $input") {
+  private def testParsingLegalIdentifier[T](input: String, expected: T): Unit = {
+    test(s"parsing legal identifier: $input") {
       assertResult(expected) {
         fullyParse(IdentifierParser.identifier, input)
       }
     }
   }
 
-  private def testFailedParse[T](input: String): Unit = {
-    test(s"illegal identifier: $input") {
+  private def testParsingIllegalIdentifier[T](input: String): Unit = {
+    test(s"parsing illegal identifier: $input") {
       val cause = intercept[ParseError] {
         fullyParse(IdentifierParser.identifier, input)
       }
@@ -55,10 +55,7 @@ class IdentifierParserSuite extends LoggingFunSuite {
     "U&\"\\\\\" UESCAPE '!'" -> "\\\\"
   )
 
-  successfulCases foreach {
-    case (input, expected) =>
-      testSuccessfulParse(input, expected)
-  }
+  successfulCases foreach (testParsingLegalIdentifier _).tupled
 
   val failedCases = Seq(
     "_data",
@@ -67,5 +64,5 @@ class IdentifierParserSuite extends LoggingFunSuite {
     "U&\"\\\""
   )
 
-  failedCases foreach testFailedParse
+  failedCases foreach testParsingIllegalIdentifier
 }
