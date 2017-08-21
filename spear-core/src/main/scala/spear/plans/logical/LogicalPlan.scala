@@ -5,7 +5,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 import spear.{Name, Row}
-import spear.exceptions.{LogicalPlanUnresolvedException, TypeCheckException}
+import spear.exceptions.{ExpressionUnresolvedException, LogicalPlanUnresolvedException, TypeCheckException}
 import spear.expressions._
 import spear.expressions.Cast.widestTypeOf
 import spear.expressions.NamedExpression.newExpressionID
@@ -500,6 +500,9 @@ object Window {
     windowAliasGroups map {
       case (BasicWindowSpec(partitionSpec, orderSpec, _), aliases) =>
         Window(_: LogicalPlan, aliases, partitionSpec, orderSpec)()
+
+      case (windowSpec, _) =>
+        throw new ExpressionUnresolvedException(s"Window specification unresolved: $windowSpec")
     }
   }
 }

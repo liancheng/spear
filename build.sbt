@@ -1,66 +1,59 @@
-import Dependencies._
-
 lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
 
 lazy val spear = project
   .in(file("."))
-  .aggregate(
-    `spear-core`,
-    `spear-docs`,
-    `spear-examples`,
-    `spear-local`,
-    `spear-repl`,
-    `spear-trees`,
-    `spear-utils`
-  )
-  .settings(
-    // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
-    repl := (run in `spear-repl` in Compile toTask "").value
-  )
+  // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
+  .settings(repl := (run in `spear-repl` in Compile toTask "").value)
+  .settings(commonSettings)
+  .aggregate(allSubprojects: _*)
+
+lazy val allSubprojects: Seq[ProjectReference] = Seq(
+  `spear-core`,
+  `spear-docs`,
+  `spear-examples`,
+  `spear-local`,
+  `spear-repl`,
+  `spear-trees`,
+  `spear-utils`
+)
 
 lazy val `spear-utils` = project
   .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= logging ++ scala,
-    libraryDependencies ++= Dependencies.testing
-  )
+  .settings(libraryDependencies ++= Dependencies.logging ++ Dependencies.scala)
+  .settings(libraryDependencies ++= Dependencies.testing)
 
 lazy val `spear-trees` = project
   .dependsOn(`spear-utils` % "compile->compile;test->test")
   .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
 
 lazy val `spear-core` = project
   .dependsOn(`spear-trees` % "compile->compile;test->test")
   .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
-  .settings(libraryDependencies ++= fastparse ++ typesafeConfig)
+  .settings(libraryDependencies ++= Dependencies.fastparse ++ Dependencies.typesafeConfig)
 
 lazy val `spear-local` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")
   .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
 
 lazy val `spear-repl` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")
   .dependsOn(`spear-local` % "compile->compile;test->test;compile->test")
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
-  .settings(libraryDependencies ++= ammonite ++ scopt)
+  .settings(runtimeConfSettings ++ javaPackagingSettings)
+  .settings(libraryDependencies ++= Dependencies.ammonite ++ Dependencies.scopt)
 
 lazy val `spear-examples` = project
   .dependsOn(`spear-core`, `spear-local`)
   .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
+  .settings(runtimeConfSettings ++ javaPackagingSettings)
 
 lazy val `spear-docs` = project
   .dependsOn(`spear-core`, `spear-local`)
   .enablePlugins(commonPlugins :+ SphinxPlugin: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
+  .settings(runtimeConfSettings)
 
 lazy val javaPackagingSettings = {
-  import NativePackagerHelper._
+  import NativePackagerHelper.directory
 
   Seq(
     // Adds the "conf" directory into the package.
@@ -72,16 +65,14 @@ lazy val javaPackagingSettings = {
 
 lazy val commonPlugins = Seq(
   // For Scala code formatting
-  SbtScalariform,
-  // For Scala test coverage reporting
-  ScoverageSbtPlugin
+  SbtScalariform
 )
 
 lazy val commonSettings = {
   val basicSettings = Seq(
     organization := "spear",
     version := "0.1.0-SNAPSHOT",
-    scalaVersion := Versions.scala,
+    scalaVersion := Dependencies.Versions.scala,
     scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
     scalacOptions ++= Seq("-Ywarn-unused-import", "-Xlint"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g", "-Xlint:-options")
@@ -96,29 +87,28 @@ lazy val commonSettings = {
     testOptions in Test += Tests.Argument("-oDF")
   )
 
-  val commonDependencySettings = {
-    import net.virtualvoid.sbt.graph.Plugin.graphSettings
+  val commonDependencySettings = Seq(
+    // Does not copy managed dependencies into `lib_managed`
+    retrieveManaged := false,
+    // Enables extra resolvers
+    resolvers ++= Dependencies.extraResolvers,
+    // Disables auto conflict resolution
+    conflictManager := ConflictManager.strict,
+    // Explicitly overrides all conflicting transitive dependencies
+    dependencyOverrides ++= Dependencies.overrides
+  )
 
-    graphSettings ++ Seq(
-      // Does not copy managed dependencies into `lib_managed`
-      retrieveManaged := false,
-      // Enables extra resolvers
-      resolvers ++= extraResolvers,
-      // Disables auto conflict resolution
-      conflictManager := ConflictManager.strict,
-      // Explicitly overrides all conflicting transitive dependencies
-      dependencyOverrides ++= overrides
-    )
-  }
+  val scalariformSettings = Seq {
+    import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+    import scalariform.formatter.preferences
 
-  val scalariformPluginSettings = {
-    import com.typesafe.sbt.SbtScalariform.scalariformSettings
-    import com.typesafe.sbt.SbtScalariform.ScalariformKeys.preferences
-    import scalariform.formatter.preferences.PreferencesImporterExporter.loadPreferences
-
-    scalariformSettings ++ Seq(
-      preferences := loadPreferences("scalariform.properties")
-    )
+    ScalariformKeys.preferences := ScalariformKeys.preferences.value
+      .setPreference(preferences.AlignSingleLineCaseStatements, true)
+      .setPreference(preferences.AlignSingleLineCaseStatements.MaxArrowIndent, 40)
+      .setPreference(preferences.DanglingCloseParenthesis, preferences.Preserve)
+      .setPreference(preferences.NewlineAtEndOfFile, true)
+      .setPreference(preferences.PreserveSpaceBeforeArguments, true)
+      .setPreference(preferences.SpacesAroundMultiImports, false)
   }
 
   val taskSettings = Seq(
@@ -132,11 +122,11 @@ lazy val commonSettings = {
     basicSettings,
     commonTestSettings,
     commonDependencySettings,
-    scalariformPluginSettings,
+    scalariformSettings,
     taskSettings
   ).flatten
 }
 
 lazy val runtimeConfSettings = Seq(
-  unmanagedClasspath in Runtime += baseDirectory(_.getParentFile / "conf").value
+  unmanagedClasspath in Runtime += baseDirectory { _.getParentFile / "conf" }.value
 )

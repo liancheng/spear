@@ -261,16 +261,14 @@ package object expressions extends Logging {
 
   private def genBinary[T <: Expression, R <: Expression](
     genBranch: Gen[T], ops: ((T, T) => R)*
-  ): Gen[R] = Gen.parameterized { params =>
-    for {
-      size <- Gen.size
-      op <- Gen.oneOf(ops)
+  ): Gen[R] = for {
+    size <- Gen.size
+    op <- Gen.oneOf(ops)
 
-      lhsSize = params.rng.nextInt(size - 1)
-      lhs <- Gen.resize(lhsSize, genBranch)
+    lhsSize <- Gen.choose(0, size - 1)
+    lhs <- Gen.resize(lhsSize, genBranch)
 
-      rhsSize = size - 1 - lhsSize
-      rhs <- Gen.resize(rhsSize, genBranch)
-    } yield op(lhs, rhs)
-  }
+    rhsSize = size - 1 - lhsSize
+    rhs <- Gen.resize(rhsSize, genBranch)
+  } yield op(lhs, rhs)
 }
