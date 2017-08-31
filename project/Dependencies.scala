@@ -10,14 +10,14 @@ object Dependencies {
     val ammonite = "1.0.0"
     val config = "1.2.1"
     val fastparse = "0.4.3"
-    val log4j = "1.2.16"
+    val log4j = "1.2.17"
     val mockito = "2.1.0-beta.120"
     val scala = "2.11.11"
     val scalaCheck = "1.12.5"
     val scalaTest = "2.2.5"
     val scalaXml = "1.0.4"
     val scopt = "3.5.0"
-    val slf4j = "1.6.4"
+    val slf4j = "1.7.13"
 
     val sourcecode = "0.1.3"
   }
@@ -66,13 +66,13 @@ object Dependencies {
     "com.lihaoyi" %% "sourcecode" % Versions.sourcecode
   )
 
-  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
-
   val typesafeConfig = Seq(
     "com.typesafe" % "config" % Versions.config
   )
 
+  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
+
   val logging: Seq[ModuleID] = log4j ++ slf4j
 
-  val overrides: Set[ModuleID] = (scala ++ sourcecode).toSet
+  val overrides: Set[ModuleID] = (log4j ++ scala ++ slf4j ++ sourcecode).toSet
 }
