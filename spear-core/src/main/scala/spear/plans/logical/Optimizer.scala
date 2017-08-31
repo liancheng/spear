@@ -256,10 +256,10 @@ object PushFilterThroughAggregate extends Rule[LogicalPlan] {
       val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 
       if (pushDown.nonEmpty) {
-        logDebug({
+        logDebug {
           val pushDownList = pushDown map { _.sqlLike } mkString ("[", ", ", "]")
           s"Pushing down predicates $pushDownList through aggregate"
-        })
+        }
       }
 
       val unaliasedPushDown = pushDown map { _ unaliasUsing (keys, GroupingKeyNamespace) }
@@ -268,7 +268,9 @@ object PushFilterThroughAggregate extends Rule[LogicalPlan] {
   }
 
   private def containsAggregation(expression: Expression): Boolean =
-    expression.collectFirstDown { case _: AggregateFunctionAlias => }.nonEmpty
+    expression.collectFirstDown {
+      case e: NamedExpression if e.namespace == InternalAlias.AggregateFunctionNamespace =>
+    }.nonEmpty
 }
 
 object PushProjectThroughLimit extends Rule[LogicalPlan] {
