@@ -1,55 +1,51 @@
-lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
-
 lazy val spear = project
   .in(file("."))
-  // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
-  .settings(repl := (run in `spear-repl` in Compile toTask "").value)
+  .enablePlugins(commonPlugins: _*)
   .settings(commonSettings)
-  .aggregate(allSubprojects: _*)
-
-lazy val allSubprojects: Seq[ProjectReference] = Seq(
-  `spear-core`,
-  `spear-docs`,
-  `spear-examples`,
-  `spear-local`,
-  `spear-repl`,
-  `spear-trees`,
-  `spear-utils`
-)
+  .aggregate(
+    `spear-core`,
+    `spear-docs`,
+    `spear-examples`,
+    `spear-local`,
+    `spear-repl`,
+    `spear-trees`,
+    `spear-utils`
+  )
 
 lazy val `spear-utils` = project
-  .enablePlugins(commonPlugins: _*)
-  .settings(libraryDependencies ++= Dependencies.logging ++ Dependencies.scala)
+  .settings(libraryDependencies ++= Dependencies.logging)
+  .settings(libraryDependencies ++= Dependencies.scala)
   .settings(libraryDependencies ++= Dependencies.testing)
 
 lazy val `spear-trees` = project
   .dependsOn(`spear-utils` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
 
 lazy val `spear-core` = project
   .dependsOn(`spear-trees` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
-  .settings(libraryDependencies ++= Dependencies.fastparse ++ Dependencies.typesafeConfig)
+  .settings(libraryDependencies ++= Dependencies.fastparse)
+  .settings(libraryDependencies ++= Dependencies.typesafeConfig)
 
 lazy val `spear-local` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
 
 lazy val `spear-repl` = project
   .dependsOn(`spear-core` % "compile->compile;test->test")
   .dependsOn(`spear-local` % "compile->compile;test->test;compile->test")
-  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(runtimeConfSettings ++ javaPackagingSettings)
-  .settings(libraryDependencies ++= Dependencies.ammonite ++ Dependencies.scopt)
+  .enablePlugins(JavaAppPackaging)
+  .settings(runtimeConfSettings)
+  .settings(javaPackagingSettings)
+  .settings(libraryDependencies ++= Dependencies.ammonite)
+  .settings(libraryDependencies ++= Dependencies.scopt)
 
 lazy val `spear-examples` = project
   .dependsOn(`spear-core`, `spear-local`)
-  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(runtimeConfSettings ++ javaPackagingSettings)
+  .enablePlugins(JavaAppPackaging)
+  .settings(runtimeConfSettings)
+  .settings(javaPackagingSettings)
 
 lazy val `spear-docs` = project
   .dependsOn(`spear-core`, `spear-local`)
-  .enablePlugins(commonPlugins :+ SphinxPlugin: _*)
+  .enablePlugins(SphinxPlugin)
   .settings(runtimeConfSettings)
 
 lazy val javaPackagingSettings = {
@@ -111,11 +107,15 @@ lazy val commonSettings = {
       .setPreference(preferences.SpacesAroundMultiImports, false)
   }
 
+  val repl = taskKey[Unit]("Runs the Spear REPL.")
+
   val taskSettings = Seq(
     // Runs scalastyle before compilation
     compile in Compile := (compile in Compile dependsOn (scalastyle in Compile toTask "")).value,
     // Runs scalastyle before running tests
-    test in Test := (test in Test dependsOn (scalastyle in Test toTask "")).value
+    test in Test := (test in Test dependsOn (scalastyle in Test toTask "")).value,
+    // Creates an SBT task alias "repl" that starts the REPL within an SBT session.
+    repl := (run in `spear-repl` in Compile toTask "").value
   )
 
   Seq(

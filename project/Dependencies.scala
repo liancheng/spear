@@ -67,11 +67,11 @@ object Dependencies {
     "com.lihaoyi" %% "sourcecode" % Versions.sourcecode
   )
 
-  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
-
   val typesafeConfig = Seq(
     "com.typesafe" % "config" % Versions.config
   )
+
+  val testing: Seq[ModuleID] = mockito ++ scalaCheck ++ scalaTest
 
   val logging: Seq[ModuleID] = log4j ++ slf4j
 
