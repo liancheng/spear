@@ -5,8 +5,8 @@ cache:
     - $HOME/.ivy2
 matrix:
   include:
-    - jdk: openjdk7
-      scala: 2.11.7
+    - jdk: oraclejdk8
+      scala: 2.12.3
 script:
   - sbt coverage test coverageReport doc
 after_script:
