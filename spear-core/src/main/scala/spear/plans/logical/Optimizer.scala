@@ -5,10 +5,9 @@ import spear.expressions._
 import spear.expressions.InternalAlias.GroupingKeyNamespace
 import spear.expressions.Literal.{False, True}
 import spear.expressions.Predicate.{splitConjunction, toCNF}
-import spear.trees.{MultiPhaseTransformer, Phase, Rule}
-import spear.trees.FixedPoint
+import spear.trees.{FixedPoint, Rule, RuleGroup, Transformer}
 
-class Optimizer extends MultiPhaseTransformer(Optimizer.defaultPhases) {
+class Optimizer extends Transformer(Optimizer.defaultPhases) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     if (!tree.isResolved) {
       throw new LogicalPlanUnresolvedException(tree)
@@ -26,8 +25,8 @@ class Optimizer extends MultiPhaseTransformer(Optimizer.defaultPhases) {
 }
 
 object Optimizer {
-  val defaultPhases: Seq[Phase[LogicalPlan]] = Seq(
-    Phase("Optimizations", FixedPoint, Seq(
+  val defaultPhases: Seq[RuleGroup[LogicalPlan]] = Seq(
+    RuleGroup("Optimizations", FixedPoint, Seq(
       CNFConversion,
       FoldConstant,
       FoldLogicalPredicate,

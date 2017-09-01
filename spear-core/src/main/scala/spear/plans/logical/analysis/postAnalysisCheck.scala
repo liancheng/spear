@@ -67,8 +67,10 @@ class RejectDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule
   override def transform(tree: LogicalPlan): LogicalPlan = {
     val distinctAggs = tree.collectDown {
       case node =>
-        node collectFromExpressionsDown {
-          case agg: DistinctAggregateFunction => agg
+        node.expressions flatMap {
+          _ collectDown {
+            case agg: DistinctAggregateFunction => agg
+          }
         }
     }.flatten
 

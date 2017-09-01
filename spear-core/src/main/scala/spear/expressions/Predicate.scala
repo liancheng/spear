@@ -1,7 +1,6 @@
 package spear.expressions
 
-import spear.trees.{MultiPhaseTransformer, Phase, Rule}
-import spear.trees.FixedPoint
+import spear.trees.{FixedPoint, Rule, RuleGroup, Transformer}
 
 object Predicate {
   private[spear] def splitConjunction(predicate: Expression): Seq[Expression] = predicate match {
@@ -11,8 +10,8 @@ object Predicate {
 
   private[spear] def toCNF(predicate: Expression): Expression = cnfConverter(predicate)
 
-  private val cnfConverter = new MultiPhaseTransformer(
-    Phase("CNFConversion", FixedPoint, CNFConversion :: Nil)
+  private val cnfConverter = new Transformer(
+    RuleGroup("CNFConversion", FixedPoint, CNFConversion :: Nil)
   )
 
   private object CNFConversion extends Rule[Expression] {

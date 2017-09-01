@@ -10,7 +10,7 @@ import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.{Resolved, Unresolved}
 import spear.trees._
 
-class Analyzer(catalog: Catalog) extends MultiPhaseTransformer(Analyzer.defaultPhases(catalog)) {
+class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logDebug(
       s"""Analyzing logical query plan:
@@ -24,16 +24,16 @@ class Analyzer(catalog: Catalog) extends MultiPhaseTransformer(Analyzer.defaultP
 }
 
 object Analyzer {
-  def defaultPhases(catalog: Catalog): Seq[Phase[LogicalPlan]] = Seq(
-    Phase("Pre-processing", FixedPoint, Seq(
+  def defaultPhases(catalog: Catalog): Seq[RuleGroup[LogicalPlan]] = Seq(
+    RuleGroup("Pre-processing", FixedPoint, Seq(
       new RewriteCTEsAsSubquery(catalog),
       new InlineWindowDefinitions(catalog)
     )),
 
     // TODO Check for undefined window references
-    Phase("Pre-processing check", Once, Seq.empty[AnalysisRule]),
+    RuleGroup("Pre-processing check", Once, Seq.empty[AnalysisRule]),
 
-    Phase("Resolution", FixedPoint, Seq(
+    RuleGroup("Resolution", FixedPoint, Seq(
       new ResolveRelation(catalog),
       new RewriteRenameToProject(catalog),
       new RewriteUnresolvedSort(catalog),
@@ -56,11 +56,11 @@ object Analyzer {
       new RewriteUnresolvedAggregate(catalog)
     )),
 
-    Phase("Type check", Once, Seq(
+    RuleGroup("Type check", Once, Seq(
       new EnforceTypeConstraint(catalog)
     )),
 
-    Phase("Post-analysis check", Once, Seq(
+    RuleGroup("Post-analysis check", Once, Seq(
       new RejectUnresolvedExpression(catalog),
       new RejectUnresolvedPlan(catalog),
       new RejectTopLevelInternalAttribute(catalog),

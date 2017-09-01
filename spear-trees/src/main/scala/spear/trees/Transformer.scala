@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 
 import spear.utils.{sideBySide, Logging}
 
-trait Transformer[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
+trait RuleLike[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
   protected def logTransformation(transformation: String, before: Base)(after: => Base): Base = {
     if (!before.same(after)) {
       logTrace {
@@ -30,7 +30,7 @@ trait Transformer[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
   }
 }
 
-trait Rule[Base <: TreeNode[Base]] extends Transformer[Base] {
+trait Rule[Base <: TreeNode[Base]] extends RuleLike[Base] {
   private val name = getClass.getSimpleName stripSuffix "$"
 
   override final def apply(tree: Base): Base = logTransformation(s"rule '$name'", tree) {
@@ -40,11 +40,11 @@ trait Rule[Base <: TreeNode[Base]] extends Transformer[Base] {
   def transform(tree: Base): Base
 }
 
-case class Phase[Base <: TreeNode[Base]](
+case class RuleGroup[Base <: TreeNode[Base]](
   name: String,
   convergenceTest: ConvergenceTest,
-  rules: Seq[Rule[Base]]
-) extends Transformer[Base] {
+  rules: Seq[RuleLike[Base]]
+) extends RuleLike[Base] {
 
   override def apply(tree: Base): Base = logTransformation(s"phase '$name'", tree) {
     applyUntilConvergent(tree)
@@ -56,10 +56,8 @@ case class Phase[Base <: TreeNode[Base]](
   }
 }
 
-class MultiPhaseTransformer[Base <: TreeNode[Base]](phases: Seq[Phase[Base]])
-  extends Transformer[Base] {
-
-  def this(first: Phase[Base], rest: Phase[Base]*) = this(first +: rest)
+class Transformer[Base <: TreeNode[Base]](phases: Seq[RuleGroup[Base]]) extends RuleLike[Base] {
+  def this(first: RuleGroup[Base], rest: RuleGroup[Base]*) = this(first +: rest)
 
   def apply(before: Base): Base = phases.foldLeft(before) { (tree, phase) => phase(tree) }
 }
