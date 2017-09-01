@@ -55,13 +55,34 @@ class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
                 newFrame <- maybeFrame
               } throw new WindowAnalysisException(
                 s"""Cannot decorate window $name with frame $newFrame
-                   |because it already has frame $existingFrame
+                   |because it already has a frame $existingFrame
                    |""".oneLine
               )
 
               windowSpec between (windowSpec.windowFrame orElse maybeFrame)
           }
       }
+  }
+}
+
+class RejectUndefinedWindowSpecRef(val catalog: Catalog) extends AnalysisRule {
+  override def transform(tree: LogicalPlan): LogicalPlan = {
+    tree collectDown {
+      case node =>
+        val names = node.expressions flatMap {
+          _ collectDown {
+            case WindowSpecRef(name, _) => name
+          }
+        }
+
+        if (names.nonEmpty) {
+          throw new WindowAnalysisException(
+            s"Undefined window specification references detected: ${names mkString ", "}"
+          )
+        }
+    }
+
+    tree
   }
 }
 

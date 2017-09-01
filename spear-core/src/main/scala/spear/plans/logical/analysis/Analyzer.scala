@@ -30,8 +30,9 @@ object Analyzer {
       new InlineWindowDefinitions(catalog)
     )),
 
-    // TODO Check for undefined window references
-    RuleGroup("Pre-processing check", Once, Seq.empty[AnalysisRule]),
+    RuleGroup("Pre-processing check", Once, Seq(
+      new RejectUndefinedWindowSpecRef(catalog)
+    )),
 
     RuleGroup("Resolution", FixedPoint, Seq(
       new ResolveRelation(catalog),
