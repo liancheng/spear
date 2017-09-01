@@ -84,9 +84,11 @@ case class Remainder(left: Expression, right: Expression) extends BinaryArithmet
 
   override protected lazy val strictDataType: DataType = left.dataType
 
-  private lazy val integral = whenStrictlyTyped(dataType match {
-    case t: IntegralType => t.genericIntegral
-  })
+  private lazy val integral = whenStrictlyTyped {
+    dataType match {
+      case t: IntegralType => t.genericIntegral
+    }
+  }
 
   override def operator: String = "%"
 

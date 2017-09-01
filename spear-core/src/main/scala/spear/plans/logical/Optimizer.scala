@@ -252,7 +252,7 @@ object PushFilterThroughJoin extends Rule[LogicalPlan] {
 object PushFilterThroughAggregate extends Rule[LogicalPlan] {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case Aggregate(child, keys, functions) Filter condition if functions forall { _.isPure } =>
-      // Predicates that don't reference any aggregate functions can be pushed down
+      // Only predicates referencing no aggregate functions can be pushed down.
       val (stayUp, pushDown) = splitConjunction(toCNF(condition)) partition containsAggregation
 
       if (pushDown.nonEmpty) {
@@ -267,10 +267,9 @@ object PushFilterThroughAggregate extends Rule[LogicalPlan] {
       child filter unaliasedPushDown aggregate (keys, functions) filter stayUp
   }
 
-  private def containsAggregation(expression: Expression): Boolean =
-    expression.collectFirstDown {
-      case e: NamedExpression if e.namespace == InternalAlias.AggregateFunctionNamespace =>
-    }.nonEmpty
+  private def containsAggregation(expression: Expression): Boolean = expression.collectFirstDown {
+    case e: NamedExpression if e.namespace == InternalAlias.AggregateFunctionNamespace =>
+  }.nonEmpty
 }
 
 object PushProjectThroughLimit extends Rule[LogicalPlan] {
