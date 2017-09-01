@@ -42,13 +42,13 @@ class DataFrame(val query: CompiledQuery) {
     _ join (right.query.logicalPlan, Inner)
   }
 
-  def join(right: DataFrame): JoinedData = new JoinedData(this, right, Inner)
+  def join(right: DataFrame): Joined = new Joined(this, right, Inner)
 
-  def leftJoin(right: DataFrame): JoinedData = new JoinedData(this, right, LeftOuter)
+  def leftJoin(right: DataFrame): Joined = new Joined(this, right, LeftOuter)
 
-  def rightJoin(right: DataFrame): JoinedData = new JoinedData(this, right, RightOuter)
+  def rightJoin(right: DataFrame): Joined = new Joined(this, right, RightOuter)
 
-  def outerJoin(right: DataFrame): JoinedData = new JoinedData(this, right, FullOuter)
+  def outerJoin(right: DataFrame): Joined = new Joined(this, right, FullOuter)
 
   def orderBy(order: Seq[Expression]): DataFrame = withPlan {
     _ sort (order map SortOrder.apply)
@@ -72,9 +72,9 @@ class DataFrame(val query: CompiledQuery) {
     _ except that.query.logicalPlan
   }
 
-  def groupBy(keys: Seq[Expression]): GroupedData = GroupedData(this, keys)
+  def groupBy(keys: Seq[Expression]): Grouped = Grouped(this, keys)
 
-  def groupBy(first: Expression, rest: Expression*): GroupedData = groupBy(first +: rest)
+  def groupBy(first: Expression, rest: Expression*): Grouped = groupBy(first +: rest)
 
   def agg(projectList: Seq[Expression]): DataFrame = this groupBy Nil agg projectList
 
@@ -187,7 +187,7 @@ class DataFrame(val query: CompiledQuery) {
   }
 }
 
-class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
+class Joined(left: DataFrame, right: DataFrame, joinType: JoinType) {
   def on(condition: Expression): DataFrame = {
     val leftPlan = left.query.logicalPlan
     val rightPlan = right.query.logicalPlan
@@ -196,9 +196,25 @@ class JoinedData(left: DataFrame, right: DataFrame, joinType: JoinType) {
   }
 }
 
-case class GroupedData(child: DataFrame, keys: Seq[Expression]) {
+case class Grouped(
+  child: DataFrame,
+  keys: Seq[Expression],
+  conditions: Seq[Expression] = Nil,
+  order: Seq[SortOrder] = Nil
+) {
+
+  def having(conditions: Seq[Expression]): Grouped = copy(
+    conditions = this.conditions ++ conditions
+  )
+
+  def having(first: Expression, rest: Expression*): Grouped = having(first +: rest)
+
+  def orderBy(order: Seq[Expression]): Grouped = copy(order = order map SortOrder.apply)
+
+  def orderBy(first: Expression, rest: Expression*): Grouped = orderBy(first +: rest)
+
   def agg(projectList: Seq[Expression]): DataFrame = child.withPlan {
-    _ groupBy keys agg projectList
+    UnresolvedAggregate(_, keys, projectList map NamedExpression.apply, conditions, order)()
   }
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)
