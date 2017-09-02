@@ -47,7 +47,7 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
     import QuerySpecificationParser._
 
     private val parser: P[NamedExpression] = (
-      ("*" attach *)
+      ("*" ==> *)
       | qualifiedAsterisk
       | columnReference
     )

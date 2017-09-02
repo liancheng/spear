@@ -162,7 +162,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
     // Waits until all distinct aggregate functions are rewritten into normal aggregate functions.
     case plan: UnresolvedAggregate if hasDistinctAggregateFunction(plan.projectList) =>
 
-    // Aggregate functions are not allowed in grouping keys.
+    // Rejects aggregate functions in grouping keys.
     case plan: UnresolvedAggregate if hasAggregateFunction(plan.keys) =>
       plan.keys foreach { key =>
         val aggs = collectAggregateFunctions(key)
@@ -180,7 +180,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
 
     // Window functions are not allowed in grouping keys or HAVING conditions.
     case plan: UnresolvedAggregate if hasWindowFunction(plan.keys ++ plan.conditions) =>
-      def rejectIllegalWindowFunctions(component: String)(e: Expression) = {
+      def rejectIllegalWindowFunctions(component: String)(e: Expression): Unit = {
         val wins = collectWindowFunctions(e)
 
         if (wins.nonEmpty) {

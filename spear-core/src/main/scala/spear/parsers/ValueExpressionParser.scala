@@ -45,7 +45,7 @@ object StringParser extends LoggingParser {
 object NumericParser extends LoggingParser {
   import WhitespaceApi._
 
-  val sign: P[Int] = ("+" attach 1) | ("-" attach -1) opaque "sign"
+  val sign: P[Int] = ("+" ==> 1) | ("-" ==> -1) opaque "sign"
 
   private val digit: P0 = CharIn('0' to '9') opaque "digit"
 
@@ -102,7 +102,7 @@ object LiteralParser extends LoggingParser {
   import WhitespaceApi._
 
   val booleanLiteral: P[Literal] =
-    (TRUE attach True) | (FALSE attach False) opaque "boolean-literal"
+    (TRUE ==> True) | (FALSE ==> False) opaque "boolean-literal"
 
   private val generalLiteral: P[Literal] =
     characterStringLiteral | unicodeCharacterStringLiteral | booleanLiteral opaque "general-literal"
@@ -129,7 +129,7 @@ object ValueExpressionPrimaryParser extends LoggingParser {
     "(" ~ P(valueExpression) ~ ")" opaque "parenthesized-value-expression-primary"
 
   private val functionArgs: P[Seq[Expression]] =
-    P("*").attach(Seq(*)) | P(valueExpression).rep(sep = ",") opaque "function-args"
+    (P("*") ==> Seq(*)) | P(valueExpression).rep(sep = ",") opaque "function-args"
 
   val simpleFunction: P[UnresolvedFunction] = (
     functionName ~ "(" ~ DISTINCT.!.? ~ functionArgs ~ ")"
@@ -315,19 +315,19 @@ object NumericValueExpressionParser extends LoggingParser {
     } opaque "base"
 
   @ExtendedSQLSyntax
-  private val factor: P[Expression] = base chain ("^" attach Power) opaque "factor"
+  private val factor: P[Expression] = base fold ("^" ==> Power) opaque "factor"
 
   private val term: P[Expression] = {
     @ExtendedSQLSyntax
-    val remainder = "%" attach Remainder
-    val operator = ("*" attach Multiply) | ("/" attach Divide) | remainder
+    val remainder = "%" ==> Remainder
+    val operator = ("*" ==> Multiply) | ("/" ==> Divide) | remainder
 
-    factor chain operator opaque "term"
+    factor fold operator opaque "term"
   }
 
   val numericValueExpression: P[Expression] = {
-    val operator = ("+" attach Plus) | ("-" attach Minus)
-    term chain operator opaque "numeric-value-expression"
+    val operator = ("+" ==> Plus) | ("-" ==> Minus)
+    term fold operator opaque "numeric-value-expression"
   }
 }
 
@@ -339,8 +339,8 @@ object StringValueExpressionParser extends LoggingParser {
   private val characterPrimary: P[Expression] = numericValueExpression opaque "character-primary"
 
   private val concatenation: P[Expression] = {
-    val operator = "||" attach { concat(_: Expression, _: Expression) }
-    characterPrimary chain operator opaque "concatenation"
+    val operator = "||" ==> { concat(_: Expression, _: Expression) }
+    characterPrimary fold operator opaque "concatenation"
   }
 
   lazy val stringValueExpression: P[Expression] = concatenation opaque "string-value-expression"
@@ -382,10 +382,10 @@ object BooleanValueExpressionParser extends LoggingParser {
     (NOT ~ booleanTest map Not) | booleanTest opaque "boolean-factor"
 
   private val booleanTerm: P[Expression] =
-    booleanFactor chain (AND attach And) opaque "boolean-term"
+    booleanFactor fold (AND ==> And) opaque "boolean-term"
 
   lazy val booleanValueExpression: P[Expression] =
-    booleanTerm chain (OR attach Or) opaque "boolean-value-expression"
+    booleanTerm fold (OR ==> Or) opaque "boolean-value-expression"
 }
 
 // SQL06 section 7.1
@@ -418,12 +418,12 @@ object PredicateParser extends LoggingParser {
   import WhitespaceApi._
 
   private val compOp: P[(Expression, Expression) => Expression] = (
-    ("=" attach Eq)
-    | ("<>" attach NotEq)
-    | ("<=" attach LtEq)
-    | (">=" attach GtEq)
-    | ("<" attach Lt)
-    | (">" attach Gt)
+    ("=" ==> Eq)
+    | ("<>" ==> NotEq)
+    | ("<=" ==> LtEq)
+    | (">=" ==> GtEq)
+    | ("<" ==> Lt)
+    | (">" ==> Gt)
     opaque "comp-op"
   )
 
@@ -468,8 +468,8 @@ object AggregateFunctionParser extends LoggingParser {
   import WhitespaceApi._
 
   val setQuantifier: P[LogicalPlan => LogicalPlan] = (
-    ALL.attach(identity[LogicalPlan] _)
-    | DISTINCT.attach { (_: LogicalPlan).distinct }
+    (ALL ==> identity[LogicalPlan] _)
+    | (DISTINCT ==> { (_: LogicalPlan).distinct })
     opaque "setQuantifier"
   )
 }
