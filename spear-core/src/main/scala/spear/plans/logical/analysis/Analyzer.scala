@@ -118,18 +118,17 @@ class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
  */
 class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
-    case Resolved(child) Rename aliases Subquery subqueryName =>
-      if (child.output.length >= aliases.length) {
-        val aliasCount = aliases.length
-        val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
-        child select (aliased ++ (child.output drop aliasCount)) subquery subqueryName
-      } else {
-        val expected = child.output.length
-        val actual = aliases.length
-        throw new AnalysisException(
-          s"WITH query $subqueryName has $expected columns available but $actual columns specified"
-        )
-      }
+    case Resolved(child) Rename aliases Subquery name if child.output.length >= aliases.length =>
+      val aliasCount = aliases.length
+      val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
+      child select (aliased ++ (child.output drop aliasCount)) subquery name
+
+    case Resolved(child) Rename aliases Subquery name =>
+      val expected = child.output.length
+      val actual = aliases.length
+      throw new AnalysisException(
+        s"WITH query $name has $expected columns available but $actual columns specified"
+      )
   }
 }
 
