@@ -36,7 +36,7 @@ class DataFrame(val query: CompiledQuery) {
 
   def limit(n: Int): DataFrame = this limit lit(n)
 
-  def distinct: DataFrame = withPlan { Distinct(_)() }
+  def distinct: DataFrame = withPlan { Distinct }
 
   def crossJoin(right: DataFrame): DataFrame = withPlan {
     _ join (right.query.logicalPlan, Inner)
@@ -214,7 +214,7 @@ case class Grouped(
   def orderBy(first: Expression, rest: Expression*): Grouped = orderBy(first +: rest)
 
   def agg(projectList: Seq[Expression]): DataFrame = child.withPlan {
-    UnresolvedAggregate(_, keys, projectList map NamedExpression.apply, conditions, order)()
+    UnresolvedAggregate(_, keys, projectList map NamedExpression.apply, conditions, order)
   }
 
   def agg(first: Expression, rest: Expression*): DataFrame = agg(first +: rest)

@@ -42,9 +42,9 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
     UnresolvedAttribute(name)
 
   implicit class ParsedUnresolvedAttribute(sc: StringContext) {
-    import fastparse.all._
     import ColumnReferenceParser._
     import QuerySpecificationParser._
+    import fastparse.all._
 
     private val parser: P[NamedExpression] = (
       ("*" ==> *)

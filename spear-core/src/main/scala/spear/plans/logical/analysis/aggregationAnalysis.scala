@@ -90,7 +90,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case (agg: UnresolvedAggregate) Filter condition if agg.projectList forall { _.isResolved } =>
       // All having conditions should be preserved.
-      agg.copy(conditions = agg.conditions :+ condition)(agg.metadata)
+      agg.copy(conditions = agg.conditions :+ condition)
 
     case (agg: UnresolvedAggregate) Sort order if agg.projectList forall { _.isResolved } =>
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
@@ -101,7 +101,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
         .map { case e: SortOrder => e }
 
       // Only preserves the last sort order.
-      agg.copy(order = unaliased)(agg.metadata)
+      agg.copy(order = unaliased)
   }
 }
 

@@ -192,7 +192,7 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
           case e        => e
         }
 
-        plan -> plan.copy(projectList = newProjectList)(plan.metadata)
+        plan -> plan.copy(projectList = newProjectList)
     }
 
     maybeDuplicated map {
@@ -275,7 +275,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
       }
 
       if (unevaluableOrder.isEmpty) {
-        child select projectList sort maybeResolvedOrder withMetadata plan.metadata
+        child select projectList sort maybeResolvedOrder
       } else {
         // Pushes down unevaluable `SortOrder`s by adding an intermediate projection.
         val pushDown = unevaluableOrder
@@ -290,7 +290,6 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
           .select(projectList ++ pushDown)
           .sort(maybeResolvedOrder map { _ transformUp rewrite })
           .select(output)
-          .withMetadata(plan.metadata)
       }
 
     case child UnresolvedSort order =>

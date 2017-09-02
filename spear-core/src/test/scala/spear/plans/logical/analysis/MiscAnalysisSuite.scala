@@ -31,18 +31,18 @@ class MiscAnalysisSuite extends AnalyzerTest {
     val newAlias = alias withID newExpressionID()
 
     checkAnalyzedPlan(
-      SingleRowRelation() select alias union (SingleRowRelation() select alias),
-      SingleRowRelation() select alias union (SingleRowRelation() select newAlias)
+      SingleRowRelation select alias union (SingleRowRelation select alias),
+      SingleRowRelation select alias union (SingleRowRelation select newAlias)
     )
 
     checkAnalyzedPlan(
-      SingleRowRelation() select alias intersect (SingleRowRelation() select alias),
-      SingleRowRelation() select alias intersect (SingleRowRelation() select newAlias)
+      SingleRowRelation select alias intersect (SingleRowRelation select alias),
+      SingleRowRelation select alias intersect (SingleRowRelation select newAlias)
     )
 
     checkAnalyzedPlan(
-      SingleRowRelation() select alias except (SingleRowRelation() select alias),
-      SingleRowRelation() select alias except (SingleRowRelation() select newAlias)
+      SingleRowRelation select alias except (SingleRowRelation select alias),
+      SingleRowRelation select alias except (SingleRowRelation select newAlias)
     )
   }
 

@@ -49,12 +49,13 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
 
   test("optimizer should reject unresolved logical plan") {
     intercept[LogicalPlanUnresolvedException] {
-      (new Optimizer)(UnresolvedRelation('t)())
+      (new Optimizer)(UnresolvedRelation('t))
     }
   }
 
   testRule(CNFConversion, FixedPoint) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genLogicalPredicate(relation.output))
+    implicit val arbPredicate: Arbitrary[Expression] =
+      Arbitrary(genLogicalPredicate(relation.output))
 
     check(
       forAll { predicate: Expression =>
@@ -70,7 +71,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(MergeFilters, FixedPoint) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
+    implicit val arbPredicate: Arbitrary[Expression] = Arbitrary(genPredicate(relation.output))
 
     check { (p1: Expression, p2: Expression) =>
       val optimized = optimizer(relation filter p1 filter p2)
@@ -80,7 +81,7 @@ class OptimizerSuite extends LoggingFunSuite with Checkers with TestUtils {
   }
 
   testRule(FoldNegation, FixedPoint) { optimizer =>
-    implicit val arbPredicate = Arbitrary(genPredicate(relation.output))
+    implicit val arbPredicate: Arbitrary[Expression] = Arbitrary(genPredicate(relation.output))
 
     check { p: Expression =>
       val optimized = optimizer(relation filter p)

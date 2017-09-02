@@ -15,7 +15,7 @@ class Context(val queryCompiler: QueryCompiler) {
     }
   )
 
-  private lazy val values: DataFrame = new DataFrame(SingleRowRelation(), this)
+  private lazy val values: DataFrame = new DataFrame(SingleRowRelation, this)
 
   def values(first: Expression, rest: Expression*): DataFrame = values select first +: rest
 
@@ -36,6 +36,6 @@ class Context(val queryCompiler: QueryCompiler) {
   def range(begin: Long, end: Long, step: Long): DataFrame = {
     val rows = begin until end by step map { Row apply _ }
     val output = StructType('id -> LongType.!).toAttributes
-    new DataFrame(LocalRelation(rows, output)(), this)
+    new DataFrame(LocalRelation(rows, output), this)
   }
 }
