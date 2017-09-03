@@ -91,6 +91,8 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
     def sameType: TypeConstraint = SameType(input)
 
     def foldable: TypeConstraint = Foldable(input)
+
+    def castTo(dataType: DataType): TypeConstraint = CastTo(input, dataType)
   }
 
   implicit class SingleExpressionTypeConstraintDSL(input: Expression) {
@@ -105,9 +107,7 @@ package object expressions extends expressions.dsl.LowPriorityImplicits {
 
     def foldable: TypeConstraint = Foldable(Seq(input))
 
-    def literalCastableTo(dataType: DataType): TypeConstraint = new TypeConstraint {
-      override def enforced: Seq[Expression] = Seq((input cast dataType).evaluated of dataType)
-    }
+    def castTo(dataType: DataType): TypeConstraint = CastTo(Seq(input), dataType)
   }
 
   implicit class Invoker(expression: Expression) {

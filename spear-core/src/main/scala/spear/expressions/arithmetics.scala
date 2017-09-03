@@ -35,13 +35,14 @@ trait BinaryArithmeticOperator extends ArithmeticExpression with BinaryOperator 
   override protected def typeConstraint: TypeConstraint = {
     def bothNumeric = children sameSubtypeOf NumericType
 
-    def oneNumeric(input: Seq[Expression]) = input.head subtypeOf NumericType concat {
-      input.tail sameTypeAs StringType andAlso Foldable
+    def oneNumeric(lhs: Expression, rhs: Expression) = lhs subtypeOf NumericType concat {
+      rhs sameTypeAs StringType andAlso Foldable
     } andAlso {
-      case Seq(n, s) => n.anyType concat (s literalCastableTo n.dataType)
+      case Seq(numericOperand, stringOperand) =>
+        numericOperand.anyType concat (stringOperand castTo numericOperand.dataType)
     }
 
-    bothNumeric orElse oneNumeric(children) orElse oneNumeric(children.reverse).reverse
+    bothNumeric orElse oneNumeric(left, right) orElse oneNumeric(right, left).reverse
   }
 
   override protected lazy val strictDataType: DataType = left.dataType

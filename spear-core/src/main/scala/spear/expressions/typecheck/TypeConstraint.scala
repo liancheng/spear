@@ -3,7 +3,7 @@ package spear.expressions.typecheck
 import scala.util.Try
 import scala.util.control.NonFatal
 
-import spear.exceptions.TypeMismatchException
+import spear.exceptions.{TypeCastException, TypeMismatchException}
 import spear.expressions.Cast._
 import spear.expressions.Expression
 import spear.types.{AbstractDataType, DataType}
@@ -125,6 +125,14 @@ case class SameType(input: Seq[Expression]) extends TypeConstraint {
     }
 
     strictInput map widenDataTypeTo(widestType)
+  }
+}
+
+case class CastTo(input: Seq[Expression], dataType: DataType) extends TypeConstraint {
+  override def enforced: Seq[Expression] = input.anyType.enforced map {
+    case e if e.dataType isCastableTo dataType => e cast dataType
+    case e =>
+      throw new TypeCastException(e.dataType, dataType)
   }
 }
 
