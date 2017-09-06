@@ -24,7 +24,8 @@ class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultRules(catal
 
 object Analyzer {
   def defaultRules(catalog: Catalog): Seq[RuleGroup[LogicalPlan]] = Seq(
-    RuleGroup("Pre-processing", FixedPoint, Seq(
+    // Desugaring
+    RuleGroup(FixedPoint, Seq(
       new InlineCTERelations(catalog),
       new InlineWindowDefinitions(catalog)
     )),
@@ -33,14 +34,14 @@ object Analyzer {
       new RejectUndefinedWindowSpecRefs(catalog)
     )),
 
-    RuleGroup("Resolution", FixedPoint, Seq(
-      RuleGroup("Resolve ORDER BY clauses", FixedPoint, Seq(
-        RuleGroup("Basic resolution", FixedPoint, Seq(
+    RuleGroup(FixedPoint, Seq(
+      RuleGroup(FixedPoint, Seq(
+        RuleGroup(FixedPoint, Seq(
           new ResolveRelations(catalog),
           new RewriteRenameToProject(catalog),
           new DeduplicateReferences(catalog),
 
-          // Rules that help resolving expressions
+          // Expression resolution
           new ExpandStars(catalog),
           new ResolveReferences(catalog),
           new ResolveFunctions(catalog),
@@ -61,11 +62,11 @@ object Analyzer {
       new ExpandUnresolvedAggregates(catalog)
     )),
 
-    RuleGroup("Type check", Once, Seq(
-      new EnforceTypeConstraints(catalog)
-    )),
+    RuleGroup(Once, Seq(
+      // Type checking
+      new EnforceTypeConstraints(catalog),
 
-    RuleGroup("Post-analysis check", Once, Seq(
+      // Post-analysis checks
       new RejectUnresolvedExpressions(catalog),
       new RejectUnresolvedPlans(catalog),
       new RejectTopLevelInternalAttributes(catalog),

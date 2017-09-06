@@ -10,9 +10,7 @@ object Predicate {
 
   private[spear] def toCNF(predicate: Expression): Expression = cnfConverter(predicate)
 
-  private val cnfConverter = new Transformer(
-    RuleGroup("CNFConversion", FixedPoint, CNFConversion :: Nil)
-  )
+  private val cnfConverter = new Transformer(RuleGroup(FixedPoint, CNFConversion :: Nil))
 
   private object CNFConversion extends Rule[Expression] {
     override def transform(tree: Expression): Expression = tree transformDown {

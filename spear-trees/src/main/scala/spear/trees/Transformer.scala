@@ -43,20 +43,17 @@ trait Rule[Base <: TreeNode[Base]] extends RuleLike[Base] {
 }
 
 case class RuleGroup[Base <: TreeNode[Base]](
-  name: String,
   convergenceTest: ConvergenceTest,
   rules: Seq[Base => Base]
 ) extends RuleLike[Base] {
 
   require(rules.nonEmpty)
 
-  override def apply(tree: Base): Base = logTransformation(s"phase '$name'", tree) {
-    applyUntilConvergent(tree)
-  }
+  override def apply(tree: Base): Base = converge(tree)
 
-  @tailrec private def applyUntilConvergent(before: Base): Base = {
+  @tailrec private def converge(before: Base): Base = {
     val after = composedRules(before)
-    if (convergenceTest.test(before, after)) after else applyUntilConvergent(after)
+    if (convergenceTest.test(before, after)) after else converge(after)
   }
 
   private val composedRules = rules reduce { _ andThen _ }

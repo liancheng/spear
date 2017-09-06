@@ -26,7 +26,7 @@ class Optimizer extends Transformer(Optimizer.defaultRules) {
 
 object Optimizer {
   val defaultRules: Seq[RuleGroup[LogicalPlan]] = Seq(
-    RuleGroup("Optimizations", FixedPoint, Seq(
+    RuleGroup(FixedPoint, Seq(
       CNFConversion,
       FoldConstant,
       FoldLogicalPredicate,
