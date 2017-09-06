@@ -223,7 +223,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
       relation
         select (a, b)
         window `@W: max(a) over w0`
-        sort `@W: max(a) over w0`.attr
+        orderBy `@W: max(a) over w0`.attr
         select (a, b)
     )
   }
@@ -252,7 +252,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
       relation
         .window(`@W: max(a) over w0`)
         .select(win_max)
-        .sort(win_max.attr)
+        .orderBy(win_max.attr)
     )
   }
 
@@ -399,7 +399,7 @@ class WindowAnalysisWithoutGroupBySuite extends WindowAnalysisTest { self =>
       relation
         aggregate (Nil, `@A: count(1)` :: Nil)
         window `@W: count(count(1)) over ()`
-        sort `@W: count(count(1)) over ()`.attr
+        orderBy `@W: count(count(1)) over ()`.attr
         select (`1 as c`, order0)
         select `1 as c`.attr
     )

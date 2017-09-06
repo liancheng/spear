@@ -1,13 +1,12 @@
 package spear.plans.logical.analysis
 
 import spear._
-import spear.Name.caseInsensitive
 import spear.exceptions.AnalysisException
 import spear.expressions._
 import spear.expressions.NamedExpression.newExpressionID
 import spear.plans.logical._
 import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
-import spear.plans.logical.patterns.{Resolved, Unresolved}
+import spear.plans.logical.patterns.Resolved
 import spear.trees._
 
 class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
@@ -35,16 +34,22 @@ object Analyzer {
     )),
 
     RuleGroup("Resolution", FixedPoint, Seq(
-      new ResolveRelation(catalog),
-      new RewriteRenameToProject(catalog),
-      new RewriteUnresolvedSort(catalog),
-      new DeduplicateReferences(catalog),
+      RuleGroup("Resolve ORDER BY clauses", FixedPoint, Seq(
+        RuleGroup("Basic resolution", FixedPoint, Seq(
+          new ResolveRelation(catalog),
+          new RewriteRenameToProject(catalog),
+          new DeduplicateReferences(catalog),
 
-      // Rules that help resolving expressions
-      new ExpandStar(catalog),
-      new ResolveReference(catalog),
-      new ResolveFunction(catalog),
-      new ResolveAlias(catalog),
+          // Rules that help resolving expressions
+          new ExpandStar(catalog),
+          new ResolveReference(catalog),
+          new ResolveFunction(catalog),
+          new ResolveAlias(catalog)
+        )),
+
+        new ResolveOrderByClauses(catalog),
+        new RewriteProjectToGlobalAggregate(catalog)
+      )),
 
       // Rules that help resolving window functions
       new ExtractWindowFunctions(catalog),
@@ -52,7 +57,6 @@ object Analyzer {
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunction(catalog),
       new RewriteDistinctToAggregate(catalog),
-      new RewriteProjectToGlobalAggregate(catalog),
       new UnifyFilteredSortedAggregate(catalog),
       new RewriteUnresolvedAggregate(catalog)
     )),
@@ -203,98 +207,6 @@ class DeduplicateReferences(val catalog: Catalog) extends AnalysisRule {
 
   private def collectAliases(projectList: Seq[NamedExpression]): Set[Attribute] =
     projectList.collect { case a: Alias => a.attr }.toSet
-}
-
-/**
- * This rule allows a SQL `ORDER BY` clause to reference columns from both the `FROM` clause and the
- * `SELECT` clause. E.g., assuming table `t` consists of a single `INT` column `a`, the logical
- * query plan parsed from the following SQL query
- * {{{
- *   SELECT a + 1 AS x FROM t ORDER BY a
- * }}}
- * may look like
- * {{{
- *   UnresolvedSort order=[a]
- *   +- Project projectList=[a + 1 AS x]
- *      +- Relation name=t, output=[a]
- * }}}
- * This plan tree is not yet valid because the attribute `a` referenced by `Sort` is not an output
- * attribute of `Project`. This rule tries to resolve this issue by rewriting the above plan into
- * {{{
- *   Project projectList=[x] => [x]
- *   +- Sort order=[a] => [x, a]
- *      +- Project projectList=[a + 1 AS x, a] => [x, a]
- *         +- Relation name=t => [a]
- * }}}
- * Another more convoluted example is about global aggregate:
- * {{{
- *   SELECT 1 AS x FROM t ORDER BY count(a)
- * }}}
- * The aggregate function call `count(a)` in the `ORDER BY` clause makes this query into a global
- * aggregation, but we've no idea about that during parsing phase since the parser doesn't know
- * whether `count(a)` is an aggregate function or not. Therefore, it's parsed into a simple
- * projection:
- * {{{
- *   UnresolvedSort order=[count(a)] => ???
- *   +- Project projectList=[1 AS x] => [x]
- *      +- Relation name=t => [a]
- * }}}
- * Then this rule rewrites it into:
- * {{{
- *   Project projectList=[x] => [x]
- *   +- Sort order=[order0] => [x, order0]
- *      +- Project projectList=[1 AS x, count(a) AS order0] => [x, order0]
- *         +- Relation name=t => [a]
- * }}}
- * Now the `count(a)` function call can be successfully resolved and later the projection can be
- * rewritten into a global projection by the [[RewriteProjectToGlobalAggregate]] analysis rule:
- * {{{
- *   Project projectList=[x] => ???
- *   +- Sort order=[order0] => ???
- *      +- UnresolvedAggregate projectList=[1 AS x, count(a) AS order0] => ???
- *         +- Relation name=t => [a]
- * }}}
- */
-class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
-  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
-    case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
-      plan
-
-    case child Project projectList UnresolvedSort order =>
-      val output = projectList map { _.attr }
-
-      val maybeResolvedOrder = order
-        .map { _ tryResolveUsing output }
-        .map { case e: SortOrder => e }
-
-      // Finds out all unevaluable `SortOrder`s containing either unresolved expressions or
-      // aggregate functions (no matter resolved or not, since aggregate functions cannot be
-      // evaluated as part of a `Sort` operator).
-      val unevaluableOrder = maybeResolvedOrder.filter { order =>
-        !order.isResolved || hasAggregateFunction(order)
-      }
-
-      if (unevaluableOrder.isEmpty) {
-        child select projectList sort maybeResolvedOrder
-      } else {
-        // Pushes down unevaluable `SortOrder`s by adding an intermediate projection.
-        val pushDown = unevaluableOrder
-          .map { _.child }
-          .map { _ unaliasUsing projectList }
-          .zipWithIndex
-          .map { case (e, index) => SortOrderAlias(e, caseInsensitive(s"order$index")) }
-
-        val rewrite = pushDown.map { e => e.child -> (e.name: Expression) }.toMap
-
-        child
-          .select(projectList ++ pushDown)
-          .sort(maybeResolvedOrder map { _ transformUp rewrite })
-          .select(output)
-      }
-
-    case child UnresolvedSort order =>
-      child sort order
-  }
 }
 
 class ResolveOrderByClauses(val catalog: Catalog) extends AnalysisRule {

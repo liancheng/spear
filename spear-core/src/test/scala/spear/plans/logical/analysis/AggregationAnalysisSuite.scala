@@ -55,7 +55,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
       relation
         aggregate (Nil, `@A: count(a)` :: Nil)
-        sort `@A: count(a)`.attr.asc
+        orderBy `@A: count(a)`.attr.asc
         select (`1 AS out`, `@S: count(a)`)
         select `1 AS out`.attr
     )
@@ -73,7 +73,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
       relation
         aggregate (Nil, `@A: count(1)` :: Nil)
-        sort `@A: count(1)`.attr.asc
+        orderBy `@A: count(1)`.attr.asc
         select (`1 AS out`, `@S: count(1)`)
         select `1 AS out`.attr
     )
@@ -91,7 +91,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         aggregate (Nil, Seq(`@A: max(a)`, `@A: count(a)`))
         filter `@A: max(a)`.attr > 0
-        sort `@A: count(a)`.attr.asc
+        orderBy `@A: count(a)`.attr.asc
         select (1 as 'out)
     )
   }
@@ -110,7 +110,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
-        sort `@A: count(b)`.attr.desc
+        orderBy `@A: count(b)`.attr.desc
         select (`@A: count(b)`.attr as 'c)
     )
   }
@@ -127,7 +127,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
         filter `@G: a`.attr > 1
-        sort `@A: count(b)`.attr.asc
+        orderBy `@A: count(b)`.attr.asc
         select (`@G: a`.attr as 'a withID a.expressionID)
     )
   }
@@ -140,13 +140,13 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
       table('t)
         groupBy 'a
         agg 'count('b)
-        sort 'a.asc
-        sort 'count('b).asc,
+        orderBy 'a.asc
+        orderBy 'count('b).asc,
 
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
         // Only the last sort order should be preserved
-        sort `@A: count(b)`.attr.asc
+        orderBy `@A: count(b)`.attr.asc
         select (`@A: count(b)`.attr as "count(t.b)")
     )
   }
@@ -179,14 +179,14 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
         groupBy 'a
         agg 'a
         filter 'a > 1
-        sort 'a.asc
+        orderBy 'a.asc
         filter 'count('b) < 10L
-        sort 'count('b).asc,
+        orderBy 'count('b).asc,
 
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)
         filter `@G: a`.attr > 1 && (`@A: count(b)`.attr < 10L)
-        sort `@A: count(b)`.attr.asc
+        orderBy `@A: count(b)`.attr.asc
         select (`@G: a`.attr as 'a withID a.expressionID)
     )
   }
@@ -246,7 +246,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     )
 
     checkMessage[IllegalAggregationException](patterns: _*) {
-      analyze(table('t) groupBy 'a agg 'count('a) sort 'b)
+      analyze(table('t) groupBy 'a agg 'count('a) orderBy 'b)
     }
   }
 

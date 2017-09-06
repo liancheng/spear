@@ -51,7 +51,7 @@ class DataFrame(val query: CompiledQuery) {
   def outerJoin(right: DataFrame): Joined = new Joined(this, right, FullOuter)
 
   def orderBy(order: Seq[Expression]): DataFrame = withPlan {
-    _ sort (order map SortOrder.apply)
+    _ orderBy (order map SortOrder.apply)
   }
 
   def orderBy(first: Expression, rest: Expression*): DataFrame = orderBy(first +: rest)

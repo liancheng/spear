@@ -287,7 +287,7 @@ class DirectlyExecutableStatementParserSuite extends LoggingFunSuite with TestUt
   }
 
   private def parse(input: String): LogicalPlan = {
-    implicit val parserLogger = Logger(logInfo(_))
+    implicit val parserLogger: Logger = Logger(logInfo(_))
     (Start ~ directlyExecutableStatement.log() ~ End parse input.trim).get.value
   }
 }

@@ -84,14 +84,14 @@ class DataFrameSuite extends LoggingFunSuite with TestUtils with BeforeAndAfterA
   test("order by sort order") {
     checkLogicalPlan(
       table('t) orderBy 'a.asc.nullsFirst,
-      r1 subquery 't sort 'a.asc.nullsFirst
+      r1 subquery 't orderBy 'a.asc.nullsFirst
     )
   }
 
   test("order by arbitrary expression") {
     checkLogicalPlan(
       table('t) orderBy 'a + 1,
-      r1 subquery 't sort ('a + 1).asc
+      r1 subquery 't orderBy ('a + 1).asc
     )
   }
 

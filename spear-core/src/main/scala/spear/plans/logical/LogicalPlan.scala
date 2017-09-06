@@ -356,20 +356,6 @@ case class Aggregate(
   override lazy val derivedInput: Seq[Attribute] = keys map { _.attr }
 }
 
-/**
- * An unresolved logical plan node dedicated for representing SQL `ORDER BY` clauses. The reason why
- * a special logical plan node is necessary is that sort order expressions in a SQL `ORDER BY`
- * clause may reference columns from both the `SELECT` clause and the `FROM` clause. On the other
- * hand, one contract that is enforced by the analysis phase is that a logical plan node is only
- * allowed to reference output attributes of the plan node right beneath it. Parsing SQL `ORDER BY`
- * clauses into [[UnresolvedSort]] nodes provides an opportunity for the analyzer to fix this
- * violation while rewriting them into [[Sort]] plan nodes.
- *
- * @see [[spear.plans.logical.analysis.RewriteUnresolvedSort]]
- */
-case class UnresolvedSort(child: LogicalPlan, order: Seq[SortOrder])
-  extends UnaryLogicalPlan with UnresolvedLogicalPlan
-
 case class Sort(child: LogicalPlan, order: Seq[SortOrder]) extends UnaryLogicalPlan {
   override def output: Seq[Attribute] = child.output
 }
@@ -470,14 +456,9 @@ object LogicalPlan {
     def limit(n: Int): Limit = this limit lit(n)
 
     def orderBy(order: Seq[Expression]): LogicalPlan =
-      if (order.isEmpty) plan else UnresolvedSort(plan, order map SortOrder.apply)
-
-    def orderBy(first: Expression, rest: Expression*): LogicalPlan = this orderBy (first +: rest)
-
-    def sort(order: Seq[Expression]): LogicalPlan =
       if (order.isEmpty) plan else Sort(plan, order map SortOrder.apply)
 
-    def sort(first: Expression, rest: Expression*): LogicalPlan = this sort (first +: rest)
+    def orderBy(first: Expression, rest: Expression*): LogicalPlan = this orderBy (first +: rest)
 
     def distinct: Distinct = Distinct(plan)
 

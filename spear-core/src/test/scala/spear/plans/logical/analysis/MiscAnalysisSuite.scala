@@ -57,7 +57,7 @@ class MiscAnalysisSuite extends AnalyzerTest {
 
       relation
         select (b, `@S: a + 1`, `@S: a * 2`)
-        sort (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, b.desc)
+        orderBy (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, b.desc)
         select b
     )
   }
@@ -72,7 +72,7 @@ class MiscAnalysisSuite extends AnalyzerTest {
       relation
         subquery 't
         select (b of 't, `@S: a + 1`, `@S: a * 2`)
-        sort (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, (b of 't).desc)
+        orderBy (`@S: a + 1`.attr.asc, `@S: a * 2`.attr.desc, (b of 't).desc)
         select (b of 't)
     )
   }

@@ -23,7 +23,7 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
     case Resolved(child Sort order) if hasWindowFunction(order) =>
       val winAliases = collectWindowFunctions(order) map { WindowFunctionAlias(_) }
       val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
-      child windows winAliases sort rewrittenOrder select child.output
+      child windows winAliases orderBy rewrittenOrder select child.output
 
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
       val winAliases = collectWindowFunctions(projectList) map { WindowFunctionAlias(_) }
@@ -34,9 +34,6 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
   private val skip: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all aggregations are resolved.
     case _: UnresolvedAggregate =>
-
-    // Waits until all SQL `ORDER BY` clauses are resolved.
-    case _: UnresolvedSort =>
 
     // Waits until all global aggregations are resolved.
     case Resolved(_ Project projectList) if hasAggregateFunction(projectList) =>

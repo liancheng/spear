@@ -275,7 +275,7 @@ class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
         .aggregate(keyAliases, aggAliases)
         .filter(rewrittenConditions)
         .windows(winAliases)
-        .sort(rewrittenOrder)
+        .orderBy(rewrittenOrder)
         .select(rewrittenProjectList)
   }
 

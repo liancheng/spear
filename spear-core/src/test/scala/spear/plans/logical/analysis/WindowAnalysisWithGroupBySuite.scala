@@ -257,7 +257,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         aggregate (`@G: a + 1` :: `@G: b` :: Nil, Nil)
         window `@W: count(a + 1) over w0`
-        sort `@W: count(a + 1) over w0`.attr
+        orderBy `@W: count(a + 1) over w0`.attr
         select (`@G: a + 1`.attr as 'key)
     )
   }
@@ -291,7 +291,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
       relation
         aggregate (`@G: a + 1` :: `@G: b` :: Nil, Nil)
         window `@W: count(a + 1) over w0`
-        sort `@W: count(a + 1) over w0`.attr
+        orderBy `@W: count(a + 1) over w0`.attr
         select (`@W: count(a + 1) over w0`.attr as 'win_count)
     )
   }
@@ -453,7 +453,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         relation
           groupBy 'a + 1
           agg Nil
-          sort ('count('a) over ())
+          orderBy ('count('a) over ())
       )
     }
   }
@@ -486,7 +486,7 @@ class WindowAnalysisWithGroupBySuite extends WindowAnalysisTest {
         relation
           groupBy 'a + 1
           agg Nil
-          sort ('count('a + 1) over (Window partitionBy 'a))
+          orderBy ('count('a + 1) over (Window partitionBy 'a))
       )
     }
   }
