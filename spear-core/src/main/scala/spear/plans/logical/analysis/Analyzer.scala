@@ -260,7 +260,7 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
     case plan @ Unresolved(_ Project _) UnresolvedSort _ =>
       plan
 
-    case plan @ child Project projectList UnresolvedSort order =>
+    case child Project projectList UnresolvedSort order =>
       val output = projectList map { _.attr }
 
       val maybeResolvedOrder = order
@@ -295,6 +295,36 @@ class RewriteUnresolvedSort(val catalog: Catalog) extends AnalysisRule {
     case child UnresolvedSort order =>
       child sort order
   }
+}
+
+class ResolveOrderByClauses(val catalog: Catalog) extends AnalysisRule {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
+    case child Project projectList Sort order if shouldRewrite(order) =>
+      val unevaluableOrder = order.filter { e =>
+        !e.isResolved || hasAggregateFunction(e)
+      }
+
+      val sortOrderAliases = unevaluableOrder
+        .map { _.child }
+        .map { _ unaliasUsing projectList }
+        .zipWithIndex
+        .map { case (e, index) => SortOrderAlias(e, s"order$index") }
+
+      val rewrite = sortOrderAliases.map { e =>
+        // NOTE: Here we map `e.child` to `e.name` instead of `e.attr` because `e` may not be
+        // resolved yet and cannot derive a proper `AttributeRef` due to the missing data type
+        // information.
+        e.child -> (e.name: Expression)
+      }.toMap
+
+      val rewrittenOrder = order map { _ transformDown rewrite }
+      val output = projectList map { _.attr }
+
+      child select projectList ++ sortOrderAliases orderBy rewrittenOrder select output
+  }
+
+  private def shouldRewrite(order: Seq[SortOrder]): Boolean =
+    order.exists { !_.isResolved } || hasAggregateFunction(order)
 }
 
 /**
