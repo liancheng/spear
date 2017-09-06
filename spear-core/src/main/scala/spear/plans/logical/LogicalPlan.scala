@@ -331,7 +331,7 @@ case class Subquery(child: LogicalPlan, alias: Name) extends UnaryLogicalPlan {
  *  - [[Filter]]
  *  - [[Aggregate]]
  *
- * @see [[spear.plans.logical.analysis.RewriteUnresolvedAggregate]]
+ * @see [[spear.plans.logical.analysis.ExpandUnresolvedAggregates]]
  */
 case class UnresolvedAggregate(
   child: LogicalPlan,

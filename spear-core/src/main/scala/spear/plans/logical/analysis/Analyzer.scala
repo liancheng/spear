@@ -25,52 +25,52 @@ class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(cata
 object Analyzer {
   def defaultPhases(catalog: Catalog): Seq[RuleGroup[LogicalPlan]] = Seq(
     RuleGroup("Pre-processing", FixedPoint, Seq(
-      new RewriteCTEsAsSubquery(catalog),
+      new InlineCTERelations(catalog),
       new InlineWindowDefinitions(catalog)
     )),
 
     RuleGroup("Pre-processing check", Once, Seq(
-      new RejectUndefinedWindowSpecRef(catalog)
+      new RejectUndefinedWindowSpecRefs(catalog)
     )),
 
     RuleGroup("Resolution", FixedPoint, Seq(
       RuleGroup("Resolve ORDER BY clauses", FixedPoint, Seq(
         RuleGroup("Basic resolution", FixedPoint, Seq(
-          new ResolveRelation(catalog),
+          new ResolveRelations(catalog),
           new RewriteRenameToProject(catalog),
           new DeduplicateReferences(catalog),
 
           // Rules that help resolving expressions
-          new ExpandStar(catalog),
-          new ResolveReference(catalog),
-          new ResolveFunction(catalog),
-          new ResolveAlias(catalog)
+          new ExpandStars(catalog),
+          new ResolveReferences(catalog),
+          new ResolveFunctions(catalog),
+          new ResolveAliases(catalog)
         )),
 
         new ResolveOrderByClauses(catalog),
-        new RewriteProjectToGlobalAggregate(catalog)
+        new DiscoverGlobalAggregations(catalog)
       )),
 
       // Rules that help resolving window functions
       new ExtractWindowFunctions(catalog),
 
       // Rules that help resolving aggregations
-      new RewriteDistinctAggregateFunction(catalog),
-      new RewriteDistinctToAggregate(catalog),
+      new RewriteDistinctAggregateFunctions(catalog),
+      new RewriteDistinctProjections(catalog),
       new UnifyFilteredSortedAggregate(catalog),
-      new RewriteUnresolvedAggregate(catalog)
+      new ExpandUnresolvedAggregates(catalog)
     )),
 
     RuleGroup("Type check", Once, Seq(
-      new EnforceTypeConstraint(catalog)
+      new EnforceTypeConstraints(catalog)
     )),
 
     RuleGroup("Post-analysis check", Once, Seq(
-      new RejectUnresolvedExpression(catalog),
-      new RejectUnresolvedPlan(catalog),
-      new RejectTopLevelInternalAttribute(catalog),
-      new RejectDistinctAggregateFunction(catalog),
-      new RejectOrphanAttributeReference(catalog)
+      new RejectUnresolvedExpressions(catalog),
+      new RejectUnresolvedPlans(catalog),
+      new RejectTopLevelInternalAttributes(catalog),
+      new RejectDistinctAggregateFunctions(catalog),
+      new RejectOrphanAttributeRefs(catalog)
     ))
   )
 }
@@ -80,7 +80,7 @@ trait AnalysisRule extends Rule[LogicalPlan] {
 }
 
 /**
- * This rule rewrites CTE relation definitions as sub-queries. E.g., it transforms
+ * This rule inlines CTE relations as sub-queries. E.g., effectively, it transforms
  * {{{
  *   WITH
  *     c0 AS (SELECT * FROM t0),
@@ -96,7 +96,7 @@ trait AnalysisRule extends Rule[LogicalPlan] {
  *   SELECT * FROM (SELECT * FROM t1) c1
  * }}}
  */
-class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
+class InlineCTERelations(val catalog: Catalog) extends AnalysisRule {
   // Uses `transformUp` to inline all CTE relations from bottom up since inner CTE relations may
   // shadow outer CTE relations with the same names.
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
@@ -111,21 +111,21 @@ class RewriteCTEsAsSubquery(val catalog: Catalog) extends AnalysisRule {
 /**
  * This rule resolves unresolved relations by looking up the table name from the `catalog`.
  */
-class ResolveRelation(val catalog: Catalog) extends AnalysisRule {
+class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case UnresolvedRelation(name) => catalog lookupRelation name
   }
 }
 
 /**
- * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolve CTE queries.
+ * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolving CTE
+ * queries.
  */
 class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child) Rename aliases Subquery name if child.output.length >= aliases.length =>
-      val aliasCount = aliases.length
-      val aliased = (child.output take aliasCount, aliases).zipped map { _ as _ }
-      child select (aliased ++ (child.output drop aliasCount)) subquery name
+      val aliased = (child.output, aliases).zipped map { _ as _ }
+      child select (aliased ++ (child.output drop aliases.length)) subquery name
 
     case Resolved(child) Rename aliases Subquery name =>
       val expected = child.output.length
@@ -246,7 +246,7 @@ class ResolveOrderByClauses(val catalog: Catalog) extends AnalysisRule {
  * @throws spear.exceptions.AnalysisException If some resolved logical query plan operator
  *         doesn't type check.
  */
-class EnforceTypeConstraint(val catalog: Catalog) extends AnalysisRule {
+class EnforceTypeConstraints(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(plan) => plan.strictlyTyped
   }

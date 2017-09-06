@@ -13,7 +13,7 @@ import spear.plans.logical.patterns.Resolved
 import spear.utils._
 
 /**
- * This rule rewrites a distinct projection into aggregations. E.g., it transforms SQL query
+ * This rule replaces distinct projections into aggregations. E.g., it transforms SQL query
  * {{{
  *   SELECT DISTINCT a, b FROM t
  * }}}
@@ -22,7 +22,7 @@ import spear.utils._
  *   SELECT a, b FROM t GROUP BY a, b
  * }}}
  */
-class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
+class RewriteDistinctProjections(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Distinct(Resolved(child)) =>
       child groupBy child.output agg child.output
@@ -30,10 +30,10 @@ class RewriteDistinctToAggregate(val catalog: Catalog) extends AnalysisRule {
 }
 
 /**
- * This rule converts a [[Project]] containing aggregate functions into a global aggregate, i.e. an
- * [[UnresolvedAggregate]] without any grouping keys.
+ * This rule discovers [[Project]] operators containing aggregate functions and convert them into
+ * global aggregations, i.e. an [[UnresolvedAggregate]] without any grouping keys.
  */
-class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule {
+class DiscoverGlobalAggregations(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child Project projectList) if hasAggregateFunction(projectList) =>
       child groupBy Nil agg projectList
@@ -80,11 +80,11 @@ class RewriteProjectToGlobalAggregate(val catalog: Catalog) extends AnalysisRule
  *   +- Relation name=t => [x, y, z]
  * }}}
  * Now, references to attributes `y` and `z` are moved into the [[UnresolvedAggregate]], and can be
- * easily resolved by the [[ResolveReference]] rule since they are now among the output attribute
+ * easily resolved by the [[ResolveReferences]] rule since they are now among the output attribute
  * lists of the relation `t`, which lives right beneath the [[UnresolvedAggregate]] operator.
  *
  * @see [[UnresolvedAggregate]]
- * @see [[RewriteUnresolvedAggregate]]
+ * @see [[ExpandUnresolvedAggregates]]
  */
 class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
@@ -105,7 +105,7 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
+class RewriteDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
@@ -131,24 +131,24 @@ class RewriteDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRul
  *
  * These operators are stacked over each other to form the following structure:
  * {{{
- *   Project projectList=[<output-expressions>]
- *   +- Sort order=[<sort-orders>]
- *      +- Window functions=[<window-functions-w/-window-spec-n>]
+ *   Project projectList=[{output-expressions}]
+ *   +- Sort order=[{sort-orders}]
+ *      +- Window functions=[{window-functions-w/-window-spec-n}]
  *         +- ...
- *            +- Window functions=[<window-functions-w/-window-spec-1>]
- *               +- Window functions=[<window-functions-w/-window-spec-0>]
- *                  +- Filter condition=<having-condition>
- *                     +- Aggregate keys=[<grouping-keys>] functions=[<agg-functions>]
- *                        +- <child plan>
+ *            +- Window functions=[{window-functions-w/-window-spec-1}]
+ *               +- Window functions=[{window-functions-w/-window-spec-0}]
+ *                  +- Filter condition={having-condition}
+ *                     +- Aggregate keys=[{grouping-keys}] functions=[{agg-functions}]
+ *                        +- {child plan}
  * }}}
  */
-class RewriteUnresolvedAggregate(val catalog: Catalog) extends AnalysisRule {
+class ExpandUnresolvedAggregates(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan =
     tree collectFirstDown skip map { _ => tree } getOrElse { tree transformUp rewriter }
 
   // This partial function plays the role of a guard that ensures all the pre-conditions of this
   // analysis rule. We should skip this rule by returning the original query plan whenever the plan
-  // tree contains any of the following patterns.
+  // tree matches any of the following patterns.
   private val skip: PartialFunction[LogicalPlan, Unit] = {
     // Waits until all adjacent having conditions are absorbed.
     case (_: UnresolvedAggregate) Filter _ =>

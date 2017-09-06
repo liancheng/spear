@@ -100,7 +100,7 @@ trait Expression extends TreeNode[Expression] {
    * [[spear.expressions.typecheck.TypeConstraint type constraints]], since this lazy val simply
    * delegates to [[Expression.typeConstraint]] by default.
    *
-   * To pass type checking, an [[Expression]] e` must be either strictly-typed or well-typed:
+   * To pass type checking, an [[Expression]] `e` must be either strictly-typed or well-typed:
    *
    *  1. Strictly-typed: `e` is strictly-typed iff
    *

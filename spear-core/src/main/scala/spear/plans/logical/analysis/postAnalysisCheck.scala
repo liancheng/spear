@@ -8,7 +8,7 @@ import spear.plans.logical._
 import spear.plans.logical.patterns.Unresolved
 import spear.utils._
 
-class RejectUnresolvedExpression(val catalog: Catalog) extends AnalysisRule {
+class RejectUnresolvedExpressions(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree.transformExpressionsDown {
     // Tries to collect a "minimum" unresolved expression.
     case Unresolved(e) if e.children forall { _.isResolved } =>
@@ -21,7 +21,7 @@ class RejectUnresolvedExpression(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectUnresolvedPlan(val catalog: Catalog) extends AnalysisRule {
+class RejectUnresolvedPlans(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree.transformDown {
     // Tries to collect a "minimum" unresolved logical plan node.
     case Unresolved(plan) if plan.children forall { _.isResolved } =>
@@ -38,7 +38,7 @@ class RejectUnresolvedPlan(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectTopLevelInternalAttribute(val catalog: Catalog) extends AnalysisRule {
+class RejectTopLevelInternalAttributes(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = {
     val internal = tree.output.collect { case e: NamedExpression if e.namespace.nonEmpty => e }
 
@@ -63,7 +63,7 @@ class RejectTopLevelInternalAttribute(val catalog: Catalog) extends AnalysisRule
   }
 }
 
-class RejectDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule {
+class RejectDistinctAggregateFunctions(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = {
     val distinctAggs = tree.collectDown {
       case node =>
@@ -95,7 +95,7 @@ class RejectDistinctAggregateFunction(val catalog: Catalog) extends AnalysisRule
   }
 }
 
-class RejectOrphanAttributeReference(val catalog: Catalog) extends AnalysisRule {
+class RejectOrphanAttributeRefs(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case plan: LeafLogicalPlan =>
       plan

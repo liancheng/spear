@@ -8,7 +8,7 @@ import spear.plans.logical.LocalRelation
 
 class PostAnalysisCheckSuite extends AnalyzerTest {
   test("post-analysis check - reject unresolved expressions") {
-    val rule = new RejectUnresolvedExpression(catalog)
+    val rule = new RejectUnresolvedExpressions(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation select 'a)
@@ -16,7 +16,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject unresolved plans") {
-    val rule = new RejectUnresolvedPlan(catalog)
+    val rule = new RejectUnresolvedPlans(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation groupBy Nil agg (1 as 'a))
@@ -24,7 +24,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject top-level `InternalAttribute`s") {
-    val rule = new RejectTopLevelInternalAttribute(catalog)
+    val rule = new RejectTopLevelInternalAttributes(catalog)
 
     intercept[ResolutionFailureException] {
       rule(LocalRelation.empty(GroupingKeyAlias('a.int.!).attr))
@@ -32,7 +32,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject distinct aggregate functions") {
-    val rule = new RejectDistinctAggregateFunction(catalog)
+    val rule = new RejectDistinctAggregateFunctions(catalog)
 
     intercept[ResolutionFailureException] {
       rule(relation select distinct(count(a)))
@@ -40,7 +40,7 @@ class PostAnalysisCheckSuite extends AnalyzerTest {
   }
 
   test("post-analysis check - reject orphan attribute references") {
-    val rule = new RejectOrphanAttributeReference(catalog)
+    val rule = new RejectOrphanAttributeRefs(catalog)
 
     intercept[AnalysisException] {
       rule(relation select 'c.int.!)

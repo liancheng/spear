@@ -16,10 +16,15 @@ import spear.utils._
  * separate `Window` operators.
  */
 class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
-  override def transform(tree: LogicalPlan): LogicalPlan =
-    tree collectFirstDown skip map { _ => tree } getOrElse rewrite(tree)
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    // Waits until all aggregations are resolved.
+    case plan: UnresolvedAggregate =>
+      plan
 
-  private def rewrite(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    // Waits until all global aggregations are resolved.
+    case plan @ Resolved(_ Project projectList) if hasAggregateFunction(projectList) =>
+      plan
+
     case Resolved(child Sort order) if hasWindowFunction(order) =>
       val winAliases = collectWindowFunctions(order) map { WindowFunctionAlias(_) }
       val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
@@ -29,14 +34,6 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
       val winAliases = collectWindowFunctions(projectList) map { WindowFunctionAlias(_) }
       val rewrittenProjectList = projectList map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases select rewrittenProjectList
-  }
-
-  private val skip: PartialFunction[LogicalPlan, Unit] = {
-    // Waits until all aggregations are resolved.
-    case _: UnresolvedAggregate =>
-
-    // Waits until all global aggregations are resolved.
-    case Resolved(_ Project projectList) if hasAggregateFunction(projectList) =>
   }
 }
 
@@ -62,20 +59,17 @@ class InlineWindowDefinitions(val catalog: Catalog) extends AnalysisRule {
   }
 }
 
-class RejectUndefinedWindowSpecRef(val catalog: Catalog) extends AnalysisRule {
+class RejectUndefinedWindowSpecRefs(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = {
     tree collectDown {
       case node =>
-        val names = node.expressions flatMap {
+        node.expressions flatMap {
           _ collectDown {
-            case WindowSpecRef(name, _) => name
+            case WindowSpecRef(name, _) =>
+              throw new WindowAnalysisException(
+                s"Window specification references $name is undefined"
+              )
           }
-        }
-
-        if (names.nonEmpty) {
-          throw new WindowAnalysisException(
-            s"Undefined window specification references detected: ${names mkString ", "}"
-          )
         }
     }
 

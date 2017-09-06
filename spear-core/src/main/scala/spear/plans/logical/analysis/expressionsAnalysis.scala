@@ -13,7 +13,7 @@ import spear.plans.logical.patterns.{Resolved, Unresolved}
 /**
  * This rule expands "`*`" appearing in `SELECT`.
  */
-class ExpandStar(val catalog: Catalog) extends AnalysisRule {
+class ExpandStars(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(Resolved(child) Project projectList) =>
       child select (projectList flatMap {
@@ -38,7 +38,7 @@ class ExpandStar(val catalog: Catalog) extends AnalysisRule {
  * @throws spear.exceptions.ResolutionFailureException If no candidate or multiple ambiguous
  *         candidate input attributes can be found.
  */
-class ResolveReference(val catalog: Catalog) extends AnalysisRule {
+class ResolveReferences(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Unresolved(plan) if plan.isDeduplicated =>
       val input = plan.children flatMap { _.output }
@@ -62,7 +62,7 @@ class ResolveReference(val catalog: Catalog) extends AnalysisRule {
  * This rule converts [[spear.expressions.UnresolvedAlias unresolved aliases]] into proper
  * [[spear.expressions.Alias aliases]].
  */
-class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
+class ResolveAliases(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
@@ -76,7 +76,7 @@ class ResolveAlias(val catalog: Catalog) extends AnalysisRule {
  * This rule resolves [[spear.expressions.UnresolvedFunction unresolved functions]] by looking
  * up function names from the [[Catalog]].
  */
-class ResolveFunction(val catalog: Catalog) extends AnalysisRule {
+class ResolveFunctions(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     case node =>
       node transformExpressionsDown {
