@@ -43,23 +43,31 @@ trait Rule[Base <: TreeNode[Base]] extends RuleLike[Base] {
 case class RuleGroup[Base <: TreeNode[Base]](
   name: String,
   convergenceTest: ConvergenceTest,
-  rules: Seq[RuleLike[Base]]
+  rules: Seq[Base => Base]
 ) extends RuleLike[Base] {
+
+  require(rules.nonEmpty)
 
   override def apply(tree: Base): Base = logTransformation(s"phase '$name'", tree) {
     applyUntilConvergent(tree)
   }
 
   @tailrec private def applyUntilConvergent(before: Base): Base = {
-    val after = rules.foldLeft(before) { (tree, rule) => rule(tree) }
+    val after = composedRules(before)
     if (convergenceTest.test(before, after)) after else applyUntilConvergent(after)
   }
+
+  private val composedRules = rules reduce { _ andThen _ }
 }
 
-class Transformer[Base <: TreeNode[Base]](phases: Seq[RuleGroup[Base]]) extends RuleLike[Base] {
+class Transformer[Base <: TreeNode[Base]](rules: Seq[Base => Base]) extends RuleLike[Base] {
+  require(rules.nonEmpty)
+
   def this(first: RuleGroup[Base], rest: RuleGroup[Base]*) = this(first +: rest)
 
-  def apply(before: Base): Base = phases.foldLeft(before) { (tree, phase) => phase(tree) }
+  def apply(tree: Base): Base = composedRules(tree)
+
+  private val composedRules = rules reduce { _ andThen _ }
 }
 
 sealed trait ConvergenceTest {

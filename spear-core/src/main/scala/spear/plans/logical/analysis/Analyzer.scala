@@ -9,7 +9,7 @@ import spear.plans.logical.analysis.AggregationAnalysis.hasAggregateFunction
 import spear.plans.logical.patterns.Resolved
 import spear.trees._
 
-class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(catalog)) {
+class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultRules(catalog)) {
   override def apply(tree: LogicalPlan): LogicalPlan = {
     logDebug(
       s"""Analyzing logical query plan:
@@ -23,7 +23,7 @@ class Analyzer(catalog: Catalog) extends Transformer(Analyzer.defaultPhases(cata
 }
 
 object Analyzer {
-  def defaultPhases(catalog: Catalog): Seq[RuleGroup[LogicalPlan]] = Seq(
+  def defaultRules(catalog: Catalog): Seq[RuleGroup[LogicalPlan]] = Seq(
     RuleGroup("Pre-processing", FixedPoint, Seq(
       new InlineCTERelations(catalog),
       new InlineWindowDefinitions(catalog)
