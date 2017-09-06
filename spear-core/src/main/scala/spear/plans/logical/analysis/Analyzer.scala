@@ -27,10 +27,7 @@ object Analyzer {
     // Desugaring
     RuleGroup(FixedPoint, Seq(
       new InlineCTERelations(catalog),
-      new InlineWindowDefinitions(catalog)
-    )),
-
-    RuleGroup("Pre-processing check", Once, Seq(
+      new InlineWindowDefinitions(catalog),
       new RejectUndefinedWindowSpecRefs(catalog)
     )),
 
@@ -38,7 +35,7 @@ object Analyzer {
       RuleGroup(FixedPoint, Seq(
         RuleGroup(FixedPoint, Seq(
           new ResolveRelations(catalog),
-          new RewriteRenameToProject(catalog),
+          new RenameCTEColumns(catalog),
           new DeduplicateReferences(catalog),
 
           // Expression resolution
@@ -53,7 +50,8 @@ object Analyzer {
       )),
 
       // Rules that help resolving window functions
-      new ExtractWindowFunctions(catalog),
+      new ExtractWindowFunctionsFromSorts(catalog),
+      new ExtractWindowFunctionsFromProjections(catalog),
 
       // Rules that help resolving aggregations
       new RewriteDistinctAggregateFunctions(catalog),
@@ -122,7 +120,7 @@ class ResolveRelations(val catalog: Catalog) extends AnalysisRule {
  * This rule rewrites [[Rename]] operators into [[Project projections]] to help resolving CTE
  * queries.
  */
-class RewriteRenameToProject(val catalog: Catalog) extends AnalysisRule {
+class RenameCTEColumns(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformUp {
     case Resolved(child) Rename aliases Subquery name if child.output.length >= aliases.length =>
       val aliased = (child.output, aliases).zipped map { _ as _ }
@@ -224,9 +222,8 @@ class ResolveOrderByClauses(val catalog: Catalog) extends AnalysisRule {
         .map { case (e, index) => SortOrderAlias(e, s"order$index") }
 
       val rewrite = sortOrderAliases.map { e =>
-        // NOTE: Here we map `e.child` to `e.name` instead of `e.attr` because `e` may not be
-        // resolved yet and cannot derive a proper `AttributeRef` due to the missing data type
-        // information.
+        // Here we map `e.child` to `e.name` instead of `e.attr` because `e` may not be resolved yet
+        // and cannot derive a proper `AttributeRef` due to the missing data type information.
         e.child -> (e.name: Expression)
       }.toMap
 

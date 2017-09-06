@@ -167,7 +167,7 @@ case class Project(child: LogicalPlan, projectList: Seq[NamedExpression]) extend
  * @param aliases New column names to apply. Its length should be less than or equal to the number
  *        of output columns of `child`.
  * @see [[With]]
- * @see [[spear.plans.logical.analysis.RewriteRenameToProject RewriteRenamesToProjects]]
+ * @see [[spear.plans.logical.analysis.RenameCTEColumns]]
  */
 case class Rename(child: LogicalPlan, aliases: Seq[Name])
   extends UnaryLogicalPlan with UnresolvedLogicalPlan

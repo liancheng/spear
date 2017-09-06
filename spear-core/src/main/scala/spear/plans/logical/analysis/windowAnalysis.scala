@@ -12,10 +12,10 @@ import spear.plans.logical.patterns.Resolved
 import spear.utils._
 
 /**
- * This rule extracts window functions from `SELECT` and `ORDER BY` clauses and moves them into
- * separate `Window` operators.
+ * This rule extracts window functions from `ORDER BY` clauses and moves them into separate `Window`
+ * operators.
  */
-class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
+class ExtractWindowFunctionsFromSorts(val catalog: Catalog) extends AnalysisRule {
   override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
     // Waits until all aggregations are resolved.
     case plan: UnresolvedAggregate =>
@@ -29,6 +29,22 @@ class ExtractWindowFunctions(val catalog: Catalog) extends AnalysisRule {
       val winAliases = collectWindowFunctions(order) map { WindowFunctionAlias(_) }
       val rewrittenOrder = order map { _ transformDown buildRewriter(winAliases) }
       child windows winAliases orderBy rewrittenOrder select child.output
+  }
+}
+
+/**
+ * This rule extracts window functions from `SELECT` clauses and moves them into separate `Window`
+ * operators.
+ */
+class ExtractWindowFunctionsFromProjections(val catalog: Catalog) extends AnalysisRule {
+  override def transform(tree: LogicalPlan): LogicalPlan = tree transformDown {
+    // Waits until all aggregations are resolved.
+    case plan: UnresolvedAggregate =>
+      plan
+
+    // Waits until all global aggregations are resolved.
+    case plan @ Resolved(_ Project projectList) if hasAggregateFunction(projectList) =>
+      plan
 
     case Resolved(child Project projectList) if hasWindowFunction(projectList) =>
       val winAliases = collectWindowFunctions(projectList) map { WindowFunctionAlias(_) }
