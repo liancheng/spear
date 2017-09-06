@@ -5,22 +5,24 @@ import scala.annotation.tailrec
 import spear.utils.{sideBySide, Logging}
 
 trait RuleLike[Base <: TreeNode[Base]] extends (Base => Base) with Logging {
-  protected def logTransformation(transformation: String, before: Base)(after: => Base): Base = {
+  protected def logTransformation(action: String, before: Base)(tree: => Base): Base = {
+    val after = tree
+
     if (!before.same(after)) {
       logTrace {
         val diff = sideBySide(
-          s"""Before $transformation
+          s"""Before $action
              |${before.prettyTree}
              |""".stripMargin,
 
-          s"""After $transformation
+          s"""After $action
              |${after.prettyTree}
              |""".stripMargin,
 
           withHeader = true
         )
 
-        s"""Applied $transformation
+        s"""Applied $action
            |$diff
            |""".stripMargin
       }
