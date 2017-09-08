@@ -1,66 +1,64 @@
-import Dependencies._
+lazy val modules: Seq[ProjectReference] = Seq(
+  `spear-core`,
+  `spear-docs`,
+  `spear-examples`,
+  `spear-local`,
+  `spear-repl`,
+  `spear-trees`,
+  `spear-utils`
+)
 
-lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
+lazy val spear = {
+  lazy val repl = taskKey[Unit]("Runs the Spear REPL.")
 
-lazy val spear = project
-  .in(file("."))
-  .aggregate(
-    `spear-core`,
-    `spear-docs`,
-    `spear-examples`,
-    `spear-local`,
-    `spear-repl`,
-    `spear-trees`,
-    `spear-utils`
-  )
-  .settings(
+  Project(id = "spear", base = file("."))
+    .aggregate(modules: _*)
     // Creates a SBT task alias "repl" that starts the REPL within an SBT session.
-    repl := (run in `spear-repl` in Compile toTask "").value
-  )
+    .settings(repl := (run in `spear-repl` in Compile toTask "").value)
+}
 
-lazy val `spear-utils` = project
-  .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= logging ++ scala,
-    libraryDependencies ++= Dependencies.testing
-  )
+def spearModule(name: String): Project =
+  Project(id = name, base = file(name))
+    .enablePlugins(commonPlugins: _*)
+    .settings(commonSettings)
 
-lazy val `spear-trees` = project
+lazy val `spear-utils` = spearModule("spear-utils")
+  .settings(libraryDependencies ++= Dependencies.logging)
+  .settings(libraryDependencies ++= Dependencies.scala)
+  .settings(libraryDependencies ++= Dependencies.testing)
+
+lazy val `spear-trees` = spearModule("spear-trees")
   .dependsOn(`spear-utils` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
 
-lazy val `spear-core` = project
+lazy val `spear-core` = spearModule("spear-core")
   .dependsOn(`spear-trees` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
-  .settings(libraryDependencies ++= fastparse ++ typesafeConfig)
+  .settings(libraryDependencies ++= Dependencies.fastparse)
+  .settings(libraryDependencies ++= Dependencies.typesafeConfig)
 
-lazy val `spear-local` = project
+lazy val `spear-local` = spearModule("spear-local")
   .dependsOn(`spear-core` % "compile->compile;test->test")
-  .enablePlugins(commonPlugins: _*)
-  .settings(commonSettings)
 
-lazy val `spear-repl` = project
+lazy val `spear-repl` = spearModule("spear-repl")
   .dependsOn(`spear-core` % "compile->compile;test->test")
   .dependsOn(`spear-local` % "compile->compile;test->test;compile->test")
-  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
-  .settings(libraryDependencies ++= ammonite ++ scopt)
+  .enablePlugins(JavaAppPackaging)
+  .settings(runtimeConfSettings)
+  .settings(javaPackagingSettings)
+  .settings(libraryDependencies ++= Dependencies.ammonite)
+  .settings(libraryDependencies ++= Dependencies.scopt)
 
-lazy val `spear-examples` = project
+lazy val `spear-examples` = spearModule("spear-examples")
   .dependsOn(`spear-core`, `spear-local`)
-  .enablePlugins(commonPlugins :+ JavaAppPackaging: _*)
-  .settings(commonSettings ++ runtimeConfSettings ++ javaPackagingSettings)
+  .enablePlugins(JavaAppPackaging)
+  .settings(runtimeConfSettings)
+  .settings(javaPackagingSettings)
 
-lazy val `spear-docs` = project
+lazy val `spear-docs` = spearModule("spear-docs")
   .dependsOn(`spear-core`, `spear-local`)
-  .enablePlugins(commonPlugins :+ SphinxPlugin: _*)
-  .settings(commonSettings ++ runtimeConfSettings)
+  .enablePlugins(SphinxPlugin)
 
 lazy val javaPackagingSettings = {
-  import NativePackagerHelper._
+  import NativePackagerHelper.directory
 
   Seq(
     // Adds the "conf" directory into the package.
@@ -78,10 +76,10 @@ lazy val commonPlugins = Seq(
 )
 
 lazy val commonSettings = {
-  val basicSettings = Seq(
+  val buildSettings = Seq(
     organization := "spear",
     version := "0.1.0-SNAPSHOT",
-    scalaVersion := Versions.scala,
+    scalaVersion := Dependencies.Versions.scala,
     scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
     scalacOptions ++= Seq("-Ywarn-unused-import", "-Xlint"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-g", "-Xlint:-options")
@@ -100,14 +98,14 @@ lazy val commonSettings = {
     import net.virtualvoid.sbt.graph.Plugin.graphSettings
 
     graphSettings ++ Seq(
-      // Does not copy managed dependencies into `lib_managed`
+      // Avoids copying managed dependencies into `lib_managed`
       retrieveManaged := false,
       // Enables extra resolvers
-      resolvers ++= extraResolvers,
+      resolvers ++= Dependencies.extraResolvers,
       // Disables auto conflict resolution
       conflictManager := ConflictManager.strict,
       // Explicitly overrides all conflicting transitive dependencies
-      dependencyOverrides ++= overrides
+      dependencyOverrides ++= Dependencies.overrides
     )
   }
 
@@ -129,7 +127,7 @@ lazy val commonSettings = {
   )
 
   Seq(
-    basicSettings,
+    buildSettings,
     commonTestSettings,
     commonDependencySettings,
     scalariformPluginSettings,
@@ -138,5 +136,5 @@ lazy val commonSettings = {
 }
 
 lazy val runtimeConfSettings = Seq(
-  unmanagedClasspath in Runtime += baseDirectory(_.getParentFile / "conf").value
+  unmanagedClasspath in Runtime += baseDirectory { _.getParentFile / "conf" }.value
 )
