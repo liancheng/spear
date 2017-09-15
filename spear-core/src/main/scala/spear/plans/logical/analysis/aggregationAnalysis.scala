@@ -96,7 +96,10 @@ class UnifyFilteredSortedAggregate(val catalog: Catalog) extends AnalysisRule {
       // Unaliases all aliases that are introduced by the `UnresolvedAggregate` underneath, and
       // referenced by some sort order expression(s).
       val unaliased = order
+        // ORDER BY is allowed to reference columns introduced in the project list. Tries to resolve
+        // all such references here.
         .map { _ tryResolveUsing agg.projectList }
+        .map { _ unaliasUsing agg.projectList }
         .map { _ unaliasUsing (agg.projectList, SortOrderNamespace) }
         .map { case e: SortOrder => e }
 

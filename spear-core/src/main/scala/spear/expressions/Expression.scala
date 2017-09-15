@@ -228,10 +228,17 @@ object Expression {
         }
     }
 
-    def unaliasUsing(projectList: Seq[NamedExpression], namespaces: String*): Expression = {
+    def unaliasUsing(projectList: Seq[NamedExpression]): Expression = unaliasUsing(projectList, "")
+
+    def unaliasUsing(
+      projectList: Seq[NamedExpression],
+      firstNamespace: String,
+      otherNamespaces: String*
+    ): Expression = {
+      val namespaces = firstNamespace +: otherNamespaces
       val rewrite = projectList.collect {
         case a: InternalAlias if namespaces contains a.namespace => a.expressionID -> a.child
-        case a: Alias => a.expressionID -> a.child
+        case a: Alias if namespaces contains a.namespace         => a.expressionID -> a.child
       }.toMap
 
       expression transformUp {
