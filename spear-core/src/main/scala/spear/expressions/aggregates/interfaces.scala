@@ -6,7 +6,7 @@ import spear._
 import spear.exceptions.ContractBrokenException
 import spear.expressions._
 import spear.expressions.NamedExpression.newExpressionID
-import spear.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
+import spear.expressions.aggregates.FoldLeft.{AccumulateFunction, MergeFunction}
 import spear.expressions.functions._
 import spear.types._
 
@@ -32,7 +32,7 @@ trait AggregateFunction extends Expression with UnevaluableExpression {
    * Resolved expressions used to update aggregation state fields, must not contain any
    * [[BoundRef]]s.
    */
-  val updateExpressions: Seq[Expression]
+  val accumulateExpressions: Seq[Expression]
 
   /**
    * Resolved expressions used to merge two aggregation state fields, must not contain any
@@ -69,7 +69,7 @@ case class DistinctAggregateFunction(child: AggregateFunction)
 
   override lazy val initialValues: Seq[Expression] = bugReport()
 
-  override lazy val updateExpressions: Seq[Expression] = bugReport()
+  override lazy val accumulateExpressions: Seq[Expression] = bugReport()
 
   override lazy val mergeExpressions: Seq[Expression] = bugReport()
 
@@ -90,7 +90,7 @@ abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunc
     Literal(initialState, stateType)
   )
 
-  override final lazy val updateExpressions: Seq[Expression] = Seq(
+  override final lazy val accumulateExpressions: Seq[Expression] = Seq(
     // TODO Eliminates the `struct` call
     // This scheme can be inefficient and hard to optimize in the future.
     self.invoke("update", stateType).withArgs(state, struct(children))
@@ -128,7 +128,7 @@ abstract class ImperativeAggregateFunction[T: WeakTypeTag] extends AggregateFunc
 trait FoldLeft extends UnaryExpression with AggregateFunction {
   def zeroValue: Expression
 
-  def updateFunction: UpdateFunction
+  def accumulateFunction: AccumulateFunction
 
   def mergeFunction: MergeFunction
 
@@ -140,8 +140,8 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 
   override lazy val initialValues: Seq[Expression] = Seq(zeroValue)
 
-  override lazy val updateExpressions: Seq[Expression] = Seq(
-    coalesce(updateFunction(value, child), value, child)
+  override lazy val accumulateExpressions: Seq[Expression] = Seq(
+    coalesce(accumulateFunction(value, child), value, child)
   )
 
   override lazy val mergeExpressions: Seq[Expression] = Seq(
@@ -154,7 +154,7 @@ trait FoldLeft extends UnaryExpression with AggregateFunction {
 }
 
 object FoldLeft {
-  type UpdateFunction = (Expression, Expression) => Expression
+  type AccumulateFunction = (Expression, Expression) => Expression
 
   type MergeFunction = (Expression, Expression) => Expression
 }
@@ -162,5 +162,5 @@ object FoldLeft {
 trait NullableReduceLeft extends FoldLeft {
   override lazy val zeroValue: Expression = Literal(null, child.dataType)
 
-  override def mergeFunction: MergeFunction = updateFunction
+  override def mergeFunction: MergeFunction = accumulateFunction
 }

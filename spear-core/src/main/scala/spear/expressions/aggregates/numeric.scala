@@ -1,7 +1,7 @@
 package spear.expressions.aggregates
 
 import spear.expressions._
-import spear.expressions.aggregates.FoldLeft.UpdateFunction
+import spear.expressions.aggregates.FoldLeft.AccumulateFunction
 import spear.expressions.functions._
 import spear.expressions.typecheck.TypeConstraint
 import spear.types.{DataType, DoubleType, NumericType}
@@ -15,7 +15,7 @@ case class Average(child: Expression) extends UnaryExpression with AggregateFunc
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType), 0L)
 
-  override lazy val updateExpressions: Seq[Expression] = Seq(
+  override lazy val accumulateExpressions: Seq[Expression] = Seq(
     coalesce((child cast dataType) + sum, child cast dataType, sum),
     if (child.isNullable) If(child.isNull, count, count + 1L) else count + 1L
   )
@@ -36,7 +36,7 @@ case class Average(child: Expression) extends UnaryExpression with AggregateFunc
 }
 
 case class Sum(child: Expression) extends NullableReduceLeft {
-  override val updateFunction: UpdateFunction = Plus
+  override val accumulateFunction: AccumulateFunction = Plus
 
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 }
@@ -44,7 +44,7 @@ case class Sum(child: Expression) extends NullableReduceLeft {
 case class Product_(child: Expression) extends NullableReduceLeft {
   override def nodeName: String = "product"
 
-  override val updateFunction: UpdateFunction = Multiply
+  override val accumulateFunction: AccumulateFunction = Multiply
 
   override protected lazy val typeConstraint: TypeConstraint = children sameSubtypeOf NumericType
 }

@@ -4,7 +4,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import spear.Row
 import spear.expressions._
-import spear.expressions.aggregates.FoldLeft.{MergeFunction, UpdateFunction}
+import spear.expressions.aggregates.FoldLeft.{AccumulateFunction, MergeFunction}
 import spear.expressions.functions._
 import spear.expressions.typecheck.TypeConstraint
 import spear.types.{ArrayType, BooleanType, DataType, OrderedType}
@@ -12,7 +12,7 @@ import spear.types.{ArrayType, BooleanType, DataType, OrderedType}
 case class Count(child: Expression) extends FoldLeft {
   override lazy val zeroValue: Expression = 0L
 
-  override lazy val updateFunction: UpdateFunction = if (child.isNullable) {
+  override lazy val accumulateFunction: AccumulateFunction = if (child.isNullable) {
     (count: Expression, input: Expression) => count + If(input.isNull, 0L, 1L)
   } else {
     (count: Expression, _) => count + 1L
@@ -24,13 +24,13 @@ case class Count(child: Expression) extends FoldLeft {
 }
 
 case class Max(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {
-  override val updateFunction: UpdateFunction = Greatest(_, _)
+  override val accumulateFunction: AccumulateFunction = Greatest(_, _)
 
   override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
 
 case class Min(child: Expression) extends NullableReduceLeft with DuplicateInsensitive {
-  override val updateFunction: UpdateFunction = Least(_, _)
+  override val accumulateFunction: AccumulateFunction = Least(_, _)
 
   override protected def typeConstraint: TypeConstraint = children sameSubtypeOf OrderedType
 }
@@ -60,7 +60,7 @@ case class First(child: Expression, ignoresNull: Expression) extends FirstLike(c
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType), false)
 
-  override lazy val updateExpressions: Seq[Expression] =
+  override lazy val accumulateExpressions: Seq[Expression] =
     if (child.isNullable && ignoresNullBool) {
       Seq(
         If(!valueSet, coalesce(child, first), first),
@@ -94,7 +94,7 @@ case class Last(child: Expression, ignoresNull: Expression) extends FirstLike(ch
 
   override lazy val initialValues: Seq[Expression] = Seq(Literal(null, child.dataType))
 
-  override lazy val updateExpressions: Seq[Expression] = Seq(
+  override lazy val accumulateExpressions: Seq[Expression] = Seq(
     if (child.isNullable && ignoresNullBool) coalesce(child, last) else child
   )
 

@@ -32,7 +32,7 @@ case class HashAggregate(
     child.iterator foreach { input =>
       val groupingRow = Row.fromSeq(boundKeys map { _ evaluate input })
       val stateBuffer = hashMap.getOrElseUpdate(groupingRow, aggregator.newStateBuffer())
-      aggregator.update(stateBuffer, input)
+      aggregator.accumulate(stateBuffer, input)
     }
 
     val resultBuffer = aggregator.newResultBuffer()
@@ -57,8 +57,8 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
 
   def newResultBuffer(): MutableRow = new BasicMutableRow(aggs.length)
 
-  def update(stateBuffer: MutableRow, input: Row): Unit =
-    updateProjection target stateBuffer apply join(stateBuffer, input)
+  def accumulate(stateBuffer: MutableRow, input: Row): Unit =
+    accumulateProjection target stateBuffer apply join(stateBuffer, input)
 
   def result(resultBuffer: MutableRow, aggBuffer: Row): Unit =
     resultProjection target resultBuffer apply aggBuffer
@@ -123,8 +123,8 @@ class Aggregator(aggs: Seq[AggregateFunction]) {
     aggs flatMap { _.initialValues }
   )
 
-  private val updateProjection: MutableProjection = MutableProjection(
-    aggs flatMap { _.updateExpressions } map bind
+  private val accumulateProjection: MutableProjection = MutableProjection(
+    aggs flatMap { _.accumulateExpressions } map bind
   )
 
   private val resultProjection: MutableProjection = MutableProjection(
