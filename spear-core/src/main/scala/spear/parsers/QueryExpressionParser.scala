@@ -268,11 +268,7 @@ object QuerySpecificationParser extends LoggingParser {
     opaque "where-clause"
   )
 
-  private val havingClause: P[LogicalPlan => LogicalPlan] = (
-    HAVING ~ searchCondition
-    map { condition => (_: LogicalPlan) filter condition }
-    opaque "having-clause"
-  )
+  private val havingClause: P[Expression] = HAVING ~ searchCondition opaque "having-clause"
 
   @ExtendedSQLSyntax
   private val limitClause: P[LogicalPlan => LogicalPlan] = (
@@ -294,13 +290,14 @@ object QuerySpecificationParser extends LoggingParser {
     ~ orderByClause.?.map { _.orIdentity }
     ~ limitClause.?.map { _.orIdentity } map {
       case (distinct, output, from, where, maybeGroupBy, maybeHaving, window, orderBy, limit) =>
-        // Parses queries containing GROUP BY, HAVING, or both as aggregations. If a HAVING clause
-        // exists without a GROUP BY clause, the grouping key list should be empty (i.e., global
-        // aggregation).
+        // Queries containing GROUP BY, HAVING, or both are parsed as aggregations. A HAVING without
+        // a GROUP BY implies an empty grouping key list (i.e., global aggregation).
         val maybeGroupingKeys = maybeGroupBy orElse maybeHaving.map { _ => Nil }
 
         val select = maybeGroupingKeys map { keys =>
-          (_: LogicalPlan) groupBy keys agg output
+          // Constructs a single `UnresolvedAggregate` operator doing both aggregation and optional
+          // HAVING filtering.
+          (_: LogicalPlan) groupBy keys having maybeHaving.toSeq agg output
         } getOrElse {
           // Queries with neither HAVING nor GROUP BY are always parsed as simple projections.
           // However, some of them may actually be global aggregations due to aggregate functions
@@ -316,12 +313,9 @@ object QuerySpecificationParser extends LoggingParser {
           (_: LogicalPlan) select output
         }
 
-        val having = maybeHaving.orIdentity
-
         limit
           .compose(orderBy)
           .compose(window)
-          .compose(having)
           .compose(distinct)
           .compose(select)
           .compose(where)

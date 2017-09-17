@@ -128,7 +128,7 @@ class DirectlyExecutableStatementParserSuite extends LoggingFunSuite with TestUt
 
   testQueryParsing(
     "SELECT count(a) FROM t0 GROUP BY b HAVING count(b) > 0",
-    table('t0) groupBy 'b agg 'count('a) filter 'count('b) > 0
+    table('t0) groupBy 'b having 'count('b) > 0 agg 'count('a)
   )
 
   testQueryParsing(
@@ -148,12 +148,12 @@ class DirectlyExecutableStatementParserSuite extends LoggingFunSuite with TestUt
 
   testQueryParsing(
     "SELECT 1 FROM t0 HAVING count(1) > 1",
-    table('t0) groupBy Nil agg 1 filter 'count(1) > 1
+    table('t0) groupBy Nil having 'count(1) > 1 agg 1
   )
 
   testQueryParsing(
     "SELECT 1 FROM t0 HAVING count(a) > 1",
-    table('t0) groupBy Nil agg 1 filter 'count('a) > 1
+    table('t0) groupBy Nil having 'count('a) > 1 agg 1
   )
 
   testQueryParsing(

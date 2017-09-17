@@ -33,8 +33,8 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
 
       table('t)
         groupBy Nil
-        agg (1 as 'out)
-        filter 'count('a) > 0,
+        having 'count('a) > 0
+        agg (1 as 'out),
 
       relation
         aggregate (Nil, `@A: count(a)` :: Nil)
@@ -86,7 +86,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     checkSQLAnalysis(
       "SELECT 1 AS out FROM t HAVING max(a) > 0 ORDER BY count(a)",
 
-      table('t) groupBy Nil agg (1 as 'out) filter 'max('a) > 0 orderBy 'count('a),
+      table('t) groupBy Nil having 'max('a) > 0 agg (1 as 'out) orderBy 'count('a),
 
       relation
         aggregate (Nil, Seq(`@A: max(a)`, `@A: count(a)`))
@@ -122,7 +122,7 @@ class AggregationAnalysisSuite extends AnalyzerTest { self =>
     checkSQLAnalysis(
       "SELECT a FROM t GROUP BY a HAVING a > 1 ORDER BY count(b) ASC",
 
-      table('t) groupBy 'a agg 'a filter 'a > 1 orderBy 'count('b).asc,
+      table('t) groupBy 'a having 'a > 1 agg 'a orderBy 'count('b).asc,
 
       relation
         aggregate (`@G: a` :: Nil, `@A: count(b)` :: Nil)

@@ -480,9 +480,9 @@ object LogicalPlan {
 
     def except(that: LogicalPlan): Except = Except(plan, that)
 
-    def groupBy(keys: Seq[Expression]): GroupedPlan = GroupedPlan(plan, keys)
+    def groupBy(keys: Seq[Expression]): Grouped = Grouped(plan, keys, Nil, Nil)
 
-    def groupBy(first: Expression, rest: Expression*): GroupedPlan = groupBy(first +: rest)
+    def groupBy(first: Expression, rest: Expression*): Grouped = groupBy(first +: rest)
 
     def aggregate(
       keys: Seq[GroupingKeyAlias],
@@ -499,9 +499,26 @@ object LogicalPlan {
 
     def windows(functions: Seq[WindowFunctionAlias]): LogicalPlan = stackWindows(plan, functions)
 
-    case class GroupedPlan(child: LogicalPlan, keys: Seq[Expression]) {
-      def agg(projectList: Seq[Expression]): UnresolvedAggregate =
-        UnresolvedAggregate(child, keys, projectList map NamedExpression.apply, Nil, Nil)
+    case class Grouped(
+      child: LogicalPlan,
+      keys: Seq[Expression],
+      conditions: Seq[Expression],
+      order: Seq[SortOrder]
+    ) {
+
+      def having(conditions: Seq[Expression]): Grouped = copy(
+        conditions = this.conditions ++ conditions
+      )
+
+      def having(first: Expression, rest: Expression*): Grouped = having(first +: rest)
+
+      def orderBy(order: Seq[Expression]): Grouped = copy(order = order map SortOrder.apply)
+
+      def orderBy(first: Expression, rest: Expression*): Grouped = orderBy(first +: rest)
+
+      def agg(projectList: Seq[Expression]): UnresolvedAggregate = UnresolvedAggregate(
+        child, keys, projectList map NamedExpression.apply, conditions, order
+      )
 
       def agg(first: Expression, rest: Expression*): UnresolvedAggregate = agg(first +: rest)
     }
