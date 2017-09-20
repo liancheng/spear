@@ -11,33 +11,33 @@ object DataTypeParser extends LoggingParser {
   import WhitespaceApi._
 
   @ExtendedSQLSyntax
-  private val extendedNumericType: P[DataType] = TINYINT ==> ByteType opaque "extended-type"
+  private val extendedNumericType: P[DataType] = TINYINT ~> ByteType opaque "extended-type"
 
   private val exactNumericType: P[DataType] = (
-    (BIGINT ==> LongType)
-    | (INT ==> IntType)
-    | (INTEGER ==> IntType)
-    | (SMALLINT ==> ShortType)
+    BIGINT ~> LongType
+    | INT ~> IntType
+    | INTEGER ~> IntType
+    | SMALLINT ~> ShortType
     | extendedNumericType
     opaque "exact-numeric-type"
   )
 
   private val approximateNumericType: P[DataType] = (
-    (FLOAT ==> FloatType)
-    | (REAL ==> DoubleType)
-    | (DOUBLE ==> DoubleType)
+    FLOAT ~> FloatType
+    | REAL ~> DoubleType
+    | DOUBLE ~> DoubleType
     opaque "approximate-numeric-type"
   )
 
   private val numericType: P[DataType] =
     exactNumericType | approximateNumericType opaque "numeric-type"
 
-  private val booleanType: P[DataType] = BOOLEAN ==> BooleanType opaque "boolean-type"
+  private val booleanType: P[DataType] = BOOLEAN ~> BooleanType opaque "boolean-type"
 
-  private val datetimeType: P[DataType] = DATE ==> DateType opaque "datetime-type"
+  private val datetimeType: P[DataType] = DATE ~> DateType opaque "datetime-type"
 
   @ExtendedSQLSyntax
-  private val stringType: P[DataType] = STRING ==> StringType opaque "string-type"
+  private val stringType: P[DataType] = STRING ~> StringType opaque "string-type"
 
   private val characterStringType: P[DataType] = stringType opaque "character-string-type"
 

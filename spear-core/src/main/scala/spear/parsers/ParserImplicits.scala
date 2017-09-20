@@ -24,5 +24,5 @@ trait ParserImplicits[+T] {
   }
 
   /** Overwrites the original semantics value with a new `value`. */
-  def ==>[U](value: => U): P[U] = self map { _ => value }
+  def ~>[U](value: => U): P[U] = self map { _ => value }
 }

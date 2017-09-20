@@ -45,7 +45,7 @@ object StringParser extends LoggingParser {
 object NumericParser extends LoggingParser {
   import WhitespaceApi._
 
-  val sign: P[Int] = ("+" ==> 1) | ("-" ==> -1) opaque "sign"
+  val sign: P[Int] = "+" ~> 1 | "-" ~> -1 opaque "sign"
 
   private val digit: P0 = CharIn('0' to '9') opaque "digit"
 
@@ -102,7 +102,7 @@ object LiteralParser extends LoggingParser {
   import WhitespaceApi._
 
   val booleanLiteral: P[Literal] =
-    (TRUE ==> True) | (FALSE ==> False) opaque "boolean-literal"
+    TRUE ~> True | FALSE ~> False opaque "boolean-literal"
 
   private val generalLiteral: P[Literal] =
     characterStringLiteral | unicodeCharacterStringLiteral | booleanLiteral opaque "general-literal"
@@ -129,7 +129,7 @@ object ValueExpressionPrimaryParser extends LoggingParser {
     "(" ~ P(valueExpression) ~ ")" opaque "parenthesized-value-expression-primary"
 
   private val functionArgs: P[Seq[Expression]] =
-    (P("*") ==> Seq(*)) | P(valueExpression).rep(sep = ",") opaque "function-args"
+    P("*") ~> Seq(*) | P(valueExpression).rep(sep = ",") opaque "function-args"
 
   val simpleFunction: P[UnresolvedFunction] = (
     functionName ~ "(" ~ DISTINCT.!.? ~ functionArgs ~ ")"
@@ -315,18 +315,18 @@ object NumericValueExpressionParser extends LoggingParser {
     } opaque "base"
 
   @ExtendedSQLSyntax
-  private val factor: P[Expression] = base fold ("^" ==> Power) opaque "factor"
+  private val factor: P[Expression] = base fold "^" ~> Power opaque "factor"
 
   private val term: P[Expression] = {
     @ExtendedSQLSyntax
-    val remainder = "%" ==> Remainder
-    val operator = ("*" ==> Multiply) | ("/" ==> Divide) | remainder
+    val remainder = "%" ~> Remainder
+    val operator = "*" ~> Multiply | "/" ~> Divide | remainder
 
     factor fold operator opaque "term"
   }
 
   val numericValueExpression: P[Expression] = {
-    val operator = ("+" ==> Plus) | ("-" ==> Minus)
+    val operator = "+" ~> Plus | "-" ~> Minus
     term fold operator opaque "numeric-value-expression"
   }
 }
@@ -339,7 +339,7 @@ object StringValueExpressionParser extends LoggingParser {
   private val characterPrimary: P[Expression] = numericValueExpression opaque "character-primary"
 
   private val concatenation: P[Expression] = {
-    val operator = "||" ==> { concat(_: Expression, _: Expression) }
+    val operator = "||" ~> { concat(_: Expression, _: Expression) }
     characterPrimary fold operator opaque "concatenation"
   }
 
@@ -382,10 +382,10 @@ object BooleanValueExpressionParser extends LoggingParser {
     (NOT ~ booleanTest map Not) | booleanTest opaque "boolean-factor"
 
   private val booleanTerm: P[Expression] =
-    booleanFactor fold (AND ==> And) opaque "boolean-term"
+    booleanFactor fold AND ~> And opaque "boolean-term"
 
   lazy val booleanValueExpression: P[Expression] =
-    booleanTerm fold (OR ==> Or) opaque "boolean-value-expression"
+    booleanTerm fold OR ~> Or opaque "boolean-value-expression"
 }
 
 // SQL06 section 7.1
@@ -418,12 +418,12 @@ object PredicateParser extends LoggingParser {
   import WhitespaceApi._
 
   private val compOp: P[(Expression, Expression) => Expression] = (
-    ("=" ==> Eq)
-    | ("<>" ==> NotEq)
-    | ("<=" ==> LtEq)
-    | (">=" ==> GtEq)
-    | ("<" ==> Lt)
-    | (">" ==> Gt)
+    "=" ~> Eq
+    | "<>" ~> NotEq
+    | "<=" ~> LtEq
+    | ">=" ~> GtEq
+    | "<" ~> Lt
+    | ">" ~> Gt
     opaque "comp-op"
   )
 
@@ -468,8 +468,8 @@ object AggregateFunctionParser extends LoggingParser {
   import WhitespaceApi._
 
   val setQuantifier: P[LogicalPlan => LogicalPlan] = (
-    (ALL ==> identity[LogicalPlan] _)
-    | (DISTINCT ==> { (_: LogicalPlan).distinct })
+    ALL ~> identity[LogicalPlan] _
+    | DISTINCT ~> { (_: LogicalPlan).distinct }
     opaque "setQuantifier"
   )
 }
