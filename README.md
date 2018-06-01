@@ -12,7 +12,7 @@
 
 This project is a sandbox and playground of mine for experimenting ideas and potential improvements to Spark SQL. It consists of:
 
-- A parser that parsed a small SQL dialect into unrsolved logical plans
+- A parser that parses a small SQL dialect into unresolved logical plans
 - A semantic analyzer that resolves unresolved logical plans into resolved ones
 - A query optimizer that optimizes resolved query plans into equivalent but more performant ones
 - A query planner that turns (optimized) logical plans into executable physical plans
@@ -91,11 +91,11 @@ Equivalent sample query using SQL:
 
 @ context.sql(
     """SELECT * FROM (
-	  |  SELECT id AS key, CAST(RAND(42) * 100 AS INT) AS value FROM t
-	  |) s
-	  |WHERE value % 2 = 0
-	  |ORDER BY value DESC
-	"""
+      |  SELECT id AS key, CAST(RAND(42) * 100 AS INT) AS value FROM t
+      |) s
+      |WHERE value % 2 = 0
+      |ORDER BY value DESC
+      |""".stripMargin
   ).show()
 ```
 
