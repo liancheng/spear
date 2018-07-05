@@ -2,7 +2,7 @@ package spear.parsers
 
 import java.lang.Character._
 
-import fastparse.all._
+import fastparse.all.{AnyChar, CharIn, CharPred, LiteralStr, P, P0}
 
 import spear.Name
 
@@ -10,7 +10,7 @@ import spear.Name
 object IdentifierParser {
   import KeywordParser._
   import SeparatorParser.whitespace
-  import WhitespaceApi._
+  import WhitespaceApi.parserApi
 
   private val identifierStart: P0 = {
     val categories = Set(
@@ -51,7 +51,7 @@ object IdentifierParser {
     identifierBody.! map Name.caseInsensitive opaque "regular-identifier"
 
   private val delimitedIdentifierPart: P[Char] =
-    ("\"\"" | (!"\"" ~~ AnyChar)).char opaque "delimiter-identifier-part"
+    ("\"\"" | (!"\"" ~~ AnyChar)).!.map { _.head } opaque "delimiter-identifier-part"
 
   private val delimitedIdentifierBody: P[String] =
     delimitedIdentifierPart.repX map { _.mkString } opaque "delimited-identifier-body"
@@ -72,7 +72,7 @@ object IdentifierParser {
     !(hexit | "+" | "'" | "\"" | whitespace) ~~ AnyChar opaque "unicode-escape-character"
 
   val unicodeEscapeSpecifier: P[Char] = (
-    (UESCAPE ~ ("'" ~~ unicodeEscapeCharacter.char ~~ "'")).?
+    (UESCAPE ~ ("'" ~~ unicodeEscapeCharacter.!.map { _.head } ~~ "'")).?
     map { _ getOrElse '\\' }
     opaque "unicode-escape-specifier"
   )
@@ -84,8 +84,9 @@ object IdentifierParser {
 
     val unicodeEscapeCharacter: P0 = uescape.toString opaque "unicode-escape-character"
 
-    val unicodeCharacterEscapeValue: P[Char] =
-      unicodeEscapeCharacter.repX(min = 2, max = 2).char opaque "unicode-character-escape-value"
+    val unicodeCharacterEscapeValue: P[Char] = P(
+      unicodeEscapeCharacter.repX(min = 2, max = 2).!.map { _.head }
+    )
 
     val unicode6DigitEscapeValue: P[Char] =
       unicodeEscapeCharacter ~~ "+".~/ ~~ hex(6) opaque "unicode-6-digit-escape-value"

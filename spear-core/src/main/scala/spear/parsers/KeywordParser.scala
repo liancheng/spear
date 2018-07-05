@@ -9,7 +9,7 @@ object KeywordParser {
   private val reservedWords: mutable.ArrayBuffer[P0] = mutable.ArrayBuffer.empty[P0]
 
   private def mkKeyword(literal: String): P0 = {
-    val parser = IgnoreCase(literal) opaque literal.toUpperCase
+    val parser = P(IgnoreCase(literal)) opaque literal.toUpperCase
     reservedWords += parser
     parser
   }

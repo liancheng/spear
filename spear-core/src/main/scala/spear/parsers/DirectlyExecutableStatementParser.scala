@@ -1,6 +1,6 @@
 package spear.parsers
 
-import fastparse.all._
+import fastparse.all.P
 
 import spear.plans.logical.LogicalPlan
 
@@ -8,7 +8,7 @@ import spear.plans.logical.LogicalPlan
 object DirectlyExecutableStatementParser extends LoggingParser {
   import OrderByClauseParser._
   import QueryExpressionParser._
-  import WhitespaceApi._
+  import WhitespaceApi.parserApi
 
   private val cursorSpecification: P[LogicalPlan] = queryExpression ~ orderByClause.? map {
     case (plan, orderBy) => orderBy.orIdentity apply plan

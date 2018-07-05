@@ -1,18 +1,12 @@
 package spear.parsers
 
 trait ParserImplicits[+T] {
-  import fastparse.all._
+  import fastparse.all.{P, Parser}
 
   val self: Parser[T]
 
-  /** Captures the 1st character of the text parsed by `parser` as a `Char`. */
-  def char: P[Char] = self.! map { _.head }
-
-  /** Drops the semantic value of `self` and convert `self` to a `P0`. */
-  def drop: P0 = self map { _ => () }
-
   def fold[U >: T](sep: => P[(U, U) => U], min: Int = 0): P[U] = {
-    import WhitespaceApi._
+    import WhitespaceApi.parserApi
 
     self ~ (sep ~ self rep (min = min)) map {
       case (head, tail) =>
@@ -22,7 +16,4 @@ trait ParserImplicits[+T] {
         }
     }
   }
-
-  /** Overwrites the original semantics value with a new `value`. */
-  def ~>[U](value: => U): P[U] = self map { _ => value }
 }

@@ -39,7 +39,7 @@ trait BasicQueryCompiler extends QueryCompiler {
   override val catalog: Catalog = new InMemoryCatalog
 
   override def parse(query: String): LogicalPlan = {
-    import fastparse.all._
+    import fastparse.all.{parserApi, End, Start}
 
     (Start ~ directlyExecutableStatement ~ End parse query).get.value
   }

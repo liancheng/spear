@@ -201,7 +201,6 @@ case class Grouped(
   keys: Seq[Expression],
   conditions: Seq[Expression] = Nil,
   order: Seq[SortOrder] = Nil
-
 ) {
   def having(conditions: Seq[Expression]): Grouped = copy(
     conditions = this.conditions ++ conditions

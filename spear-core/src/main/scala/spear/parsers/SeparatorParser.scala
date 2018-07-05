@@ -1,6 +1,6 @@
 package spear.parsers
 
-import fastparse.all._
+import fastparse.all.{parserApi, AnyChar, CharPred, LiteralStr, P0}
 
 // SQL06 section 5.2
 object SeparatorParser {

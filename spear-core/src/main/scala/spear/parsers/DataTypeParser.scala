@@ -1,6 +1,6 @@
 package spear.parsers
 
-import fastparse.all._
+import fastparse.all.{LiteralStr, P, PassWith}
 
 import spear.parsers.annotations.ExtendedSQLSyntax
 import spear.types._
@@ -8,36 +8,36 @@ import spear.types._
 object DataTypeParser extends LoggingParser {
   import KeywordParser._
   import NameParser._
-  import WhitespaceApi._
+  import WhitespaceApi.parserApi
 
   @ExtendedSQLSyntax
-  private val extendedNumericType: P[DataType] = TINYINT ~> ByteType opaque "extended-type"
+  private val extendedNumericType: P[DataType] = TINYINT ~ PassWith(ByteType) opaque "extended-type"
 
   private val exactNumericType: P[DataType] = (
-    BIGINT ~> LongType
-    | INT ~> IntType
-    | INTEGER ~> IntType
-    | SMALLINT ~> ShortType
+    BIGINT ~ PassWith(LongType)
+    | INT ~ PassWith(IntType)
+    | INTEGER ~ PassWith(IntType)
+    | SMALLINT ~ PassWith(ShortType)
     | extendedNumericType
     opaque "exact-numeric-type"
   )
 
   private val approximateNumericType: P[DataType] = (
-    FLOAT ~> FloatType
-    | REAL ~> DoubleType
-    | DOUBLE ~> DoubleType
+    FLOAT ~ PassWith(FloatType)
+    | REAL ~ PassWith(DoubleType)
+    | DOUBLE ~ PassWith(DoubleType)
     opaque "approximate-numeric-type"
   )
 
   private val numericType: P[DataType] =
     exactNumericType | approximateNumericType opaque "numeric-type"
 
-  private val booleanType: P[DataType] = BOOLEAN ~> BooleanType opaque "boolean-type"
+  private val booleanType: P[DataType] = BOOLEAN ~ PassWith(BooleanType) opaque "boolean-type"
 
-  private val datetimeType: P[DataType] = DATE ~> DateType opaque "datetime-type"
+  private val datetimeType: P[DataType] = DATE ~ PassWith(DateType) opaque "datetime-type"
 
   @ExtendedSQLSyntax
-  private val stringType: P[DataType] = STRING ~> StringType opaque "string-type"
+  private val stringType: P[DataType] = STRING ~ PassWith(StringType) opaque "string-type"
 
   private val characterStringType: P[DataType] = stringType opaque "character-string-type"
 

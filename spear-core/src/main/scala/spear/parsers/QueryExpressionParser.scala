@@ -54,12 +54,12 @@ object JoinedTableParser extends LoggingParser {
   import WhitespaceApi._
 
   private val outerJoinType: P[JoinType] = (
-    LEFT ~> LeftOuter
-    | RIGHT ~> RightOuter
-    | FULL ~> FullOuter
+    LEFT ~ PassWith(LeftOuter)
+    | RIGHT ~ PassWith(RightOuter)
+    | FULL ~ PassWith(FullOuter)
   ) ~ OUTER.? opaque "outer-join-type"
 
-  private val joinType: P[JoinType] = INNER ~> Inner | outerJoinType opaque "joinType"
+  private val joinType: P[JoinType] = INNER ~ PassWith(Inner) | outerJoinType opaque "joinType"
 
   private val joinCondition: P[Expression] = ON ~ searchCondition opaque "join-condition"
 
@@ -142,15 +142,15 @@ object WindowClauseParser extends LoggingParser {
     ORDER ~ BY ~ sortSpecificationList opaque "window-order-clause"
 
   private val windowFrameUnits: P[WindowFrameType] =
-    ROWS ~> RowsFrame | RANGE ~> RangeFrame opaque "window-frame-units"
+    ROWS ~ PassWith(RowsFrame) | RANGE ~ PassWith(RangeFrame) opaque "window-frame-units"
 
   private val windowFramePreceding: P[FrameBoundary] =
     unsignedValueSpecification ~ PRECEDING map Preceding opaque "window-frame-preceding"
 
   private val windowFrameStart: P[FrameBoundary] = (
-    UNBOUNDED ~ PRECEDING ~> UnboundedPreceding
+    UNBOUNDED ~ PRECEDING ~ PassWith(UnboundedPreceding)
     | windowFramePreceding
-    | CURRENT ~ ROW ~> CurrentRow
+    | CURRENT ~ ROW ~ PassWith(CurrentRow)
     opaque "window-frame-start"
   )
 
@@ -159,7 +159,7 @@ object WindowClauseParser extends LoggingParser {
 
   private val windowFrameBound: P[FrameBoundary] = (
     windowFrameStart
-    | UNBOUNDED ~ FOLLOWING ~> UnboundedFollowing
+    | UNBOUNDED ~ FOLLOWING ~ PassWith(UnboundedFollowing)
     | windowFrameFollowing
     opaque "window-frame-bound"
   )
@@ -248,7 +248,7 @@ object QuerySpecificationParser extends LoggingParser {
   )
 
   private val selectList: P[Seq[NamedExpression]] = (
-    "*" ~> Seq(*)
+    "*" ~ PassWith(Seq(*))
     | selectSublist.rep(min = 1, sep = ",")
     opaque "select-list"
   )
@@ -363,7 +363,7 @@ object QueryExpressionParser extends LoggingParser {
 
   private val queryTerm: P[LogicalPlan] = {
     val intersect = (_: LogicalPlan) intersect (_: LogicalPlan)
-    queryPrimary fold INTERSECT ~> intersect opaque "query-term"
+    queryPrimary fold INTERSECT ~ PassWith(intersect) opaque "query-term"
   }
 
   private lazy val queryExpressionBody: P[LogicalPlan] = {
@@ -371,7 +371,7 @@ object QueryExpressionParser extends LoggingParser {
     val except = (_: LogicalPlan) except (_: LogicalPlan)
 
     queryTerm fold (
-      UNION ~ ALL.? ~> union | EXCEPT ~> except
+      UNION ~ ALL.? ~ PassWith(union) | EXCEPT ~ PassWith(except)
     ) opaque "query-expression-body"
   }
 
@@ -409,15 +409,15 @@ object SortSpecificationListParser extends LoggingParser {
   import WhitespaceApi._
 
   private val orderingSpecification: P[Expression => SortOrder] = (
-    ASC ~> { (_: Expression).asc }
-    | DESC ~> { (_: Expression).desc }
+    ASC ~ PassWith { (_: Expression).asc }
+    | DESC ~ PassWith { (_: Expression).desc }
     opaque "ordering-specification"
   )
 
   private val nullOrdering: P[SortOrder => SortOrder] =
     NULLS ~ (
-      FIRST ~> { (_: SortOrder).nullsFirst }
-      | LAST ~> { (_: SortOrder).nullsLast }
+      FIRST ~ PassWith { (_: SortOrder).nullsFirst }
+      | LAST ~ PassWith { (_: SortOrder).nullsLast }
     ) opaque "null-ordering"
 
   private val sortKey: P[Expression] = valueExpression opaque "sort-key"
