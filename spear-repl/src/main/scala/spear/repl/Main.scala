@@ -1,6 +1,6 @@
 package spear.repl
 
-import ammonite.ops.{read, Path, ResourcePath, ResourceRoot}
+import ammonite.ops.{read, Path, ResourcePath}
 import ammonite.runtime.Storage
 import scopt._
 
@@ -19,12 +19,12 @@ object Main {
     val optionParser = new OptionParser[Config]("spear-shell") {
       opt[Unit]("no-remote-logging")
         .text("Disable remote logging of the number of times a REPL starts and runs command")
-        .action { (_, config) => config.copy(remoteLogging = false) }
+        .action { (_, config) =>
+          config.copy(remoteLogging = false)
+        }
     }
 
     for (Config(remoteLoggingEnabled) <- optionParser.parse(args, Config())) {
-      import ResourceRoot._
-
       ammonite.Main(
         predefCode = read(ResourcePath.resource(this.getClass.getClassLoader) / "predef.scala"),
         storageBackend = new Storage.Folder(Path.home / ".spear"),
@@ -60,6 +60,6 @@ object Main {
          |it, pass in the "--no-remote-logging" command-line flag.
          |""".oneLine
 
-    Seq(banner) ++ Option(remoteLoggingNote).filter(_ => remoteLoggingEnabled) mkString "\n"
+    Seq(banner) ++ Option(remoteLoggingNote).filter { _ => remoteLoggingEnabled } mkString "\n"
   }
 }
